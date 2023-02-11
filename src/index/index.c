@@ -54,26 +54,6 @@ static void _Index_ConstructFullTextStructure
 	}
 }
 
-static void _Index_ConstructFullTextAddField
-(
-	RSIndex *rsIdx,
-	IndexField *field
-) {
-	// introduce text field
-	unsigned options = RSFLDOPT_NONE;
-	if(field->nostem) {
-		options |= RSFLDOPT_TXTNOSTEM;
-	}
-
-	if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
-		options |= RSFLDOPT_TXTPHONETIC;
-	}
-
-	RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
-			RSFLDTYPE_FULLTEXT, options);
-	RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->weight);
-}
-
 static void _Index_ConstructExactMatchStructure
 (
 	Index idx,
@@ -86,19 +66,6 @@ static void _Index_ConstructExactMatchStructure
 	uint fields_count = array_len(idx->fields);
 	unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
 
-	// introduce edge src and dest node ids as additional index fields
-	if(idx->entity_type == GETYPE_EDGE) {
-		fieldID = RediSearch_CreateField(rsIdx, "_src_id", types,
-				RSFLDOPT_NONE);
-		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-
-		fieldID = RediSearch_CreateField(rsIdx, "_dest_id", types,
-				RSFLDOPT_NONE);
-		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-	}
-
 	for(uint i = 0; i < fields_count; i++) {
 		IndexField *field = idx->fields + i;
 		// introduce both text, numeric and geo fields
@@ -108,33 +75,6 @@ static void _Index_ConstructExactMatchStructure
 		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 	}
 
-	// for none indexable types e.g. Array introduce an additional field
-	// "none_indexable_fields" which will hold a list of attribute names
-	// that were not indexed
-	fieldID = RediSearch_CreateField(rsIdx, INDEX_FIELD_NONE_INDEXED,
-			RSFLDTYPE_TAG, RSFLDOPT_NONE);
-	RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-	RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-}
-
-void Index_ExactMatchAddField
-(
-	Index idx,
-	RSIndex *rsIdx,
-	IndexField *field
-) {
-	ASSERT(idx != NULL);
-	ASSERT(rsIdx != NULL);
-
-	RSFieldID fieldID;
-	unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
-
-	// introduce both text, numeric and geo fields
-	fieldID = RediSearch_CreateField(rsIdx, field->name, types,
-			RSFLDOPT_NONE);
-	RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-	RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-
 	// introduce edge src and dest node ids as additional index fields
 	if(idx->entity_type == GETYPE_EDGE) {
 		fieldID = RediSearch_CreateField(rsIdx, "_src_id", types,
@@ -155,20 +95,6 @@ void Index_ExactMatchAddField
 			RSFLDTYPE_TAG, RSFLDOPT_NONE);
 	RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
 	RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
-}
-
-void Index_AddFieldToStructure
-(
-	Index idx,
-	IndexField *field
-) {
-	ASSERT(idx != NULL);
-	ASSERT(idx->_idx != NULL);
-	if(idx->type == IDX_FULLTEXT) {
-		_Index_ConstructFullTextAddField(idx->_idx, field);
-	} else {
-		Index_ExactMatchAddField(idx, idx->_idx, field);
-	}
 }
 
 // responsible for creating the index structure only!
@@ -337,29 +263,16 @@ void IndexField_New
 	field->weight   = weight;
 	field->nostem   = nostem;
 	field->phonetic = rm_strdup(phonetic);
-	field->ref_count = 1;
 }
 
-bool IndexField_Free
-(
-	IndexField *field,
-	bool enforce_free
-) {
-	ASSERT(field != NULL);
-	ASSERT(field->ref_count >= 0);
-
-	if((!enforce_free) && ((--field->ref_count) > 0)) return false;
-	rm_free(field->name);
-	rm_free(field->phonetic);
-	return true;
-}
-
-void IndexField_IncRef
+void IndexField_Free
 (
 	IndexField *field
 ) {
 	ASSERT(field != NULL);
-	field->ref_count++;
+
+	rm_free(field->name);
+	rm_free(field->phonetic);
 }
 
 // create a new index
@@ -397,20 +310,8 @@ int Index_PendingChanges
 	return idx->pending_changes;
 }
 
-// Drop internal RediSearch index
-void Index_DropInternalIndex
-(
-	Index idx  // index to drop
-) {
-	ASSERT(idx != NULL);
-
-	if(idx->_idx) {
-		RediSearch_DropIndex(idx->_idx);
-		idx->_idx = NULL;
-	}
-}
-
 // disable index by increasing the number of pending changes
+// and re-creating the internal RediSearch index
 void Index_Disable
 (
 	Index idx  // index to disable
@@ -418,6 +319,14 @@ void Index_Disable
 	ASSERT(idx != NULL);
 
 	idx->pending_changes++;
+
+	if(idx->_idx != NULL) {
+		RediSearch_DropIndex(idx->_idx);
+		idx->_idx = NULL;
+	}
+
+	// create RediSearch index structure
+	Index_ConstructStructure(idx);
 }
 
 // try to enable index by dropping number of pending changes by 1
@@ -439,45 +348,36 @@ void Index_AddField
 ) {
 	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
-	ASSERT(!Index_getIndexField(idx, field->id));
+	ASSERT(!Index_ContainsAttribute(idx, field->id));
 
 	array_append(idx->fields, *field);
-	Index_AddFieldToStructure(idx, field);
 }
 
 // removes fields from index
-bool Index_RemoveField
+void Index_RemoveField
 (
 	Index idx,
-	struct GraphContext *gc,
-	const char *field,
-	Constraint *constraints,
-	bool part_of_constraint_deletion
+	const char *field
 ) {
 	ASSERT(idx   != NULL);
 	ASSERT(field != NULL);
 
-	Attribute_ID attribute_id = GraphContext_GetAttributeID((GraphContext *)gc, field);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
 	ASSERT(attribute_id != ATTRIBUTE_ID_NONE);
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
-		IndexField *_field = idx->fields + i;
-		// if there is a constraint on the field, we don't allow to remove it using drop index
-		if(_field->id == attribute_id && (part_of_constraint_deletion || !Has_Constraint_On_Attribute(constraints, attribute_id))) {
+		IndexField *field = idx->fields + i;
+		if(field->id == attribute_id) {
 			// free field
-			bool is_freed = IndexField_Free(_field, false);
-			if(is_freed) {
-				array_del_fast(idx->fields, i);
+			IndexField_Free(field);
+			array_del_fast(idx->fields, i);
 
-				Index_Disable(idx);
-				return true;
-			}
-			return false;
+			Index_Disable(idx);
+			break;
 		}
 	}
-
-	return false;
 }
 
 // query index
@@ -543,22 +443,22 @@ const IndexField *Index_GetFields
 	return (const IndexField *)idx->fields;
 }
 
-IndexField *Index_getIndexField
+bool Index_ContainsAttribute
 (
 	const Index idx,
 	Attribute_ID attribute_id
 ) {
 	ASSERT(idx != NULL);
 
-	if(attribute_id == ATTRIBUTE_ID_NONE) return NULL;
+	if(attribute_id == ATTRIBUTE_ID_NONE) return false;
 	
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
 		IndexField *field = idx->fields + i;
-		if(field->id == attribute_id) return field;
+		if(field->id == attribute_id) return true;
 	}
 
-	return NULL;
+	return false;
 }
 
 int Index_GetLabelID
@@ -648,7 +548,7 @@ void Index_Free
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
-		IndexField_Free(idx->fields + i, true);
+		IndexField_Free(idx->fields + i);
 	}
 	array_free(idx->fields);
 

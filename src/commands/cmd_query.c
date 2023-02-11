@@ -214,7 +214,7 @@ static void _index_operation
 		case EXECUTION_TYPE_INDEX_CREATE:
 			_index_operation_create(ctx, gc, ast, &idx);
 			if(idx) {
-				Indexer_PopulateIndexOrConstraint(gc, idx, NULL);
+				Indexer_PopulateIndex(gc, idx);
 			}
 			break;
 		case EXECUTION_TYPE_INDEX_DROP:
@@ -222,9 +222,9 @@ static void _index_operation
 				// if idx field count > 0 reindex
 				// otherwise drop
 				if(Index_FieldsCount(idx) > 0) {
-					Indexer_PopulateIndexOrConstraint(gc, idx, NULL);
+					Indexer_PopulateIndex(gc, idx);
 				} else {
-					Indexer_DropIndexOrConstraint(idx, NULL);
+					Indexer_DropIndex(idx);
 				}
 			}
 			break;

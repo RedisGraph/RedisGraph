@@ -1,28 +1,51 @@
+/*
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
 #include "RG.h"
+#include "value.h"
 #include "constraint.h"
 #include "../util/arr.h"
-#include "../graph/entities/attribute_set.h"
-#include "../index/index.h"
+#include "../query_ctx.h"
 #include "redisearch_api.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
-#include "value.h"
-#include "../index/indexer.h"
-#include "../query_ctx.h"
+#include "../util/thpool/pools.h"
+#include "../graph/entities/attribute_set.h"
+
 #include <stdatomic.h>
 
 // constraint enforcement callback function
-typedef bool (EnforcementCB)(const Constraint *c, const GraphEntity * e);
+typedef bool (*EnforcementCB)(const Constraint *c, const GraphEntity * e);
 
 // opaque structure representing a constraint
 typedef struct _Constraint {
-	Schema *schema;                // constraint schema
+	uint n_fields;                 // number of fields
+	const Schema *schema;          // constraint schema
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
     Attribute_ID *attributes;      // sorted array of attr IDs
     ConstraintStatus status;       // constraint status
     uint _Atomic pending_changes;  // number of pending changes
 } _Constraint;
+
+// constraint enforce context
+typedef struct ConstraintEnforceCtx {
+	Graph *g;            // graph object
+	const Constraint c;  // constraint to enforce
+} ConstraintEnforceCtx;
+
+// enforces mandatory constraint on given entity
+static bool Constraint_EnforceMandatory
+(
+	const Constraint c,   // constraint to enforce
+	const GraphEntity *e  // enforced entity
+) {
+	// TODO: implement
+	return false;
+}
 
 // enforces unique constraint on given entity
 static bool Constraint_EnforceUniqueEntity
@@ -34,8 +57,9 @@ static bool Constraint_EnforceUniqueEntity
 	ASSERT(c != NULL);
 	ASSERT(e != NULL);
 
-	bool  res  = false;  // return value none-optimistic
-	Index *idx = Schema_GetIndex(c->s, _, _);
+	bool     res    = false;  // return value none-optimistic
+	Index   idx     = Schema_GetIndex(c->schema, NULL, IDX_EXACT_MATCH);
+	RSIndex *rs_idx = Index_RSIndex(idx);
 
 	//--------------------------------------------------------------------------
 	// construct a RediSearch query locating entity
@@ -47,43 +71,47 @@ static bool Constraint_EnforceUniqueEntity
     SIType t;
     SIValue *v;
     RSQNode *node = NULL;  // RediSearch query node
+	const AttributeSet attributes = GraphEntity_GetAttributes(e);
 
     // convert constraint into a RediSearch query
-    RSQNode *rs_query_node = RediSearch_CreateIntersectNode(idx, false);
+    RSQNode *rs_query_node = RediSearch_CreateIntersectNode(rs_idx, false);
     ASSERT(rs_query_node != NULL);
 
     for(uint i = 0; i < array_len(c->attributes); i++) {
-		Attribute_ID attr_id = c->attributes + i;
+		Attribute_ID attr_id = c->attributes[i];
 
 		// get current attribute from entity
         v = AttributeSet_Get(attributes, attr_id);
 		if(v == ATTRIBUTE_NOTFOUND) {
 			// entity satisfies constraint in a vacuous truth manner
-			// TODO: clean up...
+			RediSearch_QueryNodeFree(rs_query_node);
 			res = true;
 			break;
 		}
 
 		// create RediSearch query node according to entity attr type
         t = SI_TYPE(*v);
+		// TODO: waste full!
+		const char *field = GraphContext_GetAttributeString(gc, attr_id);
 
 	    if(!(t & SI_INDEXABLE)) {
 			assert("check with Neo implementations" && false);
 	    	// none indexable type, consult with the none indexed field
-	    	node = RediSearch_CreateTagNode(idx, INDEX_FIELD_NONE_INDEXED);
-	    	RSQNode *child = RediSearch_CreateTokenNode(idx,
+	    	node = RediSearch_CreateTagNode(rs_idx, INDEX_FIELD_NONE_INDEXED);
+	    	RSQNode *child = RediSearch_CreateTokenNode(rs_idx,
 	    			INDEX_FIELD_NONE_INDEXED, field);
 
 	    	RediSearch_QueryNodeAddChild(node, child);
 	    } else if(t == T_STRING) {
-            node = RediSearch_CreateTagNode(idx, field);
-            RSQNode *child = RediSearch_CreateTokenNode(idx, field, v->stringval);
+            node = RediSearch_CreateTagNode(rs_idx, field);
+            RSQNode *child = RediSearch_CreateTokenNode(rs_idx, field, v->stringval);
 	    	RediSearch_QueryNodeAddChild(node, child);
         } else {
             ASSERT(t & SI_NUMERIC || t == T_BOOL);
 		    double d = SI_GET_NUMERIC((*v));
-            node = RediSearch_CreateNumericNode(idx, field, d, d, true, true);
+            node = RediSearch_CreateNumericNode(rs_idx, field, d, d, true, true);
         }
+
         ASSERT(node != NULL);
 		// TODO: validate that if there's only one child
 		// there's no performance penalty
@@ -96,8 +124,8 @@ static bool Constraint_EnforceUniqueEntity
 
 	// TODO: it is ok for 'RediSearch_ResultsIteratorNext' to return NULL
 	// in which case the enforced entity satisfies
-    RSResultsIterator *iter = RediSearch_GetResultsIterator(rs_query_node, idx);
-    const void* ptr = RediSearch_ResultsIteratorNext(iter, idx, NULL);
+    RSResultsIterator *iter = RediSearch_GetResultsIterator(rs_query_node, rs_idx);
+    const void* ptr = RediSearch_ResultsIteratorNext(iter, rs_idx, NULL);
 	RediSearch_ResultsIteratorFree(iter);
 
 	// if ptr == NULL
@@ -111,27 +139,237 @@ static bool Constraint_EnforceUniqueEntity
     return (ptr == NULL);
 }
 
+static void _Constraint_EnforceNodes
+(
+	void *args
+) {
+	// check if constraint holds
+	// scan through all entities governed by this constraint and enforce
+
+	ASSERT(args != NULL);
+
+	ConstraintEnforceCtx *ctx = (ConstraintEnforceCtx*)args;
+
+	Graph      *g = ctx->g;
+	Constraint  c = ctx->c;
+
+	const Schema *s = c->s;
+
+	Index idx = GraphContext_GetIndexByID(gc, Schema_GetID(s), NULL,
+			IDX_EXACT_MATCH, SCHEMA_NODE);
+
+	bool               holds      = true;   // constraint holds
+	GrB_Index          rowIdx     = 0;      // current row being scanned
+	int                enforced   = 0;      // #entities in current batch
+	int                batch_size = 10000;  // #entities to enforce in one go
+	RG_MatrixTupleIter it         = {0};    // matrix iterator
+
+	while(holds && true) {
+		// lock graph for reading
+		Graph_AcquireReadLock(g);
+
+		const RG_Matrix m = Graph_GetLabelMatrix(g, Schema_GetID(s));
+		ASSERT(m != NULL);
+
+		//----------------------------------------------------------------------
+		// resume scanning from rowIdx
+		//----------------------------------------------------------------------
+
+		GrB_Info info;
+		info = RG_MatrixTupleIter_attach(&it, m);
+		ASSERT(info == GrB_SUCCESS);
+		info = RG_MatrixTupleIter_iterate_range(&it, rowIdx, UINT64_MAX);
+		ASSERT(info == GrB_SUCCESS);
+
+		//----------------------------------------------------------------------
+		// batch enforce nodes
+		//----------------------------------------------------------------------
+
+		EntityID id;
+		while(enforced < batch_size &&
+			  RG_MatrixTupleIter_next_BOOL(&it, &id, NULL, NULL) == GrB_SUCCESS)
+		{
+			Node n;
+			Graph_GetNode(g, id, &n);
+			if(!Constraint_EnforceEntity(c, (GraphEntity*)&n)) {
+				// found node which violate constraint	
+				holds = false;
+				break;
+			}
+			enforced++;
+		}
+
+		//----------------------------------------------------------------------
+		// done with current batch
+		//----------------------------------------------------------------------
+
+		if(enforced != batch_size) {
+			// iterator depleted, no more nodes to enforce
+			break;
+		} else {
+			// release read lock
+			Graph_ReleaseLock(g);
+
+			// finished current batch
+			RG_MatrixTupleIter_detach(&it);
+
+			// continue next batch from row id+1
+			// this is true because we're iterating over a diagonal matrix
+			rowIdx = id + 1;
+		}
+	}
+
+	RG_MatrixTupleIter_detach(&it);
+
+	// update constraint status
+	ConstraintStatus status = (holds) ? CT_ACTIVE : CT_FAILED;
+	Constraint_SetStatus(c, status);
+
+	// release read lock
+	Graph_ReleaseLock(g);
+}
+
+static void _Constraint_EnforceEdges
+(
+	void *args
+) {
+	ASSERT(args != NULL);
+
+	ConstraintEnforceCtx *ctx = (ConstraintEnforceCtx*)args;
+
+	Graph      *g = ctx->g;
+	const Constraint  c = ctx->c;
+
+	const Schema *s = c->s;
+
+	Index idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+
+	GrB_Info  info;
+	bool holds             = true;  // constraint holds
+	EntityID  src_id       = 0;     // current processed row idx
+	EntityID  dest_id      = 0;     // current processed column idx
+	EntityID  edge_id      = 0;     // current processed edge id
+	EntityID  prev_src_id  = 0;     // last processed row idx
+	EntityID  prev_dest_id = 0;     // last processed column idx
+	int       enforced     = 0;     // number of entities enforced in current batch
+	int       batch_size   = 1000;  // max number of entities to enforce in one go
+	RG_MatrixTupleIter it  = {0};
+
+	while(holds && true) {
+		// lock graph for reading
+		Graph_AcquireReadLock(g);
+
+		// reset number of enforced edges in batch
+		enforced     = 0;
+		prev_src_id  = src_id;
+		prev_dest_id = dest_id;
+
+		// fetch relation matrix
+		const RG_Matrix m = Graph_GetRelationMatrix(g, Schema_GetID(s), false);
+		ASSERT(m != NULL);
+
+		//----------------------------------------------------------------------
+		// resume scanning from previous row/col indices
+		//----------------------------------------------------------------------
+
+		info = RG_MatrixTupleIter_attach(&it, m);
+		ASSERT(info == GrB_SUCCESS);
+		info = RG_MatrixTupleIter_iterate_range(&it, src_id, UINT64_MAX);
+		ASSERT(info == GrB_SUCCESS);
+
+		// skip previously enforced edges
+		while((info = RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id,
+						&edge_id)) == GrB_SUCCESS &&
+				src_id == prev_src_id &&
+				dest_id <= prev_dest_id);
+
+		// process only if iterator is on an active entry
+		if(info != GrB_SUCCESS) {
+			break;
+		}
+
+		//----------------------------------------------------------------------
+		// batch enforce edges
+		//----------------------------------------------------------------------
+
+		do {
+			Edge e;
+			e.srcNodeID  = src_id;
+			e.destNodeID = dest_id;
+			e.relationID = Schema_GetID(s);
+
+			if(SINGLE_EDGE(edge_id)) {
+				Graph_GetEdge(g, edge_id, &e);
+				if(!Constraint_EnforceEntity(c, (GraphEntity*)&e)) {
+					holds = false;
+					break;
+				}
+			} else {
+				EdgeID *edgeIds = (EdgeID *)(CLEAR_MSB(edge_id));
+				uint edgeCount = array_len(edgeIds);
+
+				for(uint i = 0; i < edgeCount; i++) {
+					edge_id = edgeIds[i];
+					Graph_GetEdge(g, edge_id, &e);
+					if(!Constraint_EnforceEntity(c, (GraphEntity*)&e)) {
+						holds = false;
+						break;
+					}
+				}
+			}
+			enforced++; // single/multi edge are counted similarly
+		} while(enforced < batch_size &&
+			  RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id, &edge_id)
+				== GrB_SUCCESS && holds);
+
+		//----------------------------------------------------------------------
+		// done with current batch
+		//----------------------------------------------------------------------
+
+		if(enforced != batch_size) {
+			// iterator depleted, no more edges to enforce
+			break;
+		} else {
+			// finished current batch
+			// release read lock
+			Graph_ReleaseLock(g);
+			RG_MatrixTupleIter_detach(&it);
+		}
+	}
+
+	RG_MatrixTupleIter_detach(&it);
+
+	// update constraint status
+	ConstraintStatus status = (holds) ? CT_ACTIVE : CT_FAILED;
+	Constraint_SetStatus(c, status);
+
+	// release read lock
+	Graph_ReleaseLock(g);
+}
+
+
 // create a new constraint
 Constraint Constraint_New
 (
-	Attribute_ID *attrs,  // enforced attributes
-	uint n_attr,          // number of attributes
-	const Schema *s,      // constraint schema
-	ConstraintType t      // constraint type
+	Attribute_ID *fields,    // enforced fields
+	uint n_fields,           // number of fields
+	const struct Schema *s,  // constraint schema
+	ConstraintType t         // constraint type
 ) {
 	// TODO: support CT_MANDATORY
-	ASSERT(t == CT_UNIQUE);
+	ASSERT(t == CT_UNIQUE || t == CT_MANDATORY);
 
-    Constraint c = rm_malloc(sizeof(_Constraint));
+    Constraint c = rm_malloc(sizeof(struct _Constraint));
 
 	// introduce constraint attributes
-	c->attributes = array_newlen(Attribute_ID,  n_fields);
-    memcpy(c->attributes, fields, sizeof(Attribute_ID) * id_count);
+	c->attributes = rm_malloc(sizeof(Attribute_ID) * n_fields);
+    memcpy(c->attributes, fields, sizeof(Attribute_ID) * n_fields);
 
 	// initialize constraint
 	c->t               = t;
 	c->schema          = s;
 	c->status          = CT_PENDING;
+	c->n_fields        = n_fields;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 
 	// set enforce function pointer
@@ -143,59 +381,48 @@ Constraint Constraint_New
 
 	return c;
 }
-
-// tries to enforce constraint
-// will create indicies if required to
-// sets constraint status to pending
-int Constraint_Enforce
+// returns constraint's type
+ConstraintType Constraint_GetType
 (
-	const Constraint c,  // constraint to enforce
-	GraphContext *gc
+	const Constraint c  // constraint to query
 ) {
 	ASSERT(c != NULL);
+	return c->t;
+}
+
+// tries to enforce constraint
+// will create indicies if required
+// sets constraint status as pending
+void Constraint_Enforce
+(
+	const Constraint c,  // constraint to enforce
+	Graph *g
+) {
+	ASSERT(c  != NULL);
+	ASSERT(g  != NULL);
 
 	// mark constraint as pending
 	Constraint_IncPendingChanges(c);
 
-	//--------------------------------------------------------------------------
-	// make sure constraint is supported by an index
-	//--------------------------------------------------------------------------
+	// build enforce context
+	ConstraintEnforceCtx *ctx = rm_malloc(sizeof(ConstraintEnforceCtx));
+	ctx->c = c;
+	ctx->g = g;
 
-	Index idx = NULL;
-
-	Schema *s = c->s;
-	SchemaType st = Schema_GetType(s);
-	const char *l = Schema_GetName(s);
-
-	uint n = array_len(c->attributes);
-	const char *fields[n];
-	for(uint i = 0; i < n; i++) {
-		fields_str[i] = GraphContext_GetAttributeString(gc, c->attributes[i]);
+	if(Schema_GetType(c->schema) == SCHEMA_NODE) {
+		ThreadPools_AddWorkReader(_Constraint_EnforceNodes, (void*)ctx);
+	} else {
+		ThreadPools_AddWorkReader(_Constraint_EnforceEdges, (void*)ctx);
 	}
+}
 
-	bool idx_created = GraphContext_AddExactMatchIndex(&idx, gc, st, l, fields,
-			n, false);
-
-	if(idx_created == false) {
-
-	}
-
-	enum ASYNC_TASK {
-		EnforceConstraint       // requires index to be operational
-		PopulateConstraintIndex // populate index taking constraint into acount
-	}
-
-	// 1. index already exists!
-	//    1.a check if constraint holds:
-	//        scan through all entities governed by this constraint and enforce
-	//
-	// 2. index modified / created
-	//    2.a conditional build index:
-	//        foreach new index document, enforce constraint on entity
-	//        add document to index only if constraint holds
-	//        if not revert back to previous index and mark constraint as failed
-
-	Indexer_PopulateIndexOrConstraint(gc, idx, c);
+// returns constraint status
+ConstraintStatus Constraint_GetStatus
+(
+	const Constraint c
+) {
+	ASSERT(c != NULL);
+	return c->status;
 }
 
 // set constraint status
@@ -219,10 +446,13 @@ void Constraint_SetStatus
 // returns a shallow copy of constraint attributes
 const Attribute_ID *Constraint_GetAttributes
 (
-	const Constraint c  // constraint from which to get attributes
+	const Constraint c,  // constraint from which to get attributes
+	uint *n              // length of returned array
 ) {
 	ASSERT(c != NULL);
+	ASSERT(n != NULL);
 
+	*n = c->n_fields;
 	return (const Attribute_ID*)c->attributes;
 }
 
@@ -285,8 +515,8 @@ void Constraint_DecPendingChanges
 // false otherwise
 bool Constraint_EnforceEntity
 (
-	Constraint *c,
-	const GraphEntity *e,
+	const Constraint c,   // constraint to enforce
+	const GraphEntity *e  // enforced entity
 ) {
 	ASSERT(c != NULL);
 	ASSERT(e != NULL);
@@ -294,85 +524,28 @@ bool Constraint_EnforceEntity
 	return c->enforce(e);
 }
 
-// executed under write lock
-void Constraint_Drop_Index
+// checks if constraint enforces attribute
+bool Constraint_EnforceAttribute
 (
-	Constraint c,
-	GraphContext *gc,
-	bool should_drop_constraint
+	Constraint c,         // constraint to query
+	Attribute_ID attr_id  // enforced attribute
 ) {
-	// constraint was not satisfied, free it and remove it's index
-
-	SchemaType schema_type = (c->entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-	Schema *s = GraphContext_GetSchema((GraphContext*)gc, c->label, schema_type);
-	ASSERT(s);
-
-    Index idx = Schema_GetIndex(s, &(c->attributes[0].id), IDX_EXACT_MATCH);
-    ASSERT(idx != NULL);
-	for(int i = 1; i < array_len(c->attributes); i++) {
-        ASSERT(idx == Schema_GetIndex(s, &(c->attributes[i].id), IDX_EXACT_MATCH));
-    }
-
-    bool index_changed = false;
-	// remove all index fields
-	for(int i = 0; i < array_len(c->attributes); i++) {
-		int res = GraphContext_DeleteIndex((GraphContext*)gc, schema_type, c->label, c->attributes[i].attribute_name,
-			IDX_EXACT_MATCH, true);
-		ASSERT(res != INDEX_FAIL); // index should exist
-
-		if(res == INDEX_OK) {
-            index_changed = true;
-        }
-	}
-
-    if(index_changed) {
-        if(Index_FieldsCount(idx) > 0) {
-            Indexer_PopulateIndexOrConstraint((GraphContext*)gc, idx, NULL);
-        } else {
-            Indexer_DropIndexOrConstraint(idx, NULL);
-        }
-    }
-
-    if(should_drop_constraint) {
-        Constraint_IncPendingChanges(c);
-        Indexer_DropIndexOrConstraint(NULL, c);
-    }
-}
-
-bool Has_Constraint_On_Attribute(Constraint *constraints, Attribute_ID attr_id) {
-    for(int i = 0; i < array_len(constraints); i++) {
-        Constraint c = constraints[i];
-        for(int j = 0; j < array_len(c->attributes); j++) {
-            if(c->attributes[j].id == attr_id) {
-                return true;
-            }
-        }
+	for(int i = 0; i < c->n_fields; i++) {
+		if(c->attributes[i] == attr_id) {
+			return true;
+		}
     }
 
     return false;
 }
 
-typedef enum {
-	CT_CREATE,
-	CT_DELETE
-} ConstraintOp;
-
-
-// returns constraint graph entity type
-GraphEntityType Constraint_GraphEntityType
+void Constraint_free
 (
-	const Constraint c
+	Constraint c
 ) {
 	ASSERT(c != NULL);
 
-	return c->entity_type;
-}
-
-void Constraint_free(Constraint c) {
-    for(int i = 0; i < array_len(c->attributes); i++) {
-        rm_free(c->attributes[i].attribute_name);
-    }
-    array_free(c->attributes);
-    rm_free(c->label);
+    rm_free(c->attributes);
     rm_free(c);
 }
+

@@ -100,6 +100,12 @@ XXH32_hash_t GraphContext_GetVersion
 	const GraphContext *gc
 );
 
+// get graph from graph context
+Graph *GraphContext_GetGraph
+(
+	const GraphContext *gc
+);
+
 //------------------------------------------------------------------------------
 // Schema API
 //------------------------------------------------------------------------------

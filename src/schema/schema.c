@@ -158,23 +158,36 @@ static int _Schema_RemoveExactMatchIndex
 (
 	Schema *s,
 	struct GraphContext *gc,
-	const char *field,
-	bool part_of_constraint_deletion
+	const char *field
 ) {
 	ASSERT(s != NULL);
 	ASSERT(field != NULL);
 
-	Attribute_ID attribute_id = GraphContext_GetAttributeID((GraphContext *)gc, field);
-	if(attribute_id == ATTRIBUTE_ID_NONE) {
+	// convert attribute name to attribute ID
+	Attribute_ID attr_id = GraphContext_GetAttributeID((GraphContext *)gc, field);
+	if(attr_id == ATTRIBUTE_ID_NONE) {
 		return INDEX_FAIL;
 	}
 
-	Index idx = Schema_GetIndex(s, &attribute_id, IDX_EXACT_MATCH);
+	// try to get index
+	Index idx = Schema_GetIndex(s, &attr_id, IDX_EXACT_MATCH);
 	if(idx == NULL) {
 		return INDEX_FAIL;
 	}
 
-	if(!Index_RemoveField(idx, gc, field, s->constraints, part_of_constraint_deletion)) return INDEX_NOT_CHANGED;
+	//--------------------------------------------------------------------------
+	// make sure index doesn't supports any constraints
+	//--------------------------------------------------------------------------
+	uint n = array_len(s->constraints);
+	for(uint i = 0; i < n; i++) {
+		Constraint c = s->constraints[i];
+		if(Constraint_EnforceAttribute(c, attr_id)) {
+			// TODO: should we explain why index removal failed?
+			return INDEX_FAIL;
+		}
+	}
+
+	Index_RemoveField(idx, field);
 
 	// if index field count dropped to 0 remove index from schema
 	// index will be freed by the indexer thread
@@ -213,8 +226,7 @@ int Schema_RemoveIndex
 	Schema *s,
 	struct GraphContext *gc,
 	const char *field,
-	IndexType type,
-	bool part_of_constraint_deletion
+	IndexType type
 ) {
 	ASSERT(s != NULL);
 
@@ -222,7 +234,7 @@ int Schema_RemoveIndex
 		case IDX_FULLTEXT:
 			return _Schema_RemoveFullTextIndex(s, gc);
 		case IDX_EXACT_MATCH:
-			return _Schema_RemoveExactMatchIndex(s, gc, field, part_of_constraint_deletion);
+			return _Schema_RemoveExactMatchIndex(s, gc);
 		default:
 			return INDEX_FAIL;
 	}
@@ -300,60 +312,70 @@ void Schema_RemoveEdgeFromIndices
 	if(idx) Index_RemoveEdge(idx, e);
 }
 
-void Schema_Free
+//------------------------------------------------------------------------------
+// constraints API
+//------------------------------------------------------------------------------
+
+// check if schema has constraints
+bool Schema_HasConstraints
 (
-	Schema *s
+	const Schema *s  // schema to query
 ) {
 	ASSERT(s != NULL);
-
-	if(s->name) rm_free(s->name);
-
-	// Free constraints.
-	if(s->constraints) {
-		for(uint i = 0; i < array_len(s->constraints); i++) {
-			Constraint_free(s->constraints[i]);
-		}
-		array_free(s->constraints);
-	}
-
-	// Free indicies.
-	if(s->index) Index_Free(s->index);
-	if(s->fulltextIdx) Index_Free(s->fulltextIdx);
-
-	rm_free(s);
+	return (s->constraints != NULL && array_len(s->constraints) > 0);
 }
 
-bool Schema_HasConstraints(const Schema *s) {
-	ASSERT(s);
-	return (s->constraints && array_len(s->constraints) > 0);
+// checks if schema constains constraint
+bool Schema_ContainsConstraint
+(
+	const Schema *s,            // schema to search
+	const Attribute_ID *attrs,  // constraint attributes
+	uint attr_count             // number of attributes
+) {
+	// validations
+	ASSERT(s          != NULL);
+	ASSERT(attrs      != NULL);
+	ASSERT(attr_count > 0);
+
+	Constraint c = Schema_GetConstraint(s, attrs, attr_count);
+	return (c != NULL || c->status == CT_ACTIVE);
 }
 
 // retrieves constraint 
 // returns NULL if constraint was not found
 Constraint Schema_GetConstraint
 (
-	const Schema *s,             // schema from which to get constraint
-	const Attribute_ID *fields,  // constraint fields
-	uint field_count             // number of fields
+	const Schema *s,            // schema from which to get constraint
+	ConstraintType t,           // constraint type
+	const Attribute_ID *attrs,  // constraint attributes
+	uint attr_count             // number of attributes
 ) {
 	// validations
-	ASSERT(s           != NULL);
-	ASSERT(fields      != NULL);
-	ASSERT(field_count  > 0);
+	ASSERT(s          != NULL);
+	ASSERT(attrs      != NULL);
+	ASSERT(attr_count > 0);
 
 	// search for constraint
 	uint n = array_len(s->constraints);
 	for(uint i = 0; i < n; i++) {
 		Constraint c = s->constraints[i];
 
-		// make sure constraint attribute count matches
-		if(array_len(c->attributes) != field_count) {
+		// check constraint type
+		if(Constraint_GetType(c) != t) {
 			continue;
 		}
 
+		// make sure constraint attribute count matches
+		uint n = 0;
+		const Attribute_ID *c_attrs = Constraint_GetAttributes(c, &n);
+		if(n != attr_count) {
+			continue;
+		}
+
+		// match each attribute
 		bool match = true;  // optimistic
-		for(uint j = 0; j < field_count; j++) {
-			if(c->attributes[j] != fields[j]) {
+		for(uint j = 0; j < n; j++) {
+			if(c_attrs[j] != attrs[j]) {
 				match = false;
 				break;
 			}
@@ -368,33 +390,7 @@ Constraint Schema_GetConstraint
 	return NULL;
 }
 
-// checks if schema constains constraint
-bool Schema_ContainsConstraint
-(
-	const Schema *s,             // schema to search in
-	const Attribute_ID *fields,  // constraint fields to look up
-	uint field_count             // number of fields
-) {
-	// validations
-	ASSERT(s           != NULL);
-	ASSERT(fields      != NULL);
-	ASSERT(field_count  > 0);
-
-	Constraint c = Schema_GetConstraint(s, fields, field_count);
-	return (c == NULL || c->status == CT_FAILED);
-}
-
-void Schema_AddConstraint
-(
-	Schema *s,       // schema holding the index
-	Constraint c     // constraint to add
-) {
-	ASSERT(s != NULL);
-	ASSERT(c != NULL);
-	array_append(s->constraints, c);
-}
-
-// get all constraints in given schema
+// get all constraints in schema
 const Constraint *Schema_GetConstraints
 (
 	const Schema *s  // schema from which to extract constraints
@@ -406,8 +402,19 @@ const Constraint *Schema_GetConstraints
 	return s->constraints;
 }
 
+// adds a constraint to schema
+void Schema_AddConstraint
+(
+	Schema *s,       // schema holding the index
+	Constraint c     // constraint to add
+) {
+	ASSERT(s != NULL);
+	ASSERT(c != NULL);
+	array_append(s->constraints, c);
+}
+
 // removes constraint from schema
-int Schema_RemoveConstraint
+bool Schema_RemoveConstraint
 (
 	Schema *s,    // schema
 	Constraint c  // constraint to remove
@@ -419,12 +426,65 @@ int Schema_RemoveConstraint
 	// search for constraint
 	uint n = array_len(s->constraints);
 	for(uint i = 0; i < n; i++) {
-		if (c == s->constraints[i]) {
+		if(c == s->constraints[i]) {
 			array_del_fast(s->constraints, i);
-			return 1;
+			return true;
 		}
 	}
 
-	return 0;
+	return false;
+}
+
+// enforce all constraints under given schema on entity
+bool Schema_EnforceConstraints
+(
+	const Schema *s,      // schema
+	const GraphEntity *e  // entity to enforce
+) {
+	// validations
+	ASSERT(s != NULL);
+	ASSERT(e != NULL);
+	
+	// see if entity holds under all schema's constraints
+	uint n = array_len(s->constraints);
+	for(uint i = 0; i < n; i++) {
+		Constraint c = s->constraints[i];
+		if(!Constraint_EnforceEntity(c, e)) {
+			// entity failed to pass constraint
+			return false;
+		}
+	}
+
+	// entity passed all constraint
+	return true;
+}
+
+void Schema_Free
+(
+	Schema *s
+) {
+	ASSERT(s != NULL);
+
+	if(s->name) rm_free(s->name);
+
+	// free constraints
+	if(s->constraints != NULL) {
+		uint n = array_len(s->constraints);
+		for(uint i = 0; i < n; i++) {
+			Constraint_free(s->constraints[i]);
+		}
+		array_free(s->constraints);
+	}
+
+	// free indicies
+	if(s->index != NULL) {
+		Index_Free(s->index);
+	}
+
+	if(s->fulltextIdx != NULL) {
+		Index_Free(s->fulltextIdx);
+	}
+
+	rm_free(s);
 }
 

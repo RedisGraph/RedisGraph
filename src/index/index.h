@@ -11,11 +11,9 @@
 #include "../graph/entities/graph_entity.h"
 #include "../graph/graph.h"
 #include "redisearch_api.h"
-#include "../constraint/constraint.h"
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0
-#define INDEX_NOT_CHANGED 2
 #define INDEX_SEPARATOR '\1'  // can't use '\0', RediSearch will terminate on \0
 #define INDEX_FIELD_NONE_INDEXED "NONE_INDEXABLE_FIELDS"
 
@@ -50,7 +48,6 @@ typedef struct {
 	double weight;     // the importance of text
 	bool nostem;       // disable stemming of the text
 	char *phonetic;    // phonetic search of text
-	int ref_count;     // reference count of the field
 } IndexField;
 
 // create new index field
@@ -64,17 +61,10 @@ void IndexField_New
 	const char *phonetic  // phonetic search of text
 );
 
-// free index field return true if field was freed
-bool IndexField_Free
+// free index field
+void IndexField_Free
 (
-	IndexField *field,  // index field to be freed
-	bool enforce_free   // enforce free - skip ref count, used when freeing schema for (optimization)
-);
-
-// Increase the reference count of the given index field.
-void IndexField_IncRef
-(
-	IndexField *field // index field to increase reference count
+	IndexField *field  // index field to be freed
 );
 
 // create a new index
@@ -99,12 +89,6 @@ void Index_Enable
 	Index idx // index to enable
 );
 
-// Drop internal RediSearch index
-void Index_DropInternalIndex
-(
-	Index idx  // index to drop
-);
-
 // disable index by increasing the number of pending changes
 // and re-creating the internal RediSearch index
 void Index_Disable
@@ -118,13 +102,6 @@ bool Index_Enabled
 	const Index idx  // index to get state of
 );
 
-// responsible for adding new field to the index structure
-void Index_AddFieldToStructure
-(
-	Index idx,
-	IndexField *field
-);
-
 // responsible for creating the index structure only!
 // e.g. fields, stopwords, language
 void Index_ConstructStructure
@@ -133,12 +110,10 @@ void Index_ConstructStructure
 );
 
 // populates index
-// returns true if the constraint satisfied
-bool Index_Populate_enforce_constraint
+void Index_Populate
 (
 	Index idx,  // index to populate
-	Constraint c, // constraint to enforce
-	struct GraphContext *gc    // graph holding entities to index
+	Graph *g    // graph holding entities to index
 );
 
 // adds field to index
@@ -149,14 +124,10 @@ void Index_AddField
 );
 
 // removes field from index
-// returns true if field was removed
-bool Index_RemoveField
+void Index_RemoveField
 (
 	Index idx,         // index modified
-	struct GraphContext *gc, // graph context
-	const char *field,  // field to remove
-	Constraint *constraints, // array of constraints
-	bool part_of_constraint_deletion // is this field being deleted as part of a constraint deletion?
+	const char *field  // field to remove
 );
 
 // index node
@@ -226,7 +197,7 @@ const IndexField *Index_GetFields
 );
 
 // checks if given attribute is indexed
-IndexField * Index_getIndexField
+bool Index_ContainsAttribute
 (
 	const Index idx,           // index to query
 	Attribute_ID attribute_id  // attribute id to search

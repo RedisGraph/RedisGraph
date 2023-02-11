@@ -7,11 +7,15 @@
 #pragma once
 
 #include "../redismodule.h"
+#include "../graph/graph.h"
 #include "../graph/entities/graph_entity.h"
 #include "../graph/entities/attribute_set.h"
 
 // forward declaration of opaque constraint structure
-typedef _Constraint *Constraint;
+typedef struct _Constraint *Constraint;
+
+// Schema forward declaration
+struct Schema;
 
 // different states a constraint can be at
 // starting as pending and transitioning to either active or failed
@@ -33,18 +37,24 @@ typedef enum {
 // create a new constraint
 Constraint Constraint_New
 (
-	Attribute_ID *fields, // enforced fields
-	uint n_fields,        // number of fields
-	const Schema *s,      // constraint schema
-	ConstraintType t      // constraint type
+	Attribute_ID *fields,    // enforced fields
+	uint n_fields,           // number of fields
+	const struct Schema *s,  // constraint schema
+	ConstraintType t         // constraint type
 );
 
-// tries to enforce constraint
-// will create indicies if required to
+// returns constraint's type
+ConstraintType Constraint_GetType
+(
+	const Constraint c  // constraint to query
+);
+
+// tries to enforce constraint on all relevant entities
 // sets constraint status to pending
 void Constraint_Enforce
 (
-	const Constraint c  // constraint to enforce
+	const Constraint c,  // constraint to enforce
+	Graph *g
 );
 
 // returns constraint status
@@ -66,7 +76,8 @@ void Constraint_SetStatus
 // returns a shallow copy of constraint attributes
 const Attribute_ID *Constraint_GetAttributes
 (
-	const Constraint c  // constraint from which to get attributes
+	const Constraint c,  // constraint from which to get attributes
+	uint *n              // length of returned array
 );
 
 // returns number of pending changes
@@ -92,28 +103,20 @@ void Constraint_DecPendingChanges
 // false otherwise
 bool Constraint_EnforceEntity
 (
-	const Constraint *c,  // constraint to enforce
+	const Constraint c,   // constraint to enforce
 	const GraphEntity *e  // enforced entity
 );
 
-void Constraint_Drop_Index
+// checks if constraint enforces attribute
+bool Constraint_EnforceAttribute
 (
-	Constraint c,
-	GraphContext *gc,
-	bool should_drop_constraint
+	Constraint c,         // constraint to query
+	Attribute_ID attr_id  // enforced attribute
 );
 
-// is the field have constraint which enforce it
-bool Has_Constraint_On_Attribute(Constraint *constraints, Attribute_ID attr_id);
-
-// returns constraint graph entity type
-GraphEntityType Constraint_GraphEntityType
+// free constraint
+void Constraint_Free
 (
-	const Constraint c
-);
-
-void Constraint_free
-(
-	Constraint c
+	Constraint c  // constraint to free
 );
 

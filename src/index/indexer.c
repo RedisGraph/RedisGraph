@@ -7,10 +7,6 @@
 #include "indexer.h"
 #include "../redismodule.h"
 #include "../util/circular_buffer.h"
-#include "../constraint/constraint.h"
-#include "../schema/schema.h"
-#include "../resultset/resultset.h"
-#include "../query_ctx.h"
 #include <assert.h>
 #include <pthread.h>
 
@@ -23,10 +19,9 @@ typedef enum {
 // index population context
 typedef struct {
 	Index idx;         // index to populate
-	Constraint c;	   // constraint to add
 	GraphContext *gc;  // graph holding entities to index
 	IndexerOp op;      // operation to perform populate / drop
-} IndexConstraintPopulateCtx;
+} IndexPopulateCtx;
 
 typedef struct {
 	pthread_t t;         // worker thread handel
@@ -37,7 +32,7 @@ typedef struct {
 } Indexer;
 
 // forward declarations
-static void _indexer_PopTask(IndexConstraintPopulateCtx *task);
+static void _indexer_PopTask(IndexPopulateCtx *task);
 
 static Indexer *indexer = NULL;
 
@@ -51,30 +46,12 @@ static void *_index_populate
 	while(true) {
 		// pop an item from queue
 		// if queue is empty thread will be put to sleep
-		IndexConstraintPopulateCtx ctx;
-		bool ret;
+		IndexPopulateCtx ctx;
 		_indexer_PopTask(&ctx);
 
 		switch(ctx.op) {
 			case INDEXER_POPULATE:
-				rm_ctx = RedisModule_GetThreadSafeContext(NULL);
-				ret = Index_Populate_enforce_constraint(ctx.idx, ctx.c, ctx.gc);
-				if(ctx.c && Constraint_PendingChanges(ctx.c) == 0) {
-					// if pending changes > 0
-					// constraint going to be deleted - don't drop the index
-					if (ret) {
-						// constraint is satisfied, change it's status.
-						GraphContext_LockForCommit(rm_ctx, ctx.gc);
-						Constraint_SetStatus(ctx->c, CT_ACTIVE);
-					} else {
-						// constraint was not satisfied!
-						// remove it's index and change is status
-						GraphContext_LockForCommit(rm_ctx, ctx.gc);
-						Constraint_SetStatus(ctx->c, CT_FAILED);
-						Constraint_Drop_Index(ctx.c, ctx.gc, false);
-					}
-					GraphContext_UnlockCommit(rm_ctx, ctx.gc);
-				}
+				Index_Populate(ctx.idx, ctx.gc->g);
 				// decrease graph reference count
 				GraphContext_DecreaseRefCount(ctx.gc);
 				break;
@@ -82,14 +59,7 @@ static void *_index_populate
 				rm_ctx = RedisModule_GetThreadSafeContext(NULL);
 				RedisModule_ThreadSafeContextLock(rm_ctx);
 
-				ASSERT(ctx.idx || ctx.c);
-				if(ctx.idx) {
-					Index_Free(ctx.idx);
-				}
-
-				if(ctx.c) {
-					Constraint_free(ctx.c);
-				}
+				Index_Free(ctx.idx);
 
 				RedisModule_ThreadSafeContextUnlock(rm_ctx);
 				break;
@@ -102,17 +72,10 @@ static void *_index_populate
 	return NULL;
 }
 
-// signal conditional variable
-void indexer_WakeUp() {
-	pthread_mutex_lock(&indexer->cm); 
-	pthread_cond_signal(&indexer->c);
-	pthread_mutex_unlock(&indexer->cm);
-}
-
 // add task to indexer queue
 static void _indexer_AddTask
 (
-	IndexConstraintPopulateCtx *task  // task to be added
+	IndexPopulateCtx *task  // task to be added
 ) {
 	// lock
 	int res = pthread_mutex_lock(&indexer->m);
@@ -127,16 +90,16 @@ static void _indexer_AddTask
 	ASSERT(res == 0);
 
 	// signal conditional variable
-	indexer_WakeUp();
+	pthread_mutex_lock(&indexer->cm); 
+	pthread_cond_signal(&indexer->c);
+	pthread_mutex_unlock(&indexer->cm);
 }
-
-extern bool rdb_load_in_progress;
 
 // pops a task from queue
 // if queue is empty caller will be waiting on conditional variable
 static void _indexer_PopTask
 (
-	IndexConstraintPopulateCtx *task
+	IndexPopulateCtx *task
 ) {
 	ASSERT(task != NULL);
 
@@ -145,7 +108,7 @@ static void _indexer_PopTask
 	ASSERT(res == 0);
 
 	// remove task to queue
-	if(CircularBuffer_Empty(indexer->q) || unlikely(rdb_load_in_progress)) {
+	if(CircularBuffer_Empty(indexer->q)) {
 		// waiting for work
 		// lock conditional variable mutex
 		pthread_mutex_lock(&indexer->cm);
@@ -153,11 +116,8 @@ static void _indexer_PopTask
 		// unlock queue mutex
 		pthread_mutex_unlock(&indexer->m);
 
-		do {
-			// wait on conditional variable
-			pthread_cond_wait(&indexer->c, &indexer->cm);
-		} while(rdb_load_in_progress);
-
+		// wait on conditional variable
+		pthread_cond_wait(&indexer->c, &indexer->cm);
 		pthread_mutex_unlock(&indexer->cm);
 
 		// work been added to queue
@@ -206,7 +166,7 @@ bool Indexer_Init(void) {
 	}
 
 	// create task queue
-	indexer->q = CircularBuffer_New(sizeof(IndexConstraintPopulateCtx), 256);
+	indexer->q = CircularBuffer_New(sizeof(IndexPopulateCtx), 256);
 
 	// create worker thread
 	pthread_attr_t attr;
@@ -251,26 +211,21 @@ cleanup:
 	return false;
 }
 
-// populates index and enforce constraint asynchronously
+// populates index asynchronously
 // this function simply place the population request onto a queue
 // eventually the indexer working thread will pick it up and populate the index
-// and enforce the constraint
-void Indexer_PopulateIndexOrConstraint
+void Indexer_PopulateIndex
 (
 	GraphContext *gc, // graph to operate on
-	Index idx,        // index to populate
-	Constraint c      // constraint enforce and add
+	Index idx         // index to populate
 ) {
 	ASSERT(gc      != NULL);
+	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
-	ASSERT(!idx || Index_Enabled(idx) == false);
-	ASSERT(idx || c);
+	ASSERT(Index_Enabled(idx) == false);
 
 	// create work item
-	IndexConstraintPopulateCtx ctx = {.idx = idx,
-									  .c   = c,
-									  .gc  = gc,
-									  .op  = INDEXER_POPULATE};
+	IndexPopulateCtx ctx = {.idx = idx, .gc = gc, .op = INDEXER_POPULATE};
 
 	// increase graph reference count
 	// count will be reduced once this task is perfomed
@@ -282,20 +237,19 @@ void Indexer_PopulateIndexOrConstraint
 	_indexer_AddTask(&ctx);
 }
 
-// drops index and or constraint asynchronously
+// drops index asynchronously
 // this function simply place the drop request onto a queue
-// eventually the indexer working thread will pick it up and drop the index and or constraint
-void Indexer_DropIndexOrConstraint
+// eventually the indexer working thread will pick it up and drop the index
+void Indexer_DropIndex
 (
-	Index idx,     // index to drop
-	Constraint c   // constraint enforce and add
+	Index idx  // index to drop
 ) {
-	ASSERT(idx || c);
+	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
-	ASSERT(!idx || Index_Enabled(idx) == false);
+	ASSERT(Index_Enabled(idx) == false);
 
 	// create work item
-	IndexConstraintPopulateCtx ctx = {.idx = idx, .c = c, .gc = NULL, .op = INDEXER_DROP};
+	IndexPopulateCtx ctx = {.idx = idx, .gc = NULL, .op = INDEXER_DROP};
 
 	// place task into queue
 	_indexer_AddTask(&ctx);

@@ -223,6 +223,16 @@ XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
 	return gc->version;
 }
 
+// get graph from graph context
+Graph *GraphContext_GetGraph
+(
+	const GraphContext *gc
+) {
+	ASSERT(gc != NULL);
+	
+	return gc->g;
+}
+
 // Update graph context version
 static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str) {
 	ASSERT(gc != NULL);
@@ -492,7 +502,7 @@ static inline int _cmp_Attribute_ID
 	return *_a - *_b;
 }
 
-// Create constraint for the given label and attributes
+// create constraint for the given label and attributes
 Constraint GraphContext_AddConstraint
 (
 	GraphContext *gc,           // graph context
@@ -516,34 +526,52 @@ Constraint GraphContext_AddConstraint
 		s = GraphContext_AddSchema(gc, label, schema_type);
 	}
 
+	// convert attribute name to attribute ID
 	Attribute_ID fields[fields_count];
 	for(uint i = 0; i < fields_count; i++) {
 		fields[i] = GraphContext_FindOrAddAttribute(gc, fields_str[i], NULL);
 	}
 
-	// TODO: remove duplicates
+	//--------------------------------------------------------------------------
+	// remove duplicates
+	//--------------------------------------------------------------------------
+
 	// sort the properties for an easy comparison later
+	uint idx = 0;
 	qsort(fields, fields_count, sizeof(Attribute_ID), _cmp_Attribute_ID);
+	for(uint i = 1; i < fields_count; i++) {
+		if(fields[i] != fields[idx]) {
+			fields[++idx] = fields[i];
+		}
+	}
 
 	// check if constraint already contained in schema
 	Constraint c = Schema_GetConstraint(s, fields, fields_count);
+
+	if(c != NULL) {
+		// constraint already exists
+		if(Constraint_GetStatus(c) != CT_FAILED) {
+			// constraint is either operational or being constructed
+			return NULL;
+		} else {
+			// previous constraint creation had failed
+			// remove constrain from schema
+			bool constraint_removed = Schema_RemoveConstraint(s, c);
+			ASSERT(constraint_removed == true);
+
+			// free failed constraint
+			Constraint_free(c);
+			c = NULL;
+		}
+	}
 	
 	if(c == NULL) {
 		// constraint doesn't exists create it
 		c = Constraint_new(fields, fields_count, s, label, ct);
 		Schema_AddConstraint(s, c);
-	} else {
-		// constraint already exists
-		// check its status
-		ConstraintStatus status = Constraint_GetStatus(c);
 
-		if(status == CT_FAILED) {
-			// previous constraint creation had failed
-			// retry populating the constraint
-		} else {
-			// constraint already exists
-			return NULL;
-		}
+		// start enforcing constraint
+		Constraint_Enforce(c);
 	}
 
 	return c;

@@ -91,41 +91,63 @@ static void _RdbLoadExactMatchIndex
 	}
 }
 
+static void _RdbLoadConstaint
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,    // graph context
+	Schema *s,           // schema to populate
+	bool already_loaded  // constraints already loaded
+) {
+	/* Format:
+	 * type
+	 * fields count
+	 * fields */
+
+	Constraint c = NULL;
+
+	// read constraint type
+	ConstraintType t = RedisModule_LoadUnsigned(rdb);
+
+	// read number of constrained fields
+	uint n = RedisModule_LoadUnsigned(rdb);
+
+	Attribute_ID fields[n];
+
+	// read fields
+	for(uint i = 0; i < n; i++) {
+		fields[i] = RedisModule_LoadUnsigned(rdb);
+	}
+
+	if(!already_loaded) {
+		// create constraint
+		c = Constraint_New(fields, n, s, t);
+		ASSERT(c != NULL);
+
+		// set constraint status to active
+		// only active constraints will be encoded / decoded
+		Constraint_SetStatus(c, CT_ACTIVE);
+
+		// check if constraint already contained in schema
+		ASSERT(!Schema_ContainsConstraint(s, fields, n));
+
+		// bind constraint to schema
+		Schema_AddConstraint(s, c);
+	}
+}
+
+// load schema's constraints
 static void _RdbLoadConstaints
 (
 	RedisModuleIO *rdb,
-	GraphContext *gc,
-	Schema *s,
-	bool already_loaded
+	GraphContext *gc,    // graph context
+	Schema *s,           // schema to populate
+	bool already_loaded  // constraints already loaded
 ) {
+	// read number of constraints
 	uint constraint_count = RedisModule_LoadUnsigned(rdb);
+
 	for (uint i = 0; i < constraint_count; i++) {
-		Constraint c = NULL;
-		ConstraintStatus status = RedisModule_LoadSigned(rdb);
-		ASSERT(status < CT_FAILED);
-		uint fields_count = RedisModule_LoadUnsigned(rdb);
-		AttrInfo fields[fields_count];
-		for(uint j = 0; j < fields_count; j++) {
-			char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
-			if(!already_loaded) {
-				fields[j].id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
-			}
-			fields[j].attribute_name = field_name;
-		}
-
-		if(!already_loaded) {
-			// check if constraint already contained in schema
-			ASSERT(!Schema_ContainsConstraint(s, fields, fields_count));
-
-			GraphEntityType entity_type = (s->type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
-			c = Constraint_new(fields, fields_count, s->name, s->id, entity_type);
-			Constraint_SetStatus(c, status);
-			Schema_AddConstraint(s, c);
-		}
-
-		for(uint j = 0; j < fields_count; j++) {
-			RedisModule_Free((char *)(fields[j].attribute_name));
-		}
+		_RdbLoadConstaint(rdb, gc, s, already_loaded);
 	}
 }
 
@@ -140,8 +162,10 @@ static Schema *_RdbLoadSchema
 	 * id
 	 * name
 	 * #indices
-	 * index type
-	 * index data */
+	 * (index type, indexed property) X M 
+	 * #constraints 
+	 * (constraint type, constraint fields) X N
+	 */
 
 	int id = RedisModule_LoadUnsigned(rdb);
 	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
@@ -165,6 +189,7 @@ static Schema *_RdbLoadSchema
 		}
 	}
 
+	// load constraints
 	_RdbLoadConstaints(rdb, gc, s, already_loaded);
 
 	return s;

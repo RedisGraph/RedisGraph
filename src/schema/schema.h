@@ -6,12 +6,12 @@
 
 #pragma once
 
+#include "rax.h"
 #include "../redismodule.h"
 #include "../index/index.h"
-#include "rax.h"
 #include "redisearch_api.h"
-#include "../graph/entities/graph_entity.h"
 #include "../constraint/constraint.h"
+#include "../graph/entities/graph_entity.h"
 
 typedef enum {
 	SCHEMA_NODE,
@@ -94,8 +94,7 @@ int Schema_RemoveIndex
 	Schema *s,
 	struct GraphContext *gc,
 	const char *field,
-	IndexType type,
-	bool part_of_constraint_deletion
+	IndexType type
 );
 
 // introduce node to schema indicies
@@ -103,14 +102,6 @@ void Schema_AddNodeToIndices
 (
 	const Schema *s,
 	const Node *n
-);
-
-// enforce all constraints under given schema
-// on provided entity
-bool Schema_EnforceConstraints
-(
-	const Schema *s,
-	const GraphEntity *e
 );
 
 // introduce edge to schema indicies
@@ -140,23 +131,38 @@ void Schema_Free
 	Schema *s
 );
 
-bool Schema_HasConstraints(const Schema *s);
+//------------------------------------------------------------------------------
+// constraints API
+//------------------------------------------------------------------------------
 
-// retrieves constraint 
-// returns NULL if constraint was not found
-Constraint Schema_GetConstraint
+// check if schema has constraints
+bool Schema_HasConstraints
 (
-	const Schema *s,         // schema from which to get constraint
-	const AttrInfo *fields,  // constraint fields
-	uint field_count         // number of fields
+	const Schema *s  // schema to query
 );
 
 // checks if schema constains constraint
 bool Schema_ContainsConstraint
 (
-	const Schema *s,         // schema to search in
-	const AttrInfo *fields,  // constraint fields to look up
-	uint field_count         // number of fields
+	const Schema *s,            // schema to search
+	const Attribute_ID *attrs,  // constraint attributes
+	uint attr_count             // number of attributes
+);
+
+// retrieves constraint 
+// returns NULL if constraint was not found
+Constraint Schema_GetConstraint
+(
+	const Schema *s,            // schema from which to get constraint
+	ConstraintType t,           // constraint type
+	const Attribute_ID *attrs,  // constraint attributes
+	uint attr_count             // number of attributes
+);
+
+// get all constraints in schema
+const Constraint *Schema_GetConstraints
+(
+	const Schema *s  // schema from which to extract constraints
 );
 
 // adds a constraint to schema
@@ -166,16 +172,17 @@ void Schema_AddConstraint
 	Constraint c     // constraint to add
 );
 
-// get all constraints in given schema
-const Constraint *Schema_GetConstraints
-(
-	const Schema *s  // schema from which to extract constraints
-);
-
 // removes constraint from schema
-int Schema_RemoveConstraint
+bool Schema_RemoveConstraint
 (
 	Schema *s,    // schema
 	Constraint c  // constraint to remove
+);
+
+// enforce all constraints under given schema on entity
+bool Schema_EnforceConstraints
+(
+	const Schema *s,      // schema
+	const GraphEntity *e  // entity to enforce
 );
 

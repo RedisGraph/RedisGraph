@@ -7,18 +7,6 @@
 #include "decode_v13.h"
 #include "../../../../index/indexer.h"
 
-bool rdb_load_in_progress = false;
-static void stop_indexer(void) {
-	rdb_load_in_progress = true;
-}
-
-// We would like to execute the indexer or the constraint enforcement
-// after the RDB loading process is done.
-static void wake_up_indexer(void) {
-	rdb_load_in_progress = false;
-	indexer_WakeUp();
-}
-
 static GraphContext *_GetOrCreateGraphContext
 (
 	char *graph_name
@@ -241,7 +229,6 @@ GraphContext *RdbLoadGraphContext_v13
 		GraphDecodeContext_Reset(gc->decoding_context);
 
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
-		wake_up_indexer();
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}
 
