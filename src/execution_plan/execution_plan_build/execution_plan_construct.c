@@ -269,13 +269,8 @@ static void _buildCallSubqueryPlan
 	ExecutionPlan *plan,            // execution plan to add plan to
 	const cypher_astnode_t *clause  // call subquery clause
 ) {
-	// starting with the simple case: construct an Apply operation, with the
-	// embedded plan constructed from the body of the CALL {} as its rhs, and
-	// the previous plan as its lhs (after removing Results op).
-	// This will support RO queries, since the updating operations are eager.
-
 	// -------------------------------------------------------------------------
-	// set the subquery to be the AST
+	// build an AST from the subquery, and set it
 	// -------------------------------------------------------------------------
 	AST *orig_ast = QueryCtx_GetAST();
 	AST subquery_ast = {

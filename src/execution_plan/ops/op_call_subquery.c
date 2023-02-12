@@ -167,7 +167,8 @@ static Record _handoff(OpCallSubquery *op) {
 
         Record clone = OpBase_DeepCloneRecord(op->r);
         // Merge consumed record into clone
-        Record_Merge(clone, consumed);
+        Record_Merge_Into(clone, consumed);
+        // Record_Merge(clone, consumed);
         OpBase_DeleteRecord(consumed);
         return clone;
     }

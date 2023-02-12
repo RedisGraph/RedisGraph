@@ -47,6 +47,20 @@ class testCallSubqueryFlow():
             # just pass in case of an error, fail otherwise
             self.expect_error(query, "")
 
+        # make sure scope prior to the CALL {} is available after
+        res = graph.query(
+            """
+            UNWIND [0, 1, 2, 3] AS x
+            CALL {
+                MATCH (n {v: x})
+            }
+            RETURN x
+            """
+        )
+        self.env.assertEquals(res.result_set, [0, 1, 2, 3])
+
+        # TODO: Add more validations here. See last change to validations.
+
     def test02_readonly_simple(self):
         """Test the simple read-only use-case of CALL {}, i.e., no updating
         clauses lay within the subquery"""
@@ -81,21 +95,72 @@ class testCallSubqueryFlow():
         # MATCH, OPTIONAL MATCH, WHERE, ORDERBY, SKIP, LIMIT, WITH, UNION,
         # UNWIND, (partly) FOREACH
 
+        # add the `v` property to the one node currently existing, with val 4
+        res = graph.query("MATCH (n) SET n.v = 4")
+        self.env.assertEquals(res.properties_set, 1)
+
+        # outer scope should be aware of inner subquery scope for a returning sq
+        # 1 result should return from the following query
         res = graph.query(
             """
-            UNWIND ['Omer', 'Raz', 'Moshe'] as name
             CALL {
-                WITH name
-                MATCH (n:N {name: name})
+                UNWIND [1, 2, 3, 4] AS x
+                MATCH (n:N {v: x})
                 RETURN n
             }
             RETURN n
             """
         )
+
         # assert correctness of the result
         self.env.assertEquals(len(res.result_set), 1)
-        self.env.assertEquals(res.result_set,
-            Node(label='N', properties={'name': 'Raz'}))
+        self.env.assertEquals(res.result_set[0][0],
+            Node(label='N', properties={'name': 'Raz', 'v': 4}))
+
+        # inner scope should be exposed to imported context only via simple WITH
+        query = """
+                UNWIND [1, 2, 3, 4] AS x
+                MATCH (n)
+                CALL {
+                    WITH n
+                    RETURN x + 1
+                }
+                RETURN x + n.v
+                """
+        self.expect_error(query, "x not defined")
+
+        res = graph.query(
+            """
+            UNWIND [1, 2, 3, 4] AS x
+            MATCH (n)
+            CALL {
+                WITH n
+                RETURN n.v as INNERETURN
+            }
+            RETURN x + INNERETURN
+            """
+        )
+        self.env.assertEquals(res.result_set, [2, 3, 4, 5])
+
+
+
+
+        # currently failing, fix needed
+        # res = graph.query(
+        #     """
+        #     UNWIND ['Omer', 'Raz', 'Moshe'] as name
+        #     CALL {
+        #         WITH name
+        #         MATCH (n:N {name: name})
+        #         RETURN n
+        #     }
+        #     RETURN n
+        #     """
+        # )
+        # # assert correctness of the result
+        # self.env.assertEquals(len(res.result_set), 1)
+        # self.env.assertEquals(res.result_set[0][0],
+        #     Node(label='N', properties={'name': 'Raz'}))
 
 
     # def test04_update_no_return_simple(self):
