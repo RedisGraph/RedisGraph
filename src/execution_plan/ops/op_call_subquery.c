@@ -166,6 +166,7 @@ static Record _handoff(OpCallSubquery *op) {
         }
 
         Record clone = OpBase_DeepCloneRecord(op->r);
+        // Merge consumed record into clone
         Record_Merge(clone, consumed);
         OpBase_DeleteRecord(consumed);
         return clone;
@@ -226,12 +227,16 @@ static Record CallSubqueryConsume
     }
 
     // plant the record consumed at the Argument op
-    Argument_AddRecord(op->argument, OpBase_DeepCloneRecord(op->r));
+    if(op->r) {
+        Argument_AddRecord(op->argument, OpBase_DeepCloneRecord(op->r));
+    } else {
+        // no records
+        return NULL;
+    }
 
     // _handoff will return AT LEAST one record (since called directly after
     // calling consume on lhs), so this is safe
     return _handoff(op);
-
 }
 
 // // free CallSubquery internal data structures
