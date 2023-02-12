@@ -217,7 +217,7 @@ static void replace_clause
 	// require atleast 1 projection
 	uint nprojections = identifiers_count + existing_projections_count;
 	uint proj_idx = 0; // projections will be added to projections[proj_idx];
-	cypher_astnode_t *projections[nprojections + 1];
+	cypher_astnode_t *projections[nprojections];
 
 	//--------------------------------------------------------------------------
 	// convert identifiers to expressions
@@ -319,7 +319,7 @@ static void replace_clause
 	}
 
 	// copy projections to the children array
-	cypher_astnode_t *children[nprojections + 3];
+	cypher_astnode_t *children[nprojections + 4];
 	for(uint i = 0; i < nprojections; i++) {
 		children[i] = projections[i];
 	}
