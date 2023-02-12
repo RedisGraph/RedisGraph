@@ -43,10 +43,15 @@ make all            # Build everything
   COV=1               # Build for coverage analysis (implies DEBUG=1)
   VG=1|docker         # build for Valgrind
   SAN=type            # build with LLVM sanitizer (type=address|memory|leak|thread) 
+
 make clean          # Clean build products
   ALL=1               # Completely remove build products
   DEPS=1              # Also clean dependant modules
   AUTOGEN=1           # Remove autogen-generated files
+make clean-search   # Clean RediSearch artifacts
+make clean-libcypher-parser
+                    # Clean libcypher-parser atrifacts
+
 make pack|package   # Build RAMP packages
 make run            # Run redis-server with RedisGraph
   GDB=1               # Run with debugger
