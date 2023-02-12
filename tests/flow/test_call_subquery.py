@@ -47,6 +47,17 @@ class testCallSubqueryFlow():
             # just pass in case of an error, fail otherwise
             self.expect_error(query, "")
 
+        # scope of a subquery with no imports starts empty
+        query = """
+        MATCH (n:N)
+        CALL {
+            RETURN n.v AS INNERETURN
+        }
+        RETURN 1
+        """
+        self.expect_error(query, "n not defined")
+
+
         # # make sure scope prior to the CALL {} is available after
         # res = graph.query(
         #     """
@@ -59,8 +70,6 @@ class testCallSubqueryFlow():
         #     """
         # )
         # self.env.assertEquals(res.result_set, [0, 1, 2, 3])
-
-        # TODO: Add more validations here. See last change to validations.
 
     def test02_readonly_simple(self):
         """Test the simple read-only use-case of CALL {}, i.e., no updating

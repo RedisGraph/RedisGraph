@@ -13,6 +13,7 @@
 #include "ast_visitor.h"
 #include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
+#include "../execution_plan/ops/op.h"
 #include "../arithmetic/arithmetic_expression.h"
 
 typedef enum {
@@ -1139,6 +1140,8 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	for(uint i = 0; i < nclauses; i ++) {
 		clauses[i] = (cypher_astnode_t *)cypher_astnode_get_child(n, i);
 	}
+	bool imports_exist =
+		cypher_astnode_type(clauses[0]) == CYPHER_AST_WITH;
 	struct cypher_input_range range = {0};
 
 	cypher_astnode_t *body = cypher_ast_query(NULL, 0, clauses, nclauses,
@@ -1195,6 +1198,12 @@ static VISITOR_STRATEGY _Validate_call_subquery
 
 	// clone the bound vars context.
 	rax *in_env = raxClone(vctx->defined_identifiers);
+
+	// if there are no imports, set the env of bound-vars to the empty env
+	if(!imports_exist) {
+		raxFree(vctx->defined_identifiers);
+		vctx->defined_identifiers = raxNew();
+	}
 
 	// visit the subquery clauses
 	for(uint i = 0; i < cypher_ast_call_subquery_nclauses(n); i++) {
