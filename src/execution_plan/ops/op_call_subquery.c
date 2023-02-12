@@ -41,6 +41,18 @@ OpBase *NewCallSubqueryOp
 			consumeFunc, CallSubqueryReset, NULL, CallSubqueryClone, CallSubqueryFree,
 			false, plan);
 
+    // make sure the referenced column names returned from the subquery
+    // exist in the record-mapping
+    // traverse the referenced_entities and introduce them to the rec-mapping
+    // such that cases like: "UNWIND [1, 2, 3, 4] AS x CALL {with x RETURN x
+    // as INNERETURN } RETURN x + INNERETURN" will have a "INNERETURN" col
+    raxIterator it;
+    raxStart(&it, op->op.plan->ast_segment->referenced_entities);
+    raxSeek(&it, "^", NULL, 0);
+    while(raxNext(&it)) {
+        OpBase_Modifies((OpBase *)op, (const char*)it.key);
+    }
+
 	return (OpBase *)op;
 }
 
@@ -166,7 +178,7 @@ static Record _handoff(OpCallSubquery *op) {
         }
 
         Record clone = OpBase_DeepCloneRecord(op->r);
-        // Merge consumed record into clone
+        // merge consumed record into clone
         Record_Merge_Into(clone, consumed);
         // Record_Merge(clone, consumed);
         OpBase_DeleteRecord(consumed);
