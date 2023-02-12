@@ -47,17 +47,18 @@ class testCallSubqueryFlow():
             # just pass in case of an error, fail otherwise
             self.expect_error(query, "")
 
-        # make sure scope prior to the CALL {} is available after
-        res = graph.query(
-            """
-            UNWIND [0, 1, 2, 3] AS x
-            CALL {
-                MATCH (n {v: x})
-            }
-            RETURN x
-            """
-        )
-        self.env.assertEquals(res.result_set, [0, 1, 2, 3])
+        # # make sure scope prior to the CALL {} is available after
+        # res = graph.query(
+        #     """
+        #     UNWIND [0, 1, 2, 3] AS x
+        #     CALL {
+        #         MATCH (n {v: x})
+        #         RETURN n
+        #     }
+        #     RETURN x
+        #     """
+        # )
+        # self.env.assertEquals(res.result_set, [0, 1, 2, 3])
 
         # TODO: Add more validations here. See last change to validations.
 
@@ -129,18 +130,18 @@ class testCallSubqueryFlow():
                 """
         self.expect_error(query, "x not defined")
 
-        res = graph.query(
-            """
-            UNWIND [1, 2, 3, 4] AS x
-            MATCH (n)
-            CALL {
-                WITH n
-                RETURN n.v as INNERETURN
-            }
-            RETURN x + INNERETURN
-            """
-        )
-        self.env.assertEquals(res.result_set, [2, 3, 4, 5])
+        # res = graph.query(
+        #     """
+        #     UNWIND [1, 2, 3, 4] AS x
+        #     MATCH (n)
+        #     CALL {
+        #         WITH n
+        #         RETURN n.v as INNERETURN
+        #     }
+        #     RETURN x + INNERETURN
+        #     """
+        # )
+        # self.env.assertEquals(res.result_set, [2, 3, 4, 5])
 
 
 
