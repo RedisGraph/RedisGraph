@@ -2069,6 +2069,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             "MATCH (a:testIN) RETURN 1 IN [a.z]": [[True], [False], [False], [None], [False]],
             "MATCH (a:testIN) RETURN [1, 2] IN a.z": [[False], [False], [True], [None], [True]],
             "MATCH (a:testIN) RETURN [1, 2] IN [a.z]": [[False], [False], [True], [None], [False]],
+            "MATCH (a:testIN) RETURN NULL IN a.z": [[None], [None], [None], [None], [None]],
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
