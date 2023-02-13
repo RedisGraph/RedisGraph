@@ -100,15 +100,6 @@ XXH32_hash_t GraphContext_GetVersion
 	const GraphContext *gc
 );
 
-uint64_t GraphContext_AllNodePropertyNamesCount
-(
-	const GraphContext *gc
-);
-uint64_t GraphContext_AllEdgePropertyNamesCount
-(
-	const GraphContext *gc
-);
-
 //------------------------------------------------------------------------------
 // Schema API
 //------------------------------------------------------------------------------
@@ -210,6 +201,16 @@ void GraphContext_RemoveAttribute
 bool GraphContext_HasIndices
 (
 	GraphContext *gc
+);
+
+uint64_t GraphContext_NodeIndexCount
+(
+	const GraphContext *gc
+);
+
+uint64_t GraphContext_EdgeIndexCount
+(
+	const GraphContext *gc
 );
 
 // attempt to retrieve an index on the given label and attribute IDs
