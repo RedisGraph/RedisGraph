@@ -7,10 +7,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-void setup() {
-}
-
-#define TEST_INIT setup();
 #include "acutest.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////
