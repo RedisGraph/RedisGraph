@@ -25,6 +25,7 @@ include_directories(
 	${root}/deps
 	${root}/deps/rax
 	${root}/deps/xxHash
+	${root}/deps/utf8proc
 	${root}/deps/RediSearch/src
 	${root}/deps/GraphBLAS/Include
 	${root}/deps/libcypher-parser/lib/src
@@ -56,8 +57,8 @@ set_target_properties(redisgraph PROPERTIES LINKER_LANGUAGE CXX)
 
 set(REDISGRAPH_OBJECTS $<TARGET_OBJECTS:redisgraph>)
 
-lists_from_env(GRAPHBLAS LIBXXHASH RAX LIBCYPHER_PARSER REDISEARCH_LIBS)
-set(REDISGRAPH_LIBS ${GRAPHBLAS} ${LIBXXHASH} ${RAX} ${LIBCYPHER_PARSER} ${REDISEARCH_LIBS})
+lists_from_env(GRAPHBLAS LIBXXHASH RAX LIBCYPHER_PARSER REDISEARCH_LIBS UTF8PROC)
+set(REDISGRAPH_LIBS ${GRAPHBLAS} ${LIBXXHASH} ${RAX} ${LIBCYPHER_PARSER} ${REDISEARCH_LIBS} ${UTF8PROC})
 
 target_link_libraries(redisgraph PRIVATE ${REDISGRAPH_LIBS} c m dl pthread)
 

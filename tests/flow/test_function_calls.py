@@ -152,9 +152,9 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # COLLECT should associate false and 'false' to different groups.
-        query = "UNWIND [false,'false',0,'0'] AS a RETURN a, count(a)"
+        query = "UNWIND [false,'false',0,'0'] AS a RETURN a, count(a) order by a"
         actual_result = graph.query(query)
-        expected_result = [[0, 1], [False, 1], ["false", 1], ['0', 1]]
+        expected_result = [['0', 1], ["false", 1], [False, 1], [0, 1]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test09_static_aggregation(self):
@@ -704,36 +704,22 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.env.assertEquals(actual_result.result_set[0][0], None)
 
     def test24_substring(self):
-        query = """RETURN SUBSTRING('muchacho', 0, 4)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "much")
+        query_to_expected_result = {
+            """RETURN SUBSTRING('muchacho', 0, 4)""": [["much"]],
+            """RETURN SUBSTRING('muchacho', 3, 20)""": [["hacho"]],
+            """RETURN SUBSTRING(NULL, 3, 20)""": [[None]],
+            """RETURN SUBSTRING('ab', 1, 999999999999999)""": [["b"]],
+            # test unicode charecters
+            """RETURN SUBSTRING('丁丂七丄丅丆万丈三上', 3, 4)""" : [['丄丅丆万']],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+        
+        self.expect_error("""RETURN SUBSTRING("muchacho", 3, -20)""",
+            "length must be a non-negative integer")
 
-        query = """RETURN SUBSTRING('muchacho', 3, 20)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "hacho")
-
-        query = """RETURN SUBSTRING(NULL, 3, 20)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
-
-        # the requested length is too long and overflowing
-        query = """RETURN SUBSTRING('ab', 1, 999999999999999)"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], "b")
-
-        try:
-            query = """RETURN SUBSTRING("muchacho", 3, -20)"""
-            graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertEqual(str(e), "length must be a non-negative integer")
-
-        try:
-            query = """RETURN SUBSTRING("muchacho", -3, 3)"""
-            graph.query(query)
-            self.env.assertTrue(False)
-        except ResponseError as e:
-            self.env.assertEqual(str(e), "start must be a non-negative integer")
+        self.expect_error("""RETURN SUBSTRING("muchacho", -3, 3)""",
+            "start must be a non-negative integer")
 
     def test25_left(self):
         query_to_expected_result = {
@@ -742,6 +728,9 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN LEFT(NULL, -1)" : [[None]],
             "RETURN LEFT(NULL, 100)" : [[None]],
             "RETURN LEFT(NULL, NULL)" : [[None]],
+            # test unicode charecters
+            "RETURN LEFT('丁丂七丄丅丆万丈三上', 4)" : [['丁丂七丄']],
+            "RETURN LEFT('丁丂七丄丅丆万丈三上', 100)" : [['丁丂七丄丅丆万丈三上']],
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
@@ -773,6 +762,9 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN RIGHT(NULL, -1)" : [[None]],
             "RETURN RIGHT(NULL, 100)" : [[None]],
             "RETURN RIGHT(NULL, NULL)" : [[None]],
+            # test unicode charecters
+            "RETURN RIGHT('丁丂七丄丅丆万丈三上', 4)" : [['万丈三上']],
+            "RETURN RIGHT('丁丂七丄丅丆万丈三上', 100)" : [['丁丂七丄丅丆万丈三上']],
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
@@ -1127,35 +1119,19 @@ class testFunctionCallsFlow(FlowTestsBase):
                 self.env.assertIn("Type mismatch", str(e))
 
     def test34_split(self):
-        # null string
-        query = "RETURN split(null, ',')"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
-
-        # null delimiter
-        query = "RETURN split('hello world', null)"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
-
-        # invalid delimiter
-        query = "RETURN split('hello world', ',')"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], ["hello world"])
-
-        # empty delimiter
-        query = "RETURN split('hello world', '')"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], ['h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'])
-
-        # empty string
-        query = "RETURN split('', ',')"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], [""])
-
-        # empty string and empty delimiter
-        query = "RETURN split('', '')"
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], [""])
+        query_to_expected_result = {
+            "RETURN split(null, ',')": [[None]],
+            "RETURN split('hello world', null)": [[None]],
+            "RETURN split('hello world', ',')": [[["hello world"]]],
+            "RETURN split('hello world', '')": [[['h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd']]],
+            "RETURN split('', ',')": [[[""]]],
+            "RETURN split('', '')": [[[""]]],
+            # test unicode charecters
+            "RETURN split('丁丂七丄丅丆万丈三上', '丄')": [[["丁丂七", "丅丆万丈三上"]]],
+            "RETURN split('丁丂七丅', '')": [[["丁", "丂", "七", "丅"]]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
     def test35_min_max(self):
         query = "UNWIND [[1], [2], [2], [1]] AS x RETURN max(x), min(x)"
@@ -1810,7 +1786,9 @@ class testFunctionCallsFlow(FlowTestsBase):
         query_to_expected_result = {
             "RETURN REVERSE('muchacho')": [["ohcahcum"]], 
             "RETURN REVERSE('')": [[""]], 
-            "RETURN REVERSE(NULL)": [[None]]
+            "RETURN REVERSE(NULL)": [[None]],
+            # test unicode charecters
+            "RETURN reverse('丁丂七丄丅丆万丈三上')": [["上三丈万丆丅丄七丂丁"]]
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
@@ -1852,7 +1830,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         query_to_expected_result = {
             "RETURN toLower('MuChAcHo')": [['muchacho']],
             "RETURN toLower('mUcHaChO')": [['muchacho']],
-            "RETURN toLower(NULL)": [[None]]
+            "RETURN toLower(NULL)": [[None]],
+            # test unicode charecters
+            "RETURN toLower('ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω')": [["ααββγγδδεεζζηηθθιικκλλμμννξξοοππρρσσςττυυφφχχψψωω"]],
+            "RETURN toLower('АаБбВвГгДдЕеЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЬьЭэЮюЯя')": [["ааббввггддеежжззииййккллммннооппррссттууффххццччшшщщььээююяя"]],
+            "RETURN toLower('AbCdEfGhIjKlMnOpQrStUvWxYzÄöÜß')":  [["abcdefghijklmnopqrstuvwxyzäöüß"]]
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
@@ -1861,7 +1843,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         query_to_expected_result = {
             "RETURN toUpper('MuChAcHo')": [['MUCHACHO']],
             "RETURN toUpper('mUcHaChO')": [['MUCHACHO']],
-            "RETURN toUpper(NULL)": [[None]]
+            "RETURN toUpper(NULL)": [[None]],
+            # test unicode charecters
+            "RETURN toUpper('ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω')": [["ΑΑΒΒΓΓΔΔΕΕΖΖΗΗΘΘΙΙΚΚΛΛΜΜΝΝΞΞΟΟΠΠΡΡΣΣΣΤΤΥΥΦΦΧΧΨΨΩΩ"]],
+            "RETURN toUpper('АаБбВвГгДдЕеЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЬьЭэЮюЯя')":  [["ААББВВГГДДЕЕЖЖЗЗИИЙЙККЛЛММННООППРРССТТУУФФХХЦЦЧЧШШЩЩЬЬЭЭЮЮЯЯ"]],
+            "RETURN toUpper('AbCdEfGhIjKlMnOpQrStUvWxYzÄöÜß')":  [["ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ"]]
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
@@ -2100,7 +2086,11 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN replace('abcabc', 'bc', '0')": [["a0a0"]],
             "RETURN replace('abcabc', 'abc', '')": [[""]],
             "RETURN replace('abcabc', 'ab', '')": [["cc"]],
-            "RETURN replace('abcabc', '', '0')": [["0a0b0c0a0b0c0"]]
+            "RETURN replace('abcabc', '', '0')": [["0a0b0c0a0b0c0"]],
+            # test unicode charecters
+            # changing half unicode charecter will not change the original string
+            "RETURN replace('丁丂七丄丅丆万丈三上', '\xe4', 'X')": [["丁丂七丄丅丆万丈三上"]],
+            "RETURN replace('丁丂七丄丅丆万丈三上', '丄', 'X')": [["丁丂七X丅丆万丈三上"]]
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
@@ -2420,3 +2410,13 @@ class testFunctionCallsFlow(FlowTestsBase):
             except redis.exceptions.ResponseError as e:
                 # Expecting a type error.
                 self.env.assertIn("Received", str(e))
+
+    def test89_size(self):
+        query_to_expected_result = {
+            "RETURN size(NULL)" : [[None]],
+            "RETURN size('abcd')" : [[4]],
+            "RETURN size('丁丂七丄丅丆万丈三上')" : [[10]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+
