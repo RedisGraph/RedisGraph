@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.13)
 get_filename_component(root ${CMAKE_CURRENT_LIST_DIR} ABSOLUTE)
 include(${root}/deps/readies/cmake/main)
 
+SET(CMAKE_EXPORT_COMPILE_COMMANDS on)
+
 if (NOT DEFINED UNIT_TESTS)
 	set(UNIT_TESTS OFF)
 endif()
@@ -67,7 +69,7 @@ extract_debug_symbols(redisgraph)
 if (APPLE)
 	# add_library(redisgraph_dylib SHARED $<TARGET_OBJECTS:redisgraph>)
 	# target_link_libraries(redisgraph_dylib PRIVATE ${REDISGRAPH_LIBS} ${LIBOMP} c m dl pthread)
-	
+
 	add_library(redisgraph_static STATIC $<TARGET_OBJECTS:redisgraph>)
 endif()
 
