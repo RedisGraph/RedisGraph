@@ -156,18 +156,6 @@ static Command_Handler get_command_handler(GRAPH_Commands cmd) {
 	return NULL;
 }
 
-// Convert from string representation to an enum.
-static GRAPH_Commands determine_command(const char *cmd_name) {
-	if(strcasecmp(cmd_name, "graph.QUERY")    == 0) return CMD_QUERY;
-	if(strcasecmp(cmd_name, "graph.RO_QUERY") == 0) return CMD_RO_QUERY;
-	if(strcasecmp(cmd_name, "graph.EXPLAIN")  == 0) return CMD_EXPLAIN;
-	if(strcasecmp(cmd_name, "graph.PROFILE")  == 0) return CMD_PROFILE;
-
-	// we shouldn't reach this point
-	ASSERT(false);
-	return CMD_UNKNOWN;
-}
-
 static bool should_command_create_graph(GRAPH_Commands cmd) {
 	switch(cmd) {
 		case CMD_QUERY:
@@ -193,7 +181,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModuleString *graph_name = argv[1];
 	RedisModuleString *query = (argc > 2) ? argv[2] : NULL;
 	const char *command_name = RedisModule_StringPtrLen(argv[0], NULL);
-	GRAPH_Commands cmd = determine_command(command_name);
+	GRAPH_Commands cmd = CommandFromString(command_name);
 
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 

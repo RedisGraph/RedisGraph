@@ -39,5 +39,6 @@ int Graph_Debug(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Slowlog(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+GRAPH_Commands CommandFromString(const char *cmd_name);
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 
