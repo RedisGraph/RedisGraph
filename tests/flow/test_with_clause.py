@@ -269,9 +269,13 @@ class testWithClause(FlowTestsBase):
         self.env.assertEqual(len(actual_result.result_set), 36)
 
     def test13_aggregated_projection_vars(self):
+        """When ordering aggregated results, only projected variables should be
+        accessible in the ORDER BY clause"""
+
         query = "WITH 1 as one UNWIND range(0,4) as x RETURN max(x) ORDER BY one"
         try:
             redis_graph.query(query)
+            self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             # error expected
             self.env.assertIn(
