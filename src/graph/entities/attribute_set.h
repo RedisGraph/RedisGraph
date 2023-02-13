@@ -25,7 +25,7 @@ typedef struct {
 } Attribute;
 
 typedef struct {
-	uint16_t attr_count;       // number of attributes
+	uint16_t attr_count;     // number of attributes
 	Attribute attributes[];  // key value pair of attributes
 } _AttributeSet;
 
@@ -44,7 +44,7 @@ SIValue *AttributeSet_Get
 SIValue AttributeSet_GetIdx
 (
 	const AttributeSet set,  // set to retieve attribute from
-	int i,                   // index of the property
+	uint16_t i,              // index of the property
 	Attribute_ID *attr_id    // attribute identifier
 );
 
