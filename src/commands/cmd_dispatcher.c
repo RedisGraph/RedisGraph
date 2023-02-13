@@ -23,7 +23,7 @@ static int _read_flags
 	RedisModuleString **argv,   // commands arguments
   	int argc,                   // number of arguments
   	bool *compact,              // compact result-set format
-  	long long *timeout,         // query level timeout 
+  	long long *timeout,         // query level timeout
   	bool *timeout_rw,           // apply timeout on both read and write queries
   	uint *graph_version,        // graph version [UNUSED]
   	char **errmsg               // reported error message
@@ -222,13 +222,13 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		return REDISMODULE_OK;
 	}
 
-	/* Determin query execution context
+	/* Determine the query execution context.
 	 * queries issued within a LUA script or multi exec block must
 	 * run on Redis main thread, others can run on different threads. */
 	int flags = RedisModule_GetContextFlags(ctx);
 	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
 
-	bool main_thread = (is_replicated || 
+	bool main_thread = (is_replicated ||
 		(flags & (REDISMODULE_CTX_FLAGS_MULTI       |
 				REDISMODULE_CTX_FLAGS_LUA           |
 				REDISMODULE_CTX_FLAGS_DENY_BLOCKING |
