@@ -63,6 +63,7 @@ class testCallSubqueryFlow():
         #     """
         #     UNWIND [0, 1, 2, 3] AS x
         #     CALL {
+        #         WITH x
         #         MATCH (n {v: x})
         #         RETURN n
         #     }

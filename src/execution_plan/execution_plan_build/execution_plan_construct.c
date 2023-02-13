@@ -324,6 +324,16 @@ static void _buildCallSubqueryPlan
 		deepest = deepest->children[0];
 	}
 
+	// if no variables are imported, add an 'empty' projection
+	// TODO: make sure it's fine to send 0 length
+	if(cypher_astnode_type(cypher_astnode_get_child(clause, 0)) !=
+		CYPHER_AST_WITH) {
+		OpBase *implicit_proj =
+			NewProjectOp(embedded_plan, array_new(AR_ExpNode *, 0));
+		ExecutionPlan_AddOp(deepest, implicit_proj);
+		deepest = implicit_proj;
+	}
+
 	if(is_eager) {
 		// add an ArgumentList op
 		OpBase *argument_list = NewArgumentListOp(plan);
@@ -349,6 +359,7 @@ static void _buildCallSubqueryPlan
 	// -------------------------------------------------------------------------
 	OpBase *call_op = NewCallSubqueryOp(plan, is_eager, is_returning);
 	ExecutionPlan_UpdateRoot(plan, call_op);
+
 	// bind the embedded plan to be the rhs branch of the Call-Subquery op
 	ExecutionPlan_AddOp(call_op, embedded_plan->root);
 
