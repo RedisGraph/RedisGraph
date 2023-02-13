@@ -7,6 +7,7 @@
 #pragma once
 
 #include "thpool.h"
+#include <sys/types.h>
 
 #define THPOOL_QUEUE_FULL -2
 

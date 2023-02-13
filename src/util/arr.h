@@ -277,14 +277,14 @@ static void array_free(array_t arr) {
   })
 
 /* Remove a specified element from the array */
-#define array_del(arr, ix)                                                        \
-  __extension__({                                                                 \
-    ASSERT(array_len(arr) > ix);                                                  \
-    if (array_len(arr) - 1 > ix) {                                                \
-      memcpy(arr + ix, arr + ix + 1, sizeof(*arr) * (array_len(arr) - (ix + 1))); \
-    }                                                                             \
-    --array_hdr(arr)->len;                                                        \
-    arr;                                                                          \
+#define array_del(arr, ix)                                                         \
+  __extension__({                                                                  \
+    ASSERT(array_len(arr) > ix);                                                   \
+    if (array_len(arr) - 1 > ix) {                                                 \
+      memmove(arr + ix, arr + ix + 1, sizeof(*arr) * (array_len(arr) - (ix + 1))); \
+    }                                                                              \
+    --array_hdr(arr)->len;                                                         \
+    arr;                                                                           \
   })
 
 /* Remove a specified element from the array, but does not preserve order */
