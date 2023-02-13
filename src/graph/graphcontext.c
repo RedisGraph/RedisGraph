@@ -441,10 +441,7 @@ void GraphContext_RemoveAttribute
 bool GraphContext_HasIndices(GraphContext *gc) {
 	ASSERT(gc != NULL);
 
-	const bool has_node_indices = GraphContext_NodeIndexCount(gc);
-	const bool has_edge_indices = GraphContext_EdgeIndexCount(gc);
-
-	return has_node_indices || has_edge_indices;
+	return GraphContext_NodeIndexCount(gc) || GraphContext_EdgeIndexCount(gc);
 }
 
 uint64_t GraphContext_NodeIndexCount
