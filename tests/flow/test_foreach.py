@@ -566,6 +566,10 @@ class testForeachFlow():
             """
         )
 
+        # make sure no nodes or properties were created
+        self.env.assertEquals(res.nodes_created, 0)
+        self.env.assertEquals(res.properties_set, 0)
+
         # define the named path in the FOREACH clauses, and refer them
         res = graph.query(
             """
