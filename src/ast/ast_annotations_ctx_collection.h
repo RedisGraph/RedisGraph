@@ -6,8 +6,7 @@
 
 #pragma once
 #include "cypher-parser.h"
-
-typedef unsigned uint;
+#include <sys/types.h>
 
 typedef cypher_ast_annotation_context_t AnnotationCtx;
 
@@ -17,7 +16,7 @@ typedef cypher_ast_annotation_context_t AnnotationCtx;
 typedef struct {
 	AnnotationCtx *named_paths_ctx; // Annotation context for named paths projections.
 	AnnotationCtx *to_string_ctx;   // Annotation context for AST_ToString of astnode.
-	uint anon_count;                // Counter of anonymous entities already created.
+	uint32_t anon_count;            // Counter of anonymous entities already created.
 } AST_AnnotationCtxCollection;
 
 AST_AnnotationCtxCollection *AST_AnnotationCtxCollection_New();
