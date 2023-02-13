@@ -878,8 +878,8 @@ static bool _AR_EXP_OpEquals
 	const AR_ExpNode *a,
 	const AR_ExpNode *b
 ) {
-	ASSERT(a->type == AR_EXP_OPERAND);
-	ASSERT(b->type == AR_EXP_OPERAND);
+	ASSERT(a->type == AR_EXP_OP);
+	ASSERT(b->type == AR_EXP_OP);
 
 	if((a->op.f != b->op.f) || (a->op.child_count != b->op.child_count)) {
 		return false;

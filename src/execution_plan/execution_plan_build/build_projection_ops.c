@@ -114,12 +114,13 @@ static void _combine_projection_arrays
 
 	// if an aggregation is performed in one of the projections, only projected
 	// variables are valid in the ORDER BY clause
-
 	if(aggregate) {
 		for(uint i = 0; i < order_count; i++) {
 			bool found = false;
 			for(uint j = 0; j < project_count && !found; j++) {
-				found = AR_EXP_Equal(order_exps[i], project_exps[j]);
+				found = strcmp(order_exps[i]->resolved_name,
+							   project_exps[j]->resolved_name) == 0 ||
+						AR_EXP_Equal(order_exps[i], project_exps[j]);
 			}
 			if(!found) {
 				ErrorCtx_SetError(
@@ -147,8 +148,8 @@ it is not possible to access variables not projected by the WITH/RETURN.");
 	*exps_ptr = project_exps;
 }
 
-// Build an aggregate or project operation and any required modifying operations.
-// This logic applies for both WITH and RETURN projections.
+// build an aggregate or project operation and any required modifying operations
+// this logic applies for both WITH and RETURN projections
 static inline void _buildProjectionOps(ExecutionPlan *plan,
 									   const cypher_astnode_t *clause) {
 
