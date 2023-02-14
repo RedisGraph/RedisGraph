@@ -118,7 +118,10 @@ unsigned short GraphContext_SchemaCount
 );
 
 // activate all constraints for a given graph context
-void GraphContext_ActivateAllConstraints(const GraphContext *gc);
+void GraphContext_ActivateAllConstraints
+(
+	const GraphContext *gc
+);
 
 // retrieve the specific schema for the provided ID
 Schema *GraphContext_GetSchemaByID

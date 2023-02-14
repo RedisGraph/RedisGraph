@@ -219,6 +219,14 @@ static bool _Constraint_Create
 	}
 
 	//--------------------------------------------------------------------------
+	// make sure schema exists
+	//--------------------------------------------------------------------------
+	SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+	if(GraphContext_GetSchema(gc, label, SCHEMA_NODE) == NULL) {
+		AddSchema(gc, label, SCHEMA_NODE);
+	}
+
+	//--------------------------------------------------------------------------
 	// check for duplicates
 	//--------------------------------------------------------------------------
 
@@ -231,23 +239,33 @@ static bool _Constraint_Create
 		}
 	}
 
+	// operation failed, remove newly created attributes
 	if(duplicates) {
-		// TODO: perform rollback
+		UndoLog undolog = QueryCtx_GetUndoLog();
+		UndoLog_Rollback(undolog);
 		return false;
+	}
+
+	// reconstruct attribute IDs array
+	// must be aligned with attribute names array
+	for(uint i = 0; i < prop_count; i++) {
+		attr_ids[i] = GraphContext_GetAttributeID(props[i]);
 	}
 
 	Graph *g = GraphContext_GetGraph(gc);
 
-	// determine schema type
-	SchemaType st = (entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-
 	// acquire graph write lock
 	Graph_AcquireWriteLock(gc->g);
 
-	// TODO: remove duplicates.
-
 	Constraint c = NULL;
 	if(ct == CT_UNIQUE) {
+	c = Constraint_UniqueNew(LabelID l,                // label/relation ID
+	Attribute_ID *fields,     // enforced fields
+	const char **attr_names,  // enforced attribute names
+	uint n_fields,            // number of fields
+	EntityType et,            // entity type
+	Index idx                 // index
+) {
 		c = Constraint_UniqueNew();
 		c = GraphContext_AddConstraint(gc, ct, st, label, props, prop_count);
 	} else {
