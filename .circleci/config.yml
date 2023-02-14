@@ -301,7 +301,7 @@ commands:
             export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
             export PROFILE=<< parameters.profile_env >>
             export BENCHMARK_GLOB=<< parameters.benchmark_glob >>
-            export BENCHMARK_REGEX=<< parameters.benchmark_regex >>
+            export BENCHMARK_REGEX="<< parameters.benchmark_regex >>"
             export PERF_CALLGRAPH_MODE="dwarf"
             redisbench-admin run-remote \
               --module_path << parameters.module_path >> \
@@ -561,9 +561,9 @@ jobs:
           command: make NPROC=16
       - benchmark-steps:
           module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_regex: "graph500.+.yml"
+          benchmark_regex: "^(?!.*graph500).*.yml"
 
-  benchmark-graph-500:
+  benchmark-graph500:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     resource_class: large
@@ -580,7 +580,7 @@ jobs:
           command: make NPROC=16
       - benchmark-steps:
           module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_regex: "^(?!.*graph500).*.yml"
+          benchmark_regex: "graph500.+.yml"
 
   benchmark-profiler:
     docker:
@@ -748,7 +748,7 @@ workflows:
       - benchmark:
           context: common
           <<: *always
-      - benchmark-graph-500:
+      - benchmark-graph500:
           context: common
           <<: *always
 
@@ -780,6 +780,6 @@ workflows:
       - benchmark:
           context: common
           <<: *always
-      - benchmark-graph-500:
+      - benchmark-graph500:
           context: common
           <<: *always
