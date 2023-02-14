@@ -274,7 +274,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 
 	// build index
 	if(res) {
-		Indexer_PopulateIndexOrConstraint(gc, idx, NULL);
+		Indexer_PopulateIndex(gc, idx);
 	}
 
 	return PROCEDURE_OK;

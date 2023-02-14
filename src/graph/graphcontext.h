@@ -9,8 +9,8 @@
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
-#include "../slow_log/slow_log.h"
 #include "graph.h"
+#include "../slow_log/slow_log.h"
 #include "../serializers/encode_context.h"
 #include "../serializers/decode_context.h"
 #include "../util/cache/cache.h"
@@ -276,8 +276,7 @@ int GraphContext_DeleteIndex
 	SchemaType schema_type,
 	const char *label,
 	const char *field,
-	IndexType type,
-	bool part_of_constraint_deletion
+	IndexType type
 );
 
 // remove a single node from all indices that refer to it

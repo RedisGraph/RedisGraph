@@ -123,10 +123,10 @@ static bool _EmitConstraint
 	ConstraintType type,
     int constraint_id
 ) {
-	Constraint *c = Schema_GetConstraints(s);
-    ASSERT(c != NULL);
-    if(array_len(c) <= constraint_id) return false;
-    Constraint constraint = c[constraint_id];
+	const Constraint *constraints = Schema_GetConstraints(s);
+    ASSERT(constraints != NULL);
+
+    Constraint c = constraints[constraint_id];
 
 	//--------------------------------------------------------------------------
 	// constraint entity type
@@ -145,9 +145,10 @@ static bool _EmitConstraint
 	//--------------------------------------------------------------------------
 
 	if(ctx->yield_status != NULL) {
-		if(constraint->status == CT_ACTIVE) {
+		ConstraintStatus status = Constraint_GetStatus(c);
+		if(status == CT_ACTIVE) {
 			*ctx->yield_status = SI_ConstStringVal("OPERATIONAL");
-		} else if (constraint->status == CT_PENDING) {
+		} else if (status == CT_PENDING) {
 			*ctx->yield_status = SI_ConstStringVal("UNDER CONSTRUCTION");
 		} else {
             *ctx->yield_status = SI_ConstStringVal("FAILED");
@@ -179,13 +180,14 @@ static bool _EmitConstraint
 	//--------------------------------------------------------------------------
 
 	if(ctx->yield_properties) {
-		uint fields_count        = array_len(constraint->attributes);
-		const AttrInfo *fields = Constraint_GetAttributes(constraint);
-		*ctx->yield_properties   = SI_Array(fields_count);
+		uint fields_count = 0;
+		const char **fields;
+		Constraint_GetAttributes(c, NULL, &fields, &fields_count);
+		*ctx->yield_properties = SI_Array(fields_count);
 
 		for(uint i = 0; i < fields_count; i++) {
 			SIArray_Append(ctx->yield_properties,
-						   SI_ConstStringVal((char *)fields[i].attribute_name));
+					SI_ConstStringVal((char *)fields[i]));
 		}
 	}
 

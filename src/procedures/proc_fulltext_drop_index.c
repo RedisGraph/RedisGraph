@@ -39,12 +39,12 @@ ProcedureResult Proc_FulltextDropIndexInvoke
 	const char *l = args[0].stringval;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index idx = GraphContext_GetIndex(gc, l, NULL, IDX_FULLTEXT, SCHEMA_NODE);
-	int res = GraphContext_DeleteIndex(gc, SCHEMA_NODE, l, NULL, IDX_FULLTEXT, false);
+	int res = GraphContext_DeleteIndex(gc, SCHEMA_NODE, l, NULL, IDX_FULLTEXT);
 
 	if(res != INDEX_OK) {
 		ErrorCtx_SetError("ERR Unable to drop index on :%s: no such index.", l);
 	} else {
-		Indexer_DropIndexOrConstraint(idx, NULL);
+		Indexer_DropIndex(idx);
 	}
 
 	return PROCEDURE_OK;

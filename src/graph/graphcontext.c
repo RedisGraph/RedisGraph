@@ -14,6 +14,7 @@
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/pools.h"
+#include "../constraint/constraint.h"
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
@@ -492,16 +493,6 @@ Index GraphContext_GetIndex
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-static inline int _cmp_Attribute_ID
-(
-	const void *a,
-	const void *b
-) {
-	const Attribute_ID *_a = a;
-	const Attribute_ID *_b = b;
-	return *_a - *_b;
-}
-
 // create constraint for the given label and attributes
 Constraint GraphContext_AddConstraint
 (
@@ -526,27 +517,8 @@ Constraint GraphContext_AddConstraint
 		s = GraphContext_AddSchema(gc, label, schema_type);
 	}
 
-	// convert attribute name to attribute ID
-	Attribute_ID fields[fields_count];
-	for(uint i = 0; i < fields_count; i++) {
-		fields[i] = GraphContext_FindOrAddAttribute(gc, fields_str[i], NULL);
-	}
-
-	//--------------------------------------------------------------------------
-	// remove duplicates
-	//--------------------------------------------------------------------------
-
-	// sort the properties for an easy comparison later
-	uint idx = 0;
-	qsort(fields, fields_count, sizeof(Attribute_ID), _cmp_Attribute_ID);
-	for(uint i = 1; i < fields_count; i++) {
-		if(fields[i] != fields[idx]) {
-			fields[++idx] = fields[i];
-		}
-	}
-
 	// check if constraint already contained in schema
-	Constraint c = Schema_GetConstraint(s, fields, fields_count);
+	Constraint c = Schema_GetConstraint(s, ct, fields, fields_count);
 
 	if(c != NULL) {
 		// constraint already exists
@@ -560,18 +532,16 @@ Constraint GraphContext_AddConstraint
 			ASSERT(constraint_removed == true);
 
 			// free failed constraint
-			Constraint_free(c);
+			Constraint_Free(c);
 			c = NULL;
 		}
 	}
 	
 	if(c == NULL) {
 		// constraint doesn't exists create it
-		c = Constraint_new(fields, fields_count, s, label, ct);
+		c = Constraint_New(fields, field_names, fields_count,
+				(struct Schema*)s, ct);
 		Schema_AddConstraint(s, c);
-
-		// start enforcing constraint
-		Constraint_Enforce(c);
 	}
 
 	return c;
@@ -610,7 +580,7 @@ bool GraphContext_AddExactMatchIndex
 		IndexField idx_field;
 		Attribute_ID f_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
 		IndexField_Default(&idx_field, f_id, field);
-		if(Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH, true) == INDEX_OK) {
+		if(Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH) == INDEX_OK) {
 			index_changed = true;
 			if(should_reply) {
 				// update result-set
@@ -674,7 +644,7 @@ bool GraphContext_AddFullTextIndex
 		IndexField index_field;
 		Attribute_ID f_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
 		IndexField_New(&index_field, f_id, field, weight, nostem, phonetic);
-		if(Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT, false) == INDEX_OK) {
+		if(Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT) == INDEX_OK) {
 			index_changed = true;
 			// update result-set
 			ResultSet_IndexCreated(result_set, INDEX_OK);
@@ -691,8 +661,6 @@ bool GraphContext_AddFullTextIndex
 
 	// diable index if it was created
 	if(index_changed) {
-		Index_DropInternalIndex(*idx);
-		Index_ConstructStructure(*idx);
 		Index_Disable(*idx);
 	}
 
@@ -705,8 +673,7 @@ int GraphContext_DeleteIndex
 	SchemaType schema_type,
 	const char *label,
 	const char *field,
-	IndexType type,
-	bool part_of_constraint_deletion
+	IndexType type
 ) {
 	ASSERT(gc    != NULL);
 	ASSERT(label != NULL);
@@ -716,8 +683,8 @@ int GraphContext_DeleteIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 
 	if(s != NULL) {
-		res = Schema_RemoveIndex(s, (struct GraphContext*)gc, field, type, part_of_constraint_deletion);
-		if(res == INDEX_OK && !part_of_constraint_deletion) {
+		res = Schema_RemoveIndex(s, field, type);
+		if(res == INDEX_OK) {
 			// update resultset statistics
 			ResultSet *result_set = QueryCtx_GetResultSet();
 			ResultSet_IndexDeleted(result_set, res);

@@ -75,13 +75,17 @@ static void _CommitNodes
 		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
 				attr);
 
+		//----------------------------------------------------------------------
+		// enforce constraints
+		//----------------------------------------------------------------------
+
 		for(uint j = 0; j < label_count; j++) {
 			Schema *s = GraphContext_GetSchemaByID(gc, labels[j], SCHEMA_NODE);
-			bool has_constraints = array_len(s->constraints) > 0;
-			if(has_constraints && !Constraints_enforce_entity(s->constraints, attr, Index_RSIndex(s->index), NULL)) {
-				// Constraint violation.
-				ErrorCtx_SetError("constraint violation on label %s", s->name);
-				// we can't return here because the graph allocation (Graph_AllocateNodes) already been called
+			if(!Schema_EnforceConstraints(s, (GraphEntity*)n)) {
+				// constraint violation
+				ErrorCtx_SetError("constraint violation on label %s",
+						Schema_GetName(s));
+				break;
 			}
 		}
 	}
@@ -156,10 +160,8 @@ static void _CommitEdges
 		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID,
 			destNodeID, relation_id, attr);
 
-		bool has_constraints = array_len(s->constraints) > 0;
-		if(has_constraints && !Constraints_enforce_entity(s->constraints, attr, Index_RSIndex(s->index), NULL)) {
+		if(!Schema_EnforceConstraints(s, (GraphEntity*)e)) {
 			ErrorCtx_SetError("constraint violation on label %s", s->name);
-			// we can't return here because the graph allocation (Graph_AllocateNodes) already been called
 		}
 	}
 }

@@ -80,8 +80,7 @@ static bool _index_operation_delete
 (
 	GraphContext *gc,
 	AST *ast,
-	Index *idx,
-	bool part_of_constraint_deletion
+	Index *idx
 ) {
 	*idx = NULL;
 	Schema *s = NULL;
@@ -125,7 +124,7 @@ static bool _index_operation_delete
 	QueryCtx_LockForCommit();
 
 	int res = GraphContext_DeleteIndex(gc, schema_type, label, attr,
-			IDX_EXACT_MATCH, part_of_constraint_deletion);
+			IDX_EXACT_MATCH);
 
 	return res == INDEX_OK;
 }
@@ -218,7 +217,7 @@ static void _index_operation
 			}
 			break;
 		case EXECUTION_TYPE_INDEX_DROP:
-			if(_index_operation_delete(gc, ast, &idx, false)) {
+			if(_index_operation_delete(gc, ast, &idx)) {
 				// if idx field count > 0 reindex
 				// otherwise drop
 				if(Index_FieldsCount(idx) > 0) {

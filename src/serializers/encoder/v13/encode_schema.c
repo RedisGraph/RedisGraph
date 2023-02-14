@@ -126,7 +126,7 @@ static void _RdbSaveConstraint
 	 * fields */
 
 	if(Constraint_GetStatus(c) != CT_ACTIVE) {
-		return
+		return;
 	}
 
 	// encode constraint type
@@ -134,7 +134,8 @@ static void _RdbSaveConstraint
 	RedisModule_SaveUnsigned(rdb, t);
 
 	uint n;  // number of attributes
-	const Attribute_ID *attrs = Constraint_GetAttributes(c, &n);
+	const Attribute_ID *attrs;
+	Constraint_GetAttributes(c, &attrs, NULL, &n);
 
 	// encode attributes count
 	RedisModule_SaveUnsigned(rdb, n);
@@ -157,7 +158,7 @@ static void _RdbSaveConstraintsData
 
 	for (uint i = 0; i < n_constraints; i++) {
 		Constraint c = constraints[i];
-		if (c->status != CT_ACTIVE) {
+		if (Constraint_GetStatus(c) != CT_ACTIVE) {
 			n_active_constraints++;
 		}
 	}

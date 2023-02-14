@@ -44,7 +44,7 @@ static void _RdbLoadFullTextIndex
 			IndexField field;
 			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
 			IndexField_New(&field, field_id, field_name, weight, nostem, phonetic);
-			Schema_AddIndex(&idx, s, &field, IDX_FULLTEXT, false);
+			Schema_AddIndex(&idx, s, &field, IDX_FULLTEXT);
 		}
 
 		RedisModule_Free(field_name);
@@ -111,16 +111,19 @@ static void _RdbLoadConstaint
 	// read number of constrained fields
 	uint n = RedisModule_LoadUnsigned(rdb);
 
+	char **fields_str[n];
 	Attribute_ID fields[n];
 
 	// read fields
 	for(uint i = 0; i < n; i++) {
-		fields[i] = RedisModule_LoadUnsigned(rdb);
+		Attribute_ID attr = RedisModule_LoadUnsigned(rdb);
+		fields[i] = attr;
+		fields_str[i] = GraphContext_GetAttributeString(gc, attr);
 	}
 
 	if(!already_loaded) {
 		// create constraint
-		c = Constraint_New(fields, n, s, t);
+		c = Constraint_New(fields, fields_str, n, (Schema*)s, t);
 		ASSERT(c != NULL);
 
 		// set constraint status to active

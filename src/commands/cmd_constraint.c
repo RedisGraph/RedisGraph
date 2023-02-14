@@ -126,9 +126,7 @@ static int _Constraint_Delete
 	GraphContext *gc = GraphContext_Retrieve(ctx, key, false, false);
 	if(!gc) {
 		// graph doesn't exists
-		// TODO: report label / props as part of the error
-		RedisModule_ReplyWithError(ctx, "Unable to drop constraint on, no such constraint.");
-		return REDISMODULE_ERR;
+		return false;
 	}
 
 	// acquire graph write lock
@@ -176,8 +174,22 @@ cleanup:
 	// release graph R/W lock
 	Graph_ReleaseLock(gc->g);
 
+	// decrease graph reference count
+	GraphContext_DecreaseRefCount(gc);
+
 	return rv;
 }
+
+static inline int _cmp_Attribute_ID
+(
+	const void *a,
+	const void *b
+) {
+	const Attribute_ID *_a = a;
+	const Attribute_ID *_b = b;
+	return *_a - *_b;
+}
+
 
 // GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY LABEL/RELTYPE label PROPERTIES prop_count prop0, prop1...
 static bool _Constraint_Create
@@ -190,12 +202,41 @@ static bool _Constraint_Create
 	long long prop_count,         // properties count
 	const char **props            // properties
 ) {
+
 	// get or create graph
 	GraphContext *gc = GraphContext_Retrieve(ctx, key, false, true);
-	if(!gc) {
-		RedisModule_ReplyWithError(ctx, "Invalid graph name passed as argument");
+	if(gc == NULL) {
+		return false;	
+	}
+
+	//--------------------------------------------------------------------------
+	// convert attribute name to attribute ID
+	//--------------------------------------------------------------------------
+
+	Attribute_ID attr_ids[prop_count];
+	for(uint i = 0; i < prop_count; i++) {
+		attr_ids[i] = FindOrAddAttribute(gc, props[i]);
+	}
+
+	//--------------------------------------------------------------------------
+	// check for duplicates
+	//--------------------------------------------------------------------------
+
+	// sort the properties for an easy comparison later
+	bool duplicates = false;
+	qsort(attr_ids, prop_count, sizeof(Attribute_ID), _cmp_Attribute_ID);
+	for(uint i = 0; i < fields_count - 1; i++) {
+		if(attr_ids[i] != attr_ids[i+1]) {
+			duplicates = true;
+		}
+	}
+
+	if(duplicates) {
+		// TODO: perform rollback
 		return false;
 	}
+
+	Graph *g = GraphContext_GetGraph(gc);
 
 	// determine schema type
 	SchemaType st = (entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
@@ -203,18 +244,30 @@ static bool _Constraint_Create
 	// acquire graph write lock
 	Graph_AcquireWriteLock(gc->g);
 
-	Constraint c = GraphContext_AddConstraint(gc, ct, st, label, props, prop_count);
+	// TODO: remove duplicates.
+
+	Constraint c = NULL;
+	if(ct == CT_UNIQUE) {
+		c = Constraint_UniqueNew();
+		c = GraphContext_AddConstraint(gc, ct, st, label, props, prop_count);
+	} else {
+		c = Constraint_ExistsNew();
+	}
+
+	// TODO: add constraint to graphcontext / schema
+
+	// release graph R/W lock
+	Graph_ReleaseLock(g);
 
 	// constraint already exists
 	if(c == NULL) { 
+		// decrease graph reference count
+		GraphContext_DecreaseRefCount(gc);
+
 		RedisModule_ReplyWithError(ctx, "Constraint already exists");
+	} else {
+		Constraint_Enforce(c, g);
 	}
-
-	// release graph R/W lock
-	Graph_ReleaseLock(gc->g);
-
-	// decrease graph reference count
-	GraphContext_DecreaseRefCount(gc);
 
 	return c != NULL;
 }
@@ -238,13 +291,13 @@ int Graph_Constraint
 	long long prop_count;
 	RedisModuleString **props;
 	GraphEntityType entity_type;
-	RedisModuleString *rs_graph_name;
+	RedisModuleString *key_name;
 
 	//--------------------------------------------------------------------------
 	// parse command arguments
 	//--------------------------------------------------------------------------
 
-	int res = Constraint_Parse(ctx, argv+1, argc-1, &rs_graph_name, &op, &ct,
+	int res = Constraint_Parse(ctx, argv+1, argc-1, &key_name, &op, &ct,
 			&entity_type, &label, &prop_count, &props);
 
 	// command parsing error, abort
@@ -267,12 +320,15 @@ int Graph_Constraint
 	}
 
 	bool success = false;
+	GraphContext *gc = NULL;
+
 	if(op == CT_CREATE) {
-		success = _Constraint_Create(ctx, rs_graph_name, ct, entity_type, label,
+		// try to create constraint
+		success = _Constraint_Create(ctx, key_name, ct, entity_type, label,
 				prop_count, props_cstr);
 	} else {
 		// CT_DELETE
-		success = _Constraint_Delete(ctx, rs_graph_name, ct, entity_type, label,
+		success = _Constraint_Delete(ctx, key_name, ct, entity_type, label,
 				prop_count, props_cstr);
 	}
 

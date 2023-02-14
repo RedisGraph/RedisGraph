@@ -82,8 +82,7 @@ int Schema_AddIndex
 	Index *idx,         // [input/output] index to create
 	Schema *s,          // schema holding the index
 	IndexField *field,  // field to index
-	IndexType type,      // type of entities to index
-	bool inc_ref_count  // should the index's ref count be incremented?
+	IndexType type       // type of entities to index
 );
 
 struct GraphContext;
@@ -92,7 +91,6 @@ struct GraphContext;
 int Schema_RemoveIndex
 (
 	Schema *s,
-	struct GraphContext *gc,
 	const char *field,
 	IndexType type
 );
@@ -145,6 +143,7 @@ bool Schema_HasConstraints
 bool Schema_ContainsConstraint
 (
 	const Schema *s,            // schema to search
+	ConstraintType t,           // constraint type
 	const Attribute_ID *attrs,  // constraint attributes
 	uint attr_count             // number of attributes
 );

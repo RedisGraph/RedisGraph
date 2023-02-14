@@ -102,9 +102,12 @@ void CommitUpdates
 		for(uint i = 0; i < label_count; i ++) {
 			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], stype);
 			bool has_constraints = array_len(s->constraints) > 0;
-			if(has_constraints && !Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes(update->ge), Index_RSIndex(s->index), NULL)) {
-				// Constraint violation.
+			// TODO: a bit wasteful need to target relevant constraints only
+			if(has_constraints &&
+					!Schema_EnforceConstraints(s, update->ge)) {
+				// constraint violation
 				ErrorCtx_SetError("constraint violation on label %s", s->name);
+				break;
 			}
 		}
 	}

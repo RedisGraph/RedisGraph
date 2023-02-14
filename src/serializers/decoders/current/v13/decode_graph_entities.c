@@ -127,20 +127,6 @@ void RdbLoadNodes_v13
 
 			if(s->index) Index_IndexNode(s->index, &n);
 			if(s->fulltextIdx) Index_IndexNode(s->fulltextIdx, &n);
-
-			// validate Pending constaint.
-			bool has_constraints = array_len(s->constraints) > 0;
-			if(has_constraints) {
-				Constraint *constraints = Schema_GetConstraints(s);
-				for(uint32_t i = 0; i < array_len(constraints); i++) {
-					Constraint c = constraints[i];
-					if(c->status == CT_PENDING && !Constraint_enforce_entity(c, 
-						GraphEntity_GetAttributes((GraphEntity *)&n), Index_RSIndex(s->index))) {
-						c->status = CT_FAILED;
-						Constraint_Drop_Index(c, (struct GraphContext*)gc, false);
-					}
-				}
-			}
 		}
 	}
 }
@@ -177,10 +163,11 @@ void RdbLoadEdges_v13
 	// construct connections
 	for(uint64_t i = 0; i < edge_count; i++) {
 		Edge e;
-		EdgeID    edgeId    =  RedisModule_LoadUnsigned(rdb);
-		NodeID    srcId     =  RedisModule_LoadUnsigned(rdb);
-		NodeID    destId    =  RedisModule_LoadUnsigned(rdb);
-		uint64_t  relation  =  RedisModule_LoadUnsigned(rdb);
+		EdgeID    edgeId   = RedisModule_LoadUnsigned(rdb);
+		NodeID    srcId    = RedisModule_LoadUnsigned(rdb);
+		NodeID    destId   = RedisModule_LoadUnsigned(rdb);
+		uint64_t  relation = RedisModule_LoadUnsigned(rdb);
+
 		Serializer_Graph_SetEdge(gc->g,
 				gc->decoding_context->multi_edge[relation], edgeId, srcId,
 				destId, relation, &e);
@@ -192,14 +179,6 @@ void RdbLoadEdges_v13
 
 		if(s->index) Index_IndexEdge(s->index, &e);
 		if(s->fulltextIdx) Index_IndexEdge(s->fulltextIdx, &e);
-
-		// Entities must satisfy their constraints.
-		uint32_t c_index;
-		bool has_constraints = array_len(s->constraints) > 0;
-		if (has_constraints && !Constraints_enforce_entity(s->constraints, GraphEntity_GetAttributes((GraphEntity *)&e), Index_RSIndex(s->index), &c_index)) {
-			s->constraints[c_index]->status = CT_FAILED;
-			Constraint_Drop_Index(s->constraints[c_index], (struct GraphContext*)gc, false);
-		}
 	}
 }
 
