@@ -206,23 +206,12 @@ void thpool_destroy(thpool_* thpool_p) {
 	/* End each thread 's infinite loop */
 	threads_keepalive = 0;
 
-	/* Give 0.1 second to kill idle threads */
-	double TIMEOUT = 0.1;
-	time_t start, end;
-	double tpassed = 0.0;
-	time(&start);
-	while(tpassed < TIMEOUT && thpool_p->num_threads_alive) {
-		bsem_post_all(thpool_p->jobqueue.has_jobs);
-		time(&end);
-		tpassed = difftime(end, start);
-	}
 
 	/* Poll remaining threads */
-	// do not wait forever for threads to complete their work
-	//while(thpool_p->num_threads_alive) {
-	//	bsem_post_all(thpool_p->jobqueue.has_jobs);
-	//	sleep(1);
-	//}
+	while(thpool_p->num_threads_alive) {
+		bsem_post_all(thpool_p->jobqueue.has_jobs);
+		sleep(1);
+	}
 
 	/* Job queue cleanup */
 	jobqueue_destroy(&thpool_p->jobqueue);
