@@ -493,60 +493,6 @@ Index GraphContext_GetIndex
 	return Schema_GetIndex(s, attribute_id, type);
 }
 
-// create constraint for the given label and attributes
-Constraint GraphContext_AddConstraint
-(
-	GraphContext *gc,           // graph context
-	ConstraintType ct,          // constraint type
-	SchemaType schema_type,     // type of entities to index nodes/edges
-	const char *label,          // label of indexed entities
-	const char **fields_str,    // fields to index
-	uint fields_count           // number of fields to index
-) {
-	// validations
-	ASSERT(gc           != NULL);
-	ASSERT(label        != NULL);
-	ASSERT(fields_str   != NULL);
-	ASSERT(fields_count  > 0);
-
-	// retrieve the schema for this label
-	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
-
-	if(s == NULL) {
-		// schema doesn't exists, create it
-		s = GraphContext_AddSchema(gc, label, schema_type);
-	}
-
-	// check if constraint already contained in schema
-	Constraint c = Schema_GetConstraint(s, ct, fields, fields_count);
-
-	if(c != NULL) {
-		// constraint already exists
-		if(Constraint_GetStatus(c) != CT_FAILED) {
-			// constraint is either operational or being constructed
-			return NULL;
-		} else {
-			// previous constraint creation had failed
-			// remove constrain from schema
-			bool constraint_removed = Schema_RemoveConstraint(s, c);
-			ASSERT(constraint_removed == true);
-
-			// free failed constraint
-			Constraint_Free(c);
-			c = NULL;
-		}
-	}
-	
-	if(c == NULL) {
-		// constraint doesn't exists create it
-		c = Constraint_New(fields, field_names, fields_count,
-				(struct Schema*)s, ct);
-		Schema_AddConstraint(s, c);
-	}
-
-	return c;
-}
-
 // create an exact match index for the given label and attribute
 bool GraphContext_AddExactMatchIndex
 (

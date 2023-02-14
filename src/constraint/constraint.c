@@ -10,21 +10,16 @@
 #include "../util/arr.h"
 #include "../util/thpool/pools.h"
 #include "../graph/entities/attribute_set.h"
+#include "../graph/rg_matrix/rg_matrix_iter.h"
 
 #include <stdatomic.h>
-
-// constraint enforcement callback function
-typedef bool (*EnforcementCB)
-(
-	Constraint c,
-	const GraphEntity *e
-);
 
 // opaque structure representing a constraint
 typedef struct _Constraint {
 	uint n_attr;                   // number of fields
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
+	int lbl;                       // enforced label/relationship-type
     Attribute_ID *attrs;           // enforced attributes
 	const char **attr_names;       // enforced attribute names
     ConstraintStatus status;       // constraint status
@@ -51,7 +46,7 @@ static void _Constraint_EnforceNodes
 	ConstraintEnforceCtx *ctx = (ConstraintEnforceCtx*)args;
 
 	Constraint c = ctx->c;
-	LabelID    l = c->l;
+	LabelID    l = c->lbl;
 	Graph     *g = ctx->g;
 
 	bool               holds      = true;   // constraint holds
@@ -135,7 +130,7 @@ static void _Constraint_EnforceEdges
 	ConstraintEnforceCtx *ctx = (ConstraintEnforceCtx*)args;
 
 	Constraint c = ctx->c;
-	LabelID    l = c->l;
+	LabelID    l = c->lbl;
 	Graph     *g = ctx->g;
 
 	GrB_Info  info;
@@ -407,12 +402,16 @@ bool Constraint_EnforceEntity
 
 void Constraint_Free
 (
-	Constraint c
+	Constraint *c
 ) {
 	ASSERT(c != NULL);
 
-    rm_free(c->attrs);
-	rm_free(c->attr_names);
-    rm_free(c);
+	Constraint _c = *c;
+
+    rm_free(_c->attrs);
+	rm_free(_c->attr_names);
+    rm_free(_c);
+
+	*c = NULL;
 }
 

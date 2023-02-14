@@ -6,7 +6,9 @@
 
 #pragma once
 
+#include "../index/index.h"
 #include "../graph/graph.h"
+#include "../graph/query_graph.h"
 #include "../graph/entities/graph_entity.h"
 #include "../graph/entities/attribute_set.h"
 
@@ -14,6 +16,13 @@
 typedef struct _Constraint       *Constraint;        // base constraint struct
 typedef struct _UniqueConstraint *UniqueConstraint;  // unique constraint
 typedef struct _ExistsConstraint *ExistsConstraint;  // exists constraint
+
+// constraint enforcement callback function
+typedef bool (*EnforcementCB)
+(
+	Constraint c,
+	const GraphEntity *e
+);
 
 // different states a constraint can be at
 // starting as pending and transitioning to either active or failed
@@ -35,16 +44,18 @@ typedef enum {
 // create a new unique constraint
 Constraint Constraint_UniqueNew
 (
+	LabelID l,                // label/relation ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint n_fields,            // number of fields
 	EntityType et,            // entity type
-	Index idx                 // supporting index
+	Index idx                 // index
 );
 
 // create a new exists constraint
 Constraint Constraint_ExistsNew
 (
+	LabelID l,                // label/relation ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint n_fields,            // number of fields
@@ -126,6 +137,6 @@ bool Constraint_EnforceEntity
 // free constraint
 void Constraint_Free
 (
-	Constraint c  // constraint to free
+	Constraint *c  // constraint to free
 );
 

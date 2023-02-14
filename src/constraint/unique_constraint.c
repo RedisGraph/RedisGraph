@@ -5,15 +5,19 @@
  */
 
 #include "RG.h"
+#include "constraint.h"
 #include "../index/index.h"
 #include "redisearch_api.h"
+#include "../graph/entities/attribute_set.h"
+
+#include <stdatomic.h>
 
 // opaque structure representing a constraint
 typedef struct _UniqueConstraint {
-	LabelID l;                     // label/relation ID
 	uint n_attr;                   // number of fields
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
+	int lbl;                       // enforced label/relationship-type
     Attribute_ID *attrs;           // enforced attributes
 	const char **attr_names;       // enforced attribute names
     ConstraintStatus status;       // constraint status
@@ -133,15 +137,15 @@ Constraint Constraint_UniqueNew
     memcpy(c->attr_names, attr_names, sizeof(char*) * n_fields);
 
 	// initialize constraint
-	c->l               = l;
 	c->t               = CT_UNIQUE;
 	c->et              = et;
+	c->lbl             = l;
 	c->idx             = idx;
 	c->status          = CT_PENDING;
 	c->n_attr          = n_fields;
 	c->enforce         = Constraint_EnforceUniqueEntity;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 
-	return c;
+	return (Constraint)c;
 }
 

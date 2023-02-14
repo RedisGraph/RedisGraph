@@ -5,6 +5,9 @@
  */
 
 #include "RG.h"
+#include "../query_ctx.h"
+#include "../graph/graph_hub.h"
+#include "../undo_log/undo_log.h"
 #include "../graph/graphcontext.h"
 #include "constraint/constraint.h"
 
@@ -55,7 +58,7 @@ static int Constraint_Parse
 	if(strcasecmp(token, "UNIQUE") == 0) {
 		*ct = CT_UNIQUE;
 	} else if(strcasecmp(token, "MANDATORY") == 0) {
-		*ct = CT_MANDATORY;
+		*ct = CT_EXISTS;
 	} else {
 		RedisModule_ReplyWithError(ctx, "Invalid constraint type");
 		return REDISMODULE_ERR; //currently only unique constraint is supported
@@ -194,14 +197,15 @@ static inline int _cmp_Attribute_ID
 // GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY LABEL/RELTYPE label PROPERTIES prop_count prop0, prop1...
 static bool _Constraint_Create
 (
-	RedisModuleCtx *ctx,          // redis module context
-	RedisModuleString *key,       // graph key to operate on
-	ConstraintType ct,            // constraint type
-	GraphEntityType entity_type,  // entity type
-	const char *label,            // label / rel-type
-	long long prop_count,         // properties count
-	const char **props            // properties
+	RedisModuleCtx *ctx,    // redis module context
+	RedisModuleString *key, // graph key to operate on
+	ConstraintType ct,      // constraint type
+	GraphEntityType et,     // entity type
+	const char *lbl,        // label / rel-type
+	uint16_t n,             // properties count
+	const char **props      // properties
 ) {
+	bool res = true;
 
 	// get or create graph
 	GraphContext *gc = GraphContext_Retrieve(ctx, key, false, true);
@@ -209,85 +213,128 @@ static bool _Constraint_Create
 		return false;	
 	}
 
+	Graph *g = GraphContext_GetGraph(gc);
+
+	// acquire graph write lock
+	Graph_AcquireWriteLock(gc->g);
+
 	//--------------------------------------------------------------------------
 	// convert attribute name to attribute ID
 	//--------------------------------------------------------------------------
 
-	Attribute_ID attr_ids[prop_count];
-	for(uint i = 0; i < prop_count; i++) {
+	Attribute_ID attr_ids[n];
+	for(uint i = 0; i < n; i++) {
 		attr_ids[i] = FindOrAddAttribute(gc, props[i]);
 	}
 
 	//--------------------------------------------------------------------------
 	// make sure schema exists
 	//--------------------------------------------------------------------------
+
 	SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-	if(GraphContext_GetSchema(gc, label, SCHEMA_NODE) == NULL) {
-		AddSchema(gc, label, SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchema(gc, lbl, st);
+	if(s == NULL) {
+		s = AddSchema(gc, lbl, st);
 	}
+	int s_id = Schema_GetID(s);
 
 	//--------------------------------------------------------------------------
 	// check for duplicates
 	//--------------------------------------------------------------------------
 
 	// sort the properties for an easy comparison later
-	bool duplicates = false;
-	qsort(attr_ids, prop_count, sizeof(Attribute_ID), _cmp_Attribute_ID);
-	for(uint i = 0; i < fields_count - 1; i++) {
+	bool dups = false;
+	qsort(attr_ids, n, sizeof(Attribute_ID), _cmp_Attribute_ID);
+	for(uint i = 0; i < n - 1; i++) {
 		if(attr_ids[i] != attr_ids[i+1]) {
-			duplicates = true;
+			dups = true;
+			break;
 		}
 	}
 
-	// operation failed, remove newly created attributes
-	if(duplicates) {
+	// duplicates found, faile operation
+	if(dups) {
+		res = false;
+		goto cleanup;
+	}
+
+	// re-construct attribute IDs array
+	// must be aligned with attribute names array
+	for(uint i = 0; i < n; i++) {
+		attr_ids[i] = GraphContext_GetAttributeID(gc, props[i]);
+	}
+
+	//--------------------------------------------------------------------------
+	// check if constraint already exists
+	//--------------------------------------------------------------------------
+
+	Constraint c = Schema_GetConstraint(s, ct, attr_ids, n);
+
+	if(c != NULL) {
+		// constraint already exists
+		if(Constraint_GetStatus(c) != CT_FAILED) {
+			// constraint is either operational or being constructed
+			res = false;
+			goto cleanup;
+		} else {
+			// previous constraint creation had failed
+			// remove constrain from schema
+			bool constraint_removed = Schema_RemoveConstraint(s, c);
+			ASSERT(constraint_removed == true);
+
+			// free failed constraint
+			Constraint_Free(&c);
+		}
+	}
+	
+	//--------------------------------------------------------------------------
+	// create constraint
+	//--------------------------------------------------------------------------
+
+	if(ct == CT_UNIQUE) {
+		// unique constraint requires the existance of an exact match index
+		// to support the constraint
+		Index idx = GraphContext_GetIndexByID(gc, s_id, attr_ids,
+				IDX_EXACT_MATCH, st);
+
+		// index missing
+		if(idx == NULL) {
+			res = false;
+			goto cleanup;
+		}
+
+		c = Constraint_UniqueNew(s_id, attr_ids, props, n, et, idx);
+	} else {
+		c = Constraint_ExistsNew(s_id, attr_ids, props, n, et);
+	}
+
+	// add constraint to schema
+	Schema_AddConstraint(s, c);
+
+cleanup:
+
+	// operation failed perform clean up
+	if(res == false) {
 		UndoLog undolog = QueryCtx_GetUndoLog();
 		UndoLog_Rollback(undolog);
-		return false;
 	}
-
-	// reconstruct attribute IDs array
-	// must be aligned with attribute names array
-	for(uint i = 0; i < prop_count; i++) {
-		attr_ids[i] = GraphContext_GetAttributeID(props[i]);
-	}
-
-	Graph *g = GraphContext_GetGraph(gc);
-
-	// acquire graph write lock
-	Graph_AcquireWriteLock(gc->g);
-
-	Constraint c = NULL;
-	if(ct == CT_UNIQUE) {
-	c = Constraint_UniqueNew(LabelID l,                // label/relation ID
-	Attribute_ID *fields,     // enforced fields
-	const char **attr_names,  // enforced attribute names
-	uint n_fields,            // number of fields
-	EntityType et,            // entity type
-	Index idx                 // index
-) {
-		c = Constraint_UniqueNew();
-		c = GraphContext_AddConstraint(gc, ct, st, label, props, prop_count);
-	} else {
-		c = Constraint_ExistsNew();
-	}
-
-	// TODO: add constraint to graphcontext / schema
 
 	// release graph R/W lock
 	Graph_ReleaseLock(g);
 
 	// constraint already exists
-	if(c == NULL) { 
+	if(res == false) { 
 		// decrease graph reference count
 		GraphContext_DecreaseRefCount(gc);
 
-		RedisModule_ReplyWithError(ctx, "Constraint already exists");
+		// TODO: give additional information to caller
+		RedisModule_ReplyWithError(ctx, "Constraint creation failed");
 	} else {
+		// constraint creation succeeded, enforce constraint
 		Constraint_Enforce(c, g);
 	}
 
-	return c != NULL;
+	return res;
 }
 
 // command handler for GRAPH.CONSTRAIN command

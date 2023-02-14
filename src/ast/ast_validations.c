@@ -10,6 +10,7 @@
 #include "astnode.h"
 #include "../errors.h"
 #include "ast_shared.h"
+#include "../util/arr.h"
 #include "ast_visitor.h"
 #include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"

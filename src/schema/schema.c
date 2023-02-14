@@ -128,7 +128,7 @@ int Schema_AddIndex
 	if(_idx != NULL) {
 		if(Index_ContainsAttribute(_idx, field->id)) {
 			// field already indexed, quick return
-			bool res = IndexField_Free(field, false);
+			bool res = IndexField_Free(field);
 			ASSERT(res)
 			return INDEX_FAIL;
 		}
@@ -364,9 +364,8 @@ Constraint Schema_GetConstraint
 		}
 
 		// make sure constraint attribute count matches
-		uint n = 0;
 		const Attribute_ID *c_attrs;
-		Constraint_GetAttributes(c, &c_attrs, NULL, &n);
+		uint n = Constraint_GetAttributes(c, &c_attrs, NULL);
 		if(n != attr_count) {
 			continue;
 		}
@@ -472,7 +471,7 @@ void Schema_Free
 	if(s->constraints != NULL) {
 		uint n = array_len(s->constraints);
 		for(uint i = 0; i < n; i++) {
-			Constraint_Free(s->constraints[i]);
+			Constraint_Free(s->constraints + i);
 		}
 		array_free(s->constraints);
 	}

@@ -4,12 +4,19 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
+#include "RG.h"
+#include "constraint.h"
+#include "../graph/query_graph.h"
+#include "../graph/entities/attribute_set.h"
+
+#include <stdatomic.h>
+
 // opaque structure representing a constraint
 typedef struct _ExistsConstraint {
-	LabelID l;                     // label/relation ID
-	uint n_attr;                   // number of fields
+	uint16_t n_attr;               // number of fields
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
+	int lbl;                       // enforced label/relationship-type
     Attribute_ID *attrs;           // enforced attributes
 	const char **attr_names;       // enforced attribute names
     ConstraintStatus status;       // constraint status
@@ -18,7 +25,7 @@ typedef struct _ExistsConstraint {
 } _ExistsConstraint;
 
 // enforces mandatory constraint on given entity
-static bool Constraint_EnforceMandatory
+static bool Constraint_EnforceExists
 (
 	Constraint c,         // constraint to enforce
 	const GraphEntity *e  // enforced entity
@@ -27,13 +34,14 @@ static bool Constraint_EnforceMandatory
 	return false;
 }
 
+// create a new exists constraint
 Constraint Constraint_ExistsNew
 (
 	LabelID l,                // label/relation ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint n_fields,            // number of fields
-	EntityType et,            // entity type
+	EntityType et             // entity type
 ) {
     ExistsConstraint c = rm_malloc(sizeof(_ExistsConstraint));
 
@@ -45,14 +53,14 @@ Constraint Constraint_ExistsNew
     memcpy(c->attr_names, attr_names, sizeof(char*) * n_fields);
 
 	// initialize constraint
-	c->l               = l;
 	c->t               = CT_EXISTS;
 	c->et              = et;
+	c->lbl             = l;
 	c->status          = CT_PENDING;
 	c->n_attr          = n_fields;
 	c->enforce         = Constraint_EnforceExists;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 
-	return c;
+	return (Constraint)c;
 }
 
