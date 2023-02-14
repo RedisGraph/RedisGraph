@@ -35,9 +35,6 @@ static uint64_t _count_indices_from_schemas(const Schema** schemas) {
 	for (uint32_t i = 0; i < length; ++i) {
 		const Schema *schema = schemas[i];
 		ASSERT(schema);
-		if (!schema) {
-			return count;
-		}
 		count += Schema_IndexCount(schema);
 	}
 
