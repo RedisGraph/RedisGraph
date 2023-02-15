@@ -10,6 +10,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 VERSION @GraphBLAS_VERSION_MAJOR@.@GraphBLAS_VERSION_MINOR@.@GraphBLAS_VERSION_SUB@, @GraphBLAS_DATE@
 
+Note: Matrix iterator removed jump to row
+
 SuiteSparse:GraphBLAS is a complete implementation of the GraphBLAS standard,
 which defines a set of sparse matrix operations on an extended algebra of
 semirings using an almost unlimited variety of operators and types.  When
