@@ -39,12 +39,6 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 	GrB_Index rowIdx               // row to iterate
 );
 
-GrB_Info RG_MatrixTupleIter_jump_to_row
-(
-	RG_MatrixTupleIter *iter,      // iterator to use
-	GrB_Index rowIdx               // row to jump to
-);
-
 GrB_Info RG_MatrixTupleIter_iterate_range
 (
 	RG_MatrixTupleIter *iter,   // iterator to use

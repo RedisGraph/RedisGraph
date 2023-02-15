@@ -1,13 +1,13 @@
 from common import *
 
+GRAPH_ID = "var_len_traverse"
 dis_redis = None
-redis_graph = None
 redis_con = None
+redis_graph = None
 node_names = ["A", "B", "C", "D"]
 
 # A can reach 3 nodes, B can reach 2 nodes, C can reach 1 node
 max_results = 6
-
 
 class testVariableLengthTraversals(FlowTestsBase):
     def __init__(self):
@@ -15,7 +15,7 @@ class testVariableLengthTraversals(FlowTestsBase):
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(redis_con, "G")
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -182,3 +182,58 @@ class testVariableLengthTraversals(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [['A', 'B']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test11_traverse_tree(self):
+        # traverse a tree structure
+        # make sure all nodes are reachable from root
+        # internally the traversal is performed by the 'all_neighbors' logic
+        # which uses matrix iterators
+
+        # construct a tree
+        # tree structure
+        #     o      | L0
+        #  o o o o   | L1
+        #    o   o   | L2
+
+        con = self.env.getConnection()
+        g = Graph(redis_con, "tree")
+
+        root = Node(label="node", properties={'id':'root'})
+        g.add_node(root)
+
+        # level 1
+        n1_0 = Node(label="node", properties={'id':'n1_0'})
+        g.add_node(n1_0)
+
+        n1_1 = Node(label="node", properties={'id':'n1_1'})
+        g.add_node(n1_1)
+
+        n1_2 = Node(label="node", properties={'id':'n1_2'})
+        g.add_node(n1_2)
+
+        n1_3 = Node(label="node", properties={'id':'n1_3'})
+        g.add_node(n1_3)
+
+        # level 2
+        n2_0 = Node(label="node", properties={'id':'n2_0'})
+        g.add_node(n2_0)
+
+        n2_1 = Node(label="node", properties={'id':'n2_1'})
+        g.add_node(n2_1)
+
+        # form the tree
+        g.add_edge(Edge(root, "parent", n1_0))
+        g.add_edge(Edge(root, "parent", n1_1))
+        g.add_edge(Edge(root, "parent", n1_2))
+        g.add_edge(Edge(root, "parent", n1_3))
+        g.add_edge(Edge(n1_1, "parent", n2_0))
+        g.add_edge(Edge(n1_3, "parent", n2_1))
+
+        g.commit()
+
+        # discover all nodes reachable from root
+        q = "MATCH (r {id:'root'})-[:parent*0..]->(child) RETURN count(distinct child)"
+
+        result = g.query(q).result_set
+        self.env.assertEquals(result[0][0], 7)
+
