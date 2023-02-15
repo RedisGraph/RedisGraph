@@ -58,19 +58,19 @@ class testCallSubqueryFlow():
         self.expect_error(query, "n not defined")
 
 
-        # # make sure scope prior to the CALL {} is available after
-        # res = graph.query(
-        #     """
-        #     UNWIND [0, 1, 2, 3] AS x
-        #     CALL {
-        #         WITH x
-        #         MATCH (n {v: x})
-        #         RETURN n
-        #     }
-        #     RETURN x
-        #     """
-        # )
-        # self.env.assertEquals(res.result_set, [0, 1, 2, 3])
+        # make sure scope prior to the CALL {} is available after
+        res = graph.query(
+            """
+            UNWIND [0, 1, 2, 3] AS x
+            CALL {
+                WITH x
+                MATCH (n {v: x})
+                RETURN n
+            }
+            RETURN x
+            """
+        )
+        self.env.assertEquals(res.result_set, [])
 
     def test02_readonly_simple(self):
         """Test the simple read-only use-case of CALL {}, i.e., no updating
@@ -140,23 +140,21 @@ class testCallSubqueryFlow():
                 """
         self.expect_error(query, "x not defined")
 
-        # res = graph.query(
-        #     """
-        #     UNWIND [1, 2, 3, 4] AS x
-        #     MATCH (n)
-        #     CALL {
-        #         WITH n
-        #         RETURN n.v as INNERETURN
-        #     }
-        #     RETURN x + INNERETURN
-        #     """
-        # )
-        # self.env.assertEquals(res.result_set, [2, 3, 4, 5])
+        res = graph.query(
+            """
+            UNWIND [1, 2, 3, 4] AS x
+            MATCH (n)
+            CALL {
+                WITH n
+                RETURN n.v as INNERETURN
+            }
+            RETURN x + INNERETURN
+            """
+        )
+        self.env.assertEquals(res.result_set, [[5], [6], [7], [8]])
 
-
-
-
-        # currently failing, fix needed
+        # currently failing since we don't look for another record from lhs when
+        # body is depleted
         # res = graph.query(
         #     """
         #     UNWIND ['Omer', 'Raz', 'Moshe'] as name
