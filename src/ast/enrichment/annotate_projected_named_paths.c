@@ -69,7 +69,9 @@ static void _annotate_named_paths_in_expression
 static void _annotate_relevant_projected_named_path_identifier
 (
 	AST *ast,
-	rax *identifier_map, uint scope_start, uint scope_end
+	rax *identifier_map,
+	uint scope_start,
+	uint scope_end
 ) {
 	AnnotationCtx *named_paths_ctx =
 		AST_AnnotationCtxCollection_GetNamedPathsCtx(ast->anot_ctx_collection);
@@ -216,6 +218,41 @@ static void _annotate_unwind_clause_projected_named_path
 	raxFreeWithCallback(identifier_map, array_free);
 }
 
+static void _annotate_return_clause_projected_named_path
+(
+	AST *ast,
+	const cypher_astnode_t *return_clause,
+	uint scope_start,
+	uint scope_end
+) {
+	rax *identifier_map = raxNew();
+	uint return_projection_count =
+		cypher_ast_return_nprojections(return_clause);
+	for(uint projection_iter = 0; projection_iter < return_projection_count;
+		projection_iter++) {
+		const cypher_astnode_t *projection =
+			cypher_ast_return_get_projection(return_clause, projection_iter);
+		_collect_projected_identifier(projection, identifier_map);
+	}
+	_annotate_relevant_projected_named_path_identifier(ast, identifier_map,
+													   scope_start, scope_end);
+	raxFreeWithCallback(identifier_map, array_free);
+}
+
+static void _annotate_match_clause_projected_named_path
+(
+	AST *ast,
+	const cypher_astnode_t *match_clause,
+	uint scope_start,
+	uint scope_end
+) {
+	rax *identifier_map = raxNew();
+	_collect_projected_identifier(match_clause, identifier_map);
+	_annotate_relevant_projected_named_path_identifier(ast, identifier_map,
+													   scope_start, scope_end);
+	raxFreeWithCallback(identifier_map, array_free);
+}
+
 static void _annotate_foreach_clause_projected_named_path
 (
 	AST *ast,
@@ -267,41 +304,6 @@ static void _annotate_foreach_clause_projected_named_path
 	_annotate_projected_named_path(&subquery_clauses_ast);
 	array_free(clauses);
 	cypher_astnode_free(query_node);
-	raxFreeWithCallback(identifier_map, array_free);
-}
-
-static void _annotate_return_clause_projected_named_path
-(
-	AST *ast,
-	const cypher_astnode_t *return_clause,
-	uint scope_start,
-	uint scope_end
-) {
-	rax *identifier_map = raxNew();
-	uint return_projection_count =
-		cypher_ast_return_nprojections(return_clause);
-	for(uint projection_iter = 0; projection_iter < return_projection_count;
-		projection_iter++) {
-		const cypher_astnode_t *projection =
-			cypher_ast_return_get_projection(return_clause, projection_iter);
-		_collect_projected_identifier(projection, identifier_map);
-	}
-	_annotate_relevant_projected_named_path_identifier(ast, identifier_map,
-													   scope_start, scope_end);
-	raxFreeWithCallback(identifier_map, array_free);
-}
-
-static void _annotate_match_clause_projected_named_path
-(
-	AST *ast,
-	const cypher_astnode_t *match_clause,
-	uint scope_start,
-	uint scope_end
-) {
-	rax *identifier_map = raxNew();
-	_collect_projected_identifier(match_clause, identifier_map);
-	_annotate_relevant_projected_named_path_identifier(ast, identifier_map,
-													   scope_start, scope_end);
 	raxFreeWithCallback(identifier_map, array_free);
 }
 

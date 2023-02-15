@@ -334,12 +334,6 @@ static void _AST_MapForeachClauseReferences
 	ASSERT(ast != NULL);
 	ASSERT(foreach_clause != NULL);
 
-	// map the alias of the list component
-	const cypher_astnode_t *ident =
-		cypher_ast_foreach_get_identifier(foreach_clause);
-	const char *identifier_name = cypher_ast_identifier_get_name(ident);
-	_AST_UpdateRefMap(ast, identifier_name);
-
 	// extract list expression from FOREACH
 	const cypher_astnode_t *exp = cypher_ast_foreach_get_expression(foreach_clause);
 	_AST_MapExpression(ast, exp);

@@ -527,9 +527,10 @@ class testForeachFlow():
             """
         )
 
-        # make sure three relationships was created
+        # make sure three relationships were created
         self.env.assertEquals(res.nodes_created, 3)
 
+        # reference named paths defined in the outer scope, in the list exp
         res = graph.query(
             """
             MATCH path = (u:Actor), (g:Actor { id: 'Marketing' })
@@ -540,9 +541,10 @@ class testForeachFlow():
             """
         )
 
-        # make sure two relationships was created
+        # make sure two relationships were created
         self.env.assertEquals(res.relationships_created, 2)
 
+        # reference named paths defined in the outer scope, in the list exp
         res = graph.query(
             """
             MATCH path = (u:Actor), (g:Actor { id: 'Marketing' })
@@ -556,27 +558,29 @@ class testForeachFlow():
         # make sure one relationship was created
         self.env.assertEquals(res.relationships_created, 1)
 
-        # reference the named path inside the FOREACH body
+        # reference named paths defined in the outer scope, in the body
         res = graph.query(
             """
             MATCH path = (u: Actor)
             FOREACH (n IN CASE WHEN u.id = 'vietld' THEN nodes(path) ELSE [] END |
-                MERGE (:Actor {id: nodes(path)[0].id})
+                MERGE (a:Actor {id: nodes(path)[0].id})
+                SET a.c = 1
             )
             """
         )
 
         # make sure no nodes or properties were created
         self.env.assertEquals(res.nodes_created, 0)
-        self.env.assertEquals(res.properties_set, 0)
+        self.env.assertEquals(res.properties_set, 1)
 
-        # define the named path in the FOREACH clauses, and refer them
+        # reference named paths defined in the body
         res = graph.query(
             """
             FOREACH (n in [1] |
-                MERGE p = (a:Actor {id: 'vietld'})
+                MERGE p = (:Actor {id: 'vietld'})
                 FOREACH (node in nodes(p) |
-                    MERGE (:Actor {id: 'vietld'})
+                    MERGE (a:Actor {id: 'vietld'})
+                    SET a.c = 2
                 )
             )
             """
@@ -584,4 +588,4 @@ class testForeachFlow():
 
         # make sure no nodes were created and no properties were set
         self.env.assertEquals(res.nodes_created, 0)
-        self.env.assertEquals(res.properties_set, 0)
+        self.env.assertEquals(res.properties_set, 1)
