@@ -53,7 +53,6 @@ static void _RdbLoadFullTextIndex
 
 	if(!already_loaded) {
 		ASSERT(idx != NULL);
-		Index_DropInternalIndex(idx);
 		Index_SetLanguage(idx, language);
 		Index_SetStopwords(idx, stopwords);
 		Index_ConstructStructure(idx);

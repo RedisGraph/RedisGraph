@@ -21,13 +21,13 @@ typedef struct _ExistsConstraint {
 	const char **attr_names;       // enforced attribute names
     ConstraintStatus status;       // constraint status
     uint _Atomic pending_changes;  // number of pending changes
-	EntityType et;                 // entity type
+	GraphEntityType et;            // entity type
 } _ExistsConstraint;
 
 // enforces mandatory constraint on given entity
 static bool Constraint_EnforceExists
 (
-	Constraint c,         // constraint to enforce
+	const Constraint c,   // constraint to enforce
 	const GraphEntity *e  // enforced entity
 ) {
 	// TODO: implement
@@ -41,7 +41,7 @@ Constraint Constraint_ExistsNew
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint n_fields,            // number of fields
-	EntityType et             // entity type
+	GraphEntityType et        // entity type
 ) {
     ExistsConstraint c = rm_malloc(sizeof(_ExistsConstraint));
 

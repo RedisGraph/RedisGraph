@@ -145,8 +145,6 @@ GraphContext *RdbLoadGraphContext_v13
 	//      Entities in payload
 	//  Payload(s) X N
 
-	stop_indexer(); // Need to stop the indexer when constraints are loaded (since they might ask for reindexing)
-
 	GraphContext *gc = _DecodeHeader(rdb);
 
 	// load the key schema

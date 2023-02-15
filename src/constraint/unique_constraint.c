@@ -22,23 +22,25 @@ typedef struct _UniqueConstraint {
 	const char **attr_names;       // enforced attribute names
     ConstraintStatus status;       // constraint status
     uint _Atomic pending_changes;  // number of pending changes
-	EntityType et;                 // entity type
-	Index idx                      // supporting index
+	GraphEntityType et;            // entity type
+	Index idx;                     // supporting index
 } _UniqueConstraint;
 
 // enforces unique constraint on given entity
 // returns true if entity confirms with constraint false otherwise
 static bool Constraint_EnforceUniqueEntity
 (
-	UniqueConstraint c,   // constraint to enforce
+	const Constraint c,   // constraint to enforce
 	const GraphEntity *e  // enforced entity
 ) {
 	// validations
 	ASSERT(c != NULL);
 	ASSERT(e != NULL);
 
+	UniqueConstraint _c = (UniqueConstraint)c;
+
 	bool    res     = false;  // return value none-optimistic
-	Index   idx     = c->idx;
+	Index   idx     = _c->idx;
 	RSIndex *rs_idx = Index_RSIndex(idx);
 
 	//--------------------------------------------------------------------------
@@ -57,9 +59,9 @@ static bool Constraint_EnforceUniqueEntity
     RSQNode *rs_query_node = RediSearch_CreateIntersectNode(rs_idx, false);
     ASSERT(rs_query_node != NULL);
 
-    for(uint i = 0; i < array_len(c->attrs); i++) {
-		Attribute_ID attr_id = c->attrs[i];
-		const char *field = c->attr_names[i];
+    for(uint i = 0; i < array_len(_c->attrs); i++) {
+		Attribute_ID attr_id = _c->attrs[i];
+		const char *field = _c->attr_names[i];
 
 		// get current attribute from entity
         v = AttributeSet_Get(attributes, attr_id);
@@ -124,7 +126,7 @@ Constraint Constraint_UniqueNew
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint n_fields,            // number of fields
-	EntityType et,            // entity type
+	GraphEntityType et,       // entity type
 	Index idx                 // index
 ) {
     UniqueConstraint c = rm_malloc(sizeof(_UniqueConstraint));

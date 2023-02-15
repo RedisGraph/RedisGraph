@@ -20,7 +20,7 @@ typedef struct _ExistsConstraint *ExistsConstraint;  // exists constraint
 // constraint enforcement callback function
 typedef bool (*EnforcementCB)
 (
-	Constraint c,
+	const Constraint c,
 	const GraphEntity *e
 );
 
@@ -41,6 +41,20 @@ typedef enum {
 	CT_EXISTS
 } ConstraintType;
 
+// create a new constraint
+struct GraphContext;
+
+Constraint Constraint_New
+(
+	struct GraphContext *gc,
+	ConstraintType t,         // type of constraint
+	LabelID l,                // label/relation ID
+	Attribute_ID *fields,     // enforced fields
+	const char **attr_names,  // enforced attribute names
+	uint n_fields,            // number of fields
+	GraphEntityType et        // entity type
+);
+
 // create a new unique constraint
 Constraint Constraint_UniqueNew
 (
@@ -48,7 +62,7 @@ Constraint Constraint_UniqueNew
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint n_fields,            // number of fields
-	EntityType et,            // entity type
+	GraphEntityType et,       // entity type
 	Index idx                 // index
 );
 
@@ -59,11 +73,23 @@ Constraint Constraint_ExistsNew
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint n_fields,            // number of fields
-	EntityType et             // entity type
+	GraphEntityType et        // entity type
 );
 
 // returns constraint type
 ConstraintType Constraint_GetType
+(
+	const Constraint c  // constraint to query
+);
+
+// returns constraint entity type
+GraphEntityType Constraint_GetEntityType
+(
+	const Constraint c  // constraint to query
+);
+
+// returns constraint label/relationship-type
+int Constraint_GetLabelID
 (
 	const Constraint c  // constraint to query
 );

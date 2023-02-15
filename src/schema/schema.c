@@ -128,8 +128,7 @@ int Schema_AddIndex
 	if(_idx != NULL) {
 		if(Index_ContainsAttribute(_idx, field->id)) {
 			// field already indexed, quick return
-			bool res = IndexField_Free(field);
-			ASSERT(res)
+			IndexField_Free(field);
 			return INDEX_FAIL;
 		}
 	} else {

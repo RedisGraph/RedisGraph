@@ -86,7 +86,6 @@ static inline void _RdbSaveExactMatchIndex
 
 		// encode field
 		RedisModule_SaveStringBuffer(rdb, field_name, strlen(field_name) + 1);
-		RedisModule_SaveSigned(rdb, fields[i].ref_count);
 	}
 }
 
@@ -121,29 +120,50 @@ static void _RdbSaveConstraint
 	const Constraint c
 ) {
 	/* Format:
-	 * type
+	 * constraint type
+	 * entity type
+	 * label / relationship-type
 	 * fields count
-	 * fields */
+	 * field IDs */
 
-	if(Constraint_GetStatus(c) != CT_ACTIVE) {
-		return;
-	}
+	// only encode active constraint
+	ASSERT(Constraint_GetStatus(c) == CT_ACTIVE);
 
+	//--------------------------------------------------------------------------
 	// encode constraint type
+	//--------------------------------------------------------------------------
+
 	ConstraintType t = Constraint_GetType(c);
 	RedisModule_SaveUnsigned(rdb, t);
 
-	uint n;  // number of attributes
-	const Attribute_ID *attrs;
-	Constraint_GetAttributes(c, &attrs, NULL, &n);
+	//--------------------------------------------------------------------------
+	// encode entity type
+	//--------------------------------------------------------------------------
 
-	// encode attributes count
+	GraphEntityType et = Constraint_GetEntityType(c);
+	RedisModule_SaveUnsigned(rdb, et);
+
+	//--------------------------------------------------------------------------
+	// encode label / relationship-type
+	//--------------------------------------------------------------------------
+
+	int lbl = Constraint_GetLabelID(c);
+	RedisModule_SaveUnsigned(rdb, lbl);
+
+	//--------------------------------------------------------------------------
+	// encode number of fields
+	//--------------------------------------------------------------------------
+
+	const Attribute_ID *attrs;
+	uint n = Constraint_GetAttributes(c, &attrs, NULL);
 	RedisModule_SaveUnsigned(rdb, n);
 
-	// encode each attribute
+	//--------------------------------------------------------------------------
+	// encode fields
+	//--------------------------------------------------------------------------
+
 	for(uint i = 0; i < n; i++) {
 		Attribute_ID attr = attrs[i];
-		// encode attribute
 		RedisModule_SaveUnsigned(rdb, attr);
 	}
 }

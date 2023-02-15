@@ -53,7 +53,6 @@ static void _RdbLoadFullTextIndex
 
 	if(!already_loaded) {
 		ASSERT(idx != NULL);
-		Index_DropInternalIndex(idx);
 		Index_SetLanguage(idx, language);
 		Index_SetStopwords(idx, stopwords);
 		Index_ConstructStructure(idx);
@@ -78,14 +77,12 @@ static void _RdbLoadExactMatchIndex
 	uint fields_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < fields_count; i++) {
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
-		int ref_count = RedisModule_LoadSigned(rdb);
 		if(!already_loaded) {
 			IndexField field;
 			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
 			IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
-			field.ref_count = ref_count;
-			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH, false);
+			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH);
 		}
 		RedisModule_Free(field_name);
 	}
@@ -99,41 +96,64 @@ static void _RdbLoadConstaint
 	bool already_loaded  // constraints already loaded
 ) {
 	/* Format:
-	 * type
+	 * constraint type
+	 * entity type
+	 * label / relationship-type
 	 * fields count
-	 * fields */
+	 * field IDs */
 
 	Constraint c = NULL;
 
-	// read constraint type
+	//--------------------------------------------------------------------------
+	// decode constraint type
+	//--------------------------------------------------------------------------
+
 	ConstraintType t = RedisModule_LoadUnsigned(rdb);
 
-	// read number of constrained fields
+	//--------------------------------------------------------------------------
+	// decode constraint entity type
+	//--------------------------------------------------------------------------
+
+	GraphEntityType et = RedisModule_LoadUnsigned(rdb);
+
+	//--------------------------------------------------------------------------
+	// decode constraint label / relationship-type
+	//--------------------------------------------------------------------------
+
+	int lbl = RedisModule_LoadUnsigned(rdb);
+
+	//--------------------------------------------------------------------------
+	// decode constraint fields count
+	//--------------------------------------------------------------------------
+	
 	uint n = RedisModule_LoadUnsigned(rdb);
 
-	char **fields_str[n];
-	Attribute_ID fields[n];
+	//--------------------------------------------------------------------------
+	// decode constraint fields
+	//--------------------------------------------------------------------------
+
+	Attribute_ID attr_ids[n];
+	const char *attr_strs[n];
 
 	// read fields
 	for(uint i = 0; i < n; i++) {
 		Attribute_ID attr = RedisModule_LoadUnsigned(rdb);
-		fields[i] = attr;
-		fields_str[i] = GraphContext_GetAttributeString(gc, attr);
+		attr_ids[i] = attr;
+		attr_strs[i] = GraphContext_GetAttributeString(gc, attr);
 	}
 
 	if(!already_loaded) {
-		// create constraint
-		c = Constraint_New(fields, fields_str, n, (Schema*)s, t);
-		ASSERT(c != NULL);
+		c = Constraint_New((struct GraphContext*)gc, t, lbl, attr_ids,
+				attr_strs, n, et);
 
 		// set constraint status to active
-		// only active constraints will be encoded / decoded
+		// only active constraints are encoded
 		Constraint_SetStatus(c, CT_ACTIVE);
 
 		// check if constraint already contained in schema
-		ASSERT(!Schema_ContainsConstraint(s, fields, n));
+		ASSERT(!Schema_ContainsConstraint(s, t, attr_ids, n));
 
-		// bind constraint to schema
+		// add constraint to schema
 		Schema_AddConstraint(s, c);
 	}
 }

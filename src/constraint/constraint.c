@@ -9,6 +9,7 @@
 #include "constraint.h"
 #include "../util/arr.h"
 #include "../util/thpool/pools.h"
+#include "../graph//graphcontext.h"
 #include "../graph/entities/attribute_set.h"
 #include "../graph/rg_matrix/rg_matrix_iter.h"
 
@@ -24,7 +25,7 @@ typedef struct _Constraint {
 	const char **attr_names;       // enforced attribute names
     ConstraintStatus status;       // constraint status
     uint _Atomic pending_changes;  // number of pending changes
-	EntityType et;                 // entity type
+	GraphEntityType et;            // entity type
 } _Constraint;
 
 // constraint enforce context
@@ -236,6 +237,43 @@ static void _Constraint_EnforceEdges
 	Graph_ReleaseLock(g);
 }
 
+// create a new constraint
+Constraint Constraint_New
+(
+	struct GraphContext *gc,
+	ConstraintType t,         // type of constraint
+	LabelID l,                // label/relation ID
+	Attribute_ID *fields,     // enforced fields
+	const char **attr_names,  // enforced attribute names
+	uint n_fields,            // number of fields
+	GraphEntityType et        // entity type
+) {
+	ASSERT(t == CT_UNIQUE || t == CT_EXISTS);
+
+	Constraint c = NULL;
+
+	if(t == CT_UNIQUE) {
+		// a unique constraints requires an index
+		// try to get supporting index
+		SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+		Index idx = GraphContext_GetIndexByID((GraphContext*) gc, l, fields,
+				IDX_EXACT_MATCH, st);
+
+		// supporting index is missing, can't create constraint
+		if(idx == NULL) {
+			return NULL;
+		}
+
+		// create a new unique constraint
+		c = Constraint_UniqueNew(l, fields, attr_names, n_fields, et, idx);
+	} else {
+		// create a new exists constraint
+		c = Constraint_ExistsNew(l, fields, attr_names, n_fields, et);
+	}
+
+	return c;
+}
+
 // returns constraint's type
 ConstraintType Constraint_GetType
 (
@@ -243,6 +281,26 @@ ConstraintType Constraint_GetType
 ) {
 	ASSERT(c != NULL);
 	return c->t;
+}
+
+// returns constraint entity type
+GraphEntityType Constraint_GetEntityType
+(
+	const Constraint c  // constraint to query
+) {
+	ASSERT(c != NULL);
+
+	return c->et;
+}
+
+// returns constraint label/relationship-type
+int Constraint_GetLabelID
+(
+	const Constraint c  // constraint to query
+) {
+	ASSERT(c != NULL);
+
+	return c->lbl;
 }
 
 // returns constraint status
