@@ -7,6 +7,8 @@
 #include "src/util/cron.h"
 #include "src/util/rmalloc.h"
 
+#include <assert.h>
+#include <sys/select.h>
 #include <time.h>
 
 void setup();
@@ -33,6 +35,17 @@ static void TearDownTestCase() {
 void add_task(void *pdata) {
 	int *Y = (int*)pdata;
 	X += *Y;
+}
+
+typedef struct AddTaskData {
+	int value;
+	int pipe_write_fd;
+} AddTaskData;
+
+void add_task_and_notify(void *pdata) {
+	AddTaskData *data = (AddTaskData*)pdata;
+	X += data->value;
+	assert(write(data->pipe_write_fd, (const void *)pdata, 1) == 1);
 }
 
 void mul_task(void *pdata) {
@@ -87,7 +100,7 @@ void test_cronAbort() {
 	// issue a task X += 2
 	// abort task
 	// validate X = 1
-	
+
 	X = 1;
 	int Y = 2;
 
@@ -96,7 +109,7 @@ void test_cronAbort() {
 
 	// abort task
 	Cron_AbortTask(task_handle);
-	
+
 	mssleep(100); // sleep for 100 ms
 
 	// task should have been aborted prior to its execution
@@ -109,14 +122,31 @@ void test_cronLateAbort() {
 	// issue a task X += 2
 	// abort task AFTER task been performed
 	// validate X = 3
-	
+
 	X = 1;
-	int Y = 2;
+	int pipe_fds[2] = {0, 0};
+	TEST_ASSERT(pipe(pipe_fds) == 0);
+	AddTaskData data = {
+		.value = 2,
+		.pipe_write_fd = pipe_fds[1]
+	};
+
+	struct timeval timeout = {};
+	timeout.tv_sec = 3;
+	timeout.tv_usec = 0;
+
+	fd_set read_fds;
+	FD_ZERO(&read_fds);
+	FD_SET(pipe_fds[0], &read_fds);
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(15, add_task, &Y);
+	CronTaskHandle task_handle = Cron_AddTask(15, add_task_and_notify, &data);
 
-	mssleep(100); // sleep for 100 ms
+	const int result = select(FD_SETSIZE, &read_fds, NULL, NULL, &timeout);
+	TEST_ASSERT(result > 0);
+	TEST_ASSERT(FD_ISSET(pipe_fds[0], &read_fds));
+	close(pipe_fds[0]);
+	close(pipe_fds[1]);
 
 	// task should have been executed, expecting X = 1
 	TEST_ASSERT(X == 3);
@@ -130,7 +160,7 @@ void test_MultiAbort() {
 	// issue a task X += 2
 	// abort task multiple times
 	// validate X = 1
-	
+
 	X = 1;
 	int Y = 2;
 
@@ -154,17 +184,17 @@ void test_abortNoneExistingTask() {
 	// issue a task X += 2
 	// abort none existing task
 	// validate X = 3
-	
+
 	X = 1;
 	int Y = 2;
 
 	// issue task X += 2
 	CronTaskHandle task_handle = Cron_AddTask(15, add_task, &Y);
-	CronTaskHandle none_existing_task_handle = task_handle + 1; 
+	CronTaskHandle none_existing_task_handle = task_handle + 1;
 
 	// abort task, should not crash hang
 	Cron_AbortTask(none_existing_task_handle);
-	
+
 	mssleep(100); // sleep for 100 ms
 
 	// task should have been executed
@@ -176,7 +206,7 @@ void test_AbortRunningTask() {
 	// issue a long running task ~100ms
 	// issue abort 20ms into execution
 	// validate call to Cron_AbortTask returns in less than ~10 ms
-	
+
 	// issue a long running task, task will sleep for 100 'ms'
 	int ms = 100;
 	CronTaskHandle task_handle = Cron_AddTask(0, long_running_task, &ms);
