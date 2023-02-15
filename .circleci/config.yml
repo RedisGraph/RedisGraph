@@ -552,7 +552,7 @@ jobs:
           shell: /bin/bash -l -eo pipefail
           command: make fuzz-tests TIMEOUT=600
 
-  benchmark-1:
+  benchmark-group-1-of-6:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     resource_class: large
@@ -569,10 +569,9 @@ jobs:
           command: make NPROC=16
       - benchmark-steps:
           module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_regex: "^(?!.*graph500).*.yml"
           benchmark_runner_group_member_id: "1"
-          benchmark_runner_group_total: "2"
-  benchmark-2:
+          benchmark_runner_group_total: "6"
+  benchmark-group-2-of-6:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     resource_class: large
@@ -589,11 +588,10 @@ jobs:
           command: make NPROC=16
       - benchmark-steps:
           module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_regex: "^(?!.*graph500).*.yml"
           benchmark_runner_group_member_id: "2"
-          benchmark_runner_group_total: "2"
+          benchmark_runner_group_total: "6"
 
-  benchmark-graph500-1:
+  benchmark-group-3-of-6:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     resource_class: large
@@ -610,49 +608,65 @@ jobs:
           command: make NPROC=16
       - benchmark-steps:
           module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_regex: "graph500.+.yml"
-          benchmark_runner_group_member_id: "1"
-          benchmark_runner_group_total: "3"
-  benchmark-graph500-2:
-    docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
-    resource_class: large
-    steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites:
-          benchmarks: "yes"
-      - attach_workspace:
-          at: ~/workspace
-      - run:
-          name: Build artifact
-          shell: /bin/bash -l -eo pipefail
-          command: make NPROC=16
-      - benchmark-steps:
-          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_regex: "graph500.+.yml"
-          benchmark_runner_group_member_id: "2"
-          benchmark_runner_group_total: "3"
-  benchmark-graph500-3:
-    docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
-    resource_class: large
-    steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites:
-          benchmarks: "yes"
-      - attach_workspace:
-          at: ~/workspace
-      - run:
-          name: Build artifact
-          shell: /bin/bash -l -eo pipefail
-          command: make NPROC=16
-      - benchmark-steps:
-          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_regex: "graph500.+.yml"
           benchmark_runner_group_member_id: "3"
-          benchmark_runner_group_total: "3"
+          benchmark_runner_group_total: "6"
+  benchmark-group-4-of-6:
+    docker:
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites:
+          benchmarks: "yes"
+      - attach_workspace:
+          at: ~/workspace
+      - run:
+          name: Build artifact
+          shell: /bin/bash -l -eo pipefail
+          command: make NPROC=16
+      - benchmark-steps:
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
+          benchmark_runner_group_member_id: "4"
+          benchmark_runner_group_total: "6"
+  benchmark-group-5-of-6:
+    docker:
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites:
+          benchmarks: "yes"
+      - attach_workspace:
+          at: ~/workspace
+      - run:
+          name: Build artifact
+          shell: /bin/bash -l -eo pipefail
+          command: make NPROC=16
+      - benchmark-steps:
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
+          benchmark_runner_group_member_id: "5"
+          benchmark_runner_group_total: "6"
+  benchmark-group-6-of-6:
+    docker:
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites:
+          benchmarks: "yes"
+      - attach_workspace:
+          at: ~/workspace
+      - run:
+          name: Build artifact
+          shell: /bin/bash -l -eo pipefail
+          command: make NPROC=16
+      - benchmark-steps:
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
+          benchmark_runner_group_member_id: "6"
+          benchmark_runner_group_total: "6"
 
   benchmark-profiler:
     docker:
@@ -809,19 +823,22 @@ workflows:
           context: common
           requires:
             - upload-release-artifacts
-      - benchmark-1:
+      - benchmark-group-1-of-6:
           context: common
           <<: *always
-      - benchmark-2:
+      - benchmark-group-2-of-6:
           context: common
           <<: *always
-      - benchmark-graph500-1:
+      - benchmark-group-3-of-6:
           context: common
           <<: *always
-      - benchmark-graph500-2:
+      - benchmark-group-4-of-6:
           context: common
           <<: *always
-      - benchmark-graph500-3:
+      - benchmark-group-5-of-6:
+          context: common
+          <<: *always
+      - benchmark-group-6-of-6:
           context: common
           <<: *always
 
@@ -829,19 +846,22 @@ workflows:
     when:
       << pipeline.parameters.run_benchmark_flow_label >>
     jobs:
-      - benchmark-1:
+      - benchmark-group-1-of-6:
           context: common
           <<: *always
-      - benchmark-2:
+      - benchmark-group-2-of-6:
           context: common
           <<: *always
-      - benchmark-graph500-1:
+      - benchmark-group-3-of-6:
           context: common
           <<: *always
-      - benchmark-graph500-2:
+      - benchmark-group-4-of-6:
           context: common
           <<: *always
-      - benchmark-graph500-3:
+      - benchmark-group-5-of-6:
+          context: common
+          <<: *always
+      - benchmark-group-6-of-6:
           context: common
           <<: *always
 
@@ -870,18 +890,21 @@ workflows:
             branches:
               only: master
     jobs:
-      - benchmark-1:
+      - benchmark-group-1-of-6:
           context: common
           <<: *always
-      - benchmark-2:
+      - benchmark-group-2-of-6:
           context: common
           <<: *always
-      - benchmark-graph500-1:
+      - benchmark-group-3-of-6:
           context: common
           <<: *always
-      - benchmark-graph500-2:
+      - benchmark-group-4-of-6:
           context: common
           <<: *always
-      - benchmark-graph500-3:
+      - benchmark-group-5-of-6:
+          context: common
+          <<: *always
+      - benchmark-group-6-of-6:
           context: common
           <<: *always
