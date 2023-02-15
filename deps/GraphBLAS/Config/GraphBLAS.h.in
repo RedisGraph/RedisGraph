@@ -9695,13 +9695,6 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 	GrB_Index rowIdx            // row index to iterate over
 ) ;
 
-// Move iterator to a specific row
-GrB_Info GxB_MatrixTupleIter_jump_to_row
-(
-	GxB_MatrixTupleIter *iter,  // iterator to use
-	GrB_Index rowIdx            // row index to move iterator to
-) ;
-
 // Move iterator over specific rows range
 GrB_Info GxB_MatrixTupleIter_iterate_range
 (

@@ -52,24 +52,6 @@ GrB_Info RG_MatrixTupleIter_iterate_row
 	return info ;
 }
 
-GrB_Info RG_MatrixTupleIter_jump_to_row
-(
-	RG_MatrixTupleIter *iter,
-	GrB_Index rowIdx
-) {
-	GrB_Info info ;
-
-	if(iter == NULL) return GrB_NULL_POINTER ;
-
-	info = GxB_MatrixTupleIter_jump_to_row(&(iter->m_it), rowIdx) ;
-	ASSERT(info == GrB_SUCCESS) ;
-
-	info = GxB_MatrixTupleIter_jump_to_row(&(iter->dp_it), rowIdx) ;
-	ASSERT(info == GrB_SUCCESS) ;
-
-	return info ;
-}
-
 GrB_Info RG_MatrixTupleIter_iterate_range
 (
 	RG_MatrixTupleIter *iter,   // iterator to use

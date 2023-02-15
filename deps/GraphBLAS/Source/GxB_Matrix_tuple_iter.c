@@ -199,23 +199,22 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 	GB_WHERE1("GxB_MatrixTupleIter_iterate_row (iter, rowIdx)") ;
 	GB_RETURN_IF_NULL(iter) ;
 
+	// init iterator
+	iter->p       = 0 ;
+	iter->nvals   = 0 ;
+	iter->nnz_idx = 0 ;
+	iter->row_idx = rowIdx ;
+
 	if(rowIdx < 0 || rowIdx >= iter->nrows) {
 		GB_ERROR(GrB_INVALID_INDEX,
 				"Row index " GBu " out of range ; must be < " GBu,
 				rowIdx, iter->nrows) ;
 	}
 
-	if(iter->nvals == 0) {
-		// empty matrix
-		return (GrB_SUCCESS) ;
-	}
-
-	// deplete iterator, should caller ignore returned error
-	_EmptyIterator(iter) ;
-
-	GrB_Index _rowIdx = rowIdx ;
 	GrB_Matrix A = iter->A ;
+	GrB_Index _rowIdx = rowIdx ;
 
+	// locate row index for hypersparse matrix
 	if(iter->sparsity_type == GxB_HYPERSPARSE) {
 		if(!_find_row_index_in_Ah(iter->A, rowIdx, &_rowIdx)) {
 			// empty row
@@ -223,51 +222,9 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 		}
 	}
 
-	// init iterator to scan row
+	// update iterator to scan row
 	iter->p        =  0 ;
 	iter->nvals    =  iter->A->p[_rowIdx + 1] ;
-	iter->nnz_idx  =  iter->A->p[_rowIdx] ;
-	iter->row_idx  =  _rowIdx ;
-
-	return (GrB_SUCCESS) ;
-}
-
-GrB_Info GxB_MatrixTupleIter_jump_to_row
-(
-	GxB_MatrixTupleIter *iter,
-	GrB_Index rowIdx
-) {
-	GB_WHERE1("GxB_MatrixTupleIter_jump_to_row (iter, rowIdx)") ;
-	GB_RETURN_IF_NULL(iter) ;
-
-	if(rowIdx < 0 || rowIdx >= iter->nrows) {
-		GB_ERROR(GrB_INVALID_INDEX,
-				"Row index " GBu " out of range ; must be < " GBu,
-				rowIdx, iter->nrows) ;
-	}
-
-	if(iter->nvals == 0) {
-		// empty matrix
-		return (GrB_SUCCESS) ;
-	}
-
-	// deplete iterator, should caller ignore returned error
-	_EmptyIterator(iter) ;
-
-	// this call needed because we deplete the iterator
-	GrB_Matrix A = iter->A ;
-	GrB_Index _rowIdx = rowIdx ; // row position in A->p
-
-	if(iter->sparsity_type == GxB_HYPERSPARSE) {
-		if(!_find_row_index_in_Ah(A, rowIdx, &_rowIdx)) { // In hypersparse _rowIdx should be the index to Ah
-			GB_ERROR (GrB_INVALID_INDEX,
-				"Row index " GBu " doesn't exist in the hypersparse matrix, row might be empty",
-				rowIdx) ;
-		}
-	}
-
-	iter->p        =  0 ;
-	iter->nvals    =  iter->A->p[A->nvec] ;
 	iter->nnz_idx  =  iter->A->p[_rowIdx] ;
 	iter->row_idx  =  _rowIdx ;
 
