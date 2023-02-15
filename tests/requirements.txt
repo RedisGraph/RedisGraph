@@ -6,4 +6,4 @@ behave~=1.2
 pathos~=0.2.8
 
 RLTest~=0.5.3
-ramp-packer~=2.3.0
+ramp-packer~=2.4.0

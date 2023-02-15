@@ -249,13 +249,13 @@ uint GraphContext_DeleteNode
 	Node *n
 );
 
-// delete an edge
-// remove edge from the relevant indexes
-// return 1 on success, 0 otherwise
-uint GraphContext_DeleteEdge
+// delete edges
+// remove edges from the relevant indexes
+// return the # of edges deleted
+uint GraphContext_DeleteEdges
 (
 	GraphContext *gc,
-	Edge *e
+	Edge *edges
 );
 
 // add GraphContext to global array
