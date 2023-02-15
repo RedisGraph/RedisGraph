@@ -60,7 +60,7 @@ class testForeachFlow():
 
         # validate the deletion
         self.env.assertEquals(res.nodes_deleted, 5)
-        
+
         # remove the properties and labels of the nodes using REMOVE
         res = graph.query("""
         MATCH (n:N)
@@ -75,7 +75,7 @@ class testForeachFlow():
         res = graph.query("MATCH (n) return labels(n), n.v")
         self.env.assertEquals(res.result_set, 
                     [[[], None], [[], None],[[], None], [[], None], [[], None]])
-        
+
         # embedded foreach
         res = graph.query("""
         FOREACH(i in [0, 1, 2, 3, 4] |
@@ -89,12 +89,14 @@ class testForeachFlow():
         # validate the actions of the query
         self.env.assertEquals(res.nodes_created, 10)
         self.env.assertEquals(res.properties_set, 20)
-        
+
     def test02_aliased_list(self):
         """tests that FOREACH with an aliased list works properly"""
 
         # clear db
         self.env.flush()
+        # Make a new graph object with no cache (problematic label info)
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
 
         res = graph.query(
         "CYPHER li = [0, 1, 2, 3, 4] FOREACH(i in $li | CREATE (n:N {v: i}))"
@@ -183,6 +185,8 @@ class testForeachFlow():
 
         # clean db
         self.env.flush()
+        # Make a new graph object with no cache (problematic label info)
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
 
         # perform a conditional query using a CASE expression
         res = graph.query("""
@@ -209,6 +213,8 @@ class testForeachFlow():
 
         # clean db
         self.env.flush()
+        # Make a new graph object with no cache (problematic label info)
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
 
         # populate graph
         graph.query(
@@ -239,6 +245,8 @@ class testForeachFlow():
 
         # clear db
         self.env.flush()
+        # Make a new graph object with no cache (problematic label info)
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
 
         # create 5 nodes
         graph.query("UNWIND range(0, 4) as val CREATE (n:N {v: val})")
@@ -262,6 +270,8 @@ class testForeachFlow():
 
         # clean db
         self.env.flush()
+        # Make a new graph object with no cache (problematic label info)
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
 
         # create two nodes with list properties
         graph.query("CREATE (:N {li: [1, 2, 3, 4]}), (:M {li: [1, 2, 3, 4]})")
@@ -280,6 +290,8 @@ class testForeachFlow():
 
         # clean db
         self.env.flush()
+        # Make a new graph object with no cache (problematic label info)
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
 
         try:
             graph.query("FOREACH(i in [1, 2, 0, 3] | CREATE (n:N {v: 1/i}))")

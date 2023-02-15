@@ -25,6 +25,7 @@ typedef struct {
     bool first;                   // is this the first call to consume
     OpBase *body;                 // the first op in the embedded execution-plan
     Record *records;              // records aggregated by the operation
+    Record *body_records;         // record list to be sent to the body
     OpBase *supplier;             // op from which records are pulled (optional)
     ArgumentList *argument_list;  // argument operation (tap)
 

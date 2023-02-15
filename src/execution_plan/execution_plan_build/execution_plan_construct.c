@@ -201,10 +201,7 @@ static void _buildForeachOp
 	//		unwind
 	//			argument list
 
-	OpBase *foreach = NewForeachOp(plan);
-	AST    *ast     = plan->ast_segment;
-
-	ExecutionPlan_UpdateRoot(plan, foreach);
+	AST *ast = plan->ast_segment;
 
 	// make an execution-plan mocking the current one, in which the embedded
 	// execution-plan of the Foreach clauses will be built
@@ -214,8 +211,15 @@ static void _buildForeachOp
 	embedded_plan->ast_segment          = ast;
 	// use a clone QueryGraph, to not pollute the main one (different scope)
 	embedded_plan->query_graph          = QueryGraph_Clone(plan->query_graph);
-	embedded_plan->record_pool          = plan->record_pool;
 	embedded_plan->connected_components = plan->connected_components;
+	// embedded_plan->connected_components =
+	// 	QueryGraph_ConnectedComponents(embedded_plan->query_graph);
+
+	// embedded_plan->record_pool          = plan->record_pool;
+
+
+	OpBase *foreach = NewForeachOp(embedded_plan);
+	ExecutionPlan_UpdateRoot(plan, foreach);
 
 	//--------------------------------------------------------------------------
 	// build Unwind op
@@ -250,22 +254,22 @@ static void _buildForeachOp
 	}
 
 	// bind the operations of the new plan to the old plan, without merging qgs
-	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, false);
+	// ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, false);
 
 	// connect foreach op to its child operation
 	ExecutionPlan_AddOp(foreach, embedded_plan->root);
 
 	// introduce the list-components variable (alias) to the record-map of the
 	// main plan
-	OpBase_Modifies(foreach, exp->resolved_name);
+	// OpBase_Modifies(foreach, exp->resolved_name);
 
 	// free the temporary plan after disconnecting the shared components with
 	// the main plan
-	embedded_plan->root                 = NULL;
-	embedded_plan->ast_segment          = NULL;
-	embedded_plan->record_pool          = NULL;
-	embedded_plan->connected_components = NULL;
-	ExecutionPlan_Free(embedded_plan);
+	// embedded_plan->root                 = NULL;
+	// embedded_plan->ast_segment          = NULL;
+	// embedded_plan->record_pool          = NULL;
+	// embedded_plan->connected_components = NULL;
+	// ExecutionPlan_Free(embedded_plan);
 }
 
 void ExecutionPlanSegment_ConvertClause

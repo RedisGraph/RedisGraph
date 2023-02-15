@@ -513,9 +513,19 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 	}
 
 	QueryGraph_Free(plan->query_graph);
-	if(plan->record_map) raxFree(plan->record_map);
-	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
-	if(plan->ast_segment) AST_Free(plan->ast_segment);
+	plan->query_graph = NULL;
+	if(plan->record_map != NULL) {
+		raxFree(plan->record_map);
+		plan->record_map = NULL;
+	}
+	if(plan->record_pool != NULL) {
+		ObjectPool_Free(plan->record_pool);
+		plan->record_pool = NULL;
+	}
+	if(plan->ast_segment != NULL) {
+		AST_Free(plan->ast_segment);
+		plan->ast_segment = NULL;
+	}
 	rm_free(plan);
 }
 
