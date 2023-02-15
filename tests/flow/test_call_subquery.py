@@ -58,19 +58,19 @@ class testCallSubqueryFlow():
         self.expect_error(query, "n not defined")
 
 
-        # # make sure scope prior to the CALL {} is available after
-        # res = graph.query(
-        #     """
-        #     UNWIND [0, 1, 2, 3] AS x
-        #     CALL {
-        #         WITH x
-        #         MATCH (n {v: x})
-        #         RETURN n
-        #     }
-        #     RETURN x
-        #     """
-        # )
-        # self.env.assertEquals(res.result_set, [0, 1, 2, 3])
+        # make sure scope prior to the CALL {} is available after
+        res = graph.query(
+            """
+            UNWIND [0, 1, 2, 3] AS x
+            CALL {
+                WITH x
+                MATCH (n {v: x})
+                RETURN n
+            }
+            RETURN x
+            """
+        )
+        self.env.assertEquals(res.result_set, [])
 
     def test02_readonly_simple(self):
         """Test the simple read-only use-case of CALL {}, i.e., no updating
@@ -140,57 +140,57 @@ class testCallSubqueryFlow():
                 """
         self.expect_error(query, "x not defined")
 
-        # res = graph.query(
-        #     """
-        #     UNWIND [1, 2, 3, 4] AS x
-        #     MATCH (n)
-        #     CALL {
-        #         WITH n
-        #         RETURN n.v as INNERETURN
-        #     }
-        #     RETURN x + INNERETURN
-        #     """
-        # )
-        # self.env.assertEquals(res.result_set, [2, 3, 4, 5])
+        res = graph.query(
+            """
+            UNWIND [1, 2, 3, 4] AS x
+            MATCH (n)
+            CALL {
+                WITH n
+                RETURN n.v as INNERETURN
+            }
+            RETURN x + INNERETURN
+            """
+        )
+        self.env.assertEquals(res.result_set, [[5], [6], [7], [8]])
 
 
 
 
         # currently failing, fix needed
-        # res = graph.query(
-        #     """
-        #     UNWIND ['Omer', 'Raz', 'Moshe'] as name
-        #     CALL {
-        #         WITH name
-        #         MATCH (n:N {name: name})
-        #         RETURN n
-        #     }
-        #     RETURN n
-        #     """
-        # )
-        # # assert correctness of the result
-        # self.env.assertEquals(len(res.result_set), 1)
-        # self.env.assertEquals(res.result_set[0][0],
-        #     Node(label='N', properties={'name': 'Raz'}))
+        res = graph.query(
+            """
+            UNWIND ['Omer', 'Raz', 'Moshe'] as name
+            CALL {
+                WITH name
+                MATCH (n:N {name: name})
+                RETURN n
+            }
+            RETURN n
+            """
+        )
+        # assert correctness of the result
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0],
+            Node(label='N', properties={'name': 'Raz'}))
 
 
-    # def test04_update_no_return_simple(self):
-    #     """simple updates"""
+    def test04_update_no_return_simple(self):
+        """simple updates"""
 
-    #     # clean db
-    #     self.env.flush()
-    #     graph = Graph(self.env.getConnection(), GRAPH_ID)
+        # clean db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
 
-    #     # add a node via CALL {}
-
-
-    #     # update an edge via CALL {}
+        # add a node via CALL {}
 
 
-    #     # remove a node\edge label via CALL {}
+        # update an edge via CALL {}
 
 
-    #     # remove a node\edge property via CALL {}
+        # remove a node\edge label via CALL {}
 
 
-    #     # delete a node\edge via CALL {}
+        # remove a node\edge property via CALL {}
+
+
+        # delete a node\edge via CALL {}

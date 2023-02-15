@@ -22,6 +22,7 @@ struct ExecutionPlan {
 	QueryGraph **connected_components;  // Array of all connected components in this segment.
 	ObjectPool *record_pool;
 	bool prepared;                      // Indicates if the execution plan is ready for execute.
+	ExecutionPlan **sub_plan;           // Array of all subplans.
 };
 
 /* Creates a new execution plan from AST */

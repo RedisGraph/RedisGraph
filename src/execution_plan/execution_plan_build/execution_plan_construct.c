@@ -352,6 +352,7 @@ static void _buildCallSubqueryPlan
 	bool is_returning = OpBase_Type(embedded_plan->root) == OPType_RESULTS;
 	if(is_returning) {
 		ExecutionPlan_RemoveOp(embedded_plan, embedded_plan->root);
+		embedded_plan->root->plan = plan;
 	}
 
 	// -------------------------------------------------------------------------
