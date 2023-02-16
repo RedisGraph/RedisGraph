@@ -13,10 +13,10 @@
 //------------------------------------------------------------------------------
 
 typedef enum {
-	TASK_PENDING   = 0,  // task is waiting for executing
-	TASK_EXECUTING = 1,  // task is being executed
-	TASK_COMPLETED = 2,  // task run to completion
-	TASK_ABORT     = 3   // task is aborted
+	TASK_PENDING   = 1,  // task is waiting for executing
+	TASK_EXECUTING = 2,  // task is being executed
+	TASK_COMPLETED = 3,  // task run to completion
+	TASK_ABORT     = 4   // task is aborted
 } CRON_TASK_STATE;
 
 // CRON task
@@ -187,12 +187,14 @@ static void *Cron_Run
 		// execute due tasks
 		CRON_TASK *task = NULL;
 		while((task = CRON_Peek()) && CRON_TaskDue(task)) {
+			pthread_mutex_lock(&cron->mutex);
 			CRON_TASK_STATE state = task->state;
 			// task state should be either pending or aborted
 			ASSERT(state == TASK_ABORT || state == TASK_PENDING);
 
 			// advance from pending to executing
 			if(CRON_TaskAdvanceState(task, TASK_PENDING, TASK_EXECUTING)) {
+				pthread_mutex_unlock(&cron->mutex);
 				CRON_PerformTask(task);
 				// set state to completed
 				// frees any threads waiting on task to complete
@@ -200,6 +202,8 @@ static void *Cron_Run
 
 				CRON_RemoveTask(task);
 				CRON_FreeTask(task);
+			} else {
+				pthread_mutex_unlock(&cron->mutex);
 			}
 		}
 
@@ -283,9 +287,11 @@ void Cron_AbortTask
 		return;
 	}
 	
+	pthread_mutex_lock(&cron->mutex);
 	// try marking task as aborted
 	if(CRON_TaskAdvanceState(task, TASK_PENDING, TASK_ABORT)) {
 		CRON_FreeTask(task);
 	}
+	pthread_mutex_unlock(&cron->mutex);
 }
 
