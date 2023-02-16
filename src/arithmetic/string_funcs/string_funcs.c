@@ -8,11 +8,12 @@
 #include "../func_desc.h"
 #include "../../errors.h"
 #include "../../util/arr.h"
-#include "../../util/rmalloc.h"
 #include "../../util/uuid.h"
+#include "utf8proc/utf8proc.h"
+#include "../../util/rmalloc.h"
 #include "../../util/strutil.h"
-#include "../../util/json_encoder.h"
 #include "../../datatypes/array.h"
+#include "../../util/json_encoder.h"
 
 // toString supports only integer, float, string, boolean, point, duration, 
 // date, time, localtime, localdatetime or datetime values
@@ -35,9 +36,19 @@ SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 		// No need to truncate this string based on the requested length
 		return SI_DuplicateStringVal(argv[0].stringval);
 	}
-	char *left_str = rm_malloc((newlen + 1) * sizeof(char));
-	strncpy(left_str, argv[0].stringval, newlen * sizeof(char));
-	left_str[newlen] = '\0';
+
+	// determine new string byte size
+	utf8proc_int32_t c;
+	int64_t newlen_bytes = 0;
+	const char *str = argv[0].stringval;
+	for (int i = 0; i < newlen; i++) {
+		newlen_bytes += utf8proc_iterate((const utf8proc_uint8_t *)(str+newlen_bytes), -1, &c);
+	}
+
+	char *left_str = rm_malloc((newlen_bytes + 1) * sizeof(char));
+ 	strncpy(left_str, str, newlen_bytes * sizeof(char));
+ 	left_str[newlen_bytes] = '\0';
+
 	return SI_TransferStringVal(left_str);
 }
 
@@ -67,13 +78,21 @@ SIValue AR_RIGHT(SIValue *argv, int argc, void *private_data) {
 		return SI_NullVal();
 	}
 
-	int64_t start = strlen(argv[0].stringval) - newlen;
+	const char *str = argv[0].stringval;
+	int64_t start   = str_length(str) - newlen;
 
 	if(start <= 0) {
 		// No need to truncate this string based on the requested length
-		return SI_DuplicateStringVal(argv[0].stringval);
+		return SI_DuplicateStringVal(str);
 	}
-	return SI_DuplicateStringVal(argv[0].stringval + start);
+
+	utf8proc_int32_t c;
+	int64_t start_bytes = 0;
+	for (int i = 0; i < start; i++) {
+		start_bytes += utf8proc_iterate((const utf8proc_uint8_t *)(str+start_bytes), -1, &c);
+	}
+
+	return SI_DuplicateStringVal(str + start_bytes);
 }
 
 // returns the original string with trailing whitespace removed.
@@ -107,12 +126,16 @@ SIValue AR_REVERSE(SIValue *argv, int argc, void *private_data) {
 		size_t str_len = strlen(str);
 		char *reverse = rm_malloc((str_len + 1) * sizeof(char));
 
-		int i = str_len - 1;
-		int j = 0;
-		while(i >= 0) {
-			reverse[j++] = str[i--];
+		char *reverse_i = reverse + str_len;
+		utf8proc_int32_t c;
+		utf8proc_ssize_t w;
+		while(str[0] != 0) {
+			w = utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+			str += w;
+			reverse_i -= w;
+			utf8proc_encode_char(c, (utf8proc_uint8_t *)reverse_i);
 		}
-		reverse[j] = '\0';
+		reverse[str_len] = '\0';
 		return SI_TransferStringVal(reverse);
 	} else {
 		SIValue reverse = SI_CloneValue(value);
@@ -134,17 +157,20 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	*/
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-	const char *original = argv[0].stringval;
-	const int64_t original_len = strlen(original);
-	const int64_t start = argv[1].longval;
 	int64_t length;
+	const char   *original     = argv[0].stringval;
+	const int64_t original_len = strlen(original);
+	const int64_t start        = argv[1].longval;
 
 	/* Make sure start doesn't overreach. */
 	if(start < 0) {
 		ErrorCtx_SetError("start must be a non-negative integer");
 		return SI_NullVal();
 	}
-	if(start >= original_len) return SI_ConstStringVal("");
+
+	if(start >= original_len) {
+		return SI_ConstStringVal("");
+	}
 
 	const int64_t suffix_len = original_len - start;
 	if(argc == 2) {
@@ -160,9 +186,23 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 		length = MIN(length, suffix_len);
 	}
 
-	char *substring = rm_malloc((length + 1) * sizeof(char));
-	strncpy(substring, original + start, length);
-	substring[length] = '\0';
+	utf8proc_int32_t c;
+	// find the start position to copy from
+	const char *start_p = original;
+	for (int i = 0; i < start; i++) {
+		start_p += utf8proc_iterate((const utf8proc_uint8_t *)start_p, -1, &c);
+	}
+
+	// find the end position
+	const char *end_p = start_p;
+	for (int i = 0; i < length; i++) {
+		end_p += utf8proc_iterate((const utf8proc_uint8_t *)end_p, -1, &c);
+	}
+
+	int len = end_p - start_p;
+	char *substring = rm_malloc((len + 1) * sizeof(char));
+	strncpy(substring, start_p, len);
+	substring[len] = '\0';
 
 	return SI_TransferStringVal(substring);
 }
@@ -171,9 +211,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	size_t lower_len = strlen(original);
-	char *lower = rm_malloc((lower_len + 1) * sizeof(char));
-	str_tolower(original, lower, &lower_len);
+	char *lower = str_tolower(original);
 	return SI_TransferStringVal(lower);
 }
 
@@ -181,9 +219,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {
 SIValue AR_TOUPPER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	size_t upper_len = strlen(original);
-	char *upper = rm_malloc((upper_len + 1) * sizeof(char));
-	str_toupper(original, upper, &upper_len);
+	char *upper = str_toupper(original);
 	return SI_TransferStringVal(upper);
 }
 
@@ -296,6 +332,12 @@ SIValue AR_REPLACE(SIValue *argv, int argc, void *private_data) {
 	const char *ptr  = str;
 	const char **arr = array_new(const char *, 0);
 
+	// if any parameter is not a valid utf8 string return the original string
+	if(!str_utf8_validate(old_string) || !str_utf8_validate(new_string) ||
+		!str_utf8_validate(str)) {
+		return SI_DuplicateStringVal(str);
+	}
+
 	while(ptr <= str + str_len) {
 		// find pointer to next substring
 		ptr = strstr(ptr, old_string);
@@ -365,41 +407,55 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 		return SI_NullVal();
 	}
 
-	char       *str       = argv[0].stringval;
-	const char *delimiter = argv[1].stringval;
-	SIValue     tokens    = SIArray_New(1);
+	char       *str           = argv[0].stringval;
+	const char *delimiter     = argv[1].stringval;
+	size_t      str_len       = strlen(str);
+	size_t      delimiter_len = strlen(delimiter);
+	SIValue     tokens        = SIArray_New(1);
 
-	if(strlen(delimiter) == 0) {
+	if(delimiter_len == 0) {
 		if(strlen(str) == 0) {
 			SIArray_Append(&tokens, SI_ConstStringVal(""));
 		} else {
-			char token[2];
-			token[1] = '\0';
-			while(str[0] != '\0') {
-				token[0] = str[0];
-				SIArray_Append(&tokens, SI_ConstStringVal(token));
-				str++;
+			utf8proc_int32_t c;
+			utf8proc_uint8_t token[5];
+			const utf8proc_uint8_t *str_i = (const utf8proc_uint8_t *)str;
+			while(str_i[0] != 0) {
+				str_i += utf8proc_iterate(str_i, -1, &c);
+				int i  = utf8proc_encode_char(utf8proc_tolower(c), token);
+				token[i] = '\0';
+				SIArray_Append(&tokens, SI_ConstStringVal((const char *)token));
 			}
 		}
+	} else if(str_len == 0) {
+		SIArray_Append(&tokens, SI_ConstStringVal(""));
 	} else {
-		// strtok should work on a mutable copy
-		str = rm_strdup(str);
-		
-		char *token  = strtok(str, delimiter);
-
-		if(!token) {
-			SIArray_Append(&tokens, argv[0]);
-			rm_free(str);
-			return tokens;
-		}
-
-		while(token) {
-			SIValue si_token = SI_ConstStringVal(token);
+		size_t rest_len   = str_len;
+		const char *start = str;
+		while(rest_len > delimiter_len) {
+			// find bytes length from start to delimiter
+			int len = 0;
+			bool delimiter_found = false;
+			while(len <= rest_len - delimiter_len) {
+				if(strncmp(start+len, delimiter, delimiter_len) == 0) {
+					delimiter_found = true;
+					break;
+				}
+				len++;
+			}
+			if(!delimiter_found) {
+				break;
+			}
+			SIValue si_token = SI_TransferStringVal(rm_strndup(start, len));
 			SIArray_Append(&tokens, si_token);
-			token = strtok(NULL, delimiter);
+			SIValue_Free(si_token);
+			start += len + delimiter_len;
+			rest_len -= len + delimiter_len;
 		}
-		
-		rm_free(str);
+		if(rest_len > 0) {
+			SIValue si_token = SI_ConstStringVal(start);
+			SIArray_Append(&tokens, si_token);
+		}
 	}
 
 	return tokens;

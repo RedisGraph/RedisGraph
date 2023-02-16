@@ -26,41 +26,69 @@ SIValue AR_TOPATH(SIValue *argv, int argc, void *private_data) {
 	uint nelements = cypher_ast_pattern_path_nelements(ast_path);
 	ASSERT(argc == (nelements + 1));
 
-	SIValue path = SIPathBuilder_New(nelements);
+	uint n = 0;
+	uint path_elements = 0;
+	SIValue arr[nelements];
+	// collect path elements
+	// and calculate how much space needed for the returned path
 	for(uint i = 0; i < nelements; i++) {
 		SIValue element = argv[i + 1];
 		if(SI_TYPE(element) == T_NULL) {
-			/* If any element of the path does not exist, the entire path is invalid.
-			 * Free it and return a null value. */
-			SIValue_Free(path);
+			// if any element of the path does not exist
+			// the entire path is invalid
 			return SI_NullVal();
 		}
 
 		if(i % 2 == 0) {
-			// Nodes are in even position.
-			SIPathBuilder_AppendNode(path, element);
+			path_elements++;
 		} else {
-			// Edges and paths are in odd positions.
-			const cypher_astnode_t *ast_rel_pattern = cypher_ast_pattern_path_get_element(ast_path, i);
-			bool RTL_pattern = cypher_ast_rel_pattern_get_direction(ast_rel_pattern) == CYPHER_REL_INBOUND;
-			// Element type can be either edge, or path.
-			if(SI_TYPE(element) == T_EDGE) SIPathBuilder_AppendEdge(path, element, RTL_pattern);
-			// If element is not an edge, it is a path.
-			else {
-				/* Path with 0 edges should not be appended. Their source and destination nodes are the same,
-				 * and the source node already appended.
-				 * The build should continue to the next edge/path value. Consider the following query:
-				 * "MATCH p=(a:L1)-[*0..]->(b:L1)-[]->(c:L2)" for the graph in the form of (:L1)-[]->(:L2). The path build should
-				 * return a path with with the relevant entities.
-				 */
-				if(SIPath_Length(element) == 0) {
+			// edges and paths are in odd positions
+			// element type can be either edge, or path
+			if(SI_TYPE(element) == T_EDGE) {
+				path_elements++;
+			} else { // if element is not an edge, it is a path
+				// path with 0 edges should not be appended
+				// their source and destination nodes are the same
+				// and the source node already appended.
+				size_t len = SIPath_Length(element);
+				if(len == 0) {
 					i++;
 					continue;
 				}
+				// len - 1 nodes and len edges from this path
+				// will be added to the returned path 
+				path_elements += len * 2 - 1;
+			}
+		}
+		arr[n++] = element;
+	}
+
+	SIValue path = SIPathBuilder_New(path_elements);
+	for(uint i = 0; i < n; i++) {
+		SIValue element = arr[i];
+
+		if(i % 2 == 0) {
+			// nodes are in even position
+			SIPathBuilder_AppendNode(path, element);
+		} else {
+			// edges and paths are in odd positions
+			const cypher_astnode_t *ast_rel_pattern = cypher_ast_pattern_path_get_element(ast_path, i);
+			bool RTL_pattern = cypher_ast_rel_pattern_get_direction(ast_rel_pattern) == CYPHER_REL_INBOUND;
+			// element type can be either edge, or path
+			if(SI_TYPE(element) == T_EDGE) {
+				SIPathBuilder_AppendEdge(path, element, RTL_pattern);
+			} else { // if element is not an edge, it is a path
+				// the build should continue to the next edge/path value
+				// consider the following query
+				// for the graph in the form of (:L1)-[]->(:L2):
+				// "MATCH p=(a:L1)-[*0..]->(b:L1)-[]->(c:L2)"
+				// the path build should
+				// return a path with with the relevant entities.
 				SIPathBuilder_AppendPath(path, element, RTL_pattern);
 			}
 		}
 	}
+
 	return path;
 }
 
