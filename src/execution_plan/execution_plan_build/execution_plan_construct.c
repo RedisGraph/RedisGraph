@@ -249,23 +249,8 @@ static void _buildForeachOp
 		ExecutionPlanSegment_ConvertClause(gc, ast, embedded_plan, sub_clause);
 	}
 
-	// bind the operations of the new plan to the old plan, without merging qgs
-	// ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, false);
-
 	// connect foreach op to its child operation
 	ExecutionPlan_AddOp(foreach, embedded_plan->root);
-
-	// introduce the list-components variable (alias) to the record-map of the
-	// main plan
-	// OpBase_Modifies(foreach, exp->resolved_name);
-
-	// free the temporary plan after disconnecting the shared components with
-	// the main plan
-	// embedded_plan->root                 = NULL;
-	// embedded_plan->ast_segment          = NULL;
-	// embedded_plan->record_pool          = NULL;
-	// embedded_plan->connected_components = NULL;
-	// ExecutionPlan_Free(embedded_plan);
 }
 
 void ExecutionPlanSegment_ConvertClause

@@ -124,6 +124,7 @@ static Record UnwindConsume
 	// did we managed to get new data?
 pull:
 	if((r = OpBase_Consume(child))) {
+		// free current record to accommodate a new record
 		OpBase_DeleteRecord(op->currentRecord);
 
 		// assign new record
