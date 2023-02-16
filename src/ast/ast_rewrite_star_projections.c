@@ -178,7 +178,6 @@ static void replace_clause
 	//--------------------------------------------------------------------------
 	rax *identifiers = raxNew();
 	_collect_aliases_in_scope(root, scope_start, scope_end, identifiers);
-	uint identifiers_count = raxSize(identifiers);
 
 	//--------------------------------------------------------------------------
 	// determine number of projections
@@ -211,8 +210,8 @@ static void replace_clause
 		raxRemove(identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
 	}
 
-	// update identifiers_count after duplication removal
-	identifiers_count = raxSize(identifiers);
+	// compute identifiers_count after duplication removal
+	uint identifiers_count = raxSize(identifiers);
 
 	// require atleast 1 projection
 	uint nprojections = identifiers_count + existing_projections_count;
@@ -319,7 +318,7 @@ static void replace_clause
 	}
 
 	// copy projections to the children array
-	cypher_astnode_t *children[nprojections + 3];
+	cypher_astnode_t *children[nprojections + 4];
 	for(uint i = 0; i < nprojections; i++) {
 		children[i] = projections[i];
 	}
