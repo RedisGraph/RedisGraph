@@ -18,8 +18,7 @@ typedef struct {
 	uint listIdx;         // current list index
 	uint listLen;         // length of the list currently being traversed
 	int unwindRecIdx;     // update record at this index
-	Record currentRecord; // record to clone and add a value extracted from the list
-	bool free_rec;        // free the current record when done using or not
+	Record currentRecord; // record to clone and add a value from the list
 } OpUnwind;
 
 // creates a new Unwind operation

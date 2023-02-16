@@ -201,7 +201,7 @@ static void _buildForeachOp
 	//		unwind
 	//			argument list
 
-	AST *ast = plan->ast_segment;
+	AST *ast = AST_ShallowCopy(plan->ast_segment);
 
 	// make an execution-plan mocking the current one, in which the embedded
 	// execution-plan of the Foreach clauses will be built
@@ -211,14 +211,10 @@ static void _buildForeachOp
 	embedded_plan->ast_segment          = ast;
 	// use a clone QueryGraph, to not pollute the main one (different scope)
 	embedded_plan->query_graph          = QueryGraph_Clone(plan->query_graph);
-	embedded_plan->connected_components = plan->connected_components;
-	// embedded_plan->connected_components =
-	// 	QueryGraph_ConnectedComponents(embedded_plan->query_graph);
+	array_clone_with_cb(embedded_plan->connected_components,
+		plan->connected_components, QueryGraph_Clone);
 
-	// embedded_plan->record_pool          = plan->record_pool;
-
-
-	OpBase *foreach = NewForeachOp(embedded_plan);
+	OpBase *foreach = NewForeachOp(plan);
 	ExecutionPlan_UpdateRoot(plan, foreach);
 
 	//--------------------------------------------------------------------------

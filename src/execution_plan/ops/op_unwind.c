@@ -29,7 +29,6 @@ OpBase *NewUnwindOp
 	op->list          = SI_NullVal();
 	op->listIdx       = 0;
 	op->listLen       = 0;
-	op->free_rec      = true;
 	op->currentRecord = NULL;
 
 	// Set our Op operations
@@ -80,11 +79,6 @@ static OpResult UnwindInit
 	if(op->op.childCount == 0) {
 		// no child operation, list must be static
 		_initList(op);
-	} else {
-		// list might depend on data provided by child operation
-		// if the child is an ArgumentList op, the Foreach op is responsible for
-		// freeing the record
-		op->free_rec = (OpBase_Type(op->op.children[0]) != OPType_ARGUMENT_LIST);
 	}
 
 	return OP_OK;
@@ -130,14 +124,7 @@ static Record UnwindConsume
 	// did we managed to get new data?
 pull:
 	if((r = OpBase_Consume(child))) {
-		// free current record to accommodate new record, unless the child op
-		// type (if exists) is ArgumentList. In this case, we do not want to
-		// free the return the record back to the pool, since this record will
-		// be later passed on by the foreach operation to the rest of the
-		// exec-plan (if exists, otherwise it will free it)
-		if(op->free_rec) {
-			OpBase_DeleteRecord(op->currentRecord);
-		}
+		OpBase_DeleteRecord(op->currentRecord);
 
 		// assign new record
 		op->currentRecord = r;
@@ -190,10 +177,7 @@ static void UnwindFree
 		op->exp = NULL;
 	}
 
-	// if the child is an argumentList, than the record held by this operation
-	// exists in the Foreach operation as well, which is also be responsible to
-	// free it
-	if(op->currentRecord != NULL && op->free_rec) {
+	if(op->currentRecord != NULL) {
 		OpBase_DeleteRecord(op->currentRecord);
 	}
 

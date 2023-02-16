@@ -110,7 +110,8 @@ static Record ForeachConsume
 			array_append(op->records, r);
 
 			// create a record with the mapping of the embedded plan
-			Record body_rec = OpBase_CreateRecord(opBase);
+			// (as opposed to the record-mapping of the consumed record)
+			Record body_rec = OpBase_CreateRecord(op->body);
 			// copy the consumed record's entries to the record to be sent to
 			// the body
 			Record_DeepClone(r, body_rec);
@@ -119,7 +120,7 @@ static Record ForeachConsume
 	} else {
 		// static list, create a dummy empty record just to kick start the
 		// argument-list operation
-		r = OpBase_CreateRecord(opBase);
+		r = OpBase_CreateRecord(op->body);
 		array_append(op->body_records, r);
 	}
 
@@ -152,7 +153,16 @@ static void _freeInternals
 		op->records = NULL;
 	}
 
-	// TODO: Do the same for the body records
+	if(op->body_records != NULL) {
+		// free body record list components
+		uint nrecords = array_len(op->body_records);
+		for(uint i = 0; i < nrecords; i++) {
+			OpBase_DeleteRecord(op->body_records[i]);
+		}
+
+		array_free(op->body_records);
+		op->body_records = NULL;
+	}
 }
 
 static OpResult ForeachReset
