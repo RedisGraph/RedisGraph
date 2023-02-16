@@ -1134,7 +1134,7 @@ static VISITOR_STRATEGY _Validate_call_subquery
 
 	// create a query astnode with the body of the subquery as its body
 	// build the query, to be the root of the temporary AST
-	uint nclauses = cypher_astnode_nchildren(n);
+	uint nclauses = cypher_ast_call_subquery_nclauses(n);
 	cypher_astnode_t *clauses[nclauses];
 	// Explicitly collect all child nodes from the clause.
 	for(uint i = 0; i < nclauses; i ++) {
@@ -1220,25 +1220,34 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	// subquery is unit (no closing RETURN clause), pass the context as it was
 	// without traversing the clauses of the subquery.
 	const cypher_astnode_t *last_clause = cypher_ast_call_subquery_get_clause(n,
-										cypher_ast_call_subquery_nclauses(n)-1);
+										nclauses-1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
 
 	// if the subquery is not a returning subquery, we don't want it to affect
 	// the global context
-	if(!is_returning) {
-		// free old env and set the new one
-		raxFree(vctx->defined_identifiers);
-		vctx->defined_identifiers = in_env;
-	} else {
-		// merge in_env into vctx->defined_identifiers
-		raxIterator it;
-		raxStart(&it, in_env);
-		raxSeek(&it, "^", NULL, 0);
-		while(raxNext(&it)) {
-			raxTryInsert(vctx->defined_identifiers, it.key, it.key_len, it.data, NULL);
-		}
+	raxFree(vctx->defined_identifiers);
+	vctx->defined_identifiers = in_env;
+	if(is_returning) {
+		// merge projected aliases from in_env into vctx->defined_identifiers
 
-		raxFree(in_env);
+		const cypher_astnode_t *return_clause
+			= cypher_ast_call_subquery_get_clause(n, nclauses-1);
+		for(uint i = 0; i < cypher_ast_return_nprojections(return_clause); i++) {
+			const cypher_astnode_t *proj =
+				cypher_ast_return_get_projection(return_clause, i);
+			const char *var_name;
+			const cypher_astnode_t *identifier =
+				cypher_ast_projection_get_alias(proj);
+			if(identifier) {
+				var_name = cypher_ast_identifier_get_name(identifier);
+			} else {
+				const cypher_astnode_t *exp =
+					cypher_ast_projection_get_expression(proj);
+				var_name = cypher_ast_identifier_get_name(exp);
+			}
+			raxInsert(vctx->defined_identifiers, (unsigned char *)var_name, strlen(var_name),
+				NULL, NULL);
+		}
 	}
 
 	// don't traverse children

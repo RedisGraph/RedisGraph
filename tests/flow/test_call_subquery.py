@@ -58,7 +58,7 @@ class testCallSubqueryFlow():
         self.expect_error(query, "n not defined")
 
 
-        # make sure scope prior to the CALL {} is available after
+        # make sure scope prior to the CALL {} is available after it
         res = graph.query(
             """
             UNWIND [0, 1, 2, 3] AS x
@@ -72,6 +72,16 @@ class testCallSubqueryFlow():
         )
         self.env.assertEquals(res.result_set, [])
 
+        # non-returned aliases should not be available
+        query = """
+        CALL {
+            MATCH (n:N)
+            RETURN 1 as innerReturn
+        }
+        RETURN n
+        """
+        self.expect_error(query, "n not defined")
+
     def test02_readonly_simple(self):
         """Test the simple read-only use-case of CALL {}, i.e., no updating
         clauses lay within the subquery"""
@@ -82,7 +92,7 @@ class testCallSubqueryFlow():
         res = graph.query("CREATE (n:N {name: 'Raz'})")
         self.env.assertEquals(res.nodes_created, 1)
 
-        # find the node via CALL {}
+        # find a node via CALL {}
         res = graph.query(
             """CALL
                 {
@@ -102,7 +112,7 @@ class testCallSubqueryFlow():
 
         # the graph has one node with label `N` and prop `name` with val `Raz`
 
-        # clauses that can be used:
+        # NTS: Clauses that can be used:
         # MATCH, OPTIONAL MATCH, WHERE, ORDERBY, SKIP, LIMIT, WITH, UNION,
         # UNWIND, (partly) FOREACH
 
@@ -110,8 +120,8 @@ class testCallSubqueryFlow():
         res = graph.query("MATCH (n) SET n.v = 4")
         self.env.assertEquals(res.properties_set, 1)
 
-        # outer scope should be aware of inner subquery scope for a returning sq
-        # 1 result should return from the following query
+        # if a returning subquery doesn't return records, the input record is
+        # not passed as well. Here, only one record should be returned
         res = graph.query(
             """
             CALL {
@@ -128,7 +138,7 @@ class testCallSubqueryFlow():
         self.env.assertEquals(res.result_set[0][0],
             Node(label='N', properties={'name': 'Raz', 'v': 4}))
 
-        # inner scope should be exposed to imported context only via simple WITH
+        # inner scope should be exposed to imported context ONLY via simple WITH
         query = """
                 UNWIND [1, 2, 3, 4] AS x
                 MATCH (n)
@@ -140,6 +150,7 @@ class testCallSubqueryFlow():
                 """
         self.expect_error(query, "x not defined")
 
+        # use returned value from the sq
         res = graph.query(
             """
             UNWIND [1, 2, 3, 4] AS x
@@ -153,8 +164,7 @@ class testCallSubqueryFlow():
         )
         self.env.assertEquals(res.result_set, [[5], [6], [7], [8]])
 
-        # currently failing since we don't look for another record from lhs when
-        # body is depleted
+        # # first input record to sq yields no records, next inputs do
         # res = graph.query(
         #     """
         #     UNWIND ['Omer', 'Raz', 'Moshe'] as name
