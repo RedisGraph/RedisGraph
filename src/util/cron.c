@@ -13,6 +13,7 @@
 //------------------------------------------------------------------------------
 
 typedef enum {
+	TASK_INVALID   = 0,  // invalid task
 	TASK_PENDING   = 1,  // task is waiting for executing
 	TASK_EXECUTING = 2,  // task is being executed
 	TASK_COMPLETED = 3,  // task run to completion
@@ -190,7 +191,7 @@ static void *Cron_Run
 			pthread_mutex_lock(&cron->mutex);
 			CRON_TASK_STATE state = task->state;
 			// task state should be either pending or aborted
-			ASSERT(state == TASK_ABORT || state == TASK_PENDING);
+			ASSERT(state == TASK_ABORT || state == TASK_PENDING || state == TASK_INVALID);
 
 			// advance from pending to executing
 			if(CRON_TaskAdvanceState(task, TASK_PENDING, TASK_EXECUTING)) {
