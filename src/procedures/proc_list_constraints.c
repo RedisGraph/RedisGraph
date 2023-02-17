@@ -16,17 +16,13 @@
 
 typedef struct {
 	SIValue *out;               // outputs
-	int node_schema_id;         // current node schema ID
-	int edge_schema_id;         // current edge schema ID
-    int constraint_id;          // current constraint ID
-	ConstraintType type;        // current constraint type to retrieve
-	GraphContext *gc;           // graph context
 	SIValue *yield_type;        // yield constraint type
 	SIValue *yield_label;       // yield constraint label
 	SIValue *yield_properties;  // yield constraint properties
 	SIValue *yield_entity_type; // yield constraint entity type
 	SIValue *yield_status;      // yield constraint status
-	SIValue *yield_info;        // yield info
+	GraphContext *gc;           // graph context
+	Constraint *constraints;    // constraints
 } ConstraintsContext;
 
 static void _process_yield
@@ -35,7 +31,6 @@ static void _process_yield
 	const char **yield
 ) {
 	ctx->yield_type        = NULL;
-	ctx->yield_info        = NULL;
 	ctx->yield_label       = NULL;
 	ctx->yield_status      = NULL;
 	ctx->yield_properties  = NULL;
@@ -72,12 +67,6 @@ static void _process_yield
 			idx++;
 			continue;
 		}
-
-		if(strcasecmp("info", yield[i]) == 0) {
-			ctx->yield_info = ctx->out + idx;
-			idx++;
-			continue;
-		}
 	}
 }
 
@@ -102,38 +91,56 @@ ProcedureResult Proc_ConstraintsInvoke
 
 	ConstraintsContext *pdata = rm_malloc(sizeof(ConstraintsContext));
 
-	pdata->gc             = gc;
-	pdata->out            = array_new(SIValue, 8);
-	pdata->type           = CT_UNIQUE;
-	pdata->node_schema_id = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
-	pdata->edge_schema_id = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
-    pdata->constraint_id  = 0;
+	pdata->gc          = gc;
+	pdata->out         = array_new(SIValue, 5);
+    pdata->constraints = array_new(Constraint, 0);
 
 	_process_yield(pdata, yield);
 
 	ctx->privateData = pdata;
 
+	//--------------------------------------------------------------------------
+	// collect constraints
+	//--------------------------------------------------------------------------
+
+	SchemaType schema_types[2] = {SCHEMA_NODE, SCHEMA_EDGE};
+
+	// foreach schema type
+	for(int i = 0; i < 2; i++) {
+		SchemaType schema_type = schema_types[i];
+		ushort n = GraphContext_SchemaCount(gc, schema_type);
+
+		// foreach schema
+		for(ushort j = 0; j < n; j++) {
+			Schema *s = GraphContext_GetSchemaByID(gc, j, SCHEMA_NODE);
+			const Constraint *cs = Schema_GetConstraints(s);
+			// foreach schema's constraint
+
+			for(uint32_t k = 0; k < array_len((Constraint*)cs); k++) {
+				array_append(pdata->constraints, cs[k]);
+			}
+		}
+	}
+
 	return PROCEDURE_OK;
 }
 
-static bool _EmitConstraint
+static void _EmitConstraint
 (
-	ConstraintsContext *ctx,
-	const Schema *s,
-	ConstraintType type,
-    int constraint_id
+	const Constraint c,
+	ConstraintsContext *ctx
 ) {
-	const Constraint *constraints = Schema_GetConstraints(s);
-    ASSERT(constraints != NULL);
+    ASSERT(c != NULL);
 
-    Constraint c = constraints[constraint_id];
+	GraphContext *gc = ctx->gc;
 
 	//--------------------------------------------------------------------------
 	// constraint entity type
 	//--------------------------------------------------------------------------
 
 	if(ctx->yield_entity_type != NULL) {
-		if(s->type == SCHEMA_NODE) {
+		GraphEntityType t = Constraint_GetEntityType(c);
+		if(t == GETYPE_NODE) {
 			*ctx->yield_entity_type = SI_ConstStringVal("NODE");
 		} else {
 			*ctx->yield_entity_type = SI_ConstStringVal("RELATIONSHIP");
@@ -151,8 +158,8 @@ static bool _EmitConstraint
 		} else if (status == CT_PENDING) {
 			*ctx->yield_status = SI_ConstStringVal("UNDER CONSTRUCTION");
 		} else {
-            *ctx->yield_status = SI_ConstStringVal("FAILED");
-        }
+			*ctx->yield_status = SI_ConstStringVal("FAILED");
+		}
 	}
 
 	//--------------------------------------------------------------------------
@@ -160,7 +167,8 @@ static bool _EmitConstraint
 	//--------------------------------------------------------------------------
 
 	if(ctx->yield_type != NULL) {
-		if(type == CT_UNIQUE) {
+		ConstraintType t = Constraint_GetType(c);
+		if(t == CT_UNIQUE) {
 			*ctx->yield_type = SI_ConstStringVal("unique");
 		} else {
 			*ctx->yield_type = SI_ConstStringVal("mandatory");
@@ -172,6 +180,9 @@ static bool _EmitConstraint
 	//--------------------------------------------------------------------------
 
 	if(ctx->yield_label) {
+		SchemaType t = (Constraint_GetEntityType(c) == GETYPE_NODE) ?
+			SCHEMA_NODE : SCHEMA_EDGE;
+		Schema *s = GraphContext_GetSchemaByID(gc, Constraint_GetLabelID(c), t);
 		*ctx->yield_label = SI_ConstStringVal((char *)Schema_GetName(s));
 	}
 
@@ -180,49 +191,15 @@ static bool _EmitConstraint
 	//--------------------------------------------------------------------------
 
 	if(ctx->yield_properties) {
-		const char **fields;
-		uint fields_count = Constraint_GetAttributes(c, NULL, &fields);
-		*ctx->yield_properties = SI_Array(fields_count);
+		const char **props;
+		uint n = Constraint_GetAttributes(c, NULL, &props);
+		*ctx->yield_properties = SI_Array(n);
 
-		for(uint i = 0; i < fields_count; i++) {
+		for(uint i = 0; i < n; i++) {
 			SIArray_Append(ctx->yield_properties,
-					SI_ConstStringVal((char *)fields[i]));
+					SI_ConstStringVal((char *)props[i]));
 		}
 	}
-
-	return true;
-}
-
-static SIValue *Schema_Step
-(
-	int *schema_id,
-	SchemaType t,
-	ConstraintsContext *pdata
-) {
-	Schema *s = NULL;
-
-	// loop over all schemas from last to first
-	while(*schema_id >= 0) {
-		s = GraphContext_GetSchemaByID(pdata->gc, *schema_id, t);
-		if(!Schema_HasConstraints(s)) {
-			// no constraints found, continue to the next schema
-			(*schema_id)--;
-			continue;
-		}
-
-		// populate constraint data if one is found
-		bool found = _EmitConstraint(pdata, s, pdata->type, pdata->constraint_id);
-
-        if(found) {
-            pdata->constraint_id++;
-            return pdata->out;
-        } else {
-            pdata->constraint_id = 0;
-            (*schema_id)--;
-        }
-	}
-
-	return NULL;
 }
 
 SIValue *Proc_ConstraintsStep
@@ -234,10 +211,15 @@ SIValue *Proc_ConstraintsStep
 	SIValue *res;
 	ConstraintsContext *pdata = ctx->privateData;
 
-	res = Schema_Step(&pdata->node_schema_id, SCHEMA_NODE, pdata);
-	if(res != NULL) return res;
+	// no more constraints to emit
+	if(array_len(pdata->constraints) == 0) {
+		return NULL;
+	}
 
-	return Schema_Step(&pdata->edge_schema_id, SCHEMA_EDGE, pdata);
+	Constraint c = array_pop(pdata->constraints);
+	_EmitConstraint(c, pdata);
+
+	return pdata->out;
 }
 
 ProcedureResult Proc_ConstraintsFree
@@ -248,16 +230,17 @@ ProcedureResult Proc_ConstraintsFree
 	if(ctx->privateData) {
 		ConstraintsContext *pdata = ctx->privateData;
 		array_free(pdata->out);
+		array_free(pdata->constraints);
 		rm_free(pdata);
 	}
 
 	return PROCEDURE_OK;
 }
 
-ProcedureCtx *Proc_ConstraintsCtx() {
+ProcedureCtx *Proc_ConstraintsCtx(void) {
 	void *privateData = NULL;
 	ProcedureOutput output;
-	ProcedureOutput *outputs = array_new(ProcedureOutput, 8);
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 5);
 
 	// constraint type (unique / mandatory)
 	output = (ProcedureOutput) {
@@ -299,3 +282,4 @@ ProcedureCtx *Proc_ConstraintsCtx() {
 								   true);
 	return ctx;
 }
+

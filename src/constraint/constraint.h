@@ -13,9 +13,7 @@
 #include "../graph/entities/attribute_set.h"
 
 // forward declaration of opaque constraint structures
-typedef struct _Constraint       *Constraint;        // base constraint struct
-typedef struct _UniqueConstraint *UniqueConstraint;  // unique constraint
-typedef struct _ExistsConstraint *ExistsConstraint;  // exists constraint
+typedef struct _Constraint *Constraint;
 
 // constraint enforcement callback function
 typedef bool (*EnforcementCB)
@@ -48,27 +46,6 @@ Constraint Constraint_New
 (
 	struct GraphContext *gc,
 	ConstraintType t,         // type of constraint
-	LabelID l,                // label/relation ID
-	Attribute_ID *fields,     // enforced fields
-	const char **attr_names,  // enforced attribute names
-	uint n_fields,            // number of fields
-	GraphEntityType et        // entity type
-);
-
-// create a new unique constraint
-Constraint Constraint_UniqueNew
-(
-	LabelID l,                // label/relation ID
-	Attribute_ID *fields,     // enforced fields
-	const char **attr_names,  // enforced attribute names
-	uint n_fields,            // number of fields
-	GraphEntityType et,       // entity type
-	Index idx                 // index
-);
-
-// create a new exists constraint
-Constraint Constraint_ExistsNew
-(
 	LabelID l,                // label/relation ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names

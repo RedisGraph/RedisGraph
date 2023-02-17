@@ -71,38 +71,59 @@ unsigned short Schema_IndexCount
 	return n;
 }
 
+// get index from schema
+// returns NULL if index wasn't found
 Index Schema_GetIndex
 (
-	const Schema *s,
-	Attribute_ID *attr_id,
-	IndexType type
+	const Schema *s,            // schema to get index from
+	const Attribute_ID *attrs,  // indexed attributes
+	uint n,                     // number of attributes
+	IndexType type              // type of index
 ) {
+	// validations
 	ASSERT(s != NULL);
+	ASSERT((attrs == NULL && n == 0) || (attrs != NULL && n > 0));
 
-	Index idx = NULL;
+	Index idx         = NULL;  // index to return
+	uint  idx_count   = 0;     // number of indicies to consider
+	Index indicies[2] = {0};   // indicies to consider
+
 	if(type != IDX_ANY) {
-		idx = (type == IDX_EXACT_MATCH) ? s->index : s->fulltextIdx;
-		// return NULL if the index does not exist, or an attribute was
-		// specified but does not reside on the index
-		if(idx     != NULL &&
-		   attr_id != NULL &&
-		   !Index_ContainsAttribute(idx, *attr_id)) {
-			idx = NULL;
+		// consider specified index
+		idx_count   = 1;
+		indicies[0] = (type == IDX_EXACT_MATCH) ? s->index : s->fulltextIdx;
+	} else  {
+		// consider both exact-match and fulltext indicies
+		idx_count   = 2;
+		indicies[0] = s->index;
+		indicies[1] = s->fulltextIdx;
+	}
+
+	//--------------------------------------------------------------------------
+	// return first index which contains all specified attributes
+	//--------------------------------------------------------------------------
+
+	for(uint i = 0; i < idx_count; i++) {
+		idx = indicies[i];
+
+		// index doesn't exists
+		if(idx == NULL) {
+			continue;
 		}
-	} else if(attr_id) {
-		// ANY index, specified attribute id
-		// return the first index containing attribute
-		if(s->index &&
-		   Index_ContainsAttribute(s->index, *attr_id)) {
-			idx = s->index;
+
+		// make sure index contains all specified attributes
+		bool all_attr_found = true;
+		for(uint i = 0; i < n; i++) {
+			if(!Index_ContainsAttribute(idx, attrs[i])) {
+				idx = NULL;
+				all_attr_found = false;
+				break;
+			}
 		}
-		if(s->fulltextIdx &&
-		   Index_ContainsAttribute(s->fulltextIdx, *attr_id)) {
-			idx = s->fulltextIdx;
+
+		if(all_attr_found == true) {
+			break;
 		}
-	} else {
-		// ANY index, unspecified attribute id, return the first extant index
-		idx = (s->index != NULL) ? s->index : s->fulltextIdx;
 	}
 
 	return idx;
@@ -122,7 +143,7 @@ int Schema_AddIndex
 	ASSERT(field != NULL);
 
 	// see if index already exists
-	Index _idx = Schema_GetIndex(s, NULL, type);
+	Index _idx = Schema_GetIndex(s, NULL, 0, type);
 
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
@@ -171,7 +192,7 @@ static int _Schema_RemoveExactMatchIndex
 	}
 
 	// try to get index
-	Index idx = Schema_GetIndex(s, &attr_id, IDX_EXACT_MATCH);
+	Index idx = Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH);
 	if(idx == NULL) {
 		return INDEX_FAIL;
 	}
@@ -205,7 +226,7 @@ static int _Schema_RemoveFullTextIndex
 ) {
 	ASSERT(s != NULL);
 
-	Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	Index idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);
 	if(idx == NULL) {
 		return INDEX_FAIL;
 	}
@@ -446,7 +467,8 @@ bool Schema_EnforceConstraints
 	uint n = array_len(s->constraints);
 	for(uint i = 0; i < n; i++) {
 		Constraint c = s->constraints[i];
-		if(!Constraint_EnforceEntity(c, e)) {
+		if(Constraint_GetStatus(c) != CT_FAILED &&
+		   !Constraint_EnforceEntity(c, e)) {
 			// entity failed to pass constraint
 			return false;
 		}

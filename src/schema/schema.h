@@ -66,13 +66,14 @@ unsigned short Schema_IndexCount
 	const Schema *s
 );
 
-// retrieves index from attribute
+// get index from schema
 // returns NULL if index wasn't found
 Index Schema_GetIndex
 (
-	const Schema *s,
-	Attribute_ID *attribute_id,
-	IndexType type
+	const Schema *s,            // schema to get index from
+	const Attribute_ID *attrs,  // indexed attributes
+	uint n,                     // number of attributes
+	IndexType type              // type of index
 );
 
 // assign a new index to attribute

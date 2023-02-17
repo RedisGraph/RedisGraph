@@ -17,6 +17,16 @@ typedef enum {
 	CT_DELETE   // delete constraint
 } ConstraintOp;
 
+static inline int _cmp_Attribute_ID
+(
+	const void *a,
+	const void *b
+) {
+	const Attribute_ID *_a = a;
+	const Attribute_ID *_b = b;
+	return *_a - *_b;
+}
+
 static int Constraint_Parse
 (
 	RedisModuleCtx *ctx,
@@ -101,7 +111,7 @@ static int Constraint_Parse
 	}
 
 	// expecting last property to be the last command argument
-	if(argc - 8 != *prop_count) {
+	if(argc - 7 != *prop_count) {
 		RedisModule_ReplyWithError(ctx, "Number of properties doesn't match property count");
 		return REDISMODULE_ERR;
 	}
@@ -112,7 +122,7 @@ static int Constraint_Parse
 }
 
 // GRAPH.CONSTRAIN <key> DEL UNIQUE/MANDATORY LABEL/RELTYPE label PROPERTIES prop_count prop0, prop1...
-static int _Constraint_Delete
+static bool _Constraint_Delete
 (
 	RedisModuleCtx *ctx,
 	RedisModuleString *key,
@@ -122,29 +132,35 @@ static int _Constraint_Delete
 	uint prop_count,
 	const char **props
 ) {
-	int rv = REDISMODULE_OK;  // optimistic
-	Attribute_ID fields[prop_count];
+	bool res = true;  // optimistic
+	Attribute_ID attrs[prop_count];
 
-	// get graph
+	//--------------------------------------------------------------------------
+	// try to get graph
+	//--------------------------------------------------------------------------
+
 	GraphContext *gc = GraphContext_Retrieve(ctx, key, false, false);
 	if(!gc) {
 		// graph doesn't exists
 		return false;
 	}
 
-	// acquire graph write lock
-	Graph_AcquireWriteLock(gc->g);
+	//--------------------------------------------------------------------------
+	// try to get schema
+	//--------------------------------------------------------------------------
 
 	// determine schema type
 	SchemaType st = (entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
 
-	// try to get schema
 	Schema *s = GraphContext_GetSchema(gc, label, st);
 	if(s == NULL) {
-		RedisModule_ReplyWithError(ctx, "Unable to drop constraint on, no such constraint.");
-		rv = REDISMODULE_ERR;
+		res = false;
 		goto cleanup;
 	}
+
+	//--------------------------------------------------------------------------
+	// try to get attribute IDs
+	//--------------------------------------------------------------------------
 
 	for(uint i = 0; i < prop_count; i++) {
 		const char *prop = props[i];
@@ -152,47 +168,51 @@ static int _Constraint_Delete
 		// try to get property ID
 		Attribute_ID id = GraphContext_GetAttributeID(gc, prop);
 
-		// propery missing, reply with an error and return
 		if(id == ATTRIBUTE_ID_NONE) {
-			RedisModule_ReplyWithError(ctx, "Unable to drop constraint on, no such constraint.");
-			rv = REDISMODULE_ERR;
+			// attribute missing
+			res = false;
 			goto cleanup;
 		}
 
-		fields[i] = id;
+		attrs[i] = id;
 	}
 
+	//--------------------------------------------------------------------------
 	// try to get constraint
-	// TODO: accept constraint type from user
-	Constraint c = Schema_GetConstraint(s, CT_UNIQUE, fields, prop_count);
+	//--------------------------------------------------------------------------
+
+	Constraint c = Schema_GetConstraint(s, ct, attrs, prop_count);
 	if(c == NULL) {
-		RedisModule_ReplyWithError(ctx, "Unable to drop constraint on, no such constraint.");
-		rv = REDISMODULE_ERR;
+		res = false;
 		goto cleanup;
 	}
 
-	Schema_RemoveConstraint(s, c);
+	//--------------------------------------------------------------------------
+	// remove constraint
+	//--------------------------------------------------------------------------
 
-cleanup:
+	// acquire graph write lock
+	Graph_AcquireWriteLock(gc->g);
+
+	res = Schema_RemoveConstraint(s, c);
+	ASSERT(res == true);
+
 	// release graph R/W lock
 	Graph_ReleaseLock(gc->g);
+
+	// TODO: use an ASYNC delete
+	Constraint_Free(&c);
+
+cleanup:
+	if(res == false) {
+		RedisModule_ReplyWithError(ctx, "Unable to drop constraint on, no such constraint.");
+	}
 
 	// decrease graph reference count
 	GraphContext_DecreaseRefCount(gc);
 
-	return rv;
+	return res;
 }
-
-static inline int _cmp_Attribute_ID
-(
-	const void *a,
-	const void *b
-) {
-	const Attribute_ID *_a = a;
-	const Attribute_ID *_b = b;
-	return *_a - *_b;
-}
-
 
 // GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY LABEL/RELTYPE label PROPERTIES prop_count prop0, prop1...
 static bool _Constraint_Create
@@ -212,6 +232,10 @@ static bool _Constraint_Create
 	if(gc == NULL) {
 		return false;	
 	}
+	// set graph context in query context TLS
+	// this is required in case the undo-log needs to be applied
+	// TODO: find a better way
+	QueryCtx_SetGraphCtx(gc);
 
 	Graph *g = GraphContext_GetGraph(gc);
 
@@ -228,17 +252,6 @@ static bool _Constraint_Create
 	}
 
 	//--------------------------------------------------------------------------
-	// make sure schema exists
-	//--------------------------------------------------------------------------
-
-	SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-	Schema *s = GraphContext_GetSchema(gc, lbl, st);
-	if(s == NULL) {
-		s = AddSchema(gc, lbl, st);
-	}
-	int s_id = Schema_GetID(s);
-
-	//--------------------------------------------------------------------------
 	// check for duplicates
 	//--------------------------------------------------------------------------
 
@@ -246,7 +259,7 @@ static bool _Constraint_Create
 	bool dups = false;
 	qsort(attr_ids, n, sizeof(Attribute_ID), _cmp_Attribute_ID);
 	for(uint i = 0; i < n - 1; i++) {
-		if(attr_ids[i] != attr_ids[i+1]) {
+		if(attr_ids[i] == attr_ids[i+1]) {
 			dups = true;
 			break;
 		}
@@ -261,8 +274,24 @@ static bool _Constraint_Create
 	// re-construct attribute IDs array
 	// must be aligned with attribute names array
 	for(uint i = 0; i < n; i++) {
-		attr_ids[i] = GraphContext_GetAttributeID(gc, props[i]);
+		// get attribute id for attribute name
+		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, props[i]);
+		attr_ids[i] = attr_id;
+
+		// update props to hold graph context's attribute name
+		props[i] = GraphContext_GetAttributeString(gc, attr_id);
 	}
+
+	//--------------------------------------------------------------------------
+	// make sure schema exists
+	//--------------------------------------------------------------------------
+
+	SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+	Schema *s = GraphContext_GetSchema(gc, lbl, st);
+	if(s == NULL) {
+		s = AddSchema(gc, lbl, st);
+	}
+	int s_id = Schema_GetID(s);
 
 	//--------------------------------------------------------------------------
 	// check if constraint already exists
@@ -291,21 +320,13 @@ static bool _Constraint_Create
 	// create constraint
 	//--------------------------------------------------------------------------
 
-	if(ct == CT_UNIQUE) {
-		// unique constraint requires the existance of an exact match index
-		// to support the constraint
-		Index idx = GraphContext_GetIndexByID(gc, s_id, attr_ids,
-				IDX_EXACT_MATCH, st);
+	c = Constraint_New((struct GraphContext *)gc, ct, s_id, attr_ids, props, n,
+			et);
 
-		// index missing
-		if(idx == NULL) {
-			res = false;
-			goto cleanup;
-		}
-
-		c = Constraint_UniqueNew(s_id, attr_ids, props, n, et, idx);
-	} else {
-		c = Constraint_ExistsNew(s_id, attr_ids, props, n, et);
+	// failed to add constraint
+	if(c == NULL) {
+		res = false;
+		goto cleanup;
 	}
 
 	// add constraint to schema
@@ -376,16 +397,7 @@ int Graph_Constraint
 		props_cstr[i] = RedisModule_StringPtrLen(props[i], NULL);
 	}
 
-	// determine schema type
-	SchemaType schema_type;
-	if(entity_type == GETYPE_NODE) {
-		schema_type = SCHEMA_NODE;
-	} else {
-		schema_type = SCHEMA_EDGE;
-	}
-
 	bool success = false;
-	GraphContext *gc = NULL;
 
 	if(op == CT_CREATE) {
 		// try to create constraint
@@ -402,6 +414,9 @@ int Graph_Constraint
 		RedisModule_ReplicateVerbatim(ctx);
 		return REDISMODULE_OK;
 	}
+
+	// clean up
+	QueryCtx_Free();
 
 	return REDISMODULE_ERR;    
 }

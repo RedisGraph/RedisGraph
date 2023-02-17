@@ -71,13 +71,11 @@ static void _CommitNodes
 		uint label_count = array_len(labels);
 		AttributeSet attr = pending->node_attributes[i];
 
-		// introduce node into graph
-		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
-				attr);
-
 		//----------------------------------------------------------------------
 		// enforce constraints
 		//----------------------------------------------------------------------
+		//GraphEntity e = {attr, INVALID_ENTITY_ID};
+		n->attributes = &attr;
 
 		for(uint j = 0; j < label_count; j++) {
 			Schema *s = GraphContext_GetSchemaByID(gc, labels[j], SCHEMA_NODE);
@@ -88,6 +86,12 @@ static void _CommitNodes
 				break;
 			}
 		}
+
+		// TODO: should we break if node did not pass constraint?
+
+		// introduce node into graph
+		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
+				attr);
 	}
 }
 

@@ -15,6 +15,29 @@
 
 #include <stdatomic.h>
 
+// Extern functions
+
+// create a new unique constraint
+extern Constraint Constraint_UniqueNew
+(
+	LabelID l,                // label/relation ID
+	Attribute_ID *fields,     // enforced fields
+	const char **attr_names,  // enforced attribute names
+	uint n_fields,            // number of fields
+	GraphEntityType et,       // entity type
+	Index idx                 // index
+);
+
+// create a new exists constraint
+extern Constraint Constraint_ExistsNew
+(
+	LabelID l,                // label/relation ID
+	Attribute_ID *fields,     // enforced fields
+	const char **attr_names,  // enforced attribute names
+	uint n_fields,            // number of fields
+	GraphEntityType et        // entity type
+);
+
 // opaque structure representing a constraint
 typedef struct _Constraint {
 	uint n_attr;                   // number of fields
@@ -56,7 +79,7 @@ static void _Constraint_EnforceNodes
 	int                batch_size = 10000;  // #entities to enforce in one go
 	RG_MatrixTupleIter it         = {0};    // matrix iterator
 
-	while(holds && true) {
+	while(holds) {
 		// lock graph for reading
 		Graph_AcquireReadLock(g);
 
@@ -145,7 +168,7 @@ static void _Constraint_EnforceEdges
 	int       batch_size   = 1000;  // max number of entities to enforce in one go
 	RG_MatrixTupleIter it  = {0};
 
-	while(holds && true) {
+	while(holds) {
 		// lock graph for reading
 		Graph_AcquireReadLock(g);
 
@@ -257,7 +280,7 @@ Constraint Constraint_New
 		// try to get supporting index
 		SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
 		Index idx = GraphContext_GetIndexByID((GraphContext*) gc, l, fields,
-				IDX_EXACT_MATCH, st);
+				n_fields, IDX_EXACT_MATCH, et);
 
 		// supporting index is missing, can't create constraint
 		if(idx == NULL) {

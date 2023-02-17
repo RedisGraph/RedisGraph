@@ -102,7 +102,7 @@ static bool _index_operation_delete
 	// try locating a NODE EXACT-MATCH index
 	s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s != NULL) {
-		*idx = Schema_GetIndex(s, &attr_id, IDX_EXACT_MATCH);
+		*idx = Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH);
 	}
 
 	// try locating a EDGE EXACT-MATCH index
@@ -110,7 +110,7 @@ static bool _index_operation_delete
 		schema_type = SCHEMA_EDGE;
 		s = GraphContext_GetSchema(gc, label, schema_type);
 		if(s != NULL) {
-			*idx = Schema_GetIndex(s, &attr_id, IDX_EXACT_MATCH);
+			*idx = Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH);
 		}
 	}
 

@@ -447,3 +447,4 @@ class testConstraintFlowEdges(FlowTestsBase):
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("constraint violation on label LION", str(e))
+

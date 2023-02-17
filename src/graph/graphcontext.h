@@ -218,11 +218,12 @@ bool GraphContext_HasIndices
 // attempt to retrieve an index on the given label and attribute IDs
 Index GraphContext_GetIndexByID
 (
-	const GraphContext *gc,
-	int id,
-	Attribute_ID *attribute_id,
-	IndexType type,
-	SchemaType t
+	const GraphContext *gc,        // graph context
+	int lbl_id,                    // label / rel-type ID
+	const Attribute_ID *attrs,     // attributes
+	uint n,                        // attributes count
+	IndexType idx_type,            // index type
+	GraphEntityType entity_type    // schema type NODE / EDGE
 );
 
 // attempt to retrieve an index on the given label and attribute
@@ -230,7 +231,8 @@ Index GraphContext_GetIndex
 (
 	const GraphContext *gc,
 	const char *label,
-	Attribute_ID *attribute_id,
+	Attribute_ID *attrs,
+	uint n,
 	IndexType type,
 	SchemaType schema_type
 );

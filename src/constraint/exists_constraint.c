@@ -12,7 +12,7 @@
 #include <stdatomic.h>
 
 // opaque structure representing a constraint
-typedef struct _ExistsConstraint {
+struct _ExistsConstraint {
 	uint16_t n_attr;               // number of fields
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
@@ -22,7 +22,9 @@ typedef struct _ExistsConstraint {
     ConstraintStatus status;       // constraint status
     uint _Atomic pending_changes;  // number of pending changes
 	GraphEntityType et;            // entity type
-} _ExistsConstraint;
+};
+
+typedef struct _ExistsConstraint* ExistsConstraint;
 
 // enforces mandatory constraint on given entity
 static bool Constraint_EnforceExists
@@ -30,8 +32,20 @@ static bool Constraint_EnforceExists
 	const Constraint c,   // constraint to enforce
 	const GraphEntity *e  // enforced entity
 ) {
-	// TODO: implement
-	return false;
+	ExistsConstraint _c = (ExistsConstraint)(c);
+
+	// TODO: might want to introduce a GraphEntity_ContainsAttributes function
+	// see if entity has all enforced attributes
+	for(uint i = 0; i < _c->n_attr; i++) {
+		Attribute_ID attr_id = _c->attrs[i];
+		if(GraphEntity_GetProperty(e, attr_id) == ATTRIBUTE_NOTFOUND) {
+			// missing mandatory attribute
+			return false;
+		}
+	}
+
+	// all mandatory attributes are found
+	return true;
 }
 
 // create a new exists constraint
@@ -43,7 +57,7 @@ Constraint Constraint_ExistsNew
 	uint n_fields,            // number of fields
 	GraphEntityType et        // entity type
 ) {
-    ExistsConstraint c = rm_malloc(sizeof(_ExistsConstraint));
+    ExistsConstraint c = rm_malloc(sizeof(struct _ExistsConstraint));
 
 	// introduce constraint attributes
 	c->attrs = rm_malloc(sizeof(Attribute_ID) * n_fields);

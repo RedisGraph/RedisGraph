@@ -456,33 +456,41 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 
 	return false;
 }
+
+// attempt to retrieve an index on the given label and attribute IDs
 Index GraphContext_GetIndexByID
 (
-	const GraphContext *gc,
-	int id,
-	Attribute_ID *attribute_id,
-	IndexType type,
-	SchemaType t
+	const GraphContext *gc,        // graph context
+	int lbl_id,                    // label / rel-type ID
+	const Attribute_ID *attrs,     // attributes
+	uint n,                        // attributes count
+	IndexType idx_type,            // index type
+	GraphEntityType entity_type    // schema type NODE / EDGE
 ) {
-
+	// validations
 	ASSERT(gc != NULL);
+	ASSERT((attr_ids == NULL && n == 0) || (attr_ids != NULL && n > 0));
 
-	// Retrieve the schema for given id
-	Schema *s = GraphContext_GetSchemaByID(gc, id, t);
-	if(s == NULL) return NULL;
+	// retrieve the schema for given id
+	SchemaType st = (entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+	Schema *s = GraphContext_GetSchemaByID(gc, lbl_id, st);
+	if(s == NULL) {
+		return NULL;
+	}
 
-	return Schema_GetIndex(s, attribute_id, type);
+	return Schema_GetIndex(s, attrs, n, idx_type);
 }
 
+// attempt to retrieve an index on the given label and attribute
 Index GraphContext_GetIndex
 (
 	const GraphContext *gc,
 	const char *label,
-	Attribute_ID *attribute_id,
+	Attribute_ID *attrs,
+	uint n,
 	IndexType type,
 	SchemaType schema_type
 ) {
-
 	ASSERT(gc    != NULL);
 	ASSERT(label != NULL);
 
@@ -490,7 +498,7 @@ Index GraphContext_GetIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) return NULL;
 
-	return Schema_GetIndex(s, attribute_id, type);
+	return Schema_GetIndex(s, attrs, n, type);
 }
 
 // create an exact match index for the given label and attribute

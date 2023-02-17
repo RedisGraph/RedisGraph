@@ -13,7 +13,7 @@
 #include <stdatomic.h>
 
 // opaque structure representing a constraint
-typedef struct _UniqueConstraint {
+struct _UniqueConstraint {
 	uint n_attr;                   // number of fields
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
@@ -24,7 +24,9 @@ typedef struct _UniqueConstraint {
     uint _Atomic pending_changes;  // number of pending changes
 	GraphEntityType et;            // entity type
 	Index idx;                     // supporting index
-} _UniqueConstraint;
+};
+
+typedef struct _UniqueConstraint* UniqueConstraint;
 
 // enforces unique constraint on given entity
 // returns true if entity confirms with constraint false otherwise
@@ -39,8 +41,8 @@ static bool Constraint_EnforceUniqueEntity
 
 	UniqueConstraint _c = (UniqueConstraint)c;
 
-	bool    res     = false;  // return value none-optimistic
 	Index   idx     = _c->idx;
+	bool    holds   = false;  // return value none-optimistic
 	RSIndex *rs_idx = Index_RSIndex(idx);
 
 	//--------------------------------------------------------------------------
@@ -52,14 +54,15 @@ static bool Constraint_EnforceUniqueEntity
 
     SIType t;
     SIValue *v;
+    uint i = 0;
     RSQNode *node = NULL;  // RediSearch query node
+    RSQNode *root = NULL;  // root of RediSearch query tree
+	RSQNode *nodes[_c->n_attr];
+    RSResultsIterator *iter = NULL;
 	const AttributeSet attributes = GraphEntity_GetAttributes(e);
 
-    // convert constraint into a RediSearch query
-    RSQNode *rs_query_node = RediSearch_CreateIntersectNode(rs_idx, false);
-    ASSERT(rs_query_node != NULL);
-
-    for(uint i = 0; i < array_len(_c->attrs); i++) {
+    // create a RediSearch query
+    for(i = 0; i < _c->n_attr; i++) {
 		Attribute_ID attr_id = _c->attrs[i];
 		const char *field = _c->attr_names[i];
 
@@ -67,8 +70,8 @@ static bool Constraint_EnforceUniqueEntity
         v = AttributeSet_Get(attributes, attr_id);
 		if(v == ATTRIBUTE_NOTFOUND) {
 			// entity satisfies constraint in a vacuous truth manner
-			RediSearch_QueryNodeFree(rs_query_node);
-			res = true;
+			holds = true;
+			goto cleanup;
 			break;
 		}
 
@@ -85,7 +88,7 @@ static bool Constraint_EnforceUniqueEntity
 	    	RediSearch_QueryNodeAddChild(node, child);
 	    } else if(t == T_STRING) {
             node = RediSearch_CreateTagNode(rs_idx, field);
-            RSQNode *child = RediSearch_CreateTokenNode(rs_idx, field, v->stringval);
+            RSQNode *child = RediSearch_CreateTagTokenNode(rs_idx, v->stringval);
 	    	RediSearch_QueryNodeAddChild(node, child);
         } else {
             ASSERT(t & SI_NUMERIC || t == T_BOOL);
@@ -94,10 +97,21 @@ static bool Constraint_EnforceUniqueEntity
         }
 
         ASSERT(node != NULL);
-		// TODO: validate that if there's only one child
-		// there's no performance penalty
-        RediSearch_QueryNodeAddChild(rs_query_node, node);
+		nodes[i] = node;
     }
+
+	//--------------------------------------------------------------------------
+	// cancat filters
+	//--------------------------------------------------------------------------
+
+	root = node;
+	if(_c->n_attr > 1) {
+		// intersection query node
+		root = RediSearch_CreateIntersectNode(rs_idx, false);
+		for(uint i = 0; i < _c->n_attr; i++) {
+			RediSearch_QueryNodeAddChild(root, nodes[i]);
+		}
+	}
 
 	//--------------------------------------------------------------------------
 	// query RediSearch index
@@ -105,9 +119,7 @@ static bool Constraint_EnforceUniqueEntity
 
 	// TODO: it is ok for 'RediSearch_ResultsIteratorNext' to return NULL
 	// in which case the enforced entity satisfies
-    RSResultsIterator *iter = RediSearch_GetResultsIterator(rs_query_node, rs_idx);
-    const void* ptr = RediSearch_ResultsIteratorNext(iter, rs_idx, NULL);
-	RediSearch_ResultsIteratorFree(iter);
+    iter = RediSearch_GetResultsIterator(root, rs_idx);
 
 	// if ptr == NULL
 	// then there's no pre-existing entity which conflicts with given entity
@@ -116,8 +128,18 @@ static bool Constraint_EnforceUniqueEntity
 	// otherwise ptr != NULL
 	// there's already an existing entity which conflicts with given entity
 	// constaint does NOT hold!
+	holds = RediSearch_ResultsIteratorNext(iter, rs_idx, NULL) == NULL;
 
-    return (ptr == NULL);
+cleanup:
+	if(iter != NULL) {
+		RediSearch_ResultsIteratorFree(iter);
+	} else {
+		for(i = 0; i < _c->n_attr; i++) {
+			RediSearch_QueryNodeFree(nodes[i]);
+		}
+	}
+
+    return holds;
 }
 
 Constraint Constraint_UniqueNew
@@ -129,7 +151,7 @@ Constraint Constraint_UniqueNew
 	GraphEntityType et,       // entity type
 	Index idx                 // index
 ) {
-    UniqueConstraint c = rm_malloc(sizeof(_UniqueConstraint));
+    UniqueConstraint c = rm_malloc(sizeof(struct _UniqueConstraint));
 
 	// introduce constraint attributes
 	c->attrs = rm_malloc(sizeof(Attribute_ID) * n_fields);

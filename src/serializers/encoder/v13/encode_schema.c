@@ -5,6 +5,7 @@
  */
 
 #include "encode_v13.h"
+#include "../../../util/arr.h"
 
 static void _RdbSaveAttributeKeys
 (
@@ -173,23 +174,29 @@ static void _RdbSaveConstraintsData
 	RedisModuleIO *rdb,
 	Constraint *constraints
 ) {
-	uint n_active_constraints = 0;
 	uint n_constraints = array_len(constraints);
+	Constraint *active_constraints = array_new(Constraint, n_constraints);
 
+	// collect active constraints
 	for (uint i = 0; i < n_constraints; i++) {
 		Constraint c = constraints[i];
-		if (Constraint_GetStatus(c) != CT_ACTIVE) {
-			n_active_constraints++;
+		if (Constraint_GetStatus(c) == CT_ACTIVE) {
+			array_append(active_constraints, c);
 		}
 	}
 
-	// encode number of constraints
+	// encode number of active constraints
+	uint n_active_constraints = array_len(active_constraints);
 	RedisModule_SaveUnsigned(rdb, n_active_constraints);
 
-	for (uint i = 0; i < n_constraints; i++) {
-		Constraint c = constraints[i];
+	// encode constraints
+	for (uint i = 0; i < n_active_constraints; i++) {
+		Constraint c = active_constraints[i];
 		_RdbSaveConstraint(rdb, c);
 	}
+
+	// clean up
+	array_free(active_constraints);
 }
 
 static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
