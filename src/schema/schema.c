@@ -5,6 +5,7 @@
  */
 
 #include "schema.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
@@ -184,8 +185,8 @@ static int _Schema_RemoveExactMatchIndex
 	ASSERT(field != NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	// convert attribute name to attribute ID
 
+	// convert attribute name to attribute ID
 	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, field);
 	if(attr_id == ATTRIBUTE_ID_NONE) {
 		return INDEX_FAIL;
@@ -200,11 +201,12 @@ static int _Schema_RemoveExactMatchIndex
 	//--------------------------------------------------------------------------
 	// make sure index doesn't supports any constraints
 	//--------------------------------------------------------------------------
+
 	uint n = array_len(s->constraints);
 	for(uint i = 0; i < n; i++) {
 		Constraint c = s->constraints[i];
 		if(Constraint_ContainsAttribute(c, attr_id)) {
-			// TODO: should we explain why index removal failed?
+			ErrorCtx_SetError("Index supports constraint");
 			return INDEX_FAIL;
 		}
 	}

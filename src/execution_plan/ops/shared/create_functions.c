@@ -65,21 +65,26 @@ static void _CommitNodes
 	// sync policy should be set to NOP, no need to sync/resize
 	ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_NOP);
 
-	for(uint i = 0; i < node_count; i++) {
+	// TODO: not sure of this backwards loop, might introduce regression
+	// due to memory access
+	for(int i = node_count-1; i >= 0; i--) {
 		n = pending->created_nodes[i];
-		int *labels = pending->node_labels[i];
-		uint label_count = array_len(labels);
-		AttributeSet attr = pending->node_attributes[i];
+
+		int*         labels               = pending->node_labels[i];
+		uint         label_count          = array_len(labels);
+		AttributeSet attr                 = array_pop(pending->node_attributes);
+		bool         constraint_violation = false;
 
 		//----------------------------------------------------------------------
 		// enforce constraints
 		//----------------------------------------------------------------------
-		//GraphEntity e = {attr, INVALID_ENTITY_ID};
-		n->attributes = &attr;
+
+		n->attributes = &attr;  // set node's attribute set
 
 		for(uint j = 0; j < label_count; j++) {
 			Schema *s = GraphContext_GetSchemaByID(gc, labels[j], SCHEMA_NODE);
 			if(!Schema_EnforceConstraints(s, (GraphEntity*)n)) {
+				constraint_violation = true;
 				// constraint violation
 				ErrorCtx_SetError("constraint violation on label %s",
 						Schema_GetName(s));
@@ -87,7 +92,10 @@ static void _CommitNodes
 			}
 		}
 
-		// TODO: should we break if node did not pass constraint?
+		if(constraint_violation == true) {
+			// constraint violated! break
+			break;
+		}
 
 		// introduce node into graph
 		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
@@ -133,24 +141,26 @@ static void _CommitEdges
 (
 	PendingCreations *pending
 ) {
-	Edge          *e          =  NULL;
-	GraphContext  *gc         =  QueryCtx_GetGraphCtx();
-	Graph         *g          =  gc->g;
-	uint          edge_count  =  array_len(pending->created_edges);
+	Edge          *e         = NULL;
+	GraphContext  *gc        = QueryCtx_GetGraphCtx();
+	Graph         *g         = gc->g;
+	uint          edge_count = array_len(pending->created_edges);
 
 	// sync policy should be set to NOP, no need to sync/resize
 	ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_NOP);
 
-	for(uint i = 0; i < edge_count; i++) {
-		e = pending->created_edges[i];
+	// TODO: not sure of this backwards loop, might introduce regression
+	// due to memory access
+	for(int i = edge_count-1; i >= 0; i--) {
 		NodeID srcNodeID;
 		NodeID destNodeID;
-		AttributeSet attr = pending->edge_attributes[i];
+		e = pending->created_edges[i];
+		AttributeSet attr = array_pop(pending->edge_attributes);
 
-		// Nodes which already existed prior to this query would
+		// nodes which already existed prior to this query would
 		// have their ID set under e->srcNodeID and e->destNodeID
 		// Nodes which are created as part of this query would be
-		// saved under edge src/dest pointer.
+		// saved under edge src/dest pointer
 		if(e->srcNodeID != INVALID_ENTITY_ID) srcNodeID = e->srcNodeID;
 		else srcNodeID = ENTITY_GET_ID(Edge_GetSrcNode(e));
 		if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
@@ -161,12 +171,19 @@ static void _CommitEdges
 		ASSERT(s != NULL);
 		int relation_id = Schema_GetID(s);
 
-		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID,
-			destNodeID, relation_id, attr);
+		//----------------------------------------------------------------------
+		// enforce constraints
+		//----------------------------------------------------------------------
 
+		e->attributes = &attr;
 		if(!Schema_EnforceConstraints(s, (GraphEntity*)e)) {
 			ErrorCtx_SetError("constraint violation on label %s", s->name);
+			// constraint violated! break
+			break;
 		}
+
+		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID,
+			destNodeID, relation_id, attr);
 	}
 }
 
@@ -198,9 +215,17 @@ void CommitNewEntities
 	Graph *g = QueryCtx_GetGraph();
 	uint node_count = array_len(pending->created_nodes);
 	uint edge_count = array_len(pending->created_edges);
-	if(!pending->stats) pending->stats = QueryCtx_GetResultSetStatistics();
-	// Lock everything.
+
+	if(!pending->stats) {
+		pending->stats = QueryCtx_GetResultSetStatistics();
+	}
+
+	// lock everything
 	QueryCtx_LockForCommit();
+
+	//--------------------------------------------------------------------------
+	// commit nodes
+	//--------------------------------------------------------------------------
 
 	if(node_count > 0) {
 		Graph_AllocateNodes(g, node_count);
@@ -214,9 +239,18 @@ void CommitNewEntities
 		// no need to perform sync/resize
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 		_CommitNodes(pending);
-		pending->stats->nodes_created += node_count; // update statistics
-		if(unlikely(ErrorCtx_EncounteredError())) goto cleanup;
+
+		if(unlikely(ErrorCtx_EncounteredError())) {
+			goto cleanup;
+		}
+
+		// update statistics
+		pending->stats->nodes_created += node_count;
 	}
+
+	//--------------------------------------------------------------------------
+	// commit edges
+	//--------------------------------------------------------------------------
 
 	if(edge_count > 0) {
 		Graph_AllocateEdges(g, edge_count);
@@ -230,17 +264,19 @@ void CommitNewEntities
 		// no need to perform sync/resize
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 		_CommitEdges(pending);
-		pending->stats->relationships_created  +=  edge_count; // update statistics
+
+		if(unlikely(ErrorCtx_EncounteredError())) {
+			goto cleanup;
+		}
+
+		// update statistics
+		pending->stats->relationships_created += edge_count;
 	}
 
 cleanup:
 
 	// restore matrix sync policy to default
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
-
-	// clear pending attributes array
-	array_clear(pending->node_attributes);
-	array_clear(pending->edge_attributes);
 }
 
 // resolve the properties specified in the query into constant values
@@ -341,8 +377,8 @@ void PendingCreationsFree
 	}
 
 	if(pending->node_attributes) {
-		uint prop_count = array_len(pending->node_attributes);
- 		for(uint i = 0; i < prop_count; i ++) {
+		uint attr_count = array_len(pending->node_attributes);
+		for(uint i = 0; i < attr_count; i ++) {
  			AttributeSet_Free(pending->node_attributes + i);
  		}
 		array_free(pending->node_attributes);

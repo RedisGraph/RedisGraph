@@ -70,61 +70,6 @@ static void _process_yield
 	}
 }
 
-// CALL db.constraints()
-ProcedureResult Proc_ConstraintsInvoke
-(
-	ProcedureCtx *ctx,
-	const SIValue *args,
-	const char **yield
-) {
-
-	ASSERT(ctx   != NULL);
-	ASSERT(args  != NULL);
-	ASSERT(yield != NULL);
-
-	// TODO: introduce invoke validation, similar to arithmetic expressions
-	// expecting no arguments
-	uint arg_count = array_len((SIValue *)args);
-	if(arg_count != 0) return PROCEDURE_ERR;
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-
-	ConstraintsContext *pdata = rm_malloc(sizeof(ConstraintsContext));
-
-	pdata->gc          = gc;
-	pdata->out         = array_new(SIValue, 5);
-    pdata->constraints = array_new(Constraint, 0);
-
-	_process_yield(pdata, yield);
-
-	ctx->privateData = pdata;
-
-	//--------------------------------------------------------------------------
-	// collect constraints
-	//--------------------------------------------------------------------------
-
-	SchemaType schema_types[2] = {SCHEMA_NODE, SCHEMA_EDGE};
-
-	// foreach schema type
-	for(int i = 0; i < 2; i++) {
-		SchemaType schema_type = schema_types[i];
-		ushort n = GraphContext_SchemaCount(gc, schema_type);
-
-		// foreach schema
-		for(ushort j = 0; j < n; j++) {
-			Schema *s = GraphContext_GetSchemaByID(gc, j, SCHEMA_NODE);
-			const Constraint *cs = Schema_GetConstraints(s);
-			// foreach schema's constraint
-
-			for(uint32_t k = 0; k < array_len((Constraint*)cs); k++) {
-				array_append(pdata->constraints, cs[k]);
-			}
-		}
-	}
-
-	return PROCEDURE_OK;
-}
-
 static void _EmitConstraint
 (
 	const Constraint c,
@@ -220,6 +165,61 @@ SIValue *Proc_ConstraintsStep
 	_EmitConstraint(c, pdata);
 
 	return pdata->out;
+}
+
+// CALL db.constraints()
+ProcedureResult Proc_ConstraintsInvoke
+(
+	ProcedureCtx *ctx,
+	const SIValue *args,
+	const char **yield
+) {
+
+	ASSERT(ctx   != NULL);
+	ASSERT(args  != NULL);
+	ASSERT(yield != NULL);
+
+	// TODO: introduce invoke validation, similar to arithmetic expressions
+	// expecting no arguments
+	uint arg_count = array_len((SIValue *)args);
+	if(arg_count != 0) return PROCEDURE_ERR;
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+
+	ConstraintsContext *pdata = rm_malloc(sizeof(ConstraintsContext));
+
+	pdata->gc          = gc;
+	pdata->out         = array_new(SIValue, 5);
+    pdata->constraints = array_new(Constraint, 0);
+
+	_process_yield(pdata, yield);
+
+	ctx->privateData = pdata;
+
+	//--------------------------------------------------------------------------
+	// collect constraints
+	//--------------------------------------------------------------------------
+
+	SchemaType schema_types[2] = {SCHEMA_NODE, SCHEMA_EDGE};
+
+	// foreach schema type
+	for(int i = 0; i < 2; i++) {
+		SchemaType schema_type = schema_types[i];
+		ushort n = GraphContext_SchemaCount(gc, schema_type);
+
+		// foreach schema
+		for(ushort j = 0; j < n; j++) {
+			Schema *s = GraphContext_GetSchemaByID(gc, j, schema_type);
+			const Constraint *cs = Schema_GetConstraints(s);
+			// foreach schema's constraint
+
+			for(uint32_t k = 0; k < array_len((Constraint*)cs); k++) {
+				array_append(pdata->constraints, cs[k]);
+			}
+		}
+	}
+
+	return PROCEDURE_OK;
 }
 
 ProcedureResult Proc_ConstraintsFree

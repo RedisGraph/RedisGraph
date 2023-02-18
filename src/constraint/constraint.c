@@ -70,14 +70,15 @@ static void _Constraint_EnforceNodes
 	ConstraintEnforceCtx *ctx = (ConstraintEnforceCtx*)args;
 
 	Constraint c = ctx->c;
-	LabelID    l = c->lbl;
-	Graph     *g = ctx->g;
+	Constraint_DecPendingChanges(c);  // decrease number of pending changes
 
-	bool               holds      = true;   // constraint holds
-	GrB_Index          rowIdx     = 0;      // current row being scanned
-	int                enforced   = 0;      // #entities in current batch
-	int                batch_size = 10000;  // #entities to enforce in one go
-	RG_MatrixTupleIter it         = {0};    // matrix iterator
+	Graph*             g          = ctx->g;  // graph
+	LabelID            l          = c->lbl;  // constraint label ID
+	RG_MatrixTupleIter it         = {0};     // matrix iterator
+	bool               holds      = true;    // constraint holds
+	GrB_Index          rowIdx     = 0;       // current row being scanned
+	int                enforced   = 0;       // #entities in current batch
+	int                batch_size = 10000;   // #entities to enforce in one go
 
 	while(holds) {
 		// lock graph for reading
@@ -154,19 +155,22 @@ static void _Constraint_EnforceEdges
 	ConstraintEnforceCtx *ctx = (ConstraintEnforceCtx*)args;
 
 	Constraint c = ctx->c;
-	LabelID    l = c->lbl;
-	Graph     *g = ctx->g;
+	Constraint_DecPendingChanges(c);  // decrease number of pending changes
 
 	GrB_Info  info;
-	bool holds             = true;  // constraint holds
-	EntityID  src_id       = 0;     // current processed row idx
-	EntityID  dest_id      = 0;     // current processed column idx
-	EntityID  edge_id      = 0;     // current processed edge id
-	EntityID  prev_src_id  = 0;     // last processed row idx
-	EntityID  prev_dest_id = 0;     // last processed column idx
-	int       enforced     = 0;     // number of entities enforced in current batch
-	int       batch_size   = 1000;  // max number of entities to enforce in one go
 	RG_MatrixTupleIter it  = {0};
+
+	// TODO: change to RelationID
+	LabelID   r            = c->lbl;  // edge relationship type ID
+	Graph*    g            = ctx->g;  // graph
+	bool      holds        = true;    // constraint holds
+	EntityID  src_id       = 0;       // current processed row idx
+	EntityID  dest_id      = 0;       // current processed column idx
+	EntityID  edge_id      = 0;       // current processed edge id
+	EntityID  prev_src_id  = 0;       // last processed row idx
+	EntityID  prev_dest_id = 0;       // last processed column idx
+	int       enforced     = 0;       // number of entities enforced in current batch
+	int       batch_size   = 1000;    // max number of entities to enforce in one go
 
 	while(holds) {
 		// lock graph for reading
@@ -178,7 +182,7 @@ static void _Constraint_EnforceEdges
 		prev_dest_id = dest_id;
 
 		// fetch relation matrix
-		const RG_Matrix m = Graph_GetRelationMatrix(g, l, false);
+		const RG_Matrix m = Graph_GetRelationMatrix(g, r, false);
 		ASSERT(m != NULL);
 
 		//----------------------------------------------------------------------
@@ -209,7 +213,7 @@ static void _Constraint_EnforceEdges
 			Edge e;
 			e.srcNodeID  = src_id;
 			e.destNodeID = dest_id;
-			e.relationID = l;
+			e.relationID = r;
 
 			if(SINGLE_EDGE(edge_id)) {
 				Graph_GetEdge(g, edge_id, &e);
