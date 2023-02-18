@@ -7,6 +7,7 @@
 #include "execution_plan_construct.h"
 #include "RG.h"
 #include "../ops/ops.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../../util/rax_extensions.h"
 #include "../../ast/ast_build_filter_tree.h"
@@ -105,7 +106,7 @@ void buildPatternComprehensionOps
 			FT_FilterNode *filter_tree = NULL;
 			AST_ConvertFilters(&filter_tree, predicate);
 
-			if(!FilterTree_Valid(filter_tree)) {
+			if(!FilterTree_Valid(filter_tree, CYPHER_AST_PATTERN_COMPREHENSION)) {
 				// Invalid filter tree structure, a compile-time error has been set.
 				FilterTree_Free(filter_tree);
 			} else {

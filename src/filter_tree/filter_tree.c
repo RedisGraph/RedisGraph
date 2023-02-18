@@ -666,7 +666,8 @@ static inline bool _FilterTree_ValidExpressionNode
 
 bool FilterTree_Valid
 (
-	const FT_FilterNode *root
+	const FT_FilterNode *root,
+	cypher_astnode_type_t type
 ) {
 	// An empty tree is has a valid structure.
 	if(!root) return true;
@@ -681,6 +682,19 @@ bool FilterTree_Valid
 				ErrorCtx_SetError("Filter predicate did not compare two expressions.");
 				return false;
 			}
+			// Aggregate functions can't be used as part of filters in pattern comprehension node
+			if (type == CYPHER_AST_PATTERN_COMPREHENSION) {
+				const char *func_name = AR_EXP_GetFuncName(root->pred.lhs);
+				if(AR_FuncIsAggregate(func_name)) {
+					ErrorCtx_SetError("Invalid use of aggregating function '%s' in pattern comprehension predicate", func_name);
+					return false;
+				}
+				func_name = AR_EXP_GetFuncName(root->pred.rhs);
+				if(AR_FuncIsAggregate(func_name)) {
+					ErrorCtx_SetError("Invalid use of aggregating function '%s' in pattern comprehension predicate", func_name);
+					return false;
+				}
+			}
 			break;
 		case FT_N_COND:
 			// Empty condition, invalid structure.
@@ -694,8 +708,8 @@ bool FilterTree_Valid
 				ErrorCtx_SetError("Invalid usage of 'NOT' filter.");
 				return false;
 			}
-			if(!FilterTree_Valid(root->cond.left)) return false;
-			if(!FilterTree_Valid(root->cond.right)) return false;
+			if(!FilterTree_Valid(root->cond.left, type)) return false;
+			if(!FilterTree_Valid(root->cond.right, type)) return false;
 			break;
 		default:
 			ASSERT("Unknown filter tree node" && false);
