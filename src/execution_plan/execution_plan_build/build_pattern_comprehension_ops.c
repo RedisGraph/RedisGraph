@@ -87,6 +87,12 @@ void buildPatternComprehensionOps
 		eval_node = cypher_ast_pattern_comprehension_get_eval(pc);
 		AR_ExpNode *eval_exp = AR_EXP_FromASTNode(eval_node);
 
+		if (AR_EXP_ContainsAgg(eval_exp)) {
+			// TO DO: Determine aggregation function name
+			ErrorCtx_SetError("Invalid use of aggregating function");
+			return;
+		}
+
 		// collect evaluation results into an array using `collect`
 		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", false, 1);
 		collect_exp->op.children[0] = eval_exp;
