@@ -299,7 +299,7 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
-pack package: $(TARGET)
+pack package: #$(TARGET)
 	@MODULE=$(realpath $(TARGET)) $(ROOT)/sbin/pack.sh
 
 upload-release:
