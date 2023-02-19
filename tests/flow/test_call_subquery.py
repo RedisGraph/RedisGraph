@@ -82,12 +82,22 @@ class testCallSubqueryFlow():
         """
         self.expect_error(query, "n not defined")
 
-    def test02_readonly_simple(self):
-        """Test the simple read-only use-case of CALL {}, i.e., no updating
-        clauses lay within the subquery"""
+        # inner scope should be exposed to imported context ONLY via simple WITH
+        query = """
+                UNWIND [1, 2, 3, 4] AS x
+                MATCH (n)
+                CALL {
+                    WITH n
+                    RETURN x + 1
+                }
+                RETURN x + n.v
+                """
+        self.expect_error(query, "x not defined")
+
+    def test02_simple_scan_return(self):
+        """Test a simple scan and return subquery"""
 
         # the graph is empty
-
         # create a node, and find it via CALL {}
         res = graph.query("CREATE (n:N {name: 'Raz'})")
         self.env.assertEquals(res.nodes_created, 1)
@@ -96,7 +106,8 @@ class testCallSubqueryFlow():
         res = graph.query(
             """CALL
                 {
-                    MATCH (n:N {name: 'Raz'}) RETURN n
+                    MATCH (n:N {name: 'Raz'})
+                    RETURN n
                 }
                 RETURN n
             """
@@ -107,15 +118,11 @@ class testCallSubqueryFlow():
         self.env.assertEquals(res.result_set[0][0],
                               Node(label='N', properties={'name': 'Raz'}))
 
-    def test03_readonly(self):
-        """RO returning/unit subqueries"""
+    def test03_filter_results(self):
+        """Test that no records return from the subquery for scans that found
+        nothing."""
 
         # the graph has one node with label `N` and prop `name` with val `Raz`
-
-        # NTS: Clauses that can be used:
-        # MATCH, OPTIONAL MATCH, WHERE, ORDERBY, SKIP, LIMIT, WITH, UNION,
-        # UNWIND, (partly) FOREACH
-
         # add the `v` property to the one node currently existing, with val 4
         res = graph.query("MATCH (n) SET n.v = 4")
         self.env.assertEquals(res.properties_set, 1)
@@ -138,19 +145,10 @@ class testCallSubqueryFlow():
         self.env.assertEquals(res.result_set[0][0],
             Node(label='N', properties={'name': 'Raz', 'v': 4}))
 
-        # inner scope should be exposed to imported context ONLY via simple WITH
-        query = """
-                UNWIND [1, 2, 3, 4] AS x
-                MATCH (n)
-                CALL {
-                    WITH n
-                    RETURN x + 1
-                }
-                RETURN x + n.v
-                """
-        self.expect_error(query, "x not defined")
+    def test04_reference_innerReturn_alias(self):
+        """Test that the outer scope can reference the returned projections
+        from the subquery"""
 
-        # use returned value from the sq
         res = graph.query(
             """
             UNWIND [1, 2, 3, 4] AS x
@@ -164,41 +162,294 @@ class testCallSubqueryFlow():
         )
         self.env.assertEquals(res.result_set, [[5], [6], [7], [8]])
 
-        # # first input record to sq yields no records, next inputs do
+    def test05_many_to_one_not_first(self):
+        """Test the case Call {} gets several records, and returns only one,
+        that corresponds to a record that is not the first one it gets"""
+
+                # first input record to sq yields no records, next inputs do
+        res = graph.query(
+            """
+            UNWIND ['Omer', 'Raz', 'Moshe'] as name
+            CALL {
+                WITH name
+                MATCH (n:N {name: name})
+                RETURN n
+            }
+            RETURN n
+            """
+        )
+        # assert correctness of the result
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0],
+            Node(label='N', properties={'name': 'Raz', 'v': 4}))
+
+    def test06_many_to_one(self):
+        """Test the case Call {} changes the amount of records such that there
+        are more output records than input"""
+
+        # the graph has one node with label `N` and prop `name` with val `Raz`
+        # with the `v` property with value 4. Create another node with `v` set
+        # to 1
+        graph.query("CREATE (:N {name: 'Raz', v: 1})")
+
+        res = graph.query(
+            """
+            CALL {
+                UNWIND [1, 2, 3, 4] AS x
+                MATCH (n:N {v: x})
+                RETURN n
+            }
+            RETURN n
+            """
+        )
+
+        # validate the results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 1}))
+        self.env.assertEquals(res.result_set[1][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 4}))
+
+    def test07_optional_match(self):
+        """test that OPTIONAL MATCH within the subquery works appropriately,
+        i.e., passes records with empty columns in case no match was found"""
+
+        res = graph.query(
+            """
+            CALL {
+                UNWIND [1, 2, 3, 4] AS x
+                OPTIONAL MATCH (n:N {v: x})
+                RETURN n
+            }
+            RETURN n
+            """
+        )
+
+        # validate the results
+        self.env.assertEquals(len(res.result_set), 4)
+        self.env.assertEquals(res.result_set[0][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 1}))
+        self.env.assertEquals(res.result_set[3][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 4}))
+
+    def test08_filtering(self):
+        """Test that filtering within the subquery works fine"""
+
+        # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
+        res = graph.query(
+            """
+            CALL {
+                MATCH (n:N)
+                WHERE n.v = 1
+                RETURN n
+            }
+            RETURN n
+            """
+        )
+
+        # assert the correctness of the results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 1}))
+
+
+
+    # TODO: Add this test when eager returning clauses are supported
+    # def test09_foreach(self):
+    #     """Test that FOREACH works properly when used inside a subquery"""
+
+    #     # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
+
+    #     res = graph.query(
+    #         """
+    #         CALL {
+    #             MATCH (n:N)
+    #             FOREACH (i in [1] |
+    #                 SET n.v = n.v + 1
+    #             )
+    #             RETURN n
+    #         }
+    #         RETURN n
+    #         """
+    #     )
+
+    #     # assert the correctness of the results
+    #     self.env.assertEquals(res.result_set[0][0],
+    #     Node(label='N', properties={'name': 'Raz', 'v': 2}))
+    #     self.env.assertEquals(res.result_set[1][0],
+    #     Node(label='N', properties={'name': 'Raz', 'v': 5}))
+
+        # TODO: add another query with a non-returning subquery
+
+
+
+
+
+
+
+    # # TODO: Add this once skip is supported (see construction, which at the
+    # # moment assumes Project is the last operation of a returning subquery)
+    # def test09_union(self):
+    #     """Test that UNION works properly within a subquery"""
+
+    #     # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
+
+    #     res = graph.query(
+    #         """
+    #         CALL {
+    #             MATCH (n:N)
+    #             WHERE n.v = 1
+    #             RETURN n
+    #             UNION
+    #             MATCH (n:N)
+    #             WHERE n.v = 4
+    #             RETURN n
+    #         }
+    #         RETURN n
+    #         """
+    #     )
+
+    #     # assert the correctness of the results
+    #     self.env.assertEquals(len(res.result_set), 2)
+    #     self.env.assertEquals(res.result_set[0][0],
+    #     Node(label='N', properties={'name': 'Raz', 'v': 1}))
+    #     self.env.assertEquals(res.result_set[1][0],
+    #     Node(label='N', properties={'name': 'Raz', 'v': 4}))
+
+
+    # # TODO: Add this once skip is supported (see construction, which at the
+    # # moment assumes Project is the last operation of a returning subquery)
+    # def test09_skip(self):
+    #     """Test that SKIP works properly when placed inside a subquery"""
+
+    #     # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
+
+    #     res = graph.query(
+    #         """
+    #         CALL {
+    #             MATCH (n)
+    #             RETURN n
+    #             SKIP 1
+    #         }
+    #         RETURN n
+    #         """
+    #     )
+
+    #     # assert that only one record was returned
+    #     self.env.assertEquals(len(res.result_set), 1)
+
+
+
+
+
+
+
+
+    # # TODO: Add these tests once the eager returning case is implemented
+    # def test07_update(self):
+    #     """Test that updates within the subquery are applied appropriately and
+    #     later read correctly"""
+
+    #     # delete the node with `v` property of value 4, so that there is only
+    #     # one node in the graph, with `name`: 'Raz' and `v`: 1
+    #     res = graph.query("MATCH (n:N {v: 4}) DELETE n")
+    #     self.env.assertEquals(res.nodes_deleted, 1)
+
+    #     # update the node within the sq
+    #     res = graph.query(
+    #         """
+    #         MATCH (n:N)
+    #         CALL {
+    #             WITH n
+    #             SET n.v = 2, n.name = 'Roi'
+    #         }
+    #         RETURN n
+    #         """
+    #     )
+
+    #     # assert the result is correct
+    #     self.env.assertEquals(len(res.result_set), 1)
+    #     self.env.assertEquals(res.result_set[0][0],
+    #     Node(label='N', properties={'name': 'Roi', 'v': 2}))
+
+    #     # remove a label and a property
+    #     res = graph.query(
+    #         """
+    #         MATCH (n:N)
+    #         CALL {
+    #             WITH n
+    #             REMOVE n:N, n.name
+    #         }
+    #         RETURN n
+    #         """
+    #     )
+
+    #     # assert the correctness of the effects of the query
+    #     self.env.assertEquals(res.labels_removed, 1)
+    #     self.env.assertEquals(res.properties_removed, 1)
+    #     self.env.assertEquals(res.result_set[0][0],
+    #     Node(label='', properties={}))
+
+    #     # delete the node (?)
+
+
+
+    # PROBLEMATIC AT THE MOMENT!
+    # def test06_order_by(self):
+        # """Test the ordering of the output of the sq, and the outer query"""
+
+        # # the graph has one node with label `N` and prop `name` with val `Raz`
+        # # with the `v` property with value 4. Create another node with `v` set
+        # # to 1
+        # graph.query("CREATE (:N {name: 'Raz', v: 1})")
+
+        # # FOR SOME REASON, THE ORDER BY GETS STUCK!
         # res = graph.query(
         #     """
-        #     UNWIND ['Omer', 'Raz', 'Moshe'] as name
         #     CALL {
-        #         WITH name
-        #         MATCH (n:N {name: name})
-        #         RETURN n
+        #         UNWIND [1, 2, 3, 4] AS x
+        #         MATCH (n:N {v: x})
+        #         RETURN n ORDER BY n.v ASC
         #     }
         #     RETURN n
         #     """
         # )
-        # # assert correctness of the result
-        # self.env.assertEquals(len(res.result_set), 1)
+
+        # # validate the results
+        # self.env.assertEquals(len(res.result_set), 2)
         # self.env.assertEquals(res.result_set[0][0],
-        #     Node(label='N', properties={'name': 'Raz'}))
+        # Node(label='N', properties={'name': 'Raz', 'v': 1}))
+        # self.env.assertEquals(res.result_set[1][0],
+        # Node(label='N', properties={'name': 'Raz', 'v': 4}))
+
+    #     res = graph.query(
+    #         """
+    #         CALL {
+    #             UNWIND [1, 2, 3, 4] AS x
+    #             MATCH (n:N {v: x})
+    #             RETURN n
+    #         }
+    #         RETURN n ORDER BY n.v ASC
+    #         """
+    #     )
+
+    #     # validate the results
+    #     self.env.assertEquals(len(res.result_set), 2)
+    #     self.env.assertEquals(res.result_set[0][0],
+    #     Node(label='N', properties={'name': 'Raz', 'v': 1}))
+    #     self.env.assertEquals(res.result_set[1][0],
+    #     Node(label='N', properties={'name': 'Raz', 'v': 4}))
 
 
-    # def test04_update_no_return_simple(self):
-    #     """simple updates"""
-
-    #     # clean db
-    #     self.env.flush()
-    #     graph = Graph(self.env.getConnection(), GRAPH_ID)
-
-    #     # add a node via CALL {}
 
 
-    #     # update an edge via CALL {}
 
 
-    #     # remove a node\edge label via CALL {}
 
 
-    #     # remove a node\edge property via CALL {}
+    # def test06_readonly(self):
+    #     """~~!!Under construction!!~~"""
 
-
-    #     # delete a node\edge via CALL {}
+        # NTS: Clauses that should be tested:
+        # MATCH, OPTIONAL MATCH, WHERE, ORDERBY, SKIP, LIMIT, WITH, UNION,
+        # UNWIND, (partly) FOREACH

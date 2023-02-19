@@ -41,18 +41,6 @@ OpBase *NewCallSubqueryOp
 			consumeFunc, CallSubqueryReset, NULL, CallSubqueryClone, CallSubqueryFree,
 			false, plan);
 
-    // make sure the referenced column names returned from the subquery
-    // exist in the record-mapping
-    // traverse the referenced_entities and introduce them to the rec-mapping
-    // such that cases like: "UNWIND [1, 2, 3, 4] AS x CALL {with x RETURN x
-    // as INNERETURN } RETURN x + INNERETURN" will have a "INNERETURN" col
-    raxIterator it;
-    raxStart(&it, op->op.plan->ast_segment->referenced_entities);
-    raxSeek(&it, "^", NULL, 0);
-    while(raxNext(&it)) {
-        OpBase_Modifies((OpBase *)op, (const char*)it.key);
-    }
-
 	return (OpBase *)op;
 }
 
@@ -172,15 +160,26 @@ static Record _handoff(OpCallSubquery *op) {
 
     Record consumed;
     if(op->is_returning) {
+return_cycle:
         consumed = OpBase_Consume(op->body);
         if(consumed == NULL) {
-            return NULL;
+            OpBase_DeleteRecord(op->r);
+            op->r = NULL;
+            if(op->lhs && (op->r = OpBase_Consume(op->lhs)) != NULL) {
+                // plant a clone of the record consumed at the Argument op
+                Argument_AddRecord(op->argument, OpBase_DeepCloneRecord(op->r));
+            } else {
+                // lhs depleted --> CALL {} depleted as well
+                return NULL;
+            }
+            goto return_cycle;
         }
 
         Record clone = OpBase_DeepCloneRecord(op->r);
         // merge consumed record into clone
         Record_Merge(clone, consumed);
-        // Temporal note: We thought of using the below function, but don't need it at the moment.
+        // Temporal note: We thought of using the below function, but SEEMS that
+        // we don't need it at the moment.
         // Record_Merge_Into(clone, consumed);
         OpBase_DeleteRecord(consumed);
         return clone;
@@ -191,7 +190,9 @@ static Record _handoff(OpCallSubquery *op) {
     while((consumed = OpBase_Consume(op->body))) {
         OpBase_DeleteRecord(consumed);
     }
-    return op->r;
+    Record r = op->r;
+    op->r = NULL;
+    return r;
 }
 
 // similar consume to the Apply op, differing from it in that a lhs is optional,
@@ -206,29 +207,6 @@ static Record CallSubqueryConsume
     // if there are more records to consume from body, consume them before
     // consuming another record from lhs
     if(op->r) {
-        Record ret = _handoff(op);
-        if(ret != NULL) {
-            return ret;
-        }
-        // body has depleted from the current record (multiple records may be
-        // generated due to one input record), consume from lhs again if exists
-        // otherwise, return NULL
-        if(op->lhs) {
-            op->r = OpBase_Consume(op->lhs);
-        } else {
-            // // reset children ops (needed?)
-            // OpBase_PropagateReset(op);
-            return NULL;
-        }
-
-        // depleted
-        if(op->r == NULL) {
-            return NULL;
-        }
-
-        // plant a clone of the record consumed at the Argument op
-        Argument_AddRecord(op->argument, OpBase_DeepCloneRecord(op->r));
-
         return _handoff(op);
     }
 
@@ -248,8 +226,6 @@ static Record CallSubqueryConsume
         return NULL;
     }
 
-    // _handoff will return AT LEAST one record (since called directly after
-    // calling consume on lhs), so this is safe
     return _handoff(op);
 }
 

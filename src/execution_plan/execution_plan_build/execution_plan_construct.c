@@ -314,7 +314,7 @@ static void _buildCallSubqueryPlan
 	// -------------------------------------------------------------------------
 	// NTS: Do we need DELETE here? I think not.
 	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_DELETE,
-					OPType_MERGE};
+					OPType_MERGE, OPType_SORT};
 	bool is_eager =
 		ExecutionPlan_LocateOpMatchingType(embedded_plan->root, types, 4) != NULL;
 
@@ -324,8 +324,8 @@ static void _buildCallSubqueryPlan
 		deepest = deepest->children[0];
 	}
 
-	// if no variables are imported, add an 'empty' projection
-	// TODO: make sure it's fine to send 0 length
+	// if no variables are imported, add an 'empty' projection so that the
+	// records within the subquery will not carry unnecessary entries
 	if(cypher_astnode_type(cypher_astnode_get_child(clause, 0)) !=
 		CYPHER_AST_WITH) {
 		OpBase *implicit_proj =
@@ -351,7 +351,15 @@ static void _buildCallSubqueryPlan
 	// -------------------------------------------------------------------------
 	bool is_returning = OpBase_Type(embedded_plan->root) == OPType_RESULTS;
 	if(is_returning) {
+		// remove the Results op from the execution-plan
 		ExecutionPlan_RemoveOp(embedded_plan, embedded_plan->root);
+
+		// TODO: Extend this to support SKIP, LIMIT, ORDER BY, UNION (AND ANY
+		// COMBINATION OF THEM!)
+		// Notice the differences in execution-plans for every clause, specifically
+		// UNION is very different.
+
+		// bind the Project op to the outer plan
 		embedded_plan->root->plan = plan;
 	}
 
