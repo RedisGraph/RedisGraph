@@ -124,8 +124,22 @@ void Constraint_DecPendingChanges
 // sets constraint status to pending
 void Constraint_Enforce
 (
+	Constraint c,            // constraint to enforce
+	struct GraphContext *gc  // graph context
+);
+
+// enforce constraint on all relevant nodes
+void Constraint_EnforceNodes
+(
 	Constraint c,  // constraint to enforce
-	Graph *g
+	Graph *g       // graph
+);
+
+// enforce constraint on all relevant edges
+void Constraint_EnforceEdges
+(
+	Constraint c,  // constraint to enforce
+	Graph *g       // graph
 );
 
 // enforce constraint on entity

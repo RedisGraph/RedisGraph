@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "../query_ctx.h"
+#include "../index/indexer.h"
 #include "../graph/graph_hub.h"
 #include "../undo_log/undo_log.h"
 #include "../graph/graphcontext.h"
@@ -200,8 +201,8 @@ static bool _Constraint_Delete
 	// release graph R/W lock
 	Graph_ReleaseLock(gc->g);
 
-	// TODO: use an ASYNC delete
-	Constraint_Free(&c);
+	// asynchronously delete constraint
+	Indexer_DropConstraint(c);
 
 cleanup:
 	if(res == false) {
@@ -345,15 +346,17 @@ cleanup:
 
 	// constraint already exists
 	if(res == false) { 
-		// decrease graph reference count
-		GraphContext_DecreaseRefCount(gc);
-
 		// TODO: give additional information to caller
 		RedisModule_ReplyWithError(ctx, "Constraint creation failed");
 	} else {
 		// constraint creation succeeded, enforce constraint
-		Constraint_Enforce(c, g);
+		Constraint_Enforce(c, (struct GraphContext*)gc);
 	}
+
+	QueryCtx_Free();
+
+	// decrease graph reference count
+	GraphContext_DecreaseRefCount(gc);
 
 	return res;
 }
@@ -414,9 +417,6 @@ int Graph_Constraint
 		RedisModule_ReplicateVerbatim(ctx);
 		return REDISMODULE_OK;
 	}
-
-	// clean up
-	QueryCtx_Free();
 
 	return REDISMODULE_ERR;    
 }

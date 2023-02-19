@@ -447,6 +447,7 @@ bool Schema_RemoveConstraint
 	uint n = array_len(s->constraints);
 	for(uint i = 0; i < n; i++) {
 		if(c == s->constraints[i]) {
+			Constraint_IncPendingChanges(c);
 			array_del_fast(s->constraints, i);
 			return true;
 		}
