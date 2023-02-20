@@ -141,6 +141,9 @@ LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER) $(U
 
 CC_COMMON_H=$(SRCDIR)/src/common.h
 
+CC_C_STD=gnu11
+CC_OPENMP=1
+
 include $(MK)/defs
 
 $(info # Building into $(BINDIR))
@@ -296,7 +299,7 @@ endif
 
 #----------------------------------------------------------------------------------------------
 
-pack package: $(TARGET)
+pack package: #$(TARGET)
 	@MODULE=$(realpath $(TARGET)) $(ROOT)/sbin/pack.sh
 
 upload-release:
@@ -321,14 +324,7 @@ ifneq ($(BUILD),0)
 TEST_DEPS=$(TARGET)
 endif
 
-ifeq ($(VG_DOCKER),1)
-test:
-	@echo Building docker to run valgrind on macOS
-	$(SHOW)docker build -f tests/Dockerfile -t macos_test_docker .
-else
-test: $(TEST_DEPS)
-	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) PARALLEL=$(_RLTEST_PARALLEL) ./tests/flow/tests.sh
-endif
+test: unit-tests flow-tests tck-tests
 
 unit-tests:
 ifneq ($(BUILD),0)
@@ -385,7 +381,9 @@ COV_EXCLUDE+=$(foreach D,$(COV_EXCLUDE_DIRS),'$(realpath $(ROOT))/$(D)/*')
 coverage:
 	$(SHOW)$(MAKE) build COV=1
 	$(SHOW)$(COVERAGE_RESET)
-	-$(SHOW)$(MAKE) test COV=1
+	-$(SHOW)$(MAKE) unit-tests COV=1
+	-$(SHOW)$(MAKE) flow-tests COV=1
+	-$(SHOW)$(MAKE) tck-tests COV=1
 	$(SHOW)$(COVERAGE_COLLECT_REPORT)
 
 .PHONY: coverage
