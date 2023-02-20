@@ -64,7 +64,24 @@
     // Finally, the ANSI C11 clock() function is used if no other timer
     // is available.
 
-#endif
+#endif // if _OPENMP
+
+typedef double simple_timer_t[2];
+
+// Determines how many milliseconds are in a second.
+#define MILLISECONDS_IN_SECOND 1000
+
+// An alias to assign for the timer.
+#define TIMER_ASSIGN(lhs, rhs) lhs[0] = rhs[0]; lhs[1] = rhs[1]
+// (Re)starts the timer.
+#define TIMER_RESTART(timer) simple_tic(timer)
+// Returns the seconds (double) counted by the timer.
+#define TIMER_GET_SECONDS(timer) timer[0]
+// Returns the nanoseconds (double) counted by the timer.
+#define TIMER_GET_NANOSECONDS(timer) timer[1]
+// An alias to return the time in milliseconds passed since the previous call.
+#define TIMER_GET_ELAPSED_MILLISECONDS(timer) \
+    (uint64_t)(simple_toc(timer) * MILLISECONDS_IN_SECOND)
 
 //------------------------------------------------------------------------------
 
@@ -78,4 +95,4 @@ double simple_toc           // returns time since last simple_tic
     const double tic [2]    // tic from last call to simple_tic
 ) ;
 
-#endif
+#endif // SIMPLE_TIMER_H
