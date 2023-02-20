@@ -381,7 +381,9 @@ COV_EXCLUDE+=$(foreach D,$(COV_EXCLUDE_DIRS),'$(realpath $(ROOT))/$(D)/*')
 coverage:
 	$(SHOW)$(MAKE) build COV=1
 	$(SHOW)$(COVERAGE_RESET)
-	-$(SHOW)$(MAKE) test COV=1
+	-$(SHOW)$(MAKE) unit-tests COV=1
+	-$(SHOW)$(MAKE) flow-tests COV=1
+	-$(SHOW)$(MAKE) tck-tests COV=1
 	$(SHOW)$(COVERAGE_COLLECT_REPORT)
 
 .PHONY: coverage
