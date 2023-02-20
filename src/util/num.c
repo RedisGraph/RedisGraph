@@ -6,7 +6,13 @@
 
 #include "num.h"
 
-#if __has_builtin(__builtin_add_overflow)
+#if defined(__has_builtin)
+#define ___has_builtin(X) __has_builtin(X)
+#else
+#define ___has_builtin(X) false
+#endif
+
+#if ___has_builtin(__builtin_add_overflow)
 #define CHECKED_ADD(prefix, type) \
     bool checked_add_##prefix(const type lhs, const type rhs, type *result) { \
 return !__builtin_add_overflow(lhs, rhs, result); \
