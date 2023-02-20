@@ -324,14 +324,7 @@ ifneq ($(BUILD),0)
 TEST_DEPS=$(TARGET)
 endif
 
-ifeq ($(VG_DOCKER),1)
-test:
-	@echo Building docker to run valgrind on macOS
-	$(SHOW)docker build -f tests/Dockerfile -t macos_test_docker .
-else
-test: $(TEST_DEPS)
-	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) PARALLEL=$(_RLTEST_PARALLEL) ./tests/flow/tests.sh
-endif
+test: unit-tests flow-tests tck-tests
 
 unit-tests:
 ifneq ($(BUILD),0)
