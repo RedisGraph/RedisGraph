@@ -179,6 +179,7 @@ endif
 
 ifeq ($(wildcard $(UTF8PROC)),)
 MISSING_DEPS += $(UTF8PROC)
+endif
 
 ifeq ($(wildcard $(ONIGURUMA)),)
 MISSING_DEPS += $(ONIGURUMA)
