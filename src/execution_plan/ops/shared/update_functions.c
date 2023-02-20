@@ -85,7 +85,6 @@ void CommitUpdates
 		properties_set     += _props_set;
 		properties_removed += _props_removed;
 
-
 		// retrieve node labels
 		uint label_count = 1;
 		if (type == ENTITY_NODE) {
@@ -93,7 +92,8 @@ void CommitUpdates
 		}
 		LabelID labels[label_count];
 		if (type == ENTITY_NODE) {
-			label_count = Graph_GetNodeLabels(gc->g, (Node*)update->ge, labels, label_count);
+			label_count = Graph_GetNodeLabels(gc->g, (Node*)update->ge, labels,
+					label_count);
 		} else {
 			labels[0] = EDGE_GET_RELATION_ID((Edge*)update->ge, gc->g);
 		}
@@ -101,12 +101,12 @@ void CommitUpdates
 		SchemaType stype = type == ENTITY_NODE ? SCHEMA_NODE : SCHEMA_EDGE;
 		for(uint i = 0; i < label_count; i ++) {
 			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], stype);
-			bool has_constraints = array_len(s->constraints) > 0;
 			// TODO: a bit wasteful need to target relevant constraints only
-			if(has_constraints &&
-					!Schema_EnforceConstraints(s, update->ge)) {
+			if(!Schema_EnforceConstraints(s, update->ge)) {
 				// constraint violation
-				ErrorCtx_SetError("constraint violation on label %s", s->name);
+				ErrorCtx_SetError("constraint violation on label %s",
+						Schema_GetName(s));
+				// TODO: probably leaking!
 				break;
 			}
 		}
@@ -286,3 +286,4 @@ void EvalEntityUpdates
 	// enqueue the current update
 	array_append(*updates, update);
 }
+

@@ -117,26 +117,21 @@ static bool Constraint_EnforceUniqueEntity
 	// query RediSearch index
 	//--------------------------------------------------------------------------
 
-	// TODO: it is ok for 'RediSearch_ResultsIteratorNext' to return NULL
-	// in which case the enforced entity satisfies
+	// constraint holds if there are no duplicates, 1 or less index matches
+	int matches = 0;
     iter = RediSearch_GetResultsIterator(root, rs_idx);
-
-	// if ptr == NULL
-	// then there's no pre-existing entity which conflicts with given entity
-	// constaint holds!
-	//
-	// otherwise ptr != NULL
-	// there's already an existing entity which conflicts with given entity
-	// constaint does NOT hold!
-	holds = RediSearch_ResultsIteratorNext(iter, rs_idx, NULL) == NULL;
+	for(; matches < 2; matches++) {
+		if(RediSearch_ResultsIteratorNext(iter, rs_idx, NULL) == NULL) {
+			break;
+		}
+	}
+	holds = (matches <= 1);
 
 cleanup:
 	if(iter != NULL) {
 		RediSearch_ResultsIteratorFree(iter);
 	} else {
-		for(i = 0; i < _c->n_attr; i++) {
-			RediSearch_QueryNodeFree(nodes[i]);
-		}
+		RediSearch_QueryNodeFree(root);
 	}
 
     return holds;

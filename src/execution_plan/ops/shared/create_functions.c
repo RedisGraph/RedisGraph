@@ -75,11 +75,13 @@ static void _CommitNodes
 		AttributeSet attr                 = array_pop(pending->node_attributes);
 		bool         constraint_violation = false;
 
+		// introduce node into graph
+		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
+				attr);
+
 		//----------------------------------------------------------------------
 		// enforce constraints
 		//----------------------------------------------------------------------
-
-		n->attributes = &attr;  // set node's attribute set
 
 		for(uint j = 0; j < label_count; j++) {
 			Schema *s = GraphContext_GetSchemaByID(gc, labels[j], SCHEMA_NODE);
@@ -96,10 +98,6 @@ static void _CommitNodes
 			// constraint violated! break
 			break;
 		}
-
-		// introduce node into graph
-		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
-				attr);
 	}
 }
 
@@ -171,19 +169,18 @@ static void _CommitEdges
 		ASSERT(s != NULL);
 		int relation_id = Schema_GetID(s);
 
+		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID,
+			destNodeID, relation_id, attr);
+
 		//----------------------------------------------------------------------
 		// enforce constraints
 		//----------------------------------------------------------------------
 
-		e->attributes = &attr;
 		if(!Schema_EnforceConstraints(s, (GraphEntity*)e)) {
 			ErrorCtx_SetError("constraint violation on label %s", s->name);
 			// constraint violated! break
 			break;
 		}
-
-		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID,
-			destNodeID, relation_id, attr);
 	}
 }
 

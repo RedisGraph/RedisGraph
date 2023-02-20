@@ -82,7 +82,7 @@ static int Constraint_Parse
 	token = RedisModule_StringPtrLen(*argv++, NULL);
 	if(strcasecmp(token, "LABEL") == 0) {
 		*type = GETYPE_NODE;
-	} else if(strcasecmp(token, "RELTYPE") == 0) {
+	} else if(strcasecmp(token, "RELATIONSHIP") == 0) {
 		*type = GETYPE_EDGE;
 	} else {
 		RedisModule_ReplyWithError(ctx, "Invalid constraint entity type");
@@ -122,7 +122,7 @@ static int Constraint_Parse
 	return REDISMODULE_OK;
 }
 
-// GRAPH.CONSTRAIN <key> DEL UNIQUE/MANDATORY LABEL/RELTYPE label PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAIN <key> DEL UNIQUE/MANDATORY LABEL/RELATIONSHIP label PROPERTIES prop_count prop0, prop1...
 static bool _Constraint_Delete
 (
 	RedisModuleCtx *ctx,
@@ -215,7 +215,7 @@ cleanup:
 	return res;
 }
 
-// GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY LABEL/RELTYPE label PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY LABEL/RELATIONSHIP label PROPERTIES prop_count prop0, prop1...
 static bool _Constraint_Create
 (
 	RedisModuleCtx *ctx,    // redis module context
@@ -227,12 +227,14 @@ static bool _Constraint_Create
 	const char **props      // properties
 ) {
 	bool res = true;
+	const char *error_msg = "Constraint creation failed";
 
 	// get or create graph
 	GraphContext *gc = GraphContext_Retrieve(ctx, key, false, true);
 	if(gc == NULL) {
 		return false;	
 	}
+
 	// set graph context in query context TLS
 	// this is required in case the undo-log needs to be applied
 	// TODO: find a better way
@@ -305,6 +307,7 @@ static bool _Constraint_Create
 		if(Constraint_GetStatus(c) != CT_FAILED) {
 			// constraint is either operational or being constructed
 			res = false;
+			error_msg = "Constraint already exists";
 			goto cleanup;
 		} else {
 			// previous constraint creation had failed
@@ -347,7 +350,7 @@ cleanup:
 	// constraint already exists
 	if(res == false) { 
 		// TODO: give additional information to caller
-		RedisModule_ReplyWithError(ctx, "Constraint creation failed");
+		RedisModule_ReplyWithError(ctx, error_msg);
 	} else {
 		// constraint creation succeeded, enforce constraint
 		Constraint_Enforce(c, (struct GraphContext*)gc);
@@ -362,8 +365,8 @@ cleanup:
 }
 
 // command handler for GRAPH.CONSTRAIN command
-// GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY LABEL/RELTYPE label PROPERTIES prop_count prop0, prop1...
-// GRAPH.CONSTRAIN <key> DEL UNIQUE/MANDATORY LABEL/RELTYPE label PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY LABEL/RELATIONSHIP label PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAIN <key> DEL UNIQUE/MANDATORY LABEL/RELATIONSHIP label PROPERTIES prop_count prop0, prop1...  int Graph_Constraint
 int Graph_Constraint
 (
 	RedisModuleCtx *ctx,
