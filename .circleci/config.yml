@@ -685,15 +685,15 @@ workflows:
             parameters:
               platform: [jammy, focal, bionic, xenial, centos7, rocky8, bullseye]
       - build-arm-platforms:
-          #@@<<: *on-integ-and-version-tags
-          <<: *always
+          <<: *on-integ-and-version-tags
           context: common
           matrix:
             parameters:
               platform: [jammy, focal, bionic]
       - build-macos:
           context: common
-          <<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
+          <<: *always
       - coverage:
           <<: *always
       - sanitize:
