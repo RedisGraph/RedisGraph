@@ -2062,7 +2062,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             self.get_res_and_assertEquals(query, expected_result)
 
         query = "CREATE (a:testIN {z:1}), (b:testIN {z:'a'}), (c:testIN {z:[1, 2]}), (d:testIN), (e:testIN {z:[3, [1, 2]]})"
-        actual_result = graph.query(query)
+        graph.query(query)
         query_to_expected_result = {
             "MATCH (a:testIN) RETURN 1 IN a.z": [[True], [False], [True], [None], [False]],
             "MATCH (a:testIN) RETURN 'a' IN a.z": [[False], [True], [False], [None], [False]],
