@@ -87,9 +87,8 @@ void buildPatternComprehensionOps
 		eval_node = cypher_ast_pattern_comprehension_get_eval(pc);
 		AR_ExpNode *eval_exp = AR_EXP_FromASTNode(eval_node);
 
+		// check that evaluation node does not contains aggregating function
 		if (AR_EXP_ContainsAgg(eval_exp)) {
-			// TO DO: Determine aggregation function name
-			ErrorCtx_SetError("Invalid use of aggregating function");
 			return;
 		}
 

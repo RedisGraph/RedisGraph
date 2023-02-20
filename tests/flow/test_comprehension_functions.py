@@ -472,9 +472,10 @@ class testComprehensionFunctions(FlowTestsBase):
     def test21_pattern_comprehension_with_invalid_filters(self):
         # A list of queries and errors which are expected to occur with the specified query.
         queries_with_errors = {
-            "MATCH (x) RETURN [(x)--(z) WHERE collect(z.a) > 10 | z.b]": "Invalid use of aggregating function 'collect' in pattern comprehension predicate",
-            "MATCH (x) RETURN [(x)--(z) WHERE z.a > collect(10) | z.b]": "Invalid use of aggregating function 'collect' in pattern comprehension predicate",
-            "MATCH (x) RETURN [(x)--(z) WHERE z.a > 10 | collect(z.b)]": "Invalid use of aggregating function 'collect'",
+            "MATCH (x) RETURN [(x)--(z) WHERE collect(z.a) > 10 | z.b]" : "Invalid use of aggregating function 'collect'",
+            "MATCH (x) RETURN [(x)--(z) WHERE z.a > collect(10) | z.b]" : "Invalid use of aggregating function 'collect'",
+            "MATCH (x) RETURN [(x)--(z) WHERE z.a > 10 | collect(z.b)]" : "Invalid use of aggregating function 'collect'",
+            "MATCH (x) RETURN [(x)--(z) WHERE (min(z.a) - sum(z.b)) > z.d | z.b]" : "Invalid use of aggregating function 'min'"
         }
         for query, error in queries_with_errors.items():
             self.expect_error(query, error)

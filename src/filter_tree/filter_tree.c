@@ -13,6 +13,7 @@
 #include "../util/rmalloc.h"
 #include "../ast/ast_shared.h"
 #include "../datatypes/array.h"
+#include "../arithmetic/arithmetic_expression_construct.h"
 
 // forward declarations
 void _FilterTree_DeMorgan
@@ -683,17 +684,9 @@ bool FilterTree_Valid
 				return false;
 			}
 			// Aggregate functions can't be used as part of filters in pattern comprehension node
-			if (type == CYPHER_AST_PATTERN_COMPREHENSION) {
-				const char *func_name = AR_EXP_GetFuncName(root->pred.lhs);
-				if(AR_FuncIsAggregate(func_name)) {
-					ErrorCtx_SetError("Invalid use of aggregating function '%s' in pattern comprehension predicate", func_name);
+			if (type == CYPHER_AST_PATTERN_COMPREHENSION &&
+				(AR_EXP_ContainsAgg(root->pred.lhs) || AR_EXP_ContainsAgg(root->pred.rhs))) {
 					return false;
-				}
-				func_name = AR_EXP_GetFuncName(root->pred.rhs);
-				if(AR_FuncIsAggregate(func_name)) {
-					ErrorCtx_SetError("Invalid use of aggregating function '%s' in pattern comprehension predicate", func_name);
-					return false;
-				}
 			}
 			break;
 		case FT_N_COND:

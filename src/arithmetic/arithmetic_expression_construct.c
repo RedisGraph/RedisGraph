@@ -902,6 +902,7 @@ AR_ExpNode *AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 bool AR_EXP_ContainsAgg(const AR_ExpNode *root) {
 	// Is this an aggregation node?
 	if(root->type == AR_EXP_OP && root->op.f->aggregate == true) {
+		ErrorCtx_SetError("Invalid use of aggregating function '%s'", root->op.f->name);
 		return true;
 	}
 
@@ -910,6 +911,7 @@ bool AR_EXP_ContainsAgg(const AR_ExpNode *root) {
 		for(int i = 0; i < root->op.child_count; i++) {
 			AR_ExpNode *child = root->op.children[i];
 			if(child->type == AR_EXP_OP && child->op.f->aggregate == true) {
+				ErrorCtx_SetError("Invalid use of aggregating function '%s'", child->op.f->name);
 				return true;
 			}
 		}

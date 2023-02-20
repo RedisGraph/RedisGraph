@@ -12,5 +12,7 @@
 // Construct arithmetic expression from AST node
 AR_ExpNode *AR_EXP_FromASTNode(const cypher_astnode_t *expr);
 
-// Detect if expression contains aggreation function
+// Check if the AR_ExpNode tree contains an aggregating function.
+// if an aggregating function is found, then sets the error message and returns true
+// otherwise, returns false
 bool AR_EXP_ContainsAgg(const AR_ExpNode *root);
