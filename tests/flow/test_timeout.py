@@ -197,7 +197,9 @@ class testQueryTimeout():
             for query in queries:
                 try:
                     # The query is expected to timeout
-                    redis_graph.query(query)
+                    res = redis_graph.query(query)
+                    print(query)
+                    print(res.run_time_ms)
                     self.env.assertTrue(False)
                 except ResponseError as error:
                     self.env.assertContains("Query timed out", str(error))
