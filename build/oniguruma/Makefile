@@ -31,7 +31,7 @@ MK_CUSTOM_CLEAN=1
 include $(MK)/defs
 include $(MK)/rules
 
-CC_FLAGS += -fPIC
+CFLAGS += -fPIC
 
 clean:
 ifeq ($(ALL),1)
