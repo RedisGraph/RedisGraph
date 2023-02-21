@@ -31,6 +31,8 @@ MK_CUSTOM_CLEAN=1
 include $(MK)/defs
 include $(MK)/rules
 
+CC_FLAGS += -fPIC
+
 clean:
 ifeq ($(ALL),1)
 	$(SHOW)rm -rf $(BINDIR) $(TARGET)

@@ -234,25 +234,22 @@ static int _match_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
 
 // given a string and a regular expression,
 // return an array of all matches and matching regions
-// string.matchRegEx(str, regex) → array(array(string))
+// string.matchRegEx(str, regex) -> array(array(string))
 SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
-	ASSERT(argc == 2);
 	SIValue list = SIArray_New(0);
 	if(SI_TYPE(argv[0]) == T_NULL || SI_TYPE(argv[1]) == T_NULL) {
 		return list;
 	}
-	ASSERT(SI_TYPE(argv[0]) == T_STRING);
-	ASSERT(SI_TYPE(argv[1]) == T_STRING);
-	int rv;
-	const char *str = argv[0].stringval;
-	const char *regex_str = argv[1].stringval;
+
 	regex_t *regex;
-
-	OnigRegion *region = onig_region_new();
 	OnigErrorInfo einfo;
+	OnigRegion *region    = onig_region_new();
+	const char *str       = argv[0].stringval;
+	const char *regex_str = argv[1].stringval;
 
-	rv = onig_new(&regex, (const UChar *)regex_str, (const UChar *)(regex_str + strlen(regex_str)),
-			 ONIG_OPTION_DEFAULT, ONIG_ENCODING_UTF8, ONIG_SYNTAX_JAVA, &einfo);
+	int rv = onig_new(&regex, (const UChar *)regex_str, 
+		(const UChar *)(regex_str + strlen(regex_str)), ONIG_OPTION_DEFAULT,
+		ONIG_ENCODING_UTF8, ONIG_SYNTAX_JAVA, &einfo);
 	if(rv != ONIG_NORMAL) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((UChar* )s, rv, &einfo);
@@ -268,7 +265,8 @@ SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
 	};
 
 	rv = onig_scan(regex, (const UChar *)str,
-			(const UChar *)(str + strlen(str)), region, ONIG_OPTION_DEFAULT, _match_regex_scan_cb, &args);
+		(const UChar *)(str + strlen(str)), region, ONIG_OPTION_DEFAULT,
+		_match_regex_scan_cb, &args);
 	if(rv < 0) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((OnigUChar* )s, rv);
@@ -320,37 +318,31 @@ static int _replace_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg)
 
 // given a string and a regular expression,
 // return a string after replacing each regex match with a given replacement.
-// string.replaceRegEx(str, regex, replacement) → string
+// string.replaceRegEx(str, regex, replacement) -> string
 SIValue AR_REPLACEREGEX(SIValue *argv, int argc, void *private_data) {
-	ASSERT(argc == 2 || argc == 3);
 	if(SI_TYPE(argv[0]) == T_NULL || SI_TYPE(argv[1]) == T_NULL) {
 		return SI_NullVal();
 	}
 
-	ASSERT(SI_TYPE(argv[0]) == T_STRING);
-	ASSERT(SI_TYPE(argv[1]) == T_STRING);
-
-	const char *str = argv[0].stringval;
-	const char *regex_str = argv[1].stringval;
-	char *replacement = "";
+	char       *replacement = "";
+	const char *str         = argv[0].stringval;
+	const char *regex_str   = argv[1].stringval;
 
 	if(argc == 3) {
 		if(SI_TYPE(argv[2]) == T_NULL) {
 			return SI_NullVal();
 		}
 
-		ASSERT(SI_TYPE(argv[2]) == T_STRING);
 		replacement = argv[2].stringval;
 	}
 
-	int rv;
 	regex_t *regex;
-
-	OnigRegion *region = onig_region_new();
 	OnigErrorInfo einfo;
+	OnigRegion *region = onig_region_new();
 
-	rv = onig_new(&regex, (const UChar *)regex_str, (const UChar *)(regex_str + strlen(regex_str)),
-			 ONIG_OPTION_DEFAULT, ONIG_ENCODING_UTF8, ONIG_SYNTAX_JAVA, &einfo);
+	int rv = onig_new(&regex, (const UChar *)regex_str, 
+		(const UChar *)(regex_str + strlen(regex_str)), ONIG_OPTION_DEFAULT,
+		ONIG_ENCODING_UTF8, ONIG_SYNTAX_JAVA, &einfo);
 	if(rv != ONIG_NORMAL) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((UChar* )s, rv, &einfo);
