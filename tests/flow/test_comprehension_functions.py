@@ -479,3 +479,14 @@ class testComprehensionFunctions(FlowTestsBase):
         }
         for query, error in queries_with_errors.items():
             self.expect_error(query, error)
+
+    def test22_list_comprehension(self):
+        # A list of queries and errors which are expected to occur with the specified query.
+        queries_with_errors = {
+            "RETURN [x IN range(1,10) | sum(1)]" : "Invalid use of aggregating function 'sum'",
+            "RETURN [x IN range(1,10) | sum(x)]" : "Invalid use of aggregating function 'sum'",
+            "RETURN [x IN range(1,10) | 1 + min(x)]" : "Invalid use of aggregating function 'min'",
+            "RETURN [x IN range(1,10) | max(x) + min(x)]" : "Invalid use of aggregating function 'max'",
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)

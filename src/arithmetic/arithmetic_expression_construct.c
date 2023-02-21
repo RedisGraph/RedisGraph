@@ -680,13 +680,8 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction
 	const cypher_astnode_t *eval_node = cypher_ast_list_comprehension_get_eval(comp_exp);
 	if(eval_node) {
 		ctx->eval_exp = _AR_EXP_FromASTNode(eval_node);
-
 		// validate that aggregation function is not used in evaluation node
-		// TO DO: Determine aggregation function name.
 		if(AR_EXP_ContainsAgg(ctx->eval_exp)) {
-			printf("Aggregation function in eval node\n");
-			// Aggregrate functions can't be used in evaluation node
-			ErrorCtx_SetError("Invalid use of aggregating function in evaluation node");
 			rm_free(ctx);
 			return AR_EXP_NewConstOperandNode(SI_NullVal());
 		}
