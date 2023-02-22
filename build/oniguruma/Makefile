@@ -20,6 +20,7 @@ TARGET=$(BINDIR)/libonig.a
 define CMAKE_DEFS +=
 	BUILD_SHARED_LIBS=off
 	BUILD_TEST=off
+	CMAKE_POSITION_INDEPENDENT_CODE=on
 endef
 
 #----------------------------------------------------------------------------------------------
@@ -31,7 +32,6 @@ MK_CUSTOM_CLEAN=1
 include $(MK)/defs
 include $(MK)/rules
 
-CFLAGS += -fPIC
 
 clean:
 ifeq ($(ALL),1)
