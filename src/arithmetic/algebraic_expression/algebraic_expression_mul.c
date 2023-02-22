@@ -39,9 +39,6 @@ RG_Matrix _Eval_Mul
 
 		M = c->operand.matrix ;
 
-		// skip identity matrix, A*I = A
-		if(M == IDENTITY_MATRIX) continue ;
-
 		// first time A is set
 		if(A == NULL) {
 			A = M ;
@@ -61,8 +58,6 @@ RG_Matrix _Eval_Mul
 	}
 
 	if(!res_modified) {
-		// expecting at-least one operand not to be the identity matrix
-		ASSERT(A != IDENTITY_MATRIX) ;
 		info = RG_Matrix_copy(res, A) ;
 		ASSERT(info == GrB_SUCCESS) ;
 	}
