@@ -152,3 +152,264 @@ class testTraversalConstruction():
         self.env.assertTrue("Node By Label Scan | (a:L)" in ops[0]) # scan A
         self.env.assertTrue("Filter" in ops[1]) # filter A
         self.env.assertTrue("Conditional Variable Length Traverse" in ops[2]) # bidirectional var-len traverse from A to B
+
+    def test_traverse_zero_length_edge(self):
+        # populate graph
+        graph.query("CREATE (:A{v:1})-[:R{x:1}]->(:B{v:2})-[:R{x:2}]->(:C{v:3})")
+
+        # traverse from 'a' to itself
+        q1 = """MATCH (a)-[*0]->(b) RETURN a, b"""
+        q2 = """MATCH (a:A)-[*0]->(b) RETURN a, b"""
+        q3 = """MATCH (a)-[*0]->(b:A) RETURN a, b"""
+
+        queries = [q1, q2, q3]
+
+        for q in queries:
+            plan = graph.explain(q)
+            root = plan.structured_plan
+            self.env.assertTrue(root.name == "Results")
+
+            child = root.children[0]
+            self.env.assertTrue(child.name == "Project")
+
+            child = child.children[0]
+            self.env.assertTrue("Conditional Variable Length Traverse" in child.name)
+
+            child = child.children[0]
+            self.env.assertTrue(child.name == "All Node Scan" in child.name or
+                                "Node By Label Scan" in child.name)
+
+            # validate that 'a' == 'b'
+            result = graph.query(q).result_set
+            for row in result:
+                self.env.assertTrue(row[0] == row[1])
+
+        #-----------------------------------------------------------------------
+
+        # traverse from 'a' back to itself via a 0 length edge
+        q1 = """MATCH (a)-[*0]->(a) RETURN a"""
+        q2 = """MATCH (a:A)-[*0]->(a) RETURN a"""
+        q3 = """MATCH (a)-[*0]->(a:A) RETURN a"""
+        q4 = """MATCH (a:A)-[*0]->(a:A) RETURN a"""
+
+        queries = [q1, q2, q3, q4]
+
+        for q in queries:
+            plan = graph.explain(q)
+            root = plan.structured_plan
+            self.env.assertTrue(root.name == "Results")
+
+            child = root.children[0]
+            self.env.assertTrue(child.name == "Project")
+
+            child = child.children[0]
+            self.env.assertTrue("Conditional Variable Length Traverse" in child.name)
+
+            child = child.children[0]
+            self.env.assertTrue(child.name == "All Node Scan" in child.name or
+                                "Node By Label Scan" in child.name)
+
+            # validate 'a' was found
+            result = graph.query(q).result_set
+            self.env.assertTrue(len(result) > 0)
+
+        #-----------------------------------------------------------------------
+
+        # traverse from 'a' to 'b' using 0 length edge
+        q = """MATCH (a:A)-[*0]->(b:B) RETURN a, b"""
+        plan = graph.explain(q)
+
+        root = plan.structured_plan
+        self.env.assertTrue(root.name == "Results")
+
+        child = root.children[0]
+        self.env.assertTrue(child.name == "Project")
+
+        child = child.children[0]
+        self.env.assertTrue("Conditional Traverse" in child.name)
+
+        child = child.children[0]
+        self.env.assertTrue("Conditional Variable Length Traverse" in child.name)
+
+        child = child.children[0]
+        self.env.assertTrue("Node By Label Scan" in child.name)
+
+        # make sure 'b' isn't reachable
+        result = graph.query(q).result_set
+        self.env.assertTrue(len(result) == 0)
+
+        #-----------------------------------------------------------------------
+
+        # create a multi label node
+        q = "CREATE (:X:Y)"
+        result = graph.query(q)
+        self.env.assertEquals(result.nodes_created, 1)
+
+        # traverse from a multi label node 'a' to itself using a 0 length edge
+        q1 = """MATCH (a:X)-[*0]->(b:Y) RETURN a, b"""
+        q2 = """MATCH (a:Y)-[*0]->(b:X) RETURN a, b"""
+        q3 = """MATCH (a:X:Y)-[*0]->(b:X) RETURN a, b"""
+        q4 = """MATCH (a:X:Y)-[*0]->(b:Y) RETURN a, b"""
+        q5 = """MATCH (a:X:Y)-[*0]->(b:Y:X) RETURN a, b"""
+        queries = [q1, q2, q3, q4, q5]
+
+        for q in queries:
+            plan = graph.explain(q)
+
+            root = plan.structured_plan
+            self.env.assertTrue(root.name == "Results")
+
+            child = root.children[0]
+            self.env.assertTrue(child.name == "Project")
+
+            child = child.children[0]
+            self.env.assertTrue("Conditional Traverse" in child.name or
+                                "Expand Into" in child.name)
+
+            child = child.children[0]
+            self.env.assertTrue("Conditional Variable Length Traverse" in child.name)
+
+            child = child.children[0]
+            self.env.assertTrue("Node By Label Scan" in child.name or
+                                "Conditional Traverse" in child.name)
+
+            # make sure 'a' == 'b'
+            result = graph.query(q).result_set
+            self.env.assertTrue(len(result) == 1)
+            self.env.assertTrue(result[0][0] == result[0][1])
+
+        #-----------------------------------------------------------------------
+
+        # traverse from 'a' to itself
+        q1 = """MATCH (a)-[*0]->(b{v:1}) RETURN a, b"""
+        q2 = """MATCH (a{v:1})-[*0]->(b) RETURN a, b"""
+
+        queries = [q1, q2]
+
+        for q in queries:
+            plan = graph.explain(q)
+
+            root = plan.structured_plan
+            self.env.assertTrue(root.name == "Results")
+
+            child = root.children[0]
+            self.env.assertTrue(child.name == "Project")
+
+            child = child.children[0]
+            self.env.assertTrue("Conditional Variable Length Traverse" in child.name)
+
+            child = child.children[0]
+            self.env.assertTrue(child.name == "Filter")
+
+            child = child.children[0]
+            self.env.assertTrue("All Node Scan" in child.name)
+
+            # validate that 'a' == 'b'
+            result = graph.query(q).result_set
+            self.env.assertTrue(len(result) == 1)
+            for row in result:
+                self.env.assertTrue(row[0] == row[1])
+
+        #-----------------------------------------------------------------------
+
+        # traverse from 'a' to itself
+        q = """MATCH (a{v:1})-[*0]->(b{v:1}) RETURN a, b"""
+        plan = graph.explain(q)
+
+        root = plan.structured_plan
+        self.env.assertTrue(root.name == "Results")
+
+        child = root.children[0]
+        self.env.assertTrue(child.name == "Project")
+
+        child = child.children[0]
+        self.env.assertTrue(child.name == "Filter")
+
+        child = child.children[0]
+        self.env.assertTrue("Conditional Variable Length Traverse" in child.name)
+
+        child = child.children[0]
+        self.env.assertTrue(child.name == "Filter")
+
+        child = child.children[0]
+        self.env.assertTrue("All Node Scan" in child.name)
+
+        # validate that 'a' == 'b'
+        result = graph.query(q).result_set
+        self.env.assertTrue(len(result) == 1)
+        for row in result:
+            self.env.assertTrue(row[0] == row[1])
+
+        #-----------------------------------------------------------------------
+
+        # traverse from 'a' to a none existing node
+        q = """MATCH (a{v:1})-[*0]->(b{v:2}) RETURN a, b"""
+        plan = graph.explain(q)
+
+        root = plan.structured_plan
+        self.env.assertTrue(root.name == "Results")
+
+        child = root.children[0]
+        self.env.assertTrue(child.name == "Project")
+
+        child = child.children[0]
+        self.env.assertTrue(child.name == "Filter")
+
+        child = child.children[0]
+        self.env.assertTrue("Conditional Variable Length Traverse" in child.name)
+
+        child = child.children[0]
+        self.env.assertTrue(child.name == "Filter")
+
+        child = child.children[0]
+        self.env.assertTrue("All Node Scan" in child.name)
+
+        # validate 'b' wasn't reached
+        result = graph.query(q).result_set
+        self.env.assertTrue(len(result) == 0)
+
+        #-----------------------------------------------------------------------
+
+        # build expected ordered result-set
+        q = """MATCH (a) RETURN a ORDER BY a"""
+        expected = graph.query(q).result_set
+
+        # return named path with a 0 length edge
+        q = """MATCH p = ()-[*0]->() RETURN p ORDER BY p"""
+        result = graph.query(q).result_set
+
+        # validate result sets
+        self.env.assertTrue(len(result) == len(expected))
+        for i in range(0, len(result)):
+            a = expected[i][0]
+            path = result[i][0]
+            b = path.nodes()[0]
+            self.env.assertTrue(a == b)
+
+        #-----------------------------------------------------------------------
+
+        q = """MATCH (a) RETURN a ORDER BY a"""
+        expected = graph.query(q).result_set
+
+        # get 0 length edge
+        # returning a variable length edge returns a path
+        # similar to MATCH ()-[e*0..2]->() return e
+        q = """MATCH (a)-[e*0]->(b) RETURN e ORDER BY e"""
+        result = graph.query(q).result_set
+        for i in range(0, len(result)):
+            a = expected[i][0]
+            p = result[i][0]
+            b = p.nodes()[0]
+            self.env.assertTrue(len(p.edges()) == 0)
+            self.env.assertTrue(len(p.nodes()) == 1)
+            self.env.assertTrue(a == b)
+
+        # graph: (:A{v:1})-[:R{x:1}]->(:B{v:2})-[:R{x:2}]->(:C{v:3})
+        q = """MATCH (c:C) RETURN c"""
+        expected = graph.query(q).result_set
+
+        # make sure 'c' is reachable
+        q = """MATCH (a)-[*0]->(b)-[]->(c:C) RETURN c"""
+        result = graph.query(q).result_set
+        self.env.assertTrue(result == expected)
+
