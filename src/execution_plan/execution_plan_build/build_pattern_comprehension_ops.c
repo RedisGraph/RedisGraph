@@ -89,7 +89,7 @@ void buildPatternComprehensionOps
 
 		// check that evaluation node does not contains aggregating function
 		if (AR_EXP_ContainsAgg(eval_exp)) {
-			return;
+			break;
 		}
 
 		// collect evaluation results into an array using `collect`
