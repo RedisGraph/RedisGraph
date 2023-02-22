@@ -487,6 +487,9 @@ class testComprehensionFunctions(FlowTestsBase):
             "RETURN [x IN range(1,10) | sum(x)]" : "Invalid use of aggregating function 'sum'",
             "RETURN [x IN range(1,10) | 1 + min(x)]" : "Invalid use of aggregating function 'min'",
             "RETURN [x IN range(1,10) | max(x) + min(x)]" : "Invalid use of aggregating function 'max'",
+            "RETURN [x IN range(1,10) | collect(x)]" : "Invalid use of aggregating function 'collect'",
+            "RETURN [x IN range(1,10) WHERE x % 2 > avg(x) ] AS r" : "Invalid use of aggregating function 'avg'",
+            "RETURN [x IN range(1,10) WHERE avg(x) > x - 1 ] AS r" : "Invalid use of aggregating function 'avg'",
         }
         for query, error in queries_with_errors.items():
             self.expect_error(query, error)

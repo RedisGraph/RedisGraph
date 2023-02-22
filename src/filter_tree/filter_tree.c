@@ -683,8 +683,9 @@ bool FilterTree_Valid
 				ErrorCtx_SetError("Filter predicate did not compare two expressions.");
 				return false;
 			}
-			// Aggregate functions can't be used as part of filters in pattern comprehension node
-			if (type == CYPHER_AST_PATTERN_COMPREHENSION &&
+			// Aggregate functions can't be used as part of filters predicate in
+			// either pattern comprehension node or list comprehension node
+			if ((type == CYPHER_AST_PATTERN_COMPREHENSION || type == CYPHER_AST_LIST_COMPREHENSION) &&
 				(AR_EXP_ContainsAgg(root->pred.lhs) || AR_EXP_ContainsAgg(root->pred.rhs))) {
 					return false;
 			}
