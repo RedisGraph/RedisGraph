@@ -224,6 +224,7 @@ static int _match_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
 		int substr_len = region->end[i] - region->beg[i];
 		char *substr = rm_strndup(str + region->beg[i], substr_len);
 		SIArray_Append(&subList, SI_TransferStringVal(substr));
+		rm_free(substr);
 	}
 
 	SIArray_Append(list, subList);
