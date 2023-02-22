@@ -666,7 +666,7 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction
 	if(predicate_node) {
 		AST_ConvertFilters(&ctx->ft, predicate_node);
 		// in case of list comprehension, validate that aggregation function is not used in predicate
-		if( func_name == "LIST_COMPREHENSION" && !FilterTree_Valid(ctx->ft, CYPHER_AST_LIST_COMPREHENSION)) {
+		if(func_name == "LIST_COMPREHENSION" && !FilterTree_Valid(ctx->ft, CYPHER_AST_LIST_COMPREHENSION)) {
 			rm_free(ctx);
 			return AR_EXP_NewConstOperandNode(SI_NullVal());
 		}
