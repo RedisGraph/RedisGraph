@@ -256,6 +256,7 @@ SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
 		ErrorCtx_SetError("Invalid regex, err=%s", s);
 		onig_free(regex);
 		onig_region_free(region, 1);
+		SIValue_Free(list);
 		return SI_NullVal();
 	}
 
@@ -273,6 +274,7 @@ SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
 		ErrorCtx_SetError("Invalid regex, err=%s", s);
 		onig_free(regex);
 		onig_region_free(region, 1);
+		SIValue_Free(list);
 		return SI_NullVal();
 	}
 
