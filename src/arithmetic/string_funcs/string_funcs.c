@@ -222,13 +222,12 @@ static int _match_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
 
 	for (int i = 0; i < region->num_regs; i++) {
 		int substr_len = region->end[i] - region->beg[i];
-		char *substr = rm_malloc((substr_len + 1)*sizeof(char));
-		memcpy(substr, str + region->beg[i], (substr_len)*sizeof(char));
-		substr[substr_len] = '\0';
+		char *substr = rm_strndup(str + region->beg[i], substr_len);
 		SIArray_Append(&subList, SI_TransferStringVal(substr));
 	}
 
 	SIArray_Append(list, subList);
+	SIValue_Free(subList);
 	return 0;
 }
 
@@ -294,13 +293,11 @@ typedef struct {
 static int _replace_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
 	_replace_regex_scan_cb_args *args = (_replace_regex_scan_cb_args *)arg;
 	const char *str = args->str;
-	SIValue subList = SIArray_New(region->num_regs);
 	assert(region->num_regs > 0);
 
 	int match_len = region->end[0] - region->beg[0];
 	int str_copy_len = region->beg[0] - args->str_ind;
-	args->res =
-	rm_realloc(args->res, (args->res_len + match_len + args->replacement_len + 1)*sizeof(char));
+	args->res = rm_realloc(args->res, (args->res_len + match_len + args->replacement_len + 1)*sizeof(char));
 
 	// copy the string between the last match and the current match
 	memcpy(args->res + args->res_len, str + args->str_ind, str_copy_len*sizeof(char));
