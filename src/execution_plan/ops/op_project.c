@@ -122,3 +122,25 @@ static void ProjectFree(OpBase *ctx) {
 	}
 }
 
+void ProjectAddProjections
+(
+	OpBase *opBase,    // operations to add the projections to
+	AR_ExpNode **exps  // expressions to add to the projections
+) {
+	OpProject *op = (OpProject *) opBase;
+
+	uint exp_count = array_len(exps);
+
+	for(uint i = 0; i < exp_count; i++) {
+		// add the expression to the operations expressions
+		array_append(op->exps, exps[i]);
+
+		// TODO: If the original alias is already imported --> it doesn't get a
+		// new index so that the transformation doesn't happen properly!
+
+		// add the alias to the record-mapping if it doesn't exist
+		int record_idx = OpBase_Modifies(opBase, exps[i]->resolved_name);
+		array_append(op->record_offsets, record_idx);
+	}
+	op->exp_count += exp_count;
+}

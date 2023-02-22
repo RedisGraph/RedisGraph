@@ -93,11 +93,10 @@ static Record _handoff_eager(OpCallSubquery *op) {
     }
 
     // returning subquery
-    // TBD
     else {
-        // just for compilation
-        Record r;
-        return r;
+        // get a record from the body, and pass it on (start from a clone of it, optimize later)
+        Record consumed = OpBase_Consume(op->body);
+        return consumed == NULL ? consumed : OpBase_DeepCloneRecord(consumed);
     }
 }
 
@@ -144,7 +143,6 @@ static Record CallSubqueryConsumeEager
             OpBase_DeleteRecord(r);
         }
     }
-    // eager returning subquery case: TBD.
 
     return _handoff_eager(op);
 }

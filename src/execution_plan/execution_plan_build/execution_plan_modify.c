@@ -208,6 +208,22 @@ OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 	return ExecutionPlan_LocateOpMatchingType(root, type_arr, 1);
 }
 
+// returns pointers to all operations of a certain type in a execution plan
+void ExecutionPlan_LocateOps
+(
+	OpBase **plans,  // array in which op-pointers are stored
+	OpBase *root,    // root operation of the plan to traverse
+	OPType type      // operation type to search
+) {
+	if(root->type == type) {
+		array_append(plans, root);
+	}
+
+	for(uint i = 0; i < root->childCount; i++) {
+		ExecutionPlan_LocateOps(plans, root->children[i], type);
+	}
+}
+
 OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 												   const OpBase *recurse_limit, const OPType *blacklisted_ops,
 												   int nblacklisted_ops, rax *refs_to_resolve) {
@@ -379,6 +395,15 @@ void ExecutionPlan_BindPlanToOps
 	for(int i = 0; i < root->childCount; i ++) {
 		ExecutionPlan_BindPlanToOps(plan, root->children[i], qg);
 	}
+}
+
+// bind an operation to a plan
+void ExecutionPlan_bindOpToPlan
+(
+	OpBase *op,          // operation to bind
+	ExecutionPlan *plan  // plan to bind the op to
+) {
+	op->plan = plan;
 }
 
 OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_vars,

@@ -56,6 +56,14 @@ OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, ui
  * Returns NULL if operation wasn't found. */
 OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type);
 
+// returns pointers to all operations of a certain type in a execution plan
+void ExecutionPlan_LocateOps
+(
+	OpBase **plans,  // array in which op-pointers are stored
+	OpBase *root,    // root operation of the plan to traverse
+	OPType type      // operation type to search
+);
+
 /* Find the earliest operation above the provided recurse_limit, if any,
  * at which all references are resolved. */
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
@@ -104,6 +112,13 @@ void ExecutionPlan_BindPlanToOps
 	ExecutionPlan *plan,  // plan to bind the operations to
 	OpBase *root,         // root operation
 	bool qg               // whether to merge QueryGraphs or not
+);
+
+// bind an operation to a plan
+void ExecutionPlan_bindOpToPlan
+(
+	OpBase *op,          // operation to bind
+	ExecutionPlan *plan  // plan to bind the op to
 );
 
 /* Given an AST path pattern, generate the tree of scan, traverse,

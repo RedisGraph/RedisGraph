@@ -20,5 +20,10 @@ typedef struct {
 	uint exp_count;                 // Number of projected expressions.
 } OpProject;
 
-OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps);
+void ProjectAddProjections
+(
+	OpBase *opBase,    // operations to add the projections to
+	AR_ExpNode **exps  // expressions to add to the projections
+);
 
+OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps);

@@ -308,16 +308,6 @@ static void _buildCallSubqueryPlan
 	// -------------------------------------------------------------------------
 	QueryCtx_SetAST(orig_ast);
 
-	// -------------------------------------------------------------------------
-	// create an ArgumentList\Argument op according to the eagerness of the op,
-	// and plant it as the deepest child of the embedded plan
-	// -------------------------------------------------------------------------
-	// NTS: Do we need DELETE here? I think not.
-	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_DELETE,
-					OPType_MERGE, OPType_SORT};
-	bool is_eager =
-		ExecutionPlan_LocateOpMatchingType(embedded_plan->root, types, 4) != NULL;
-
 	// find the deepest op in the embedded plan
 	OpBase *deepest = embedded_plan->root;
 	while(deepest->childCount > 0) {
@@ -334,33 +324,171 @@ static void _buildCallSubqueryPlan
 		deepest = implicit_proj;
 	}
 
-	if(is_eager) {
-		// add an ArgumentList op
-		OpBase *argument_list = NewArgumentListOp(plan);
-		// OpBase *argument_list = NewArgumentListOp(embedded_plan);
-		ExecutionPlan_AddOp(deepest, argument_list);
-	} else {
-		// add an Argument op
-		OpBase *argument = NewArgumentOp(plan, NULL);
-		// OpBase *argument = NewArgumentOp(embedded_plan, NULL);
-		ExecutionPlan_AddOp(deepest, argument);
-	}
+	// characterize whether the query is\not eager\returning
+		// NTS: Do we need DELETE here? I think not.
+	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_DELETE,
+					OPType_MERGE, OPType_SORT};
+	bool is_eager =
+	  ExecutionPlan_LocateOpMatchingType(embedded_plan->root, types, 4) != NULL;
+	bool is_returning = OpBase_Type(embedded_plan->root) == OPType_RESULTS;
 
 	// -------------------------------------------------------------------------
 	// get rid of the Results op if it exists
 	// -------------------------------------------------------------------------
-	bool is_returning = OpBase_Type(embedded_plan->root) == OPType_RESULTS;
 	if(is_returning) {
 		// remove the Results op from the execution-plan
 		ExecutionPlan_RemoveOp(embedded_plan, embedded_plan->root);
 
+		// if the embedded plan is not eager, do not propagate input records
+		if(!is_eager) {
+			// bind the returning projection op to the outer plan
+			OpBase *returning_proj = ExecutionPlan_LocateOp(embedded_plan->root,
+				OPType_PROJECT);
+
+			// bind the returning projection to the outer plan
+			// TODO: Do this later (after affecting the projections), and modify this so that the Project record_offsets
+			// change accordingly to the new plan, and it call OpBase_Modifies() on all its projections!!
+			ExecutionPlan_bindOpToPlan(returning_proj, plan);
+			goto skip_projections_modification;
+		}
+
+		// project all existing entries according to the following transformation: 'alias' --> '_alias'
+		// (later to be changed to some un-parsable character)
+		// Just make an Arithmetic_Expression with `AR_EXP_FromASTNode(cypher_ast_identifier(alias))` or using `AR_EXP_NewVariableOperandNode()`
+		// for every alias in the outer record-mapping, in which the resolved_name is the new name for it.
+		// remember to keep this mapping, so that we can go the other way around (at the moment just add `_` and remove it later)
+
+		uint mapping_size = raxSize(ExecutionPlan_GetMappings(plan));
+		// create an array containing coupled names ("a1", "_a1", "a2", "_a2", ...)
+		// of the original names and the internal (temporary) representation of them.
+		char **names = array_new(char *, mapping_size);
+		AR_ExpNode **new_exps = array_new(AR_ExpNode *, mapping_size);
+		raxIterator it;
+		raxStart(&it, plan->record_map);
+		raxSeek(&it, "^", NULL, 0);
+		while(raxNext(&it)) {
+			// const char *curr = (const char *)it.key;
+			char *curr = calloc(1, it.key_len + 1);
+			sprintf(curr, "%.*s", (int)it.key_len, it.key);
+			// think about working with sds
+			char *internal_rep = calloc(1, it.key_len + 2);
+			sprintf(internal_rep, "_%.*s", (int)it.key_len, it.key);
+			// append original name
+			array_append(names, curr);
+			// append internal (temporary) name
+			array_append(names, internal_rep);
+		}
+
+		// create AR_EXPNodes for the import projection
+		AR_ExpNode ** import_proj_exps = array_new(AR_ExpNode *, mapping_size);
+		for(uint i = 0; i < mapping_size; i++) {
+			// get alias
+			char *orig_alias = names[i];
+			// advance index to the internal name index
+			i++;
+
+			// create the AR_EXPNode from it
+			struct cypher_input_range range = {0};
+			AR_ExpNode *new_node = AR_EXP_FromASTNode(cypher_ast_identifier(orig_alias, strlen(orig_alias), range));
+			new_node->resolved_name = names[i];
+			array_append(import_proj_exps, new_node);
+		}
+
+
+		// create AR_EXPNodes for the intermediate projections
+		AR_ExpNode ** intermediate_proj_exps = array_new(AR_ExpNode *, mapping_size);
+		for(uint i = 0; i < mapping_size; i++) {
+			// advance index to the internal name index
+			i++;
+
+			// get alias
+			char *intermediate_alias = names[i];
+
+			// create the AR_EXPNode from it
+			struct cypher_input_range range = {0};
+			AR_ExpNode *new_node =
+				AR_EXP_FromASTNode(cypher_ast_identifier(intermediate_alias,
+					strlen(intermediate_alias), range));
+			new_node->resolved_name = intermediate_alias;
+			array_append(intermediate_proj_exps, new_node);
+		}
+
+		// create AR_EXPNodes for the return projection
+		AR_ExpNode ** return_proj_exps = array_new(AR_ExpNode *, mapping_size);
+		for(uint i = 0; i < mapping_size; i++) {
+			// get alias
+			char *orig_alias = names[i];
+
+			// advance index to the internal name index
+			i++;
+
+			// create the AR_EXPNode from it
+			struct cypher_input_range range = {0};
+			AR_ExpNode *new_node = AR_EXP_FromASTNode(cypher_ast_identifier(names[i], strlen(names[i]), range));
+			new_node->resolved_name = orig_alias;
+			array_append(return_proj_exps, new_node);
+		}
+
+		// modify the first projection (imports) to contain the transformation `n`-->`_n`
+		OpBase *import_proj = deepest;
+		ProjectAddProjections(import_proj, import_proj_exps);
+
+
+		// modify intermediate projections in the body of the subquery, except the last Return projection (first in exec-plan),
+		// to contain projections of the outer scope variables to themselves ('_alias' --> '_alias')
+			// Locate the projections - collect them in an array.
+			// Add the projections to them ('_alias' -> '_alias', which can be achieved by adding the '_alias' only as the AR_EXP)
+		OpBase **intermediate_projections = array_new(OpBase *, 2);
+		// find 'first' Project op in the embedded execution-plan (return)
+		OpBase *returning_proj = ExecutionPlan_LocateOp(embedded_plan->root,
+			OPType_PROJECT);
+
+		// collect all the intermediate Project ops (from the child of the
+		// return projection)
+		ExecutionPlan_LocateOps(intermediate_projections,
+			returning_proj->children[0], OPType_PROJECT);
+
+		// Add to the RETURN projection (the 'first' projection in the embedded plan)
+		// the mapping of the internal representation of the outer-scope
+		// variables to their original names ('_alias' --> 'alias')
+		ProjectAddProjections(returning_proj, return_proj_exps);
+
+		// the 'last' projection is the importing projection, pop it
+		array_pop(intermediate_projections);
+
+		// modify projected expressions of the intermediate projections if exist
+		for(uint i = 0; i < array_len(intermediate_projections); i++) {
+			ProjectAddProjections(intermediate_projections[i],
+				intermediate_proj_exps);
+		}
+
+		// bind the RETURN projection (last one) to the outer plan ('plan')
+			// find it (not necessarily the last op - SKIP, LIMIT, ORDER BY etc.)
+			// bind it: `op->plan = plan`
+		ExecutionPlan_bindOpToPlan(returning_proj, plan);
+
+
+		// DONE! Make sure it works..
 		// TODO: Extend this to support SKIP, LIMIT, ORDER BY, UNION (AND ANY
 		// COMBINATION OF THEM!)
 		// Notice the differences in execution-plans for every clause, specifically
 		// UNION is very different.
+	}
 
-		// bind the Project op to the outer plan
-		embedded_plan->root->plan = plan;
+skip_projections_modification:
+	// -------------------------------------------------------------------------
+	// create an ArgumentList\Argument op according to the eagerness of the op,
+	// and plant it as the deepest child of the embedded plan
+	// -------------------------------------------------------------------------
+
+	if(is_eager) {
+		// add an ArgumentList op
+		OpBase *argument_list = NewArgumentListOp(plan);
+		ExecutionPlan_AddOp(deepest, argument_list);
+	} else {
+		// add an Argument op
+		OpBase *argument = NewArgumentOp(plan, NULL);
+		ExecutionPlan_AddOp(deepest, argument);
 	}
 
 	// -------------------------------------------------------------------------
