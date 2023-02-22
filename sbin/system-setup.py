@@ -34,6 +34,7 @@ class RedisGraphSetup(paella.Setup):
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
+        self.install("which")
         if not self.platform.is_arm():
             self.install_linux_gnu_tar()
         if self.osnick == 'ol8':
