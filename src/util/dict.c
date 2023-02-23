@@ -361,6 +361,20 @@ int HashTableAdd
     return DICT_OK;
 }
 
+/* Add an element to the target hash table */
+int HashTableAddULL
+(
+	dict *d,
+	void *key,
+	uint64_t val
+) {
+    dictEntry *entry = HashTableAddRaw(d,key,NULL);
+
+    if (!entry) return DICT_ERR;
+    HashTableSetValULL(entry, val);
+    return DICT_OK;
+}
+
 /* Low level add or find:
  * This function adds the entry but instead of setting a value returns the
  * dictEntry structure to the user, that will make sure to fill the value
@@ -602,6 +616,11 @@ void *HashTableFetchValue(dict *d, const void *key) {
     return he ? HashTableGetVal(he) : NULL;
 }
 
+uint64_t *HashTableFetchValueULL(dict *d, const void *key) {
+    dictEntry *he = HashTableFind(d, key);
+    return he ? HashTableGetValULL(he) : NULL;
+}
+
 /* Find an element from the table, also get the plink of the entry. The entry
  * is returned if the element is found, and the user should later call
  * `HashTableTwoPhaseUnlinkFree` with it in order to unlink and release it. Otherwise if
@@ -663,6 +682,11 @@ void HashTableSetVal(dict *d, dictEntry *de, void *val) {
     de->v.val = d->type->valDup ? d->type->valDup(d, val) : val;
 }
 
+void HashTableSetValULL(dictEntry *de, uint64_t val) {
+    de->v.u64 = val;
+}
+
+
 /* A pointer to the metadata section within the dict entry. */
 void *HashTableEntryMetadata(dictEntry *de) {
     return &de->metadata;
@@ -674,6 +698,10 @@ void *HashTableGetKey(const dictEntry *de) {
 
 void *HashTableGetVal(const dictEntry *de) {
     return de->v.val;
+}
+
+uint64_t *HashTableGetValULL(dictEntry *de) {
+    return &de->v.u64;
 }
 
 /* Returns the memory usage in bytes of the dict, excluding the size of the keys

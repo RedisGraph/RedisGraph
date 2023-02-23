@@ -932,6 +932,13 @@ This section contains information on all supported functions from the Cypher que
 
 &#42; RedisGraph-specific extensions to Cypher
 
+| list.insertListElements(list, list2, idx, dups = TRUE)  | Returns a list after inserting the elements of a second list at a given index. <br> idx is 0-based when non-negative, or from the end of the list when negative <br> Returns null when list is evaluated to null <br> Returns list when list2 is evaluated to null <br> Returns list when idx is evaluated to an integer not in [-NumItems-1 .. NumItems] |
+| list.remove(list, idx, count = 1)  | Returns a list after removing a given number of consecutive elements (or less, if the end of the list has been reached). starting at a given index. <br> idx is 0-based when non-negative, or from the end of the list when negative <br> Returns null when list is evaluated to null <br> Returns list when idx is evaluated to an integer not in [-NumItems .. NumItems-1] <br> Returns list when count is evaluated to a non-positive integer |
+| list.dedup(list)  | Returns a similar list after removing duplicate elements. <br> Order is preserved, duplicates are removed from the end of the list. <br> Returns null when list is evaluated to null |
+| list.sort(list)  | Returns a list with similar elements, but sorted (inversely-sorted if ascending is evaluated to FALSE). <br> Ordering of values with different types (in ascending order): Map, Node, Relationship, List, Path, String, Boolean, Number, null. <br> Returns null when list is evaluated to null |
+| list.union(_expr_)                         | Given two lists, return their union <br> Returns null when both v1 and v2 are null. <br> When list is evaluated to null - it is first replaced with an empty list <br> If dupPolicy is evaluated to 0 (set semantics): <br> If a value appears x>0 times in v1 or y>0 times in v2 it will appear one time in the result. <br> The result is ordered ascendingly. <br> If dupPolicy is evaluated to 1 (bag semantics): <br> If a value appears x times in v1 and y times in v2 - it will appear x+y times in the result. <br> Lists are concatenated without reordering. <br> If dupPolicy is evaluated to 2 (bag semantics, alternative definition): <br> If a value appears x times in v1 and y times in v2 - it will appear max(x,y) times in the result. <br> Ordering: lists are concatenated with duplicates removed from the end of the list. |
+
+
 ## Mathematical operators
 
 |Function     | Description|

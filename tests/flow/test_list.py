@@ -1176,14 +1176,14 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
-        # 3th arg should be Integer
+        # 3nd arg should be Integer
         try:
             redis_graph.query("RETURN list.insertListElements([1,2,3], [2], '1')")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected Integer but was String", str(e))
 
-        # Test without input argument
+        # 2nd arg should be list
         try:
             query = """RETURN list.insertListElements()"""
             redis_graph.query(query)
@@ -1421,5 +1421,87 @@ class testList(FlowTestsBase):
 
         expected_result = [[3,[1,2],[1]]]
         query = """RETURN list.dedup([3,[1,2],3,[1],[1,2]])"""
+
+    def test14_union(self):
+        # 2nd arg should be list
+        try:
+            redis_graph.query("RETURN list.union([1,2,3], '2', 1)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
+
+        # 3th arg should be Integer
+        try:
+            redis_graph.query("RETURN list.union([1,2,3], [2], '1')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Integer but was String", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN list.union()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'list.union', expected at least 2", str(e))
+
+        # Test with 1 input argument
+        try:
+            query = """RETURN list.union([1,2,3])"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 1 arguments to function 'list.union', expected at least 2", str(e))
+
+        # Test with 4 input argument
+        try:
+            query = """RETURN list.union([1,2,3], [2], 1, 1)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 4 arguments to function 'list.union', expected at most 3", str(e))
+
+
+        ### Test valid inputs ###
+        # NULL, NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN list.union(null, null, 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # NULL, NULL input should return NULL
+        expected_result = [[1,2,3]]
+        query = """RETURN list.union([1,3,2], null)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # NULL, NULL input should return NULL
+        expected_result = [[1,2,3]]
+        query = """RETURN list.union(null, [1,3,2], 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,3,4,None]]
+        query = """RETURN list.union([null,1,3,2], [null,4,null])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,2,3,4,7,None]]
+        query = """RETURN list.union([null,1,3,2], [null,4,null,7,2], 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[None,1,3,2,None,4,None,7,2]]
+        query = """RETURN list.union([null,1,3,2], [null,4,null,7,2], 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[None,1,3,2,None,4,7]]
+        query = """RETURN list.union([null,1,3,2], [null,4,null,7,2], 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[None,1,None,3,2,7,7,7,4]]
+        query = """RETURN list.union([null,1,null,3,2,7,7,7], [null,4,7,2], 2)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)

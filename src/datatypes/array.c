@@ -18,7 +18,7 @@ SIValue SIArray_New(uint32_t initialCapacity) {
 	return siarray;
 }
 
-void SIArray_Append(SIValue *siarray, SIValue value) {
+void SIArray_Append(SIValue *siarray, const SIValue value) {
 	// clone and persist incase of pointer values
 	SIValue clone = SI_CloneValue(value);
 	// append
@@ -133,6 +133,21 @@ SIValue SIArray_Clone(SIValue siarray) {
 	SIValue newArray = SIArray_New(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
 		SIArray_Append(&newArray, siarray.array[i]);
+	}
+	return newArray;
+}
+
+// remove duplicates from sorted array
+SIValue SIArray_RemoveDuplicatesSorted(SIValue siarray) {
+	uint arrayLen = SIArray_Length(siarray);
+	SIValue newArray = SIArray_New(arrayLen);
+	SIValue prev = SI_NullVal();
+	for(uint i = 0; i < arrayLen; i++) {
+		SIValue elem = siarray.array[i];
+		if(SIValue_Compare(elem, prev, NULL) != 0) {
+			SIArray_Append(&newArray, elem);
+			prev = elem;
+		}
 	}
 	return newArray;
 }

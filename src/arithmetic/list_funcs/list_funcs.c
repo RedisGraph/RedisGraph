@@ -761,6 +761,195 @@ SIValue AR_REDUCE
 	return accum;
 }
 
+static inline XXH64_hash_t hash_sivalue(SIValue val) {
+	// initialize the hash state
+	XXH64_state_t state;
+	XXH_errorcode res = XXH64_reset(&state, 0);
+	ASSERT(res != XXH_ERROR);
+
+	SIValue_HashUpdate(val, &state);
+
+	// finalize the hash
+	return XXH64_digest(&state);
+}
+
+// list : sorted list
+// return a list with no duplicate values
+static SIValue _dedupSorted(const SIValue list) {
+	uint32_t n   = SIArray_Length(list);
+	SIValue  res = SI_Array(n);
+
+	SIValue prev = SIArray_Get(list, 0);
+	SIArray_Append(&res, prev);
+
+	for(uint i = 1; i < n; i++) {
+		SIValue cur = SIArray_Get(list, i);
+
+		if(SIValue_Compare(prev, cur, NULL) != 0) {
+			SIArray_Append(&res, cur);
+			prev = cur;
+		}
+	}
+
+	return res;
+}
+
+static SIValue handle_union_bag_semantic_dup_2(const SIValue *_A, const SIValue *_B) {
+	SIValue A = *_A;
+	SIValue B = *_B;
+	uint a_len = SIArray_Length(A);
+	uint b_len = SIArray_Length(B);
+	SIValue res = SI_Array(a_len + b_len);
+
+	dict *values_a = HashTableCreate(&dt);
+
+	for(uint i = 0; i < a_len; i++) {
+		SIValue val = SIArray_Get(A, i);
+		XXH64_hash_t hash = hash_sivalue(val);
+
+		uint64_t *count = HashTableFetchValueULL(values_a, (void *)hash);
+		if(count == NULL) {
+			// first time we see this value, set count to 1
+			int ret = HashTableAddULL(values_a, (void *)hash, 1);
+			ASSERT(ret == DICT_OK);
+		} else {
+			(*count)++;
+		}
+	}
+
+	dict *values_b = HashTableCreate(&dt);
+	for(uint i = 0; i < b_len; i++) {
+		SIValue val = SIArray_Get(B, i);
+		XXH64_hash_t hash = hash_sivalue(val);
+
+		uint64_t *count = HashTableFetchValueULL(values_b, (void *)hash);
+		if(count == NULL) {
+			// first time we see this value, set count to 1
+			int ret = HashTableAddULL(values_b, (void *)hash, 1);
+			ASSERT(ret == DICT_OK);
+		} else {
+			(*count)++;
+		}
+	}
+
+	// append values from A
+	for(uint i = 0; i < a_len; i++) {
+		SIValue val = SIArray_Get(A, i);
+		XXH64_hash_t hash = hash_sivalue(val);
+
+		uint64_t *count_a = HashTableFetchValueULL(values_a, (void *)hash);
+		uint64_t *count_b = HashTableFetchValueULL(values_b, (void *)hash);
+
+		if(count_b) {
+			*count_a = MAX(*count_a, *count_b);
+			*count_b = 0;
+		}
+
+		if(*count_a > 0) {
+			SIArray_Append(&res, val);
+			(*count_a)--;
+		}
+	}
+
+	// append values from B
+	for(uint i = 0; i < b_len; i++) {
+		SIValue val = SIArray_Get(B, i);
+		XXH64_hash_t hash = hash_sivalue(val);
+
+		uint64_t *count_a = HashTableFetchValueULL(values_a, (void *)hash);
+
+		if(count_a) {
+			if(*count_a > 0) {
+				SIArray_Append(&res, val);
+				(*count_a)--;
+			}
+		} else {
+			uint64_t *count_b = HashTableFetchValueULL(values_b, (void *)hash);
+			if(*count_b > 0) {
+				SIArray_Append(&res, val);
+				(*count_b)--;
+			}
+		}
+	}
+
+	HashTableRelease(values_a);
+	HashTableRelease(values_b);
+
+	return res;
+}
+
+static inline SIValue sortAndDedup(SIValue list) {
+	SIArray_Sort(list, true);
+	SIValue res = _dedupSorted(list);
+	SIArray_Free(list);
+	return res;
+}
+
+// given two lists, return their union (v1∪v2) as an ascendingly sorted list.
+// list.union(v1, v2, dupPolicy = 0) → list
+// list.union([1,1,2,3], [5,4,3], 0) → [1,2,3,4,5]
+SIValue AR_UNION(SIValue *argv, int argc, void *private_data) {
+	SIValue A = argv[0];
+	SIValue B = argv[1];
+
+	int64_t dup = 0;
+	if(argc == 3) {
+		dup = SI_GET_NUMERIC(argv[2]);
+		if(dup < 0 || dup > 2) {
+			// invalid duplicate policy
+			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in union()");
+			return SI_NullVal();
+		}
+	}
+
+	if(SI_TYPE(A) == T_NULL && SI_TYPE(B) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	SIValue res;
+	if(SI_TYPE(A) == T_NULL) {
+		// if the array is null it is treated as an empty array
+		res = SIArray_Clone(B);
+		if(dup == 0) {
+			return sortAndDedup(res);
+		} else {
+			return res;
+		}
+	}
+
+	if(SI_TYPE(B) == T_NULL) {
+		// if the array is null it is treated as an empty array
+		res = SIArray_Clone(A);
+		if(dup == 0) {
+			return sortAndDedup(res);
+		} else {
+			return res;
+		}
+	}
+
+	if (dup == 2) {
+		return handle_union_bag_semantic_dup_2(&A, &B);
+	}
+
+	uint a_len = SIArray_Length(A);
+	uint b_len = SIArray_Length(B);
+	res = SI_Array(a_len + b_len);
+
+	for(uint i = 0; i < a_len; i++) {
+		SIArray_Append(&res, SIArray_Get(A, i));
+	}
+
+	for(uint i = 0; i < b_len; i++) {
+		SIArray_Append(&res, SIArray_Get(B, i));
+	}
+
+	if (dup == 0) {
+		return sortAndDedup(res);
+	} // else dup == 1
+
+	return res;
+}
+
 void Register_ListFuncs() {
 	SIType *types;
 	SIType ret_type;
@@ -897,5 +1086,13 @@ void Register_ListFuncs() {
 	func_desc = AR_FuncDescNew("reduce", AR_REDUCE, 3, 3, types, ret_type, true, true);
 	AR_SetPrivateDataRoutines(func_desc, ListReduceCtx_Free,
 							  ListReduceCtx_Clone);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 3);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_INT64);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("list.union", AR_UNION, 2, 3, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }
