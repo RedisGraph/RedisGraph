@@ -30,7 +30,7 @@ class RedisGraphSetup(paella.Setup):
         if self.platform.is_arm():
             self.install("python3-dev")
         self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
-        self.pip_install("-r tests/fuzz/requirements.txt")
+        self.pip_install("-r tests/fuzz/requirements.txt --use-pep517")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
