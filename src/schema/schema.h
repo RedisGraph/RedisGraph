@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "rax.h"
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "redisearch_api.h"

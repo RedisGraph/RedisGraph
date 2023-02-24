@@ -469,7 +469,7 @@ Index GraphContext_GetIndexByID
 ) {
 	// validations
 	ASSERT(gc != NULL);
-	ASSERT((attr_ids == NULL && n == 0) || (attr_ids != NULL && n > 0));
+	ASSERT((attrs == NULL && n == 0) || (attrs != NULL && n > 0));
 
 	// retrieve the schema for given id
 	SchemaType st = (entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;

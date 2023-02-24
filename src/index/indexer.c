@@ -313,8 +313,8 @@ void Indexer_EnforceConstraint
 	Constraint c,     // constraint to enforce
 	GraphContext *gc  // graph context
 ) {
-	ASSERT(c != NULL);
-	ASSERT(g != NULL);
+	ASSERT(c  != NULL);
+	ASSERT(gc != NULL);
 
 	ConstraintEnforceCtx *ctx = rm_malloc(sizeof(ConstraintEnforceCtx));
 	ctx->c  = c;

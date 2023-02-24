@@ -233,14 +233,12 @@ void Constraint_DecPendingChanges
 }
 
 // tries to enforce constraint
-// sets constraint status as pending
 void Constraint_Enforce
 (
 	Constraint c,            // constraint to enforce
 	struct GraphContext *gc  // graph context
 ) {
 	ASSERT(c != NULL);
-	ASSERT(g != NULL);
 	ASSERT(Constraint_GetStatus(c) == CT_PENDING);
 
 	// mark constraint as pending
