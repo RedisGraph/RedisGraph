@@ -313,8 +313,9 @@ void Indexer_EnforceConstraint
 	Constraint c,     // constraint to enforce
 	GraphContext *gc  // graph context
 ) {
-	ASSERT(c  != NULL);
-	ASSERT(gc != NULL);
+	ASSERT(c       != NULL);
+	ASSERT(gc      != NULL);
+	ASSERT(indexer != NULL);
 
 	ConstraintEnforceCtx *ctx = rm_malloc(sizeof(ConstraintEnforceCtx));
 	ctx->c  = c;
@@ -338,7 +339,6 @@ void Indexer_DropConstraint
 ) {
 	ASSERT(c       != NULL);
 	ASSERT(indexer != NULL);
-	ASSERT(Constraint_GetStatus(c) != CT_FAILED);
 
 	// place task into queue
 	_indexer_AddTask(INDEXER_CONSTRAINT_DROP, c);

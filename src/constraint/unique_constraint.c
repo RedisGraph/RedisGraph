@@ -14,7 +14,7 @@
 
 // opaque structure representing a constraint
 struct _UniqueConstraint {
-	uint n_attr;                   // number of fields
+	uint8_t n_attr;                // number of fields
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
 	int lbl;                       // enforced label/relationship-type
@@ -54,7 +54,6 @@ static bool Constraint_EnforceUniqueEntity
 
     SIType t;
     SIValue *v;
-    uint i = 0;
     RSQNode *node = NULL;  // RediSearch query node
     RSQNode *root = NULL;  // root of RediSearch query tree
 	RSQNode *nodes[_c->n_attr];
@@ -62,7 +61,7 @@ static bool Constraint_EnforceUniqueEntity
 	const AttributeSet attributes = GraphEntity_GetAttributes(e);
 
     // create a RediSearch query
-    for(i = 0; i < _c->n_attr; i++) {
+    for(uint8_t i = 0; i < _c->n_attr; i++) {
 		Attribute_ID attr_id = _c->attrs[i];
 		const char *field = _c->attr_names[i];
 
@@ -108,7 +107,7 @@ static bool Constraint_EnforceUniqueEntity
 	if(_c->n_attr > 1) {
 		// intersection query node
 		root = RediSearch_CreateIntersectNode(rs_idx, false);
-		for(uint i = 0; i < _c->n_attr; i++) {
+		for(uint8_t i = 0; i < _c->n_attr; i++) {
 			RediSearch_QueryNodeAddChild(root, nodes[i]);
 		}
 	}
@@ -142,7 +141,7 @@ Constraint Constraint_UniqueNew
 	LabelID l,                // label/relation ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
-	uint n_fields,            // number of fields
+	uint8_t n_fields,         // number of fields
 	GraphEntityType et,       // entity type
 	Index idx                 // index
 ) {

@@ -131,7 +131,7 @@ static void _RdbLoadConstaint
 	// decode constraint fields count
 	//--------------------------------------------------------------------------
 	
-	uint n = RedisModule_LoadUnsigned(rdb);
+	uint8_t n = RedisModule_LoadUnsigned(rdb);
 
 	//--------------------------------------------------------------------------
 	// decode constraint fields
@@ -141,9 +141,9 @@ static void _RdbLoadConstaint
 	const char *attr_strs[n];
 
 	// read fields
-	for(uint i = 0; i < n; i++) {
+	for(uint8_t i = 0; i < n; i++) {
 		Attribute_ID attr = RedisModule_LoadUnsigned(rdb);
-		attr_ids[i] = attr;
+		attr_ids[i]  = attr;
 		attr_strs[i] = GraphContext_GetAttributeString(gc, attr);
 	}
 

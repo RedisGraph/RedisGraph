@@ -156,14 +156,14 @@ static void _RdbSaveConstraint
 	//--------------------------------------------------------------------------
 
 	const Attribute_ID *attrs;
-	uint n = Constraint_GetAttributes(c, &attrs, NULL);
+	uint8_t n = Constraint_GetAttributes(c, &attrs, NULL);
 	RedisModule_SaveUnsigned(rdb, n);
 
 	//--------------------------------------------------------------------------
 	// encode fields
 	//--------------------------------------------------------------------------
 
-	for(uint i = 0; i < n; i++) {
+	for(uint8_t i = 0; i < n; i++) {
 		Attribute_ID attr = attrs[i];
 		RedisModule_SaveUnsigned(rdb, attr);
 	}

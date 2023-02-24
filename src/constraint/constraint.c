@@ -24,7 +24,7 @@ extern Constraint Constraint_UniqueNew
 	LabelID l,                // label/relation ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
-	uint n_fields,            // number of fields
+	uint8_t n_fields,         // number of fields
 	GraphEntityType et,       // entity type
 	Index idx                 // index
 );
@@ -35,13 +35,13 @@ extern Constraint Constraint_ExistsNew
 	LabelID l,                // label/relation ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
-	uint n_fields,            // number of fields
+	uint8_t n_fields,         // number of fields
 	GraphEntityType et        // entity type
 );
 
 // opaque structure representing a constraint
 typedef struct _Constraint {
-	uint n_attr;                   // number of fields
+	uint8_t n_attr;                // number of fields
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
 	int lbl;                       // enforced label/relationship-type
@@ -60,7 +60,7 @@ Constraint Constraint_New
 	LabelID l,                // label/relation ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
-	uint n_fields,            // number of fields
+	uint8_t n_fields,         // number of fields
 	GraphEntityType et        // entity type
 ) {
 	ASSERT(t == CT_UNIQUE || t == CT_EXISTS);
@@ -86,7 +86,7 @@ Constraint Constraint_New
 		c = Constraint_ExistsNew(l, fields, attr_names, n_fields, et);
 	}
 
-	Constraint_SetStatus(c, CT_PENDING);
+	ASSERT(Constraint_GetStatus(c) == CT_PENDING);
 
 	return c;
 }
@@ -148,7 +148,7 @@ void Constraint_SetStatus
 }
 
 // returns a shallow copy of constraint attributes
-uint Constraint_GetAttributes
+uint8_t Constraint_GetAttributes
 (
 	const Constraint c,             // constraint from which to get attributes
 	const Attribute_ID **attr_ids,  // array of constraint attribute IDs
@@ -173,7 +173,7 @@ bool Constraint_ContainsAttribute
 	Constraint c,         // constraint to query
 	Attribute_ID attr_id  // enforced attribute
 ) {
-	for(int i = 0; i < c->n_attr; i++) {
+	for(uint8_t i = 0; i < c->n_attr; i++) {
 		if(c->attrs[i] == attr_id) {
 			return true;
 		}

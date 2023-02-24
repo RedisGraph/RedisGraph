@@ -137,10 +137,10 @@ static void _EmitConstraint
 
 	if(ctx->yield_properties) {
 		const char **props;
-		uint n = Constraint_GetAttributes(c, NULL, &props);
+		uint8_t n = Constraint_GetAttributes(c, NULL, &props);
 		*ctx->yield_properties = SI_Array(n);
 
-		for(uint i = 0; i < n; i++) {
+		for(uint8_t i = 0; i < n; i++) {
 			SIArray_Append(ctx->yield_properties,
 					SI_ConstStringVal((char *)props[i]));
 		}

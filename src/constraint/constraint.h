@@ -49,7 +49,7 @@ Constraint Constraint_New
 	LabelID l,                // label/relation ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
-	uint n_fields,            // number of fields
+	uint8_t n_fields,         // number of fields
 	GraphEntityType et        // entity type
 );
 
@@ -88,7 +88,7 @@ void Constraint_SetStatus
 );
 
 // returns a shallow copy of constraint attributes
-uint Constraint_GetAttributes
+uint8_t Constraint_GetAttributes
 (
 	const Constraint c,             // constraint from which to get attributes
 	const Attribute_ID **attr_ids,  // array of constraint attribute IDs

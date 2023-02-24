@@ -13,7 +13,7 @@
 
 // opaque structure representing a constraint
 struct _ExistsConstraint {
-	uint16_t n_attr;               // number of fields
+	uint8_t n_attr;                // number of fields
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
 	int lbl;                       // enforced label/relationship-type
@@ -36,7 +36,7 @@ static bool Constraint_EnforceExists
 
 	// TODO: might want to introduce a GraphEntity_ContainsAttributes function
 	// see if entity has all enforced attributes
-	for(uint i = 0; i < _c->n_attr; i++) {
+	for(uint8_t i = 0; i < _c->n_attr; i++) {
 		Attribute_ID attr_id = _c->attrs[i];
 		if(GraphEntity_GetProperty(e, attr_id) == ATTRIBUTE_NOTFOUND) {
 			// missing mandatory attribute
@@ -54,7 +54,7 @@ Constraint Constraint_ExistsNew
 	LabelID l,                // label/relation ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
-	uint n_fields,            // number of fields
+	uint8_t n_fields,         // number of fields
 	GraphEntityType et        // entity type
 ) {
     ExistsConstraint c = rm_malloc(sizeof(struct _ExistsConstraint));

@@ -38,7 +38,7 @@ static int Constraint_Parse
 	ConstraintType *ct,
 	GraphEntityType *type,
 	const char **label,
-	long long *prop_count,
+	uint8_t *prop_count,
 	RedisModuleString ***props
 ) {
 	//--------------------------------------------------------------------------
@@ -100,9 +100,10 @@ static int Constraint_Parse
 	//--------------------------------------------------------------------------
 
 	token = RedisModule_StringPtrLen(*argv++, NULL);
+	long long _prop_count;
 	if(strcasecmp(token, "PROPERTIES") == 0) {
-		if (RedisModule_StringToLongLong(*argv++, prop_count) != REDISMODULE_OK
-				|| *prop_count < 1) {
+		if (RedisModule_StringToLongLong(*argv++, &_prop_count) != REDISMODULE_OK
+				|| _prop_count < 1 || _prop_count > 254) {
 			RedisModule_ReplyWithError(ctx, "Invalid property count");
 			return REDISMODULE_ERR;
 		}
@@ -110,6 +111,8 @@ static int Constraint_Parse
 		RedisModule_ReplyWithError(ctx, "7th arg isn't PROPERTIES");
 		return REDISMODULE_ERR;
 	}
+
+	*prop_count = (uint8_t)(_prop_count);
 
 	// expecting last property to be the last command argument
 	if(argc - 7 != *prop_count) {
@@ -125,16 +128,16 @@ static int Constraint_Parse
 // GRAPH.CONSTRAIN <key> DEL UNIQUE/MANDATORY LABEL/RELATIONSHIP label PROPERTIES prop_count prop0, prop1...
 static bool _Constraint_Delete
 (
-	RedisModuleCtx *ctx,
-	RedisModuleString *key,
-	ConstraintType ct,
-	GraphEntityType entity_type,
-	const char *label,
-	uint prop_count,
-	const char **props
+	RedisModuleCtx *ctx,    // redis module context
+	RedisModuleString *key, // graph key to operate on
+	ConstraintType ct,      // constraint type
+	GraphEntityType et,     // entity type
+	const char *lbl,        // label / rel-type
+	uint8_t n,              // properties count
+	const char **props      // properties
 ) {
 	bool res = true;  // optimistic
-	Attribute_ID attrs[prop_count];
+	Attribute_ID attrs[n];
 
 	//--------------------------------------------------------------------------
 	// try to get graph
@@ -151,9 +154,9 @@ static bool _Constraint_Delete
 	//--------------------------------------------------------------------------
 
 	// determine schema type
-	SchemaType st = (entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+	SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
 
-	Schema *s = GraphContext_GetSchema(gc, label, st);
+	Schema *s = GraphContext_GetSchema(gc, lbl, st);
 	if(s == NULL) {
 		res = false;
 		goto cleanup;
@@ -163,7 +166,7 @@ static bool _Constraint_Delete
 	// try to get attribute IDs
 	//--------------------------------------------------------------------------
 
-	for(uint i = 0; i < prop_count; i++) {
+	for(uint8_t i = 0; i < n; i++) {
 		const char *prop = props[i];
 
 		// try to get property ID
@@ -182,7 +185,7 @@ static bool _Constraint_Delete
 	// try to get constraint
 	//--------------------------------------------------------------------------
 
-	Constraint c = Schema_GetConstraint(s, ct, attrs, prop_count);
+	Constraint c = Schema_GetConstraint(s, ct, attrs, n);
 	if(c == NULL) {
 		res = false;
 		goto cleanup;
@@ -223,7 +226,7 @@ static bool _Constraint_Create
 	ConstraintType ct,      // constraint type
 	GraphEntityType et,     // entity type
 	const char *lbl,        // label / rel-type
-	uint16_t n,             // properties count
+	uint8_t n,              // properties count
 	const char **props      // properties
 ) {
 	bool res = true;
@@ -380,7 +383,7 @@ int Graph_Constraint
 	ConstraintOp op;
 	ConstraintType ct;
 	const char *label;
-	long long prop_count;
+	uint8_t prop_count;
 	RedisModuleString **props;
 	GraphEntityType entity_type;
 	RedisModuleString *key_name;
@@ -399,7 +402,7 @@ int Graph_Constraint
 
 	// extract constraint properties
 	const char *props_cstr[prop_count];
-	for(int i = 0; i < prop_count; i++) {
+	for(uint8_t i = 0; i < prop_count; i++) {
 		props_cstr[i] = RedisModule_StringPtrLen(props[i], NULL);
 	}
 
