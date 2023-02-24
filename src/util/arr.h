@@ -33,10 +33,10 @@
 extern "C" {
 #endif
 
-/* Definition of malloc & friedns that can be overridden before including arr.h.
- * Alternatively you can include arr_rm_alloc.h, which wraps arr.h and sets the allcoation functions
- * to those of the RM_ family
- */
+// Definition of malloc & friends that can be overridden before including arr.h.
+// Alternatively you can include arr_rm_alloc.h, which wraps arr.h and sets the
+// allocation functions to those of the RM_ family
+
 #ifndef array_alloc_fn
 #define array_alloc_fn rm_malloc
 #define array_realloc_fn rm_realloc

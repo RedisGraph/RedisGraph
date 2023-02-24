@@ -11,6 +11,8 @@
 // Forward declerations:
 static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path,
 											 bool force_mapping);
+static void _ASTClause_BuildReferenceMap(AST *ast,
+										const cypher_astnode_t *clause);
 
 /* Check if a path is a named path or shortest path.
  * If so, all the entities it contains should be mapped,
@@ -322,6 +324,29 @@ static void _AST_MapUnwindClauseReferences
 	_AST_MapExpression(ast, expr);
 }
 
+// maps entities in a FOREACH clause
+// MATCH (n) FOREACH(v in [1,2,3,4] | CREATE (:L{x:v})-[:R]->(n))
+static void _AST_MapForeachClauseReferences
+(
+	AST *ast,
+	const cypher_astnode_t *foreach_clause
+) {
+	ASSERT(ast != NULL);
+	ASSERT(foreach_clause != NULL);
+
+	// extract list expression from FOREACH
+	const cypher_astnode_t *exp = cypher_ast_foreach_get_expression(foreach_clause);
+	_AST_MapExpression(ast, exp);
+
+	// process each cluase within FOREACH body
+	uint nclauses = cypher_ast_foreach_nclauses(foreach_clause);
+	for(uint i = 0; i < nclauses; i++) {
+		const cypher_astnode_t *clause = cypher_ast_foreach_get_clause(
+				foreach_clause, i);
+		_ASTClause_BuildReferenceMap(ast, clause);
+	}
+}
+
 // maps entities in DELETE clause
 static void _AST_MapDeleteClauseReferences
 (
@@ -444,6 +469,9 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 	} else if(type == CYPHER_AST_UNWIND) {
 		// add referenced aliases for UNWIND clause
 		_AST_MapUnwindClauseReferences(ast, clause);
+	} else if(type == CYPHER_AST_FOREACH) {
+		// add referenced aliases for a FOREACH clause
+		_AST_MapForeachClauseReferences(ast, clause);
 	}
 }
 

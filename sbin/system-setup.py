@@ -25,10 +25,7 @@ class RedisGraphSetup(paella.Setup):
 
     def debian_compat(self):
         self.install("locales")
-        if self.platform.is_arm():
-            self.run("%s/bin/getgcc --modern" % READIES)
-        else:
-            self.run("%s/bin/getgcc" % READIES)
+        self.run("%s/bin/getgcc --modern" % READIES)
         self.install("peg")
         if self.platform.is_arm():
             self.install("python3-dev")
@@ -77,7 +74,7 @@ class RedisGraphSetup(paella.Setup):
             self.install("lcov-git", aur=True)
 
         if not self.no_rmpytools:
-            self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40".format(PYTHON=self.python, READIES=READIES))
+            self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40 --ramp-version pypi:2.4.0".format(PYTHON=self.python, READIES=READIES))
             self.pip_install("-r tests/requirements.txt")
 
         self.run("%s/bin/getpy2" % READIES) # for RediSearch build

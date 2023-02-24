@@ -80,8 +80,8 @@ static Record DistinctConsume(OpBase *opBase) {
 		if(!r) return NULL;
 
 		// update offsets if record mapping changed
-		// it is possible for the record's mapping to be changed throughtout
-		// the execution as this distinct operation might recieve records from
+		// it is possible for the record's mapping to be changed throughout
+		// the execution as this distinct operation might receive records from
 		// different sub execution plans, such as in the case of UNION
 		// in which case the distinct values might be located at different offsets
 		// within the record and we should adjust accordingly

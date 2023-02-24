@@ -29,7 +29,9 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 
 	// Initialize the plan's record mapping if necessary.
 	// It will already be set if this ExecutionPlan has been created to populate a single stream.
-	if(plan->record_map == NULL) plan->record_map = raxNew();
+	if(plan->record_map == NULL) {
+		plan->record_map = raxNew();
+	}
 
 	// Build query graph
 	// Query graph is set if this ExecutionPlan has been created to populate a single stream.
@@ -219,10 +221,17 @@ static ExecutionPlan *_tie_segments
 		ExecutionPlan *segment = segments[i];
 		AST *ast = segment->ast_segment;
 
-		// find the firstmost non-argument operation in this segment
+		// find the first non-argument op with no children in this segment
 		prev_connecting_op = connecting_op;
 		OpBase **taps = ExecutionPlan_LocateTaps(segment);
-		ASSERT(array_len(taps) > 0);
+		// in the case of a single segment with FOREACH as its root, there is no
+		// tap (of the current definition)
+		// for instance: FOREACH(i in [i] | CREATE (n:N))
+		// in any other case, there must be a tap
+		ASSERT((array_len(taps) > 0) ||
+		   (segment_count == 1 &&
+			(OpBase_Type(segment->root) == OPType_FOREACH)));
+
 		connecting_op = taps[0];
 		array_free(taps);
 
