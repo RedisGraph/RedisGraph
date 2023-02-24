@@ -161,8 +161,6 @@ int Schema_AddIndex
 
 		_idx = Index_New(s->name, s->id, type, entity_type);
 
-		Index_ConstructStructure(_idx);
-
 		if(type == IDX_FULLTEXT) {
 			s->fulltextIdx = _idx;
 		} else {

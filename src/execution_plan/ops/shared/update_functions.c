@@ -51,11 +51,12 @@ void CommitUpdates
 	ASSERT(updates != NULL);
 	ASSERT(type    != ENTITY_UNKNOWN);
 
-	uint update_count       = array_len(updates);
-	uint labels_added       = 0;
-	uint labels_removed     = 0;
-	uint properties_set     = 0;
-	uint properties_removed = 0;
+	uint update_count         = array_len(updates);
+	uint labels_added         = 0;
+	uint labels_removed       = 0;
+	uint properties_set       = 0;
+	uint properties_removed   = 0;
+	bool constraint_violation = false;
 
 	// return early if no updates are enqueued
 	if(update_count == 0) return;
@@ -85,29 +86,35 @@ void CommitUpdates
 		properties_set     += _props_set;
 		properties_removed += _props_removed;
 
-		// retrieve node labels
-		uint label_count = 1;
-		if (type == ENTITY_NODE) {
-			label_count = Graph_LabelTypeCount(gc->g);
-		}
-		LabelID labels[label_count];
-		if (type == ENTITY_NODE) {
-			label_count = Graph_GetNodeLabels(gc->g, (Node*)update->ge, labels,
-					label_count);
-		} else {
-			labels[0] = EDGE_GET_RELATION_ID((Edge*)update->ge, gc->g);
-		}
+		//----------------------------------------------------------------------
+		// enforce constraints
+		//----------------------------------------------------------------------
 
-		SchemaType stype = type == ENTITY_NODE ? SCHEMA_NODE : SCHEMA_EDGE;
-		for(uint i = 0; i < label_count; i ++) {
-			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], stype);
-			// TODO: a bit wasteful need to target relevant constraints only
-			if(!Schema_EnforceConstraints(s, update->ge)) {
-				// constraint violation
-				ErrorCtx_SetError("constraint violation on label %s",
-						Schema_GetName(s));
-				// TODO: probably leaking!
-				break;
+		if(constraint_violation == false) {
+			// retrieve labels/rel-type
+			uint label_count = 1;
+			if (type == ENTITY_NODE) {
+				label_count = Graph_LabelTypeCount(gc->g);
+			}
+			LabelID labels[label_count];
+			if (type == ENTITY_NODE) {
+				label_count = Graph_GetNodeLabels(gc->g, (Node*)update->ge, labels,
+						label_count);
+			} else {
+				labels[0] = EDGE_GET_RELATION_ID((Edge*)update->ge, gc->g);
+			}
+
+			SchemaType stype = type == ENTITY_NODE ? SCHEMA_NODE : SCHEMA_EDGE;
+			for(uint i = 0; i < label_count; i ++) {
+				Schema *s = GraphContext_GetSchemaByID(gc, labels[i], stype);
+				// TODO: a bit wasteful need to target relevant constraints only
+				if(!Schema_EnforceConstraints(s, update->ge)) {
+					// constraint violation
+					constraint_violation = true;
+					ErrorCtx_SetError("constraint violation on label %s",
+							Schema_GetName(s));
+					break;
+				}
 			}
 		}
 	}

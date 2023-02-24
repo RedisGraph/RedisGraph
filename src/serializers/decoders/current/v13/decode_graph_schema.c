@@ -79,12 +79,17 @@ static void _RdbLoadExactMatchIndex
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		if(!already_loaded) {
 			IndexField field;
-			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
+			Attribute_ID field_id = GraphContext_GetAttributeID(gc, field_name);
 			IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
 			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH);
 		}
 		RedisModule_Free(field_name);
+	}
+
+	// construct index structure
+	if(!already_loaded) {
+		Index_ConstructStructure(idx);
 	}
 }
 

@@ -9,6 +9,13 @@ class Constraint():
         self.attrs = attrs
         self.ct = ct
 
+    def __eq__(self, other):
+        return (self.lbl   == other.lbl   and
+                self.s     == other.s     and
+                self.et    == other.et    and
+                self.attrs == other.attrs and
+                self.ct    == other.ct)
+
     @property
     def label(self):
         return self.lbl
@@ -29,40 +36,33 @@ class Constraint():
     def type(self):
         return self.ct
 
-# wait for constraint to fail
-def wait_on_constraint_to_fail(g, ct_type, entity_type, lbl, *props):
-    q = f"""CALL db.constraints() YIELD type, label, status
-    WHERE type = '{t}' AND label = '{label}' AND status = 'FAILED'
-    RETURN count(1)"""
+def get_constraint(g, ct_type, entity_type, lbl, *props):
+    props_filter = "properties = [" + ",".join(["'" + p + "'" for p in props]) + "]"
 
-    while True:
-        result = g.query(q)
-        if result.result_set[0][0] == 1:
-            break
-        time.sleep(0.5) # sleep 500ms
+    q = f"""CALL db.constraints() YIELD type, label, properties, entitytype, status
+            WHERE type = '{ct_type}' AND label = '{lbl}' AND {props_filter}
+            RETURN type, label, properties, entitytype, status"""
+
+    result = g.query(q).result_set
+    c = None
+    if len(result) == 1:
+        row = result[0]
+        ct     = row[0]
+        lbl    = row[1]
+        attrs  = row[2]
+        et     = row[3]
+        status = row[4]
+        c = Constraint(ct, et, lbl, attrs, status)
+
+    return c
 
 def wait_on_constraint(g, ct_type, entity_type, lbl, *props):
     props_filter = "properties = [" + ",".join(["'" + p + "'" for p in props]) + "]"
 
     q = f"""CALL db.constraints() YIELD type, label, status, properties
-    WHERE type = '{ct_type}' AND label = '{lbl}' AND status <> 'OPERATIONAL'
+    WHERE type = '{ct_type}' AND label = '{lbl}' AND status = 'UNDER CONSTRUCTION'
     AND {props_filter} RETURN count(1)"""
 
-    while True:
-        result = g.query(q)
-        if result.result_set[0][0] == 0:
-            break
-        time.sleep(0.5) # sleep 500ms
-
-# validate constraint is being populated
-def constraint_under_construction(g, ct_type, entity_type, lbl, *props):
-    params = {'lbl': label, 'typ': t}
-    res = g.query("CALL db.constraints() YIELD type, label, status WHERE label = $lbl AND type = $typ RETURN status", params)
-    return "UNDER CONSTRUCTION" in res.result_set[0][0]
-
-# wait for all graph constraints to by operational
-def wait_for_constraints_to_sync(g):
-    q = "CALL db.constraints() YIELD status WHERE status <> 'OPERATIONAL' RETURN count(1)"
     while True:
         result = g.query(q)
         if result.result_set[0][0] == 0:
@@ -87,13 +87,11 @@ def create_mandatory_constraint(g, entity_type, lbl, *props, sync=False):
 def create_unique_node_constraint(g, lbl, *props, sync=False):
     # create exact-match index
     create_node_exact_match_index(g, lbl, *props, sync=False)
-
     return create_unique_constraint(g, "LABEL", lbl, *props, sync=sync)
 
 def create_unique_edge_constraint(g, rel, *props, sync=False):
     # create exact-match index
     create_edge_exact_match_index(g, rel, *props, sync=False)
-
     return create_unique_constraint(g, "RELATIONSHIP", rel, *props, sync=sync)
 
 def create_mandatory_node_constraint(g, lbl, *props, sync=False):

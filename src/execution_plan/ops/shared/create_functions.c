@@ -57,23 +57,21 @@ static void _CommitNodes
 (
 	PendingCreations *pending
 ) {
-	Node          *n          =  NULL;
-	GraphContext  *gc         =  QueryCtx_GetGraphCtx();
-	Graph         *g          =  gc->g;
-	uint          node_count  =  array_len(pending->created_nodes);
+	Node         *n                   = NULL;
+	GraphContext *gc                  = QueryCtx_GetGraphCtx();
+	Graph        *g                   = gc->g;
+	uint         node_count           = array_len(pending->created_nodes);
+	bool         constraint_violation = false;
 
 	// sync policy should be set to NOP, no need to sync/resize
 	ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_NOP);
 
-	// TODO: not sure of this backwards loop, might introduce regression
-	// due to memory access
-	for(int i = node_count-1; i >= 0; i--) {
+	for(int i = 0; i < node_count; i++) {
 		n = pending->created_nodes[i];
 
-		int*         labels               = pending->node_labels[i];
-		uint         label_count          = array_len(labels);
-		AttributeSet attr                 = array_pop(pending->node_attributes);
-		bool         constraint_violation = false;
+		AttributeSet attr        = pending->node_attributes[i];
+		int*         labels      = pending->node_labels[i];
+		uint         label_count = array_len(labels);
 
 		// introduce node into graph
 		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
@@ -83,20 +81,17 @@ static void _CommitNodes
 		// enforce constraints
 		//----------------------------------------------------------------------
 
-		for(uint j = 0; j < label_count; j++) {
-			Schema *s = GraphContext_GetSchemaByID(gc, labels[j], SCHEMA_NODE);
-			if(!Schema_EnforceConstraints(s, (GraphEntity*)n)) {
-				constraint_violation = true;
-				// constraint violation
-				ErrorCtx_SetError("constraint violation on label %s",
-						Schema_GetName(s));
-				break;
+		if(constraint_violation == false) {
+			for(uint j = 0; j < label_count; j++) {
+				Schema *s = GraphContext_GetSchemaByID(gc, labels[j], SCHEMA_NODE);
+				if(!Schema_EnforceConstraints(s, (GraphEntity*)n)) {
+					// constraint violation
+					constraint_violation = true;
+					ErrorCtx_SetError("constraint violation on label %s",
+							Schema_GetName(s));
+					break;
+				}
 			}
-		}
-
-		if(constraint_violation == true) {
-			// constraint violated! break
-			break;
 		}
 	}
 }
@@ -139,21 +134,20 @@ static void _CommitEdges
 (
 	PendingCreations *pending
 ) {
-	Edge          *e         = NULL;
-	GraphContext  *gc        = QueryCtx_GetGraphCtx();
-	Graph         *g         = gc->g;
-	uint          edge_count = array_len(pending->created_edges);
+	Edge         *e                   = NULL;
+	GraphContext *gc                  = QueryCtx_GetGraphCtx();
+	Graph        *g                   = gc->g;
+	uint         edge_count           = array_len(pending->created_edges);
+	bool         constraint_violation = false;
 
 	// sync policy should be set to NOP, no need to sync/resize
 	ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_NOP);
 
-	// TODO: not sure of this backwards loop, might introduce regression
-	// due to memory access
-	for(int i = edge_count-1; i >= 0; i--) {
+	for(int i = 0; i < edge_count; i++) {
 		NodeID srcNodeID;
 		NodeID destNodeID;
 		e = pending->created_edges[i];
-		AttributeSet attr = array_pop(pending->edge_attributes);
+		AttributeSet attr = pending->edge_attributes[i];
 
 		// nodes which already existed prior to this query would
 		// have their ID set under e->srcNodeID and e->destNodeID
@@ -176,10 +170,12 @@ static void _CommitEdges
 		// enforce constraints
 		//----------------------------------------------------------------------
 
-		if(!Schema_EnforceConstraints(s, (GraphEntity*)e)) {
-			ErrorCtx_SetError("constraint violation on label %s", s->name);
-			// constraint violated! break
-			break;
+		if(constraint_violation == false) {
+			if(!Schema_EnforceConstraints(s, (GraphEntity*)e)) {
+				// constraint violated! break
+				constraint_violation = true;
+				ErrorCtx_SetError("constraint violation on label %s", s->name);
+			}
 		}
 	}
 }
@@ -237,6 +233,9 @@ void CommitNewEntities
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 		_CommitNodes(pending);
 
+		// clear pending attributes array
+		array_clear(pending->node_attributes);
+
 		if(unlikely(ErrorCtx_EncounteredError())) {
 			goto cleanup;
 		}
@@ -261,6 +260,9 @@ void CommitNewEntities
 		// no need to perform sync/resize
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 		_CommitEdges(pending);
+
+		// clear pending attributes array
+		array_clear(pending->edge_attributes);
 
 		if(unlikely(ErrorCtx_EncounteredError())) {
 			goto cleanup;
@@ -374,10 +376,6 @@ void PendingCreationsFree
 	}
 
 	if(pending->node_attributes) {
-		uint attr_count = array_len(pending->node_attributes);
-		for(uint i = 0; i < attr_count; i ++) {
- 			AttributeSet_Free(pending->node_attributes + i);
- 		}
 		array_free(pending->node_attributes);
 		pending->node_attributes = NULL;
 	}
@@ -391,3 +389,4 @@ void PendingCreationsFree
 		pending->edge_attributes = NULL;
 	}
 }
+
