@@ -376,6 +376,10 @@ void PendingCreationsFree
 	}
 
 	if(pending->node_attributes) {
+		uint prop_count = array_len(pending->node_attributes);
+		for(uint i = 0; i < prop_count; i ++) {
+			AttributeSet_Free(pending->node_attributes + i);
+		}
 		array_free(pending->node_attributes);
 		pending->node_attributes = NULL;
 	}
