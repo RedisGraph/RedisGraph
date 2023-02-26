@@ -950,6 +950,103 @@ SIValue AR_UNION(SIValue *argv, int argc, void *private_data) {
 	return res;
 }
 
+static SIValue handle_intersect_bag_semantic(const SIValue *_A, const SIValue *_B) {
+	SIValue A = *_A;
+	SIValue B = *_B;
+	uint a_len = SIArray_Length(A);
+	uint b_len = SIArray_Length(B);
+	SIValue res = SI_Array(a_len + b_len);
+
+	dict *values_a = HashTableCreate(&dt);
+
+	for(uint i = 0; i < a_len; i++) {
+		SIValue val = SIArray_Get(A, i);
+		XXH64_hash_t hash = hash_sivalue(val);
+
+		uint64_t *count = HashTableFetchValueULL(values_a, (void *)hash);
+		if(count == NULL) {
+			// first time we see this value, set count to 1
+			int ret = HashTableAddULL(values_a, (void *)hash, 1);
+			ASSERT(ret == DICT_OK);
+		} else {
+			(*count)++;
+		}
+	}
+
+	dict *values_b = HashTableCreate(&dt);
+	for(uint i = 0; i < b_len; i++) {
+		SIValue val = SIArray_Get(B, i);
+		XXH64_hash_t hash = hash_sivalue(val);
+
+		uint64_t *count = HashTableFetchValueULL(values_b, (void *)hash);
+		if(count == NULL) {
+			// first time we see this value, set count to 1
+			int ret = HashTableAddULL(values_b, (void *)hash, 1);
+			ASSERT(ret == DICT_OK);
+		} else {
+			(*count)++;
+		}
+	}
+
+	// append values from A which are also in B
+	for(uint i = 0; i < a_len; i++) {
+		SIValue val = SIArray_Get(A, i);
+		XXH64_hash_t hash = hash_sivalue(val);
+
+		uint64_t *count_a = HashTableFetchValueULL(values_a, (void *)hash);
+		uint64_t *count_b = HashTableFetchValueULL(values_b, (void *)hash);
+
+		if(count_b) {
+			*count_a = MIN(*count_a, *count_b);
+			*count_b = UINT64_MAX;
+
+			if(*count_a > 0) {
+				SIArray_Append(&res, val);
+				(*count_a)--;
+			}
+		}
+	}
+
+	HashTableRelease(values_a);
+	HashTableRelease(values_b);
+
+	return res;
+}
+
+// given two lists, return their intersection (v1∩v2).
+// list.intersection(v1, v2, dupPolicy = 0) → list
+SIValue AR_INTERSECTION(SIValue *argv, int argc, void *private_data) {
+	SIValue A = argv[0];
+	SIValue B = argv[1];
+
+	int64_t dup = 0;
+	if(argc == 3) {
+		dup = SI_GET_NUMERIC(argv[2]);
+		if(dup < 0 || dup > 1) {
+			// invalid duplicate policy
+			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in intersection()");
+			return SI_NullVal();
+		}
+	}
+
+	if(SI_TYPE(A) == T_NULL && SI_TYPE(B) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	SIValue res;
+	if(SI_TYPE(A) == T_NULL || SI_TYPE(B) == T_NULL) {
+		// if the array is null it is treated as an empty array
+		return SI_Array(0);
+	}
+
+	res = handle_intersect_bag_semantic(&A, &B);
+	if (dup == 0) {
+		res = sortAndDedup(res);
+	}
+
+	return res;
+}
+
 void Register_ListFuncs() {
 	SIType *types;
 	SIType ret_type;
@@ -1094,5 +1191,13 @@ void Register_ListFuncs() {
 	array_append(types, T_INT64);
 	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("list.union", AR_UNION, 2, 3, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 3);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_INT64);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("list.intersection", AR_INTERSECTION, 2, 3, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }
