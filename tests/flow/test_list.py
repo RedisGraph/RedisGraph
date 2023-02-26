@@ -1600,3 +1600,93 @@ class testList(FlowTestsBase):
         query = """RETURN list.intersection([null,1,null,3,2,7,7,7], [null,4,7,2], 0)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+    def test16_diff(self):
+        # 2nd arg should be list
+        try:
+            redis_graph.query("RETURN list.diff([1,2,3], '2', 1)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
+
+        # 3th arg should be Integer
+        try:
+            redis_graph.query("RETURN list.diff([1,2,3], [2], '1')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Integer but was String", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN list.diff()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'list.diff', expected at least 2", str(e))
+
+        # Test with 1 input argument
+        try:
+            query = """RETURN list.diff([1,2,3])"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 1 arguments to function 'list.diff', expected at least 2", str(e))
+
+        # Test with 4 input argument
+        try:
+            query = """RETURN list.diff([1,2,3], [2], 1, 1)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 4 arguments to function 'list.diff', expected at most 3", str(e))
+
+
+        ### Test valid inputs ###
+
+        # NULL, NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN list.diff(null, null, 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # Returns null when v1 is null
+        expected_result = [None]
+        query = """RETURN list.diff(null, [1,3,4], 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # When v2 is evaluated to null - it is first replaced with an empty list
+        expected_result = [[1,3,4]]
+        query = """RETURN list.diff([1,4,3], null, 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,3]]
+        query = """RETURN list.diff([null,3,1,3,2], [null,2,null,9,2])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,3]]
+        query = """RETURN list.diff([null,3,2,1,3,2,2], [null,2,null,9,2])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[3,1,8]]
+        query = """RETURN list.diff([null,3,1,2,8], [null,2,null,9,2], 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[3,2,1,2,8]]
+        query = """RETURN list.diff([null,3,2,1,2,2,2,8], [null,2,null,9,2], 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[3,1,3,8]]
+        query = """RETURN list.diff([null,3,1,2,3,8], [null,2,null,9,2], 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[3,1,3,8]]
+        query = """RETURN list.diff([null,3,2,1,2,2,3,2,8], [null,2,null,9,2], 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)

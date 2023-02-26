@@ -1047,6 +1047,104 @@ SIValue AR_INTERSECTION(SIValue *argv, int argc, void *private_data) {
 	return res;
 }
 
+// given two lists, return their difference (v1-v2).
+// list.diff(v1, v2, dupPolicy = 0) → list
+SIValue AR_DIFF(SIValue *argv, int argc, void *private_data) {
+	SIValue A = argv[0];
+	SIValue B = argv[1];
+
+	int64_t dup = 0;
+	if(argc == 3) {
+		dup = SI_GET_NUMERIC(argv[2]);
+		if(dup < 0 || dup > 2) {
+			// invalid duplicate policy
+			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in diff()");
+			return SI_NullVal();
+		}
+	}
+
+	if(SI_TYPE(A) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	SIValue res;
+	if(SI_TYPE(B) == T_NULL) {
+		res = SIArray_Clone(A);
+		if (dup == 0) {
+			res = sortAndDedup(res);
+		}
+
+		return res;
+	}
+
+	uint a_len = SIArray_Length(A);
+	uint b_len = SIArray_Length(B);
+
+	// construct histogram for values in B
+	dict *values_b = HashTableCreate(&dt);
+
+	for(uint i = 0; i < b_len; i++) {
+		SIValue val = SIArray_Get(B, i);
+		XXH64_hash_t hash = hash_sivalue(val);
+
+		uint64_t *count = HashTableFetchValueULL(values_b, (void *)hash);
+		if(count == NULL) {
+			// first time we see this value, set count to 1
+			int ret = HashTableAddULL(values_b, (void *)hash, 1);
+			ASSERT(ret == DICT_OK);
+		} else {
+			(*count)++;
+		}
+	}
+
+	dict *values_a;
+	if(dup == 1) {
+		// construct histogram for values in A
+		values_a = HashTableCreate(&dt);
+
+		for(uint i = 0; i < a_len; i++) {
+			SIValue val = SIArray_Get(A, i);
+			XXH64_hash_t hash = hash_sivalue(val);
+
+			uint64_t *count = HashTableFetchValueULL(values_a, (void *)hash);
+			if(count == NULL) {
+				// first time we see this value, set count to 1
+				int ret = HashTableAddULL(values_a, (void *)hash, 1);
+				ASSERT(ret == DICT_OK);
+			} else {
+				(*count)++;
+			}
+		}
+	}
+
+	// append values from A which aren't in B
+	res = SI_Array(a_len);
+	for(uint i = 0; i < a_len; i++) {
+		SIValue val = SIArray_Get(A, i);
+		XXH64_hash_t hash = hash_sivalue(val);
+
+		uint64_t *count_b = HashTableFetchValueULL(values_b, (void *)hash);
+
+		if (count_b == NULL) {
+			// value is not in B
+			SIArray_Append(&res, val);
+		} else if (dup == 1) {
+			// value is in B
+			uint64_t *count_a = HashTableFetchValueULL(values_a, (void *)hash);
+			if(*count_a > *count_b) {
+				SIArray_Append(&res, val);
+				(*count_a)--;
+			}
+		}
+	}
+
+	if (dup == 0) {
+		return sortAndDedup(res);
+	}
+
+	return res;
+}
+
 void Register_ListFuncs() {
 	SIType *types;
 	SIType ret_type;
@@ -1199,5 +1297,13 @@ void Register_ListFuncs() {
 	array_append(types, T_INT64);
 	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("list.intersection", AR_INTERSECTION, 2, 3, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 3);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_INT64);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("list.diff", AR_DIFF, 2, 3, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }
