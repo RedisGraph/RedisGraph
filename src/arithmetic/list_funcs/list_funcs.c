@@ -1147,6 +1147,85 @@ SIValue AR_SYMDIFF(SIValue *argv, int argc, void *private_data) {
 	return res;
 }
 
+typedef struct {
+	SIValue list;
+	uint32_t index;
+} _Stack_frame;
+
+// given a list, return a list where each element which is a list by itself is replaced with its elements.
+// list.flatten(list, levels = -1) → list
+SIValue AR_FLATTEN(SIValue *argv, int argc, void *private_data) {
+	SIValue L = argv[0];
+
+	int64_t levels = -1;
+	if(argc == 2) {
+		levels = SI_GET_NUMERIC(argv[1]);
+		if(levels < -1) {
+			// invalid levels
+			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid levels argument value in list.flatten()");
+			return SI_NullVal();
+		}
+	}
+
+	if(levels == -1) {
+		levels = INT64_MAX;
+	}
+
+	if(SI_TYPE(L) == T_NULL) {
+		// return null when list is evaluated to null
+		return SI_NullVal();
+	}
+
+	SIValue res = SI_Array(SIArray_Length(L));
+
+	// Fill res with the elements of L in a dfs manner
+	_Stack_frame *stack = array_new(_Stack_frame, 4);
+	int64_t level = 0;
+	_Stack_frame frame = {.list = L, .index = 0};
+	array_append(stack, frame);
+	while(array_len(stack) > 0) {
+		uint32_t len = array_len(stack);
+		_Stack_frame *cur_frame = &stack[len - 1];
+		SIValue *l = &cur_frame->list;
+		if(level > levels) {
+			// if we are above the levels limit,
+			// pop and append the current list without flattening
+			ASSERT(SI_TYPE(*l) == T_ARRAY);
+			SIArray_Append(&res, *l);
+			array_pop(stack);
+			level--;
+			continue;
+		}
+
+		bool level_inc = false;
+		while(cur_frame->index < SIArray_Length(*l)) {
+			SIValue v = SIArray_Get(*l, cur_frame->index);
+			cur_frame->index++;
+
+			if (SI_TYPE(v) == T_ARRAY) {
+				frame.list = v;
+				level_inc = true;
+				frame.index = 0;
+				array_append(stack, frame);
+				break;
+			} else {
+				SIArray_Append(&res, v);
+			}
+		}
+
+		if(level_inc) {
+			level++;
+		} else {
+			// we've reached the end of the current list
+			// pop it from the stack
+			array_pop(stack);
+			level--;
+		}
+	}
+
+	return res;
+}
+
 void Register_ListFuncs() {
 	SIType *types;
 	SIType ret_type;
@@ -1315,5 +1394,12 @@ void Register_ListFuncs() {
 	array_append(types, T_INT64);
 	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("list.symDiff", AR_SYMDIFF, 2, 3, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_INT64);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("list.flatten", AR_FLATTEN, 1, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }

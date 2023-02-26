@@ -1770,3 +1770,78 @@ class testList(FlowTestsBase):
         query = """RETURN list.symDiff([null,2,null,9,2,2], [null,3,1,2,8], 1)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+    def test18_flatten(self):
+
+        # levels is lower than -1
+        try:
+            redis_graph.query("RETURN list.flatten([1,2,3], -2)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: invalid levels argument value in list.flatten()", str(e))
+
+        # 1st arg should be list
+        try:
+            redis_graph.query("RETURN list.flatten('1', 2)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
+
+        # 2nd arg should be integer
+        try:
+            redis_graph.query("RETURN list.flatten([1,2,3], '2')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Integer but was String", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN list.flatten()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'list.flatten', expected at least 1", str(e))
+
+        # Test with 3 input argument
+        try:
+            query = """RETURN list.flatten([1,2,3], 2, 1)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 3 arguments to function 'list.flatten', expected at most 2", str(e))
+
+
+        ### Test valid inputs ###
+
+        # NULL, NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN list.flatten(null, 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # Returns list when levels is evaluated to 0
+        expected_result = [[1,4,3,None]]
+        query = """RETURN list.flatten([1,4,3,null], 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,1,1,2,3,3,4,5,2,3,4,5,6]]
+        query = """RETURN list.flatten([1,1,[1,2,3,[3,4,5],2,3],4,[5,6]], -1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,1,[1,2,3,[3,4,5],2,3],4,[5,6]]]
+        query = """RETURN list.flatten([1,1,[1,2,3,[3,4,5],2,3],4,[5,6]], 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,1,1,2,3,[3,4,5],2,3,4,5,6]]
+        query = """RETURN list.flatten([1,1,[1,2,3,[3,4,5],2,3],4,[5,6]], 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,1,1,2,3,3,4,5,2,3,4,5,6]]
+        query = """RETURN list.flatten([1,1,[1,2,3,[3,4,5],2,3],4,[5,6]], 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
