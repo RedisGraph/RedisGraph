@@ -794,17 +794,11 @@ static SIValue _dedupSorted(const SIValue list) {
 	return res;
 }
 
-static SIValue handle_union_bag_semantic_dup_2(const SIValue *_A, const SIValue *_B) {
-	SIValue A = *_A;
-	SIValue B = *_B;
-	uint a_len = SIArray_Length(A);
-	uint b_len = SIArray_Length(B);
-	SIValue res = SI_Array(a_len + b_len);
-
+static dict *_construct_histogram(const SIValue *list, uint len) {
 	dict *values_a = HashTableCreate(&dt);
 
-	for(uint i = 0; i < a_len; i++) {
-		SIValue val = SIArray_Get(A, i);
+	for(uint i = 0; i < len; i++) {
+		SIValue val = SIArray_Get(*list, i);
 		XXH64_hash_t hash = hash_sivalue(val);
 
 		uint64_t *count = HashTableFetchValueULL(values_a, (void *)hash);
@@ -817,20 +811,18 @@ static SIValue handle_union_bag_semantic_dup_2(const SIValue *_A, const SIValue 
 		}
 	}
 
-	dict *values_b = HashTableCreate(&dt);
-	for(uint i = 0; i < b_len; i++) {
-		SIValue val = SIArray_Get(B, i);
-		XXH64_hash_t hash = hash_sivalue(val);
+	return values_a;
+}
 
-		uint64_t *count = HashTableFetchValueULL(values_b, (void *)hash);
-		if(count == NULL) {
-			// first time we see this value, set count to 1
-			int ret = HashTableAddULL(values_b, (void *)hash, 1);
-			ASSERT(ret == DICT_OK);
-		} else {
-			(*count)++;
-		}
-	}
+static SIValue handle_union_bag_semantic_dup_2(const SIValue *_A, const SIValue *_B) {
+	SIValue A = *_A;
+	SIValue B = *_B;
+	uint a_len = SIArray_Length(A);
+	uint b_len = SIArray_Length(B);
+	SIValue res = SI_Array(a_len + b_len);
+
+	dict *values_a = _construct_histogram(_A, a_len);
+	dict *values_b = _construct_histogram(_B, b_len);
 
 	// append values from A
 	for(uint i = 0; i < a_len; i++) {
@@ -957,36 +949,8 @@ static SIValue handle_intersect_bag_semantic(const SIValue *_A, const SIValue *_
 	uint b_len = SIArray_Length(B);
 	SIValue res = SI_Array(a_len + b_len);
 
-	dict *values_a = HashTableCreate(&dt);
-
-	for(uint i = 0; i < a_len; i++) {
-		SIValue val = SIArray_Get(A, i);
-		XXH64_hash_t hash = hash_sivalue(val);
-
-		uint64_t *count = HashTableFetchValueULL(values_a, (void *)hash);
-		if(count == NULL) {
-			// first time we see this value, set count to 1
-			int ret = HashTableAddULL(values_a, (void *)hash, 1);
-			ASSERT(ret == DICT_OK);
-		} else {
-			(*count)++;
-		}
-	}
-
-	dict *values_b = HashTableCreate(&dt);
-	for(uint i = 0; i < b_len; i++) {
-		SIValue val = SIArray_Get(B, i);
-		XXH64_hash_t hash = hash_sivalue(val);
-
-		uint64_t *count = HashTableFetchValueULL(values_b, (void *)hash);
-		if(count == NULL) {
-			// first time we see this value, set count to 1
-			int ret = HashTableAddULL(values_b, (void *)hash, 1);
-			ASSERT(ret == DICT_OK);
-		} else {
-			(*count)++;
-		}
-	}
+	dict *values_a = _construct_histogram(_A, a_len);
+	dict *values_b = _construct_histogram(_B, b_len);
 
 	// append values from A which are also in B
 	for(uint i = 0; i < a_len; i++) {
@@ -1047,6 +1011,31 @@ SIValue AR_INTERSECTION(SIValue *argv, int argc, void *private_data) {
 	return res;
 }
 
+// append values from A which aren't in B
+static void _append_diff(SIValue *res, SIValue *A, dict *values_a, dict *values_b, uint a_len, int64_t dup, bool sym) {
+	for(uint i = 0; i < a_len; i++) {
+		SIValue val = SIArray_Get(*A, i);
+		XXH64_hash_t hash = hash_sivalue(val);
+
+		uint64_t *count_b = HashTableFetchValueULL(values_b, (void *)hash);
+
+		if (count_b == NULL) {
+			// value is not in B
+			SIArray_Append(res, val);
+		} else if (dup == 1) {
+			// value is in B
+			uint64_t *count_a = HashTableFetchValueULL(values_a, (void *)hash);
+			if(*count_a > *count_b) {
+				SIArray_Append(res, val);
+				(*count_a)--;
+			} else if(sym && *count_a < *count_b) {
+				SIArray_Append(res, val);
+				(*count_b)--;
+			}
+		}
+	}
+}
+
 // given two lists, return their difference (v1-v2).
 // list.diff(v1, v2, dupPolicy = 0) → list
 SIValue AR_DIFF(SIValue *argv, int argc, void *private_data) {
@@ -1080,63 +1069,76 @@ SIValue AR_DIFF(SIValue *argv, int argc, void *private_data) {
 	uint a_len = SIArray_Length(A);
 	uint b_len = SIArray_Length(B);
 
-	// construct histogram for values in B
-	dict *values_b = HashTableCreate(&dt);
-
-	for(uint i = 0; i < b_len; i++) {
-		SIValue val = SIArray_Get(B, i);
-		XXH64_hash_t hash = hash_sivalue(val);
-
-		uint64_t *count = HashTableFetchValueULL(values_b, (void *)hash);
-		if(count == NULL) {
-			// first time we see this value, set count to 1
-			int ret = HashTableAddULL(values_b, (void *)hash, 1);
-			ASSERT(ret == DICT_OK);
-		} else {
-			(*count)++;
-		}
-	}
-
+	dict *values_b = _construct_histogram(&B, b_len);
 	dict *values_a;
 	if(dup == 1) {
-		// construct histogram for values in A
-		values_a = HashTableCreate(&dt);
-
-		for(uint i = 0; i < a_len; i++) {
-			SIValue val = SIArray_Get(A, i);
-			XXH64_hash_t hash = hash_sivalue(val);
-
-			uint64_t *count = HashTableFetchValueULL(values_a, (void *)hash);
-			if(count == NULL) {
-				// first time we see this value, set count to 1
-				int ret = HashTableAddULL(values_a, (void *)hash, 1);
-				ASSERT(ret == DICT_OK);
-			} else {
-				(*count)++;
-			}
-		}
+		values_a = _construct_histogram(&A, a_len);
 	}
+
+	res = SI_Array(a_len);
 
 	// append values from A which aren't in B
-	res = SI_Array(a_len);
-	for(uint i = 0; i < a_len; i++) {
-		SIValue val = SIArray_Get(A, i);
-		XXH64_hash_t hash = hash_sivalue(val);
+	_append_diff(&res, &A, values_a, values_b, a_len, dup, false);
 
-		uint64_t *count_b = HashTableFetchValueULL(values_b, (void *)hash);
+	if (dup == 0) {
+		return sortAndDedup(res);
+	}
 
-		if (count_b == NULL) {
-			// value is not in B
-			SIArray_Append(&res, val);
-		} else if (dup == 1) {
-			// value is in B
-			uint64_t *count_a = HashTableFetchValueULL(values_a, (void *)hash);
-			if(*count_a > *count_b) {
-				SIArray_Append(&res, val);
-				(*count_a)--;
-			}
+	return res;
+}
+
+// given two lists, return their symmetric difference (AKA their disjunctive union) (v1Δv2).
+// list.symDiff(v1, v2, dupPolicy = 0) → list
+SIValue AR_SYMDIFF(SIValue *argv, int argc, void *private_data) {
+	SIValue A = argv[0];
+	SIValue B = argv[1];
+
+	int64_t dup = 0;
+	if(argc == 3) {
+		dup = SI_GET_NUMERIC(argv[2]);
+		if(dup < 0 || dup > 2) {
+			// invalid duplicate policy
+			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in symdiff()");
+			return SI_NullVal();
 		}
 	}
+
+	if(SI_TYPE(A) == T_NULL && SI_TYPE(B) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	SIValue res;
+	if(SI_TYPE(B) == T_NULL) {
+		res = SIArray_Clone(A);
+		if (dup == 0) {
+			res = sortAndDedup(res);
+		}
+
+		return res;
+	}
+
+	if(SI_TYPE(A) == T_NULL) {
+		res = SIArray_Clone(B);
+		if (dup == 0) {
+			res = sortAndDedup(res);
+		}
+
+		return res;
+	}
+
+	uint a_len = SIArray_Length(A);
+	uint b_len = SIArray_Length(B);
+
+	dict *values_a = _construct_histogram(&A, a_len);
+	dict *values_b = _construct_histogram(&B, b_len);
+
+	res = SI_Array(a_len + b_len);
+
+	// append values from A which aren't in B
+	_append_diff(&res, &A, values_a, values_b, a_len, dup, true);
+
+	// append values from B which aren't in A
+	_append_diff(&res, &B, values_b, values_a, b_len, dup, true);
 
 	if (dup == 0) {
 		return sortAndDedup(res);
@@ -1305,5 +1307,13 @@ void Register_ListFuncs() {
 	array_append(types, T_INT64);
 	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("list.diff", AR_DIFF, 2, 3, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 3);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_INT64);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("list.symDiff", AR_SYMDIFF, 2, 3, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }

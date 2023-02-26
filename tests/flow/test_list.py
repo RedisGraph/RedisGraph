@@ -1690,3 +1690,83 @@ class testList(FlowTestsBase):
         query = """RETURN list.diff([null,3,2,1,2,2,3,2,8], [null,2,null,9,2], 2)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+    def test17_symDiff(self):
+        # 2nd arg should be list
+        try:
+            redis_graph.query("RETURN list.symDiff([1,2,3], '2', 1)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
+
+        # 3th arg should be Integer
+        try:
+            redis_graph.query("RETURN list.symDiff([1,2,3], [2], '1')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Integer but was String", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN list.symDiff()"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'list.symDiff', expected at least 2", str(e))
+
+        # Test with 1 input argument
+        try:
+            query = """RETURN list.symDiff([1,2,3])"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 1 arguments to function 'list.symDiff', expected at least 2", str(e))
+
+        # Test with 4 input argument
+        try:
+            query = """RETURN list.symDiff([1,2,3], [2], 1, 1)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 4 arguments to function 'list.symDiff', expected at most 3", str(e))
+
+
+        ### Test valid inputs ###
+
+        # NULL, NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN list.symDiff(null, null, 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # When v1 is evaluated to null - it is first replaced with an empty list
+        expected_result = [[1,3,4]]
+        query = """RETURN list.symDiff(null, [1,4,3], 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # When v2 is evaluated to null - it is first replaced with an empty list
+        expected_result = [[1,3,4]]
+        query = """RETURN list.symDiff([1,4,3], null, 0)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,3,9,12]]
+        query = """RETURN list.symDiff([null,3,1,3,2], [null,12,2,null,9,2])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[1,3,9,None]]
+        query = """RETURN list.symDiff([null,3,2,1,3,2,2], [2,9,2,9])"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[None,3,1,2,8,9]]
+        query = """RETURN list.symDiff([null,3,1,2,8], [null,2,null,9,2], 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [[None,2,9,2,3,1,8]]
+        query = """RETURN list.symDiff([null,2,null,9,2,2], [null,3,1,2,8], 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
