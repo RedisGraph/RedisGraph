@@ -32,6 +32,7 @@ MK_CUSTOM_CLEAN=1
 include $(MK)/defs
 include $(MK)/rules
 
+
 clean:
 ifeq ($(ALL),1)
 	$(SHOW)rm -rf $(BINDIR) $(TARGET)

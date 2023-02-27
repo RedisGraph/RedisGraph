@@ -1,5 +1,4 @@
 from common import *
-import math
 
 redis_graph = None
 GRAPH_ID = "G"
