@@ -1070,7 +1070,7 @@ SIValue AR_DIFF(SIValue *argv, int argc, void *private_data) {
 	uint b_len = SIArray_Length(B);
 
 	dict *values_b = _construct_histogram(&B, b_len);
-	dict *values_a;
+	dict *values_a = NULL;
 	if(dup == 1) {
 		values_a = _construct_histogram(&A, a_len);
 	}
@@ -1079,6 +1079,11 @@ SIValue AR_DIFF(SIValue *argv, int argc, void *private_data) {
 
 	// append values from A which aren't in B
 	_append_diff(&res, &A, values_a, values_b, a_len, dup, false);
+
+	HashTableRelease(values_b);
+	if(values_a) {
+		HashTableRelease(values_a);
+	}
 
 	if (dup == 0) {
 		return sortAndDedup(res);
@@ -1139,6 +1144,9 @@ SIValue AR_SYMDIFF(SIValue *argv, int argc, void *private_data) {
 
 	// append values from B which aren't in A
 	_append_diff(&res, &B, values_b, values_a, b_len, dup, true);
+
+	HashTableRelease(values_b);
+	HashTableRelease(values_a);
 
 	if (dup == 0) {
 		return sortAndDedup(res);
@@ -1223,6 +1231,7 @@ SIValue AR_FLATTEN(SIValue *argv, int argc, void *private_data) {
 		}
 	}
 
+	array_free(stack);
 	return res;
 }
 
