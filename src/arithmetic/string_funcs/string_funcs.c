@@ -306,7 +306,7 @@ static int replace_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) 
 	// copy the string between the last match and the current match
 	memcpy(args->res + args->res_len, str + args->str_ind, str_copy_len);
 	args->str_ind = region->end[0];
-	args->res_len = str_copy_len;
+	args->res_len += str_copy_len;
 
 	// copy the replacement string
 	memcpy(args->res + args->res_len, args->replacement, args->replacement_len);
