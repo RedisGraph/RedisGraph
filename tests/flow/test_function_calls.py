@@ -2411,7 +2411,80 @@ class testFunctionCallsFlow(FlowTestsBase):
                 # Expecting a type error.
                 self.env.assertIn("Received", str(e))
 
-    def test89_size(self):
+
+    def test89_JOIN(self):
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """WITH NULL as list RETURN string.join(null, '')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # 2nd arg should be string
+        try:
+            graph.query("RETURN string.join(['HELL','OW'], 2)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String but was Integer", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN string.join()"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'string.join', expected at least 1", str(e))
+
+        # Test with 3 input argument
+        try:
+            query = """RETURN string.join(['HELL','OW'], ' ', '')"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 3 arguments to function 'string.join', expected at most 2", str(e))
+
+        # list args should be string
+        try:
+            graph.query("RETURN string.join(['HELL', 2], ' ')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String but was Integer", str(e))
+
+        # list args should be string
+        try:
+            graph.query("RETURN string.join(['HELL', 'OW', 2, 'now'], ' ')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String but was Integer", str(e))
+
+        # list args should be string
+        try:
+            graph.query("RETURN string.join([3, 'OW', 'now'], ' ')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String but was Integer", str(e))
+
+        ### Test valid inputs ###
+        expected_result = ['HELLOW']
+        query = """RETURN string.join(['HELL','OW'])"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = ['HELL OW']
+        query = """RETURN string.join(['HELL','OW'], ' ')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = ['HELL']
+        query = """RETURN string.join(['HELL'], ' ')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = ['HELL OW NOW']
+        query = """RETURN string.join(['HELL','OW', 'NOW'], ' ')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+  
+    def test90_size(self):
         query_to_expected_result = {
             "RETURN size(NULL)" : [[None]],
             "RETURN size('abcd')" : [[4]],
@@ -2420,7 +2493,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
 
-    def test90_MATCHREGEX(self):
+    def test91_MATCHREGEX(self):
         # NULL input should return empty list
         expected_result = [[]]
         query = """WITH NULL as string RETURN string.matchRegEx(null, "bla")"""
@@ -2522,7 +2595,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         #actual_result = graph.query(query)
         #self.env.assertEquals(actual_result.result_set[0], expected_result)
 
-    def test91_REPLACEREGEX(self):
+    def test92_REPLACEREGEX(self):
         # NULL input should return NULL
         expected_result = [None]
         query = """WITH NULL as string RETURN string.replaceRegEx(null, "bla")"""

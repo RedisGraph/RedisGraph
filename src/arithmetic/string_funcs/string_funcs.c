@@ -208,6 +208,51 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	return SI_TransferStringVal(substring);
 }
 
+// given a list of strings and an optional delimiter
+// return a concatenation of all the strings using the given delimiter
+// string.join(list, delimiter = '') -> string
+SIValue AR_JOIN(SIValue *argv, int argc, void *private_data) {
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	char *delimiter = "";
+	if(argc == 2) {
+		delimiter = argv[1].stringval;
+	}
+
+	uint32_t count = SIArray_Length(list);
+
+	size_t delimeter_len = strlen(delimiter);
+	uint str_len = delimeter_len * (count - 1);
+	for(uint i = 0; i < count; i++) {
+		SIValue str = SIArray_Get(list, i);
+		if(SI_TYPE(str) != T_STRING) {
+			// all elements in the list should be string.
+			Error_SITypeMismatch(str, T_STRING);
+			return SI_NullVal();
+		}
+
+		str_len += strlen(str.stringval);
+	}
+
+	int cur_len = 0;
+	char *res = rm_malloc(str_len + 1);
+	for(uint i = 0; i < count - 1; i++) {
+		SIValue str = SIArray_Get(list, i);
+		memcpy(res + cur_len, str.stringval, strlen(str.stringval));
+		cur_len += strlen(str.stringval);
+		memcpy(res + cur_len, delimiter, delimeter_len);
+		cur_len += delimeter_len;
+	}
+	SIValue str = SIArray_Get(list, count - 1);
+	memcpy(res + cur_len, str.stringval, strlen(str.stringval));
+	res[str_len] = '\0';
+
+	return SI_TransferStringVal(res);
+}
+
 typedef struct {
 	SIValue *list;
 	const char *str;
@@ -692,6 +737,13 @@ void Register_StringFuncs() {
 	array_append(types, T_INT64);
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("substring", AR_SUBSTRING, 2, 3, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, (T_ARRAY | T_NULL));
+	array_append(types, T_STRING);
+	ret_type = T_STRING | T_NULL;
+	func_desc = AR_FuncDescNew("string.join", AR_JOIN, 1, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
