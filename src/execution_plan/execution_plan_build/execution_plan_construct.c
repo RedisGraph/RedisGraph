@@ -324,8 +324,7 @@ static void _buildCallSubqueryPlan
 		deepest = implicit_proj;
 	}
 
-	// characterize whether the query is\not eager\returning
-		// NTS: Do we need DELETE here? I think not.
+	// characterize whether the query is eager\returning or not
 	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_DELETE,
 					OPType_MERGE, OPType_SORT};
 	bool is_eager =
@@ -348,7 +347,8 @@ static void _buildCallSubqueryPlan
 			// bind the returning projection to the outer plan
 			// TODO: Do this later (after affecting the projections), and modify this so that the Project record_offsets
 			// change accordingly to the new plan, and it call OpBase_Modifies() on all its projections!!
-			ExecutionPlan_bindOpToPlan(returning_proj, plan);
+			// ExecutionPlan_bindOpToPlan(returning_proj, plan);
+			ProjectBindToPlan(returning_proj, plan);
 			goto skip_projections_modification;
 		}
 

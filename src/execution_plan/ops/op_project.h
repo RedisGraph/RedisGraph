@@ -26,4 +26,10 @@ void ProjectAddProjections
 	AR_ExpNode **exps  // expressions to add to the projections
 );
 
+void ProjectBindToPlan
+(
+	OpBase *opBase,      // op to bind
+	ExecutionPlan *plan  // plan to bind the op to
+);
+
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps);

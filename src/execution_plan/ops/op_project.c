@@ -144,3 +144,25 @@ void ProjectAddProjections
 	}
 	op->exp_count += exp_count;
 }
+
+void ProjectBindToPlan
+(
+	OpBase *opBase,      // op to bind
+	ExecutionPlan *plan  // plan to bind the op to
+) {
+	OpProject *op = (OpProject *)opBase;
+	opBase->plan = plan;
+
+	// introduce the projected aliases to the plan record-mapping, and reset the
+	// record offsets to the correct indexes
+	if(op->record_offsets) {
+		array_free(op->record_offsets);
+	}
+	op->record_offsets = array_new(uint, op->exp_count);
+	for(uint i = 0; i < op->exp_count; i ++) {
+	// The projected record will associate values with their resolved name
+	// to ensure that space is allocated for each entry.
+	int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+	array_append(op->record_offsets, record_idx);
+	}
+}
