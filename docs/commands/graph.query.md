@@ -923,7 +923,7 @@ This section contains information on all supported functions from the Cypher que
 | range(_first_, _last_[, _step_ = 1]) | Returns a list of integers in the range of [start, end]. _step_, an optional integer argument, is the increment between consequtive elements                                                         |
 | size(_expr_)                         | Returns the number of elements in a list <br> Returns null with _expr_ evaluates to null                                                                                                             |
 | tail(_expr_)                         | Returns a sublist of a list, which contains all its elements except the first <br> Returns an empty list when _expr_ containst less than 2 elements. <br> Returns null when _expr_ evaluates to null |
-| [reduce(...)](#reduce) | Returns a scalar produced by evaluating an expression against each list member |
+| [reduce(...)](#reduce)               | Returns a scalar produced by evaluating an expression against each list member                                                                                                                       |
 ## Mathematical operators
 
 |Function     | Description|
