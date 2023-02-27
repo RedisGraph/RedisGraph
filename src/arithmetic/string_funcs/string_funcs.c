@@ -211,10 +211,10 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 typedef struct {
 	SIValue *list;
 	const char *str;
-} _match_regex_scan_cb_args;
+} match_regex_scan_cb_args;
 
-static int _match_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
-	_match_regex_scan_cb_args *args = (_match_regex_scan_cb_args *)arg;
+static int match_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
+	match_regex_scan_cb_args *args = (match_regex_scan_cb_args *)arg;
 	SIValue *list = args->list;
 	const char *str = args->str;
 	SIValue subList = SIArray_New(region->num_regs);
@@ -260,14 +260,14 @@ SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
 		return SI_NullVal();
 	}
 
-	_match_regex_scan_cb_args args = {
+	match_regex_scan_cb_args args = {
 		.list = &list,
 		.str = str
 	};
 
 	rv = onig_scan(regex, (const UChar *)str,
 		(const UChar *)(str + strlen(str)), region, ONIG_OPTION_DEFAULT,
-		_match_regex_scan_cb, &args);
+		match_regex_scan_cb, &args);
 	if(rv < 0) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((OnigUChar* )s, rv);
@@ -291,24 +291,25 @@ typedef struct {
 	uint32_t str_ind; // current index in str
 	const char *replacement;
 	uint32_t replacement_len;
-} _replace_regex_scan_cb_args;
+} replace_regex_scan_cb_args;
 
-static int _replace_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
-	_replace_regex_scan_cb_args *args = (_replace_regex_scan_cb_args *)arg;
+static int replace_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
+	replace_regex_scan_cb_args *args = (replace_regex_scan_cb_args *)arg;
 	const char *str = args->str;
 	assert(region->num_regs > 0);
 
-	int match_len = region->end[0] - region->beg[0];
+	// reallocate new str size
 	int str_copy_len = region->beg[0] - args->str_ind;
-	args->res = rm_realloc(args->res, (args->res_len + match_len + args->replacement_len + 1)*sizeof(char));
+	int str_size = args->res_len + str_copy_len + args->replacement_len + 1;
+	args->res = rm_realloc(args->res, str_size);
 
 	// copy the string between the last match and the current match
-	memcpy(args->res + args->res_len, str + args->str_ind, str_copy_len*sizeof(char));
+	memcpy(args->res + args->res_len, str + args->str_ind, str_copy_len);
 	args->str_ind = region->end[0];
-	args->res_len += str_copy_len;
+	args->res_len = str_copy_len;
 
 	// copy the replacement string
-	memcpy(args->res + args->res_len, args->replacement, args->replacement_len*sizeof(char));
+	memcpy(args->res + args->res_len, args->replacement, args->replacement_len);
 	args->res_len += args->replacement_len;
 
 	args->res[args->res_len] = '\0';
@@ -352,7 +353,7 @@ SIValue AR_REPLACEREGEX(SIValue *argv, int argc, void *private_data) {
 		return SI_NullVal();
 	}
 
-	_replace_regex_scan_cb_args args = {
+	replace_regex_scan_cb_args args = {
 		.res = NULL,
 		.res_len = 0,
 		.str = str,
@@ -362,7 +363,8 @@ SIValue AR_REPLACEREGEX(SIValue *argv, int argc, void *private_data) {
 	};
 
 	rv = onig_scan(regex, (const UChar *)str,
-			(const UChar *)(str + strlen(str)), region, ONIG_OPTION_DEFAULT, _replace_regex_scan_cb, &args);
+		(const UChar *)(str + strlen(str)), region, ONIG_OPTION_DEFAULT,
+		replace_regex_scan_cb, &args);
 	if(rv < 0) {
 		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 		onig_error_code_to_str((OnigUChar* )s, rv);
