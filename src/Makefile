@@ -240,7 +240,7 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 RAX=$(ROOT)/deps/rax/rax.o
 LIBXXHASH=$(ROOT)/deps/xxHash/libxxhash.a
 GRAPHBLAS=$(ROOT)/deps/GraphBLAS/build/libgraphblas.a
-REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch.a
+REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch-static.a
 LIBCYPHER_PARSER=$(ROOT)/deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module

@@ -89,7 +89,7 @@ gtest_main.a : gtest-all.o gtest_main.o
 CC_OBJECTS:=$(CC_OBJECTS)
 RAX=$(DEPS_DIR)/rax/rax.o
 LIBXXHASH=$(DEPS_DIR)/xxHash/libxxhash.a
-REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch.a
+REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch-static.a
 LIBGRAPHBLAS=$(DEPS_DIR)/GraphBLAS/build/libgraphblas.a
 LIBCYPHER_PARSER=$(DEPS_DIR)/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
