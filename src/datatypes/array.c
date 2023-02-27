@@ -165,18 +165,6 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
 	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "]");
 }
 
-// compare two SIValues, wrt ascending order
-static int _siarray_compare_func(const void *a, const void *b, void *ascending) {
-	int rel = SIValue_Compare(*(SIValue*)a, *(SIValue*)b, NULL);
-	return (*(bool*)ascending) ? rel : -rel;
-}
-
-// sorts the array in place in ascending\descending order
-void SIArray_Sort(SIValue siarray, bool ascending) {
-	uint32_t arrayLen = SIArray_Length(siarray);
-	sort_r(siarray.array, arrayLen, sizeof(SIValue), _siarray_compare_func, (void *)&ascending);
-}
-
 // this method referenced by Java ArrayList.hashCode() method, which takes
 // into account the hasing of nested values
 XXH64_hash_t SIArray_HashCode(SIValue siarray) {
