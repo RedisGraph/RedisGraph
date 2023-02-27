@@ -3,7 +3,7 @@ title: "Commands"
 linkTitle: "Commands"
 weight: 1
 description: >
-    Commands Overview
+    Commands overview
 ---
 
 ## Overview
@@ -14,11 +14,10 @@ RedisGraph exposes graph database functionality within Redis using the [openCyph
 
 ### RedisGraph API
 
-Command details can be retrieved by filtering for the [module](/commands/?group=graph) or for a specific command, e.g. [`GRAPH.QUERY`](/commands/?name=graph.query).
+Command details can be retrieved by filtering for the [module](/commands/?group=graph) or for a specific command, e.g., `GRAPH.QUERY`.
 The details include the syntax for the commands, where:
 
-*   Command and subcommand names are in uppercase, for example [`GRAPH.CONFIG`](/commands/?name=graph.config) or `SET`
-*   Optional arguments are enclosed in square brackets, for example `[timeout]`
+*   Optional arguments are enclosed in square brackets, for example `[timeout]`.
 *   Additional optional arguments are indicated by an ellipsis: `...`
 
-Most commands require a graph key's name as their first argument.
+Most commands require a graph key name as their first argument.
