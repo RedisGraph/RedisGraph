@@ -269,6 +269,7 @@ SIValue AR_SUBSCRIPT(SIValue *argv, int argc, void *private_data) {
 	if(!normalize_index(&index, arrayLen, false)) {
 		return SI_NullVal();
 	}
+
 	SIValue res = SIArray_Get(list, index);
 	// clone is in case for nested heap allocated values returned from the array
 	return SI_CloneValue(res);
@@ -484,7 +485,9 @@ SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
 // list.sort(list, ascending = TRUE) -> list
 // "RETURN sort([1,3,2], TRUE)" returns [1,2,3]
 SIValue AR_SORT(SIValue *argv, int argc, void *private_data) {
+	SIValue list = argv[0];
 	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
 	}
 
 	bool ascending = true;  // default ascending
