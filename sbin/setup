@@ -19,7 +19,6 @@ if [[ $VERBOSE == 1 ]]; then
 fi
 
 $ROOT/sbin/system-setup.py
-$READIES/bin/getpy2
 if [[ $VERBOSE == 1 ]]; then
 	python3 -m pip list
 fi

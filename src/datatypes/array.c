@@ -6,6 +6,7 @@
 
 #include "array.h"
 #include "../util/arr.h"
+#include "../util/qsort.h"
 #include <limits.h>
 #include "xxhash.h"
 
@@ -88,6 +89,43 @@ bool SIArray_AllOfType(SIValue siarray, SIType t) {
 	}
 
 	return true;
+}
+
+// compare two SIValues, wrt ascending order
+static int _siarray_compare_func_asc
+(
+	const void *a,
+	const void *b,
+	void *data
+) {
+	return SIValue_Compare(*(SIValue*)a, *(SIValue*)b, NULL);
+}
+
+// compare two SIValues, wrt ascending order
+static int _siarray_compare_func_desc
+(
+	const void *a,
+	const void *b,
+	void *data
+) {
+	return SIValue_Compare(*(SIValue*)b, *(SIValue*)a, NULL);
+}
+
+// sorts the array in place in ascending\descending order
+void SIArray_Sort
+(
+	SIValue siarray,
+	bool ascending
+) {
+	uint32_t arrayLen = SIArray_Length(siarray);
+
+	if(ascending) {
+		sort_r(siarray.array, arrayLen, sizeof(SIValue),
+				_siarray_compare_func_asc, (void *)&ascending);
+	} else {
+		sort_r(siarray.array, arrayLen, sizeof(SIValue),
+				_siarray_compare_func_desc, (void *)&ascending);
+	}
 }
 
 SIValue SIArray_Clone(SIValue siarray) {
