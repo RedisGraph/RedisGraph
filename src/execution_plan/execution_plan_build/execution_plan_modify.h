@@ -95,9 +95,16 @@ OpBase **ExecutionPlan_CollectOps(OpBase *root, OPType type);
  * The Create operation should never introduce a new node 'a'. */
 void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers);
 
-/* For all ops in the given tree, assocate the provided ExecutionPlan.
- * This is for use for updating ops that have been built with a temporary ExecutionPlan. */
-void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root);
+// For all ops in the given tree, associate the provided ExecutionPlan.
+// This is for use for updating ops that have been built with a temporary
+// ExecutionPlan.
+// if qg is set, merge the query graphs of the temporary and main plans
+void ExecutionPlan_BindPlanToOps
+(
+	ExecutionPlan *plan,  // plan to bind the operations to
+	OpBase *root,         // root operation
+	bool qg               // whether to merge QueryGraphs or not
+);
 
 /* Given an AST path pattern, generate the tree of scan, traverse,
  * and filter operations required to represent it. */

@@ -20,6 +20,7 @@ TARGET=$(BINDIR)/libonig.a
 define CMAKE_DEFS +=
 	BUILD_SHARED_LIBS=off
 	BUILD_TEST=off
+	CMAKE_POSITION_INDEPENDENT_CODE=on
 endef
 
 #----------------------------------------------------------------------------------------------

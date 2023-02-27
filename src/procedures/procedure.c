@@ -18,7 +18,7 @@ rax *__procedures = NULL;
 static void _procRegister(const char *procedure, ProcGenerator gen) {
 	char lowercase_proc_name[128];
 	size_t lowercase_proc_name_len = 128;
-	str_tolower(procedure, lowercase_proc_name, &lowercase_proc_name_len);
+	str_tolower_ascii(procedure, lowercase_proc_name, &lowercase_proc_name_len);
 	raxInsert(__procedures, (unsigned char *)lowercase_proc_name,
 		   lowercase_proc_name_len, gen, NULL);
 }
@@ -69,7 +69,7 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 	if(!__procedures) return NULL;
 	size_t proc_name_len = strlen(proc_name) + 1;
 	char proc_name_lowercase [proc_name_len];
-	str_tolower(proc_name, proc_name_lowercase, &proc_name_len);
+	str_tolower_ascii(proc_name, proc_name_lowercase, &proc_name_len);
 	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name_lowercase,
 	  			proc_name_len);
 	if(gen == raxNotFound) return NULL;

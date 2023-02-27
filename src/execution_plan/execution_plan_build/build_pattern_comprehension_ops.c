@@ -94,7 +94,7 @@ void buildPatternComprehensionOps
 		// add collect expression to an AGGREGATION Operation
 		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 		array_append(exps, collect_exp);
-		OpBase *aggregate = NewAggregateOp(plan, exps, false);
+		OpBase *aggregate = NewAggregateOp(plan, exps);
 		ExecutionPlan_AddOp(aggregate, match_stream);
 
 		// handle filters attached to pattern
@@ -244,7 +244,7 @@ void buildPatternPathOps
 		// constuct aggregation operation
 		AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 		array_append(exps, collect_exp);
-		OpBase *aggregate = NewAggregateOp(plan, exps, false);
+		OpBase *aggregate = NewAggregateOp(plan, exps);
 		ExecutionPlan_AddOp(aggregate, match_stream);
 
 		// in case the execution-plan had child operations we need to combine

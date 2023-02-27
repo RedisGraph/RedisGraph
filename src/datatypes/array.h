@@ -50,12 +50,13 @@ u_int32_t SIArray_Length(SIValue siarray);
 bool SIArray_ContainsType(SIValue siarray, SIType t);
 
 /**
-  * @brief  Returns true 'v' is in the array
+  * @brief  Returns true if the array contains an element equals to 'value'
   * @param  siarray: array
-  * @param  v: value to compare
-  * @retval a boolean indicating whether 'v' is in the array
+  * @param  value: value to search for
+  * @param  comparedNull: indicate if there was a null comparison during the array scan
+  * @retval a boolean indicating whether value was found in siarray
   */
-bool SIArray_ContainsValue(SIValue siarray, SIValue v);
+bool SIArray_ContainsValue(SIValue siarray, SIValue value, bool *comparedNull);
 
 /**
   * @brief  Returns true if all of the elements in the array are of type 't'
@@ -64,6 +65,13 @@ bool SIArray_ContainsValue(SIValue siarray, SIValue v);
   * @retval a boolean indicating whether all elements are of type 't'
   */
 bool SIArray_AllOfType(SIValue siarray, SIType t);
+
+/**
+  * @brief  Sorts the array in place
+  * @param  siarray: array to sort
+  * @param  ascending: sort order
+  */
+void SIArray_Sort(SIValue siarray, bool ascending);
 
 /**
   * @brief  Returns a copy of the array
