@@ -16,3 +16,6 @@
 [submodule "deps/utf8proc"]
 	path = deps/utf8proc
 	url = https://github.com/JuliaStrings/utf8proc.git
+[submodule "deps/oniguruma"]
+	path = deps/oniguruma
+	url = https://github.com/kkos/oniguruma.git

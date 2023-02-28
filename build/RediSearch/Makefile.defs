@@ -1,5 +1,5 @@
 
-REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch.a
+REDISEARCH=$(REDISEARCH_BINROOT)/search-static/libredisearch-static.a
 
 export REDISEARCH_LIBS=$(REDISEARCH)
 
