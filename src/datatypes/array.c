@@ -137,21 +137,6 @@ SIValue SIArray_Clone(SIValue siarray) {
 	return newArray;
 }
 
-// remove duplicates from sorted array
-SIValue SIArray_RemoveDuplicatesSorted(SIValue siarray) {
-	uint arrayLen = SIArray_Length(siarray);
-	SIValue newArray = SIArray_New(arrayLen);
-	SIValue prev = SI_NullVal();
-	for(uint i = 0; i < arrayLen; i++) {
-		SIValue elem = siarray.array[i];
-		if(SIValue_Compare(elem, prev, NULL) != 0) {
-			SIArray_Append(&newArray, elem);
-			prev = elem;
-		}
-	}
-	return newArray;
-}
-
 void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten) {
 	if(*bufferLen - *bytesWritten < 64) {
 		*bufferLen += 64;
