@@ -235,6 +235,11 @@ static void _buildForeachOp
 	//--------------------------------------------------------------------------
 
 	OpBase *argument_list = NewArgumentListOp(embedded_plan);
+	// TODO: After refactoring the execution-plan freeing mechanism, bind the
+	// ArgumentList op to the outer-scope plan (plan), and change the condition
+	// for Unwind's 'free_rec' field to be whether the child plan is different
+	// from the plan the Unwind is binded to.
+
 	// add the op as a child of the unwind operation
 	ExecutionPlan_AddOp(unwind, argument_list);
 
@@ -289,4 +294,3 @@ void ExecutionPlanSegment_ConvertClause
 		assert(false && "unhandeled clause");
 	}
 }
-

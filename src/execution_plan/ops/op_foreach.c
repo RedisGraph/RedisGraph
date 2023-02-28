@@ -24,7 +24,6 @@ OpBase *NewForeachOp
 	op->first          = true;
 	op->records        = NULL;
 	op->supplier       = NULL;
-	op->body_records   = NULL;
 	op->argument_list  = NULL;
 
     OpBase_Init((OpBase *)op, OPType_FOREACH, "Foreach", ForeachInit,
@@ -100,32 +99,23 @@ static Record ForeachConsume
 	op->first = false;
 
 	// construct an array of records to hold all consumed records (eagerly)
-	op->records = array_new(Record, 0);
-	op->body_records = array_new(Record, 0);
+	op->records = array_new(Record, 1);
 
 	Record r = NULL;
 	if(op->supplier) {
 		// eagerly drain supplier
 		while((r = OpBase_Consume(op->supplier))) {
 			array_append(op->records, r);
-
-			// create a record with the mapping of the embedded plan
-			// (as opposed to the record-mapping of the consumed record)
-			Record body_rec = OpBase_CreateRecord(op->body);
-			// copy the consumed record's entries to the record to be sent to
-			// the body
-			Record_DeepClone(r, body_rec);
-			array_append(op->body_records, body_rec);
 		}
 	} else {
 		// static list, create a dummy empty record just to kick start the
 		// argument-list operation
-		r = OpBase_CreateRecord(op->body);
-		array_append(op->body_records, r);
+		r = OpBase_CreateRecord((OpBase *)op);
+		array_append(op->records, r);
 	}
 
 	// plant a clone of the list of arguments in argument_list operation
-	ArgumentList_AddRecordList(op->argument_list, op->body_records);
+	ArgumentList_AddRecordList(op->argument_list, op->records);
 
 	// call consume on loop body first op
 	// the result is thrown away
@@ -151,17 +141,6 @@ static void _freeInternals
 
 		array_free(op->records);
 		op->records = NULL;
-	}
-
-	if(op->body_records != NULL) {
-		// free body record list components
-		uint nrecords = array_len(op->body_records);
-		for(uint i = 0; i < nrecords; i++) {
-			OpBase_DeleteRecord(op->body_records[i]);
-		}
-
-		array_free(op->body_records);
-		op->body_records = NULL;
 	}
 }
 
