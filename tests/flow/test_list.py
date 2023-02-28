@@ -1176,14 +1176,14 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
-        # 3nd arg should be Integer
+        # 3rd arg should be Integer
         try:
             redis_graph.query("RETURN list.insertListElements([1,2,3], [2], '1')")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected Integer but was String", str(e))
 
-        # 2nd arg should be list
+        # Test without input argument
         try:
             query = """RETURN list.insertListElements()"""
             redis_graph.query(query)
@@ -1430,7 +1430,7 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
-        # 3th arg should be Integer
+        # 3rd arg should be Integer
         try:
             redis_graph.query("RETURN list.union([1,2,3], [2], '1')")
             self.env.assertTrue(False)
@@ -1514,7 +1514,7 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
-        # 3th arg should be Integer
+        # 3rd arg should be Integer
         try:
             redis_graph.query("RETURN list.intersection([1,2,3], [2], '1')")
             self.env.assertTrue(False)
@@ -1609,7 +1609,7 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
-        # 3th arg should be Integer
+        # 3rd arg should be Integer
         try:
             redis_graph.query("RETURN list.diff([1,2,3], [2], '1')")
             self.env.assertTrue(False)
@@ -1699,7 +1699,7 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected List or Null but was String", str(e))
 
-        # 3th arg should be Integer
+        # 3rd arg should be Integer
         try:
             redis_graph.query("RETURN list.symDiff([1,2,3], [2], '1')")
             self.env.assertTrue(False)
