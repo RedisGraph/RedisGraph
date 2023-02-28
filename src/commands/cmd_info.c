@@ -8,6 +8,10 @@
 #include "RG.h"
 #include "redismodule.h"
 
+// GRAPH.INFO key
+// GRAPH.INFO key RESET
+// GRAPH.INFO key STATS
+// GRAPH.INFO key QUERIES
 // Dispatch the subcommand.
 int Graph_Info
 (
