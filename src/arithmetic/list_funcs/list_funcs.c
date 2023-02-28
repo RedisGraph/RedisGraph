@@ -878,8 +878,8 @@ static inline SIValue sortAndDedup(SIValue list) {
 }
 
 // given two lists, return their union (v1∪v2) as an ascendingly sorted list.
-// list.union(v1, v2, dupPolicy = 0) → list
-// list.union([1,1,2,3], [5,4,3], 0) → [1,2,3,4,5]
+// list.union(v1, v2, dupPolicy = 0) -> list
+// list.union([1,1,2,3], [5,4,3], 0) -> [1,2,3,4,5]
 SIValue AR_UNION(SIValue *argv, int argc, void *private_data) {
 	SIValue A = argv[0];
 	SIValue B = argv[1];
@@ -978,7 +978,7 @@ static SIValue handle_intersect_bag_semantic(const SIValue *_A, const SIValue *_
 }
 
 // given two lists, return their intersection (v1∩v2).
-// list.intersection(v1, v2, dupPolicy = 0) → list
+// list.intersection(v1, v2, dupPolicy = 0) -> list
 SIValue AR_INTERSECTION(SIValue *argv, int argc, void *private_data) {
 	SIValue A = argv[0];
 	SIValue B = argv[1];
@@ -996,14 +996,12 @@ SIValue AR_INTERSECTION(SIValue *argv, int argc, void *private_data) {
 	if(SI_TYPE(A) == T_NULL && SI_TYPE(B) == T_NULL) {
 		return SI_NullVal();
 	}
-
-	SIValue res;
 	if(SI_TYPE(A) == T_NULL || SI_TYPE(B) == T_NULL) {
 		// if the array is null it is treated as an empty array
 		return SI_Array(0);
 	}
 
-	res = handle_intersect_bag_semantic(&A, &B);
+	SIValue res = handle_intersect_bag_semantic(&A, &B);
 	if (dup == 0) {
 		res = sortAndDedup(res);
 	}
@@ -1037,7 +1035,7 @@ static void _append_diff(SIValue *res, SIValue *A, dict *values_a, dict *values_
 }
 
 // given two lists, return their difference (v1-v2).
-// list.diff(v1, v2, dupPolicy = 0) → list
+// list.diff(v1, v2, dupPolicy = 0) -> list
 SIValue AR_DIFF(SIValue *argv, int argc, void *private_data) {
 	SIValue A = argv[0];
 	SIValue B = argv[1];
@@ -1093,7 +1091,7 @@ SIValue AR_DIFF(SIValue *argv, int argc, void *private_data) {
 }
 
 // given two lists, return their symmetric difference (AKA their disjunctive union) (v1Δv2).
-// list.symDiff(v1, v2, dupPolicy = 0) → list
+// list.symDiff(v1, v2, dupPolicy = 0) -> list
 SIValue AR_SYMDIFF(SIValue *argv, int argc, void *private_data) {
 	SIValue A = argv[0];
 	SIValue B = argv[1];
@@ -1161,7 +1159,7 @@ typedef struct {
 } _Stack_frame;
 
 // given a list, return a list where each element which is a list by itself is replaced with its elements.
-// list.flatten(list, levels = -1) → list
+// list.flatten(list, levels = -1) -> list
 SIValue AR_FLATTEN(SIValue *argv, int argc, void *private_data) {
 	SIValue L = argv[0];
 
