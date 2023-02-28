@@ -18,7 +18,7 @@ SIValue SIArray_New(uint32_t initialCapacity) {
 	return siarray;
 }
 
-void SIArray_Append(SIValue *siarray, const SIValue value) {
+void SIArray_Append(SIValue *siarray, SIValue value) {
 	// clone and persist incase of pointer values
 	SIValue clone = SI_CloneValue(value);
 	// append
