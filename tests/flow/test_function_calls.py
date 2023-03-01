@@ -2714,3 +2714,192 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN string.replaceRegEx('bl😉a', '😉', '😀')"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+    def lev_test(
+        self,
+        str1,
+        str2,
+        expected_result,
+        InsertionWeight=1.0,
+        DeletionWeight=1.0,
+        SubstitutionWeight=1.0
+    ):
+        query = """RETURN string.distance('%s', '%s', 'Lev',
+        {InsertionWeight: %f, DeletionWeight: %f, SubstitutionWeight: %f})""" \
+            % (str1, str2, InsertionWeight, DeletionWeight, SubstitutionWeight)
+        actual_result = graph.query(query)
+        assert actual_result.result_set[0][0] == expected_result
+
+    def test92_string_distance(self):
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN string.distance(null, 'bla')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN string.distance('bla', null)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # NULL input should return NULL
+        expected_result = [None]
+        query = """RETURN string.distance(null, null)"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # 1st arg should be string
+        try:
+            graph.query("RETURN string.distance(2, '2')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String or Null but was Integer", str(e))
+
+        # 2nd arg should be string
+        try:
+            graph.query("RETURN string.distance('2', 2)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected String or Null but was Integer", str(e))
+
+        # 3rd arg should be valid distance algorithm
+        try:
+            graph.query("RETURN string.distance('ab', 'ab', 'new_distance')")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: string.distance() has an invalid distance function", str(e))
+
+        # Test without input argument
+        try:
+            query = """RETURN string.distance()"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 0 arguments to function 'string.distance', expected at least 2", str(e))
+
+        # Test with 1 input argument
+        try:
+            query = """RETURN string.distance('ab')"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 1 arguments to function 'string.distance', expected at least 2", str(e))
+
+        # Test with 5 input argument
+        try:
+            query = """WITH {InsertionWeight: 1.0} AS map RETURN string.distance('ab', 'ab', 'Lev', map, 1)"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Received 5 arguments to function 'string.distance', expected at most 4", str(e))
+
+        # Test with invalid distFuncParams
+        try:
+            query = """RETURN string.distance('ab', 'ab', 'Lev', {newWeight : 1.0})"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: map argument to string.distance() has an invalid key", str(e))
+
+        # Test with invalid distFuncParams
+        try:
+            query = """RETURN string.distance('ab', 'ab', 'Lev', {InsertionWeight : 'a'})"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Float but was String", str(e))
+
+        # Test with invalid distFuncParams
+        try:
+            query = """RETURN string.distance('ab', 'ab', 'Lev', {InsertionWeight : -1.0})"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: string.distance(), weight has a negative weight", str(e))
+
+        ### Test valid inputs ###
+
+        ### Test Lev distance ###
+
+        # Test with default weights
+        self.lev_test('ab', 'ab', 0.0)
+        self.lev_test('abc', 'ab', 1.0)
+        self.lev_test('b2123', 'd123', 2.0)
+        self.lev_test('1234', '1234', 0.0)
+        self.lev_test('', '1234', 4.0)
+        self.lev_test('1234', '', 4.0)
+        self.lev_test('', '', 0.0)
+        self.lev_test('1234', '12', 2.0)
+        self.lev_test('1234', '14', 2.0)
+        self.lev_test('1111', '1', 3.0)
+
+        # Test with custom weights
+        self.lev_test('1234', '1234', 0.0)
+        self.lev_test('', '1234', 4.0)
+        self.lev_test('1234', '', 4.0)
+        self.lev_test('', '', 0.0)
+        self.lev_test('1234', '12', 2.0)
+        self.lev_test('1234', '14', 2.0)
+        self.lev_test('1111', '1', 3.0)
+
+        # Test Lev insertions
+        self.lev_test('', 'a', 5.0, 5.0)
+        self.lev_test('a', '', 1.0, 5.0)
+        self.lev_test('', 'aa', 10.0, 5.0)
+        self.lev_test('a', 'aa', 5.0, 5.0)
+        self.lev_test('aa', 'a', 1.0, 5.0)
+        self.lev_test('asdf', 'asdf', 0.0, 5.0)
+        self.lev_test('xyz', 'abc', 3.0, 5.0)
+        self.lev_test('xyz', 'axyz', 5.0, 5.0)
+        self.lev_test('x', 'ax', 5.0, 5.0)
+
+        # Test Lev deletions
+        self.lev_test('', 'z', 1.0, 1.0, 7.5)
+        self.lev_test('z', '', 7.5, 1.0, 7.5)
+        self.lev_test('xyz', 'zzxz', 3.0, 1.0, 7.5)
+        self.lev_test('zzxzzz', 'xyz', 23.5, 1.0, 7.5)
+
+        # Test Lev substitutions
+        self.lev_test('a', 'z', 1.2, SubstitutionWeight=1.2)
+        self.lev_test('z', 'a', 0.1, SubstitutionWeight=0.1)
+        self.lev_test('a', '', 1, SubstitutionWeight=1.2)
+        self.lev_test('', 'a', 1, SubstitutionWeight=1.2)
+        self.lev_test('asdf', 'zzzz', 4.8, SubstitutionWeight=1.2)
+        self.lev_test('asdf', 'zz', 4.4, SubstitutionWeight=1.2)
+        self.lev_test('asdf', 'zsdf', 1.2, SubstitutionWeight=1.2)
+        self.lev_test('zsdf', 'asdf', 0.1, SubstitutionWeight=0.1)
+
+        self.lev_test('a', 'ab', 5.0, InsertionWeight=5.0, SubstitutionWeight=5.0)
+        self.lev_test('ab', 'a', 1.0, InsertionWeight=5.0, SubstitutionWeight=5.0)
+
+        ## Test Hamming distance ##
+        expected_result = [0.0]
+        query = """RETURN string.distance('ab', 'ab', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [-1.0]
+        query = """RETURN string.distance('ab', 'abc', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [1.0]
+        query = """RETURN string.distance('abc', 'aba', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [2.0]
+        query = """RETURN string.distance('tbc', 'aba', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [1.0]
+        query = """RETURN string.distance('t', 'a', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [3.0]
+        query = """RETURN string.distance('ttt', 'aaa', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)

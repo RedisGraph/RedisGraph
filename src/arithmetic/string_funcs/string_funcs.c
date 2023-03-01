@@ -12,9 +12,11 @@
 #include "utf8proc/utf8proc.h"
 #include "../../util/rmalloc.h"
 #include "../../util/strutil.h"
+#include "../../datatypes/map.h"
 #include "../../datatypes/array.h"
 #include "../../util/json_encoder.h"
 #include "../deps/oniguruma/src/oniguruma.h"
+#include<math.h>
 
 // toString supports only integer, float, string, boolean, point, duration, 
 // date, time, localtime, localdatetime or datetime values
@@ -686,6 +688,212 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 	return tokens;
 }
 
+#define SWAP(T, a, b) do { T tmp = a; a = b; b = tmp; } while (0)
+
+/*
+
+Example of the flood filled matrix:
+			S2
+	+---+---+---+---+---+---+---+
+	|   |   | b | 2 | 1 | 2 | 3 |
+	+---+---+---+---+---+---+---+
+	|   | 0 | 1 | 2 | 3 | 4 | 5 |
+	+---+---+---+---+---+---+---+
+S1	| d | 1 | 1 | 2 | 3 | 4 | 5 |
+	+---+---+---+---+---+---+---+
+	| 1 | 2 | 2 | 2 | 2 | 3 | 4 |
+	+---+---+---+---+---+---+---+
+	| 2 | 3 | 3 | 2 | 3 | 2 | 3 |
+	+---+---+---+---+---+---+---+
+	| 3 | 4 | 4 | 3 | 3 | 3 | 2 |
+	+---+---+---+---+---+---+---+
+
+
+Example of the flood filled matrix:
+
+substitutionWeight = 5
+deletionWeight = 1
+insertionWeight = 5
+
+			S2
+	+---+---+---+---+
+	|   |   | a | b |
+	+---+---+---+---+
+	|   | 0 | 1 | 2 |
+	+---+---+---+---+
+S1	| a | 1 | 0 | 3 |
+	+---+---+---+---+
+
+			S2
+	+---+---+---+
+	|   |   | a |
+	+---+---+---+
+	|   | 0 | 1 |
+	+---+---+---+
+S1	| a | 1 | 0 |
+	+---+---+---+
+	| b | 2 | 1 |
+	+---+---+---+
+
+implementation of the Levenshtein distance algorithm
+using Wagner–Fischer algorithm
+Wagner–Fischer algorithm is not comutative when insertion and deletion have different cost as you can
+see from the example above.
+This is why in that case there is a need to execute it twice. */
+static double levenshtein_distance(
+	const char *S1,
+	const char *S2,
+	size_t len1,
+	size_t len2,
+	double insertionWeight,
+	double deletionWeight,
+	double substitutionWeight
+) {
+	double distance_array[len2+1];
+	distance_array[0] = 0;
+
+	// initialize the first row
+	for(int i = 1; i <= len2; i++) {
+		distance_array[i] = distance_array[i-1] + insertionWeight;
+	}
+
+	// build the matrix - always keep the last row calculated in the matrix
+	double upper_left;
+	for(int i = 1; i <= len1; i++) {
+		// store upper_left cause it will be overwritten
+		upper_left = distance_array[0];
+		distance_array[0] = upper_left + deletionWeight;
+
+		for(int j = 1; j <= len2; j++) {
+			double substitutionCost = (S2[j-1] == S1[i - 1]) ? 0 : substitutionWeight;
+			double min = fmin(fmin(distance_array[j] + deletionWeight /* deletion from S1 */,
+			distance_array[j-1] + insertionWeight) /* insertion to S1 */, upper_left + substitutionCost);
+			upper_left = distance_array[j];
+			distance_array[j] = min;
+		}
+	}
+
+	return distance_array[len2];
+}
+
+static inline bool lev_distance_parse_params
+(
+	const struct Pair *distFuncParams,
+	double *insertionWeight,
+	double *deletionWeight,
+	double *substitutionWeight
+) {
+	if(distFuncParams != NULL) {
+		for(int i = 0; i < array_len((void *)distFuncParams); i++) {
+			SIValue k = distFuncParams[i].key;
+			SIValue v = distFuncParams[i].val;
+			if(SI_TYPE(k) != T_STRING) {
+				Error_SITypeMismatch(k, T_STRING);
+				return false;
+			}
+
+			if(SI_TYPE(v) != T_DOUBLE) {
+				Error_SITypeMismatch(v, T_DOUBLE);
+				return false;
+			}
+
+			if(strcmp(k.stringval, "InsertionWeight") == 0) {
+				*insertionWeight = v.doubleval;
+			} else if(strcmp(k.stringval, "DeletionWeight") == 0) {
+				*deletionWeight = v.doubleval;
+			} else if(strcmp(k.stringval, "SubstitutionWeight") == 0) {
+				*substitutionWeight = v.doubleval;
+			} else {
+				ErrorCtx_RaiseRuntimeException
+				("ArgumentError: map argument to string.distance() has an invalid key");
+				return false;
+			}
+		}
+
+		if(*insertionWeight < 0.0 || *deletionWeight < 0.0 || *substitutionWeight < 0.0) {
+			ErrorCtx_RaiseRuntimeException
+			("ArgumentError: string.distance(), weight has a negative weight");
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static double hamming_distance(const char *S1, const char *S2, size_t len1, size_t len2) {
+	if(len1 != len2) {
+		return -1;
+	}
+
+	size_t distance = 0;
+	for(int i = 0; i < len1; i++) {
+		if(S1[i] != S2[i]) {
+			distance++;
+		}
+	}
+
+	return distance;
+}
+
+// given two strings, return their distance according to a specified distance function.
+// string.distance(str1, str2, distFunc = 'Lev', distFuncParams = {}) → floating-point
+SIValue AR_DISTANCE_STR(SIValue *argv, int argc, void *private_data) {
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) {
+		return SI_NullVal();
+	}
+
+	const char *S1 = argv[0].stringval;
+	const char *S2 = argv[1].stringval;
+	size_t      len1       = strlen(S1);
+	size_t      len2       = strlen(S2);
+
+	char *distFunc = "Lev";
+	if(argc > 2) {
+		distFunc = argv[2].stringval;
+	}
+
+	const struct Pair *distFuncParams = NULL;
+	if(argc > 3) {
+		distFuncParams = argv[3].map;
+	}
+
+	double res;
+
+	if (strcmp(distFunc, "Lev") == 0) {
+		double insertionWeight = 1;
+		double deletionWeight = 1;
+		double substitutionWeight = 1;
+
+		if(!lev_distance_parse_params(
+			distFuncParams,
+			&insertionWeight,
+			&deletionWeight,
+			&substitutionWeight)
+		) {
+			return SI_NullVal();
+		}
+
+		res = levenshtein_distance(
+			S1,
+			S2,
+			len1,
+			len2,
+			insertionWeight,
+			deletionWeight,
+			substitutionWeight
+		);
+	} else if (strcmp(distFunc, "Ham") == 0) {
+		res = hamming_distance(S1, S2, len1, len2);
+	} else {
+		ErrorCtx_RaiseRuntimeException
+		("ArgumentError: string.distance() has an invalid distance function");
+		return SI_NullVal();
+	}
+
+
+	return 	SI_DoubleVal(res);
+}
+
 //==============================================================================
 //=== Scalar functions =========================================================
 //==============================================================================
@@ -837,5 +1045,14 @@ void Register_StringFuncs() {
 	array_append(types, (T_STRING | T_NULL));
 	ret_type = T_ARRAY | T_NULL;
 	func_desc = AR_FuncDescNew("split", AR_SPLIT, 2, 2, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 4);
+	array_append(types, (T_STRING | T_NULL));
+	array_append(types, (T_STRING | T_NULL));
+	array_append(types, (T_STRING));
+	array_append(types, (T_MAP));
+	ret_type = T_DOUBLE | T_NULL;
+	func_desc = AR_FuncDescNew("string.distance", AR_DISTANCE_STR, 2, 4, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }
