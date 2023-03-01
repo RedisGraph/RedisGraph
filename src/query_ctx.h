@@ -18,6 +18,24 @@
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
+// Holds the execution type flags: certain traits of query regarding its'
+// execution.
+typedef enum QueryExecutionTypeFlag {
+	// Indicates that this query is a read-only query.
+	QueryExecutionTypeFlag_READ = 0,
+	// Indicates that this query is a write query.
+	QueryExecutionTypeFlag_WRITE = 1 << 0,
+	// Whether or not we want to profile the query.
+	QueryExecutionTypeFlag_PROFILE = 1 << 1,
+} QueryExecutionTypeFlag;
+
+// Holds the query execution status.
+typedef enum QueryExecutionStatus {
+	QueryExecutionStatus_SUCCESS = 0,
+	QueryExecutionStatus_FAILURE,
+	QueryExecutionStatus_TIMEDOUT,
+} QueryExecutionStatus;
+
 typedef struct {
 	AST *ast;                     // The scoped AST associated with this query.
 	rax *params;                  // Query parameters.
@@ -38,7 +56,7 @@ typedef struct {
 	const char *command_name;       // Command name.
 } QueryCtx_GlobalExecCtx;
 
-typedef struct {
+typedef struct QueryCtx{
 	QueryCtx_QueryData query_data;              // The data related to the query syntax.
 	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
 	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.

@@ -102,6 +102,17 @@ static inline array_t array_ensure_cap(array_t arr, uint32_t cap) {
 	return (array_t)hdr->buf;
 }
 
+// Reallocates the array setting the new capacity. If there were more
+// elements, those are deleted (cut off), if less, then there will be
+// space enough to fit (capacity - length) elements.
+static inline array_t array_reset_cap(array_t arr, uint32_t cap) {
+  array_hdr_t *hdr = array_hdr(arr);
+  hdr->cap = cap;
+  hdr->len = hdr->len > hdr->cap ? hdr->cap : hdr->len;
+  hdr = (array_hdr_t *)array_realloc_fn(hdr, array_sizeof(hdr));
+	return (array_t)hdr->buf;
+}
+
 /* Ensure capacity for the array to grow by one */
 static inline array_t array_grow(array_t arr, size_t n) {
 	array_hdr(arr)->len += n;

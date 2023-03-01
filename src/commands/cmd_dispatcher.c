@@ -7,6 +7,8 @@
 #include "RG.h"
 #include "commands.h"
 #include "cmd_context.h"
+#include "../util/time.h"
+#include "../util/simple_timer.h"
 #include "../util/thpool/pools.h"
 #include "../util/blocked_client.h"
 #include "../configuration/config.h"
@@ -23,6 +25,7 @@ static int _read_flags
 	RedisModuleString **argv,   // commands arguments
   	int argc,                   // number of arguments
   	bool *compact,              // compact result-set format
+	bool *should_track_info,    // whether or not we should track the info data
   	long long *timeout,         // query level timeout 
   	bool *timeout_rw,           // apply timeout on both read and write queries
   	uint *graph_version,        // graph version [UNUSED]
@@ -38,6 +41,11 @@ static int _read_flags
 	*graph_version = GRAPH_VERSION_MISSING;
 	Config_Option_get(Config_TIMEOUT_DEFAULT, timeout);
 	Config_Option_get(Config_TIMEOUT_MAX, &max_timeout);
+
+	if (should_track_info) {
+		bool is_enabled = false;
+		*should_track_info = Config_Option_get(Config_CMD_INFO, &is_enabled) && is_enabled;
+	}
 
 	if(max_timeout != CONFIG_TIMEOUT_NO_TIMEOUT ||
 	   *timeout != CONFIG_TIMEOUT_NO_TIMEOUT) {
@@ -189,6 +197,10 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	bool timeout_rw;
 	long long timeout;
 	CommandCtx *context = NULL;
+	bool should_track_info = false;
+	const uint64_t received_milliseconds = get_unix_timestamp_milliseconds();
+	simple_timer_t timer;
+	TIMER_RESTART(timer);
 
 	RedisModuleString *graph_name = argv[1];
 	RedisModuleString *query = (argc > 2) ? argv[2] : NULL;
@@ -198,7 +210,14 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 
 	// parse additional arguments
-	int res = _read_flags(argv, argc, &compact, &timeout, &timeout_rw, &version,
+	int res = _read_flags(
+		argv,
+		argc,
+		&compact,
+		&should_track_info,
+		&timeout,
+		&timeout_rw,
+		&version,
 		&errmsg);
 	if(res == REDISMODULE_ERR) {
 		// emit error and exit if argument parsing failed

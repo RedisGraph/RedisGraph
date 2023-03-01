@@ -6,11 +6,12 @@
 
 #pragma once
 
+#include "graph.h"
+#include "info.h"
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
 #include "../slow_log/slow_log.h"
-#include "graph.h"
 #include "../serializers/encode_context.h"
 #include "../serializers/decode_context.h"
 #include "../util/cache/cache.h"
@@ -40,6 +41,7 @@ typedef struct {
 	GraphDecodeContext *decoding_context;   // decode context of the graph
 	Cache *cache;                           // global cache of execution plans
 	XXH32_hash_t version;                   // graph version
+	Info info;                              // graph query information
 } GraphContext;
 
 //------------------------------------------------------------------------------
