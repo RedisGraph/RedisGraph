@@ -147,11 +147,6 @@ class _testGraphInfoFlowBase(FlowTestsBase):
         self._delete_graph(name)
         return self._create_graph_filled(name)
 
-    def _reset_graph_info_stats(self, name=GRAPH_ID):
-        query = INFO_RESET_SPECIFIC_COMMAND_TEMPLATE % GRAPH_ID
-        results = self.conn.execute_command(query)
-        self.env.assertEquals(results, 1, depth=1)
-
     def __init__(self, env):
         self.env = env
         # skip test if we're running under Valgrind
