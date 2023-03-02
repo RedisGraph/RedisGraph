@@ -64,6 +64,43 @@ static bool _ValidateAllShortestPaths
 	return false;
 }
 
+// validate that shortestPaths is in a supported place
+static bool _ValidateShortestPaths
+(
+	const cypher_astnode_t *root // root to validate
+) {
+	ASSERT(root != NULL);
+
+	cypher_astnode_type_t t = cypher_astnode_type(root);
+	// if we found allShortestPaths in invalid parent return true
+	if(t == CYPHER_AST_SHORTEST_PATH &&
+	   cypher_ast_shortest_path_is_single(root)) {
+		return true;
+	}
+
+	// shortestPaths is invalid in the MATCH pattern
+	if(t == CYPHER_AST_MATCH) {
+		const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(root);
+		return pattern != NULL && _ValidateShortestPaths(pattern);
+	}
+
+	if(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN) {
+		return false;
+	}
+
+	// recursively traverse all children
+	uint nchildren = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < nchildren; i ++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+		bool res = _ValidateShortestPaths(child);
+		if(res) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 // get aliases of a WITH clause
 // return true if no errors where encountered, false otherwise
 static bool _AST_GetWithAliases
@@ -848,10 +885,8 @@ static VISITOR_STRATEGY _Validate_shortest_path
 		return VISITOR_RECURSE;
 	}
 
-	if(cypher_ast_shortest_path_is_single(n)) {
-		// MATCH (a), (b), p = shortestPath((a)-[*]->(b)) RETURN p
-		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
-		return VISITOR_BREAK;
+	if(cypher_ast_shortest_path_is_single(n)) {	
+		return VISITOR_RECURSE;
 	} else {
 		// MATCH (a), (b), p = allShortestPaths((a)-[*2..]->(b)) RETURN p
 		// validate rel pattern range doesn't contains a minimum > 1
@@ -1831,9 +1866,13 @@ AST_Validation AST_Validate_Query
 	}
 
 	// validate positions of allShortestPaths
-	bool invalid = _ValidateAllShortestPaths(body);
-	if(invalid) {
+	if(_ValidateAllShortestPaths(body)) {
 		ErrorCtx_SetError("RedisGraph support allShortestPaths only in match clauses");
+		return AST_INVALID;
+	}
+
+	if(_ValidateShortestPaths(body)) {
+		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
 		return AST_INVALID;
 	}
 

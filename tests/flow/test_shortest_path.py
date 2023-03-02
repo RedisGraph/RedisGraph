@@ -135,3 +135,11 @@ class testShortestPath(FlowTestsBase):
         # The longer traversal will be found
         expected_result = [[1], [2], [3], [4]]
         self.env.assertEqual(actual_result.result_set, expected_result)
+
+    def test07_shortestPath_in_filter(self):
+        # Traverse both relationship types
+        query = """MATCH (a {v: 1}), (b {v: 4}) WHERE length(shortestPath((a)-[:E|:E2*]->(b))) > 0 RETURN a.v, b.v"""
+        actual_result = redis_graph.query(query)
+        # The shorter 2-hop traversal should be found
+        expected_result = [[1, 4]]
+        self.env.assertEqual(actual_result.result_set, expected_result)
