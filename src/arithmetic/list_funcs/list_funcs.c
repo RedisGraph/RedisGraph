@@ -4,12 +4,13 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "RG.h"
 #include "list_funcs.h"
+#include "RG.h"
 #include "../func_desc.h"
 #include "../../errors.h"
 #include "../../util/arr.h"
-#include"../../query_ctx.h"
+#include "../../query_ctx.h"
+#include "../../util/dict.h"
 #include "../../util/strutil.h"
 #include "../../datatypes/array.h"
 #include "../../util/rax_extensions.h"
@@ -98,6 +99,7 @@ static void _PopulateReduceCtx
 
 // forward declaration of property function
 SIValue AR_PROPERTY(SIValue *argv, int argc, void *private_data);
+SIValue AR_DEDUP(SIValue *argv, int argc, void *private_data);
 
 // create a list from a given squence of values
 // "RETURN [1, '2', True, null]"
@@ -192,13 +194,53 @@ SIValue AR_TOSTRINGLIST(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
-/* If given an array, returns a value in a specific index in an array.
-   Valid index range is [-arrayLen, arrayLen).
-   Invalid index will return null.
-   "RETURN [1, 2, 3][0]" will yield 1.
+// normalize index
+// returns true if 'index' is in range: [0..array_len]
+// false otherwise
+// idx is 0-based when non-negative
+// or from the end of the list when negative
+static inline bool normalize_index
+(
+	int32_t *index,
+	int32_t arrayLen,
+	bool bounds_inclusive
+) {
+	int32_t idx = *index;
 
-   If given a map or graph entity, returns the property value associated
-   with the given key string. */
+	if(bounds_inclusive) {
+		// for the index normalization calculation to be correct when index is negative
+		// for example index -1 on a 6 elements array should return the last
+		// element index
+		// [0,1,2,3,4,5][-1] = 5
+		arrayLen += 1;
+	}
+
+	//--------------------------------------------------------------------------
+	// check index bounds
+	//--------------------------------------------------------------------------
+
+	// index range can be [-arrayLen, arrayLen)
+	// this is because 0 = arrayLen+(-arrayLen)
+	if((idx < 0 && idx + arrayLen < 0) ||
+	   (idx > 0 && idx >= arrayLen)) {
+		return false;
+	}
+
+	// compute index
+	if(idx < 0) {
+		*index = arrayLen + idx;
+	}
+
+	// index within bounds
+	return true;
+}
+
+// If given an array, returns a value in a specific index in an array.
+//    Valid index range is [-arrayLen, arrayLen).
+//    Invalid index will return null.
+//    "RETURN [1, 2, 3][0]" will yield 1.
+// If given a map or graph entity, returns the property value associated
+//    with the given key string.
 SIValue AR_SUBSCRIPT(SIValue *argv, int argc, void *private_data) {
 	ASSERT(argc == 2);
 	if(SI_TYPE(argv[0]) == T_NULL || SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
@@ -224,12 +266,10 @@ SIValue AR_SUBSCRIPT(SIValue *argv, int argc, void *private_data) {
 	SIValue list = argv[0];
 	int32_t index = (int32_t)argv[1].longval;
 	uint32_t arrayLen = SIArray_Length(list);
-	// given a negativ index, the accses is calculated as arrayLen+index
-	uint32_t absIndex = abs(index);
-	// index range can be [-arrayLen, arrayLen) (lower bound inclusive, upper exclusive)
-	// this is because 0 = arrayLen+(-arrayLen)
-	if((index < 0 && absIndex > arrayLen) || (index > 0 && absIndex >= arrayLen)) return SI_NullVal();
-	index = index >= 0 ? index : arrayLen - absIndex;
+	if(!normalize_index(&index, arrayLen, false)) {
+		return SI_NullVal();
+	}
+
 	SIValue res = SIArray_Get(list, index);
 	// clone is in case for nested heap allocated values returned from the array
 	return SI_CloneValue(res);
@@ -393,6 +433,279 @@ SIValue AR_TAIL(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
+// given a list, return the list received after removing a given number of
+// consecutive elements or less, if the end of the list has been reached
+// starting at a given index
+// list.remove(list, idx, count = 1) -> list
+// "RETURN remove([1,2,3], 2, 2)" returns [1]
+SIValue AR_REMOVE(SIValue *argv, int argc, void *private_data) {
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	int32_t count = 1;
+	int32_t index = (int32_t)SI_GET_NUMERIC(argv[1]);
+
+	if(argc == 3) {
+		count = (int32_t)SI_GET_NUMERIC(argv[2]);
+	}
+
+	if(count <= 0) {
+		return SIArray_Clone(list);
+	}
+
+	uint32_t arrayLen = SIArray_Length(list);
+	if(!normalize_index(&index, arrayLen, false)) {
+		// index out of bounds
+		// in which case simply returns a copy of the list unmodified
+		return SIArray_Clone(list);
+	}
+
+	// calculate number of elements to remove
+	count = MIN(count, arrayLen - index);
+
+	SIValue array = SI_Array(arrayLen - count);
+
+	// add elements to result array from position 0 to index
+	for(uint i = 0; i < index; i++) {
+		SIArray_Append(&array, SIArray_Get(list, i));
+	}
+
+	// add elements to result array from position index + count .. end of array
+	for(uint i = index + count; i < arrayLen; i++) {
+		SIArray_Append(&array, SIArray_Get(list, i));
+	}
+
+	return array;
+}
+
+// given a list, return a sorted copy of the list
+// order ascending if argv[1] is TRUE otherwise order will be descending
+// list.sort(list, ascending = TRUE) -> list
+// "RETURN sort([1,3,2], TRUE)" returns [1,2,3]
+SIValue AR_SORT(SIValue *argv, int argc, void *private_data) {
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	bool ascending = true;  // default ascending
+	if(argc == 2) {
+		ascending = SIValue_IsTrue(argv[1]);
+	}
+
+	SIValue clone = SIArray_Clone(list);
+
+	// sort array
+	SIArray_Sort(clone, ascending);
+
+	return clone;
+}
+
+// given a list, return a list after inserting given value at a given position
+// list.insert(list, idx, val, dups = TRUE) -> list
+// RETURN list.insert([0, 1], 0, 2) -> [2, 0, 1]
+SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	SIValue val = argv[2];
+	if(SI_TYPE(val) == T_NULL) {
+		// in the case where the added value is NULL
+		// simply return a clone of the list unmodified
+		return SIArray_Clone(list);
+	}
+
+	int32_t  index    = (int32_t)SI_GET_NUMERIC(argv[1]);
+	uint32_t arrayLen = SIArray_Length(list);
+	if(!normalize_index(&index, arrayLen, true)) {
+		// index out of bounds, simply return a clone of the list unmodified
+		return SIArray_Clone(list);
+	}
+
+	bool allow_dups = true;  // default value
+	if(argc == 4) {
+		allow_dups = SIValue_IsTrue(argv[3]);
+	}
+
+	if(!allow_dups && SIArray_ContainsValue(list, val, NULL)) {
+		// caller requested no duplicates
+		// if value already exists in list return the original list
+		return SIArray_Clone(list);
+	}
+
+	// we're guarantee value will be added
+	// allocate a new array
+	SIValue array = SI_Array(arrayLen + 1);
+
+	// append elements up to index
+	for(uint i = 0; i < index; i++) {
+		SIArray_Append(&array, SIArray_Get(list, i));
+	}
+
+	// append new value
+	SIArray_Append(&array, val);
+
+	// append remaining elements
+	for(uint i = index; i < arrayLen; i++) {
+		SIArray_Append(&array, SIArray_Get(list, i));
+	}
+
+	return array;
+}
+
+// fake hash function
+// hash of key is simply key
+static uint64_t nop_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+// hashtable callbacks
+static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
+	NULL, NULL, NULL};
+
+static dict *_list2dict
+(
+	SIValue list
+) {
+	uint32_t n   = SIArray_Length(list);
+	dict *values = HashTableCreate(&dt);
+	for(uint i = 0; i < n; i++) {
+		SIValue val = SIArray_Get(list, i);
+		XXH64_state_t state;
+		XXH_errorcode res = XXH64_reset(&state, 0);
+		ASSERT(res != XXH_ERROR);
+
+		SIValue_HashUpdate(val, &state);
+
+		// finalize the hash
+		XXH64_hash_t hash = XXH64_digest(&state);
+		dictEntry *existing;
+		dictEntry *entry = HashTableAddRaw(values, (void *)hash, &existing);
+	}
+
+	return values;
+}
+
+// concatenate lists starting at specified position
+// list.insertListElements(list, list2, idx, dups = TRUE) -> list
+// RETURN list.insertListElements([0,1], [2,3], 0) -> [2,3,0,1]
+SIValue AR_INSERTLISTELEMENTS(SIValue *argv, int argc, void *private_data) {
+	SIValue A = argv[0];
+	if(SI_TYPE(A) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	SIValue B = argv[1];
+	if(SI_TYPE(B) == T_NULL) {
+		// return copy of original in case second array is NULL
+		return SIArray_Clone(A);
+	}
+
+	int32_t  index    = (int32_t)SI_GET_NUMERIC(argv[2]);
+	uint32_t a_len = SIArray_Length(A);
+	if(!normalize_index(&index, a_len, true)) {
+		// index out of bounds, return copy of original array
+		return SIArray_Clone(A);
+	}
+
+	bool allow_dups = true;  // default
+	if(argc == 4) {
+		allow_dups = SIValue_IsTrue(argv[3]);
+		if(!allow_dups) {
+			B = AR_DEDUP(&B, 1, NULL);
+		}
+	}
+
+	uint32_t b_len = SIArray_Length(B);
+	SIValue  list  = SI_Array(a_len + b_len);
+
+	// append elements up to index
+	for(uint i = 0; i < index; i++) {
+		SIArray_Append(&list, SIArray_Get(A, i));
+	}
+
+	// append B
+	if(allow_dups) {
+		for(uint i = 0; i < b_len; i++) {
+			SIArray_Append(&list, SIArray_Get(B, i));
+		}
+	} else {
+		dict *values = _list2dict(A);
+		// make sure there are no duplicates
+		for(uint i = 0; i < b_len; i++) {
+			SIValue val = SIArray_Get(B, i);
+			XXH64_state_t state;
+			XXH_errorcode res = XXH64_reset(&state, 0);
+			ASSERT(res != XXH_ERROR);
+
+			SIValue_HashUpdate(val, &state);
+
+			// finalize the hash
+			XXH64_hash_t hash = XXH64_digest(&state);
+			if(HashTableFind(values, (void *)hash) == NULL) {
+				SIArray_Append(&list, val);
+			}
+		}
+
+		HashTableRelease(values);
+		if(!allow_dups) {
+			SIValue_Free(B);
+		}
+	}
+
+	// append remaining elements
+	for(uint i = index; i < a_len; i++) {
+		SIArray_Append(&list, SIArray_Get(A, i));
+	}
+
+	return list;
+}
+
+// given a list, return a similar list after removing duplicate elements
+// order is preserved, duplicates are removed from the end of the list
+// list.dedup(list) -> list
+// list.dedup([1,2,1,3,3]) -> [1,2,3]
+SIValue AR_DEDUP(SIValue *argv, int argc, void *private_data) {
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	uint32_t n          = SIArray_Length(list);
+	SIValue  dedup_list = SI_Array(n);
+
+	dict *values = HashTableCreate(&dt);
+	// check if value already exists in list
+	for(uint i = 0; i < n; i++) {
+		SIValue val = SIArray_Get(list, i);
+		// initialize the hash state
+		XXH64_state_t state;
+		XXH_errorcode res = XXH64_reset(&state, 0);
+		ASSERT(res != XXH_ERROR);
+
+		SIValue_HashUpdate(val, &state);
+
+		// finalize the hash
+		XXH64_hash_t hash = XXH64_digest(&state);
+		dictEntry *existing;
+		dictEntry *entry = HashTableAddRaw(values, (void *)hash, &existing);
+		if(existing == NULL) {
+			SIArray_Append(&dedup_list, val);
+		}
+	}
+
+	HashTableRelease(values);
+
+	return dedup_list;
+}
+
 SIValue AR_REDUCE
 (
 	SIValue *argv,
@@ -537,6 +850,45 @@ void Register_ListFuncs() {
 	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
+	types = array_new(SIType, 3);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_INT64);
+	array_append(types, T_INT64);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("list.remove", AR_REMOVE, 2, 3, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_BOOL);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("list.sort", AR_SORT, 1, 2, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 4);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_INT64);
+	array_append(types, SI_ALL);
+	array_append(types, T_BOOL);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("list.insert", AR_INSERT, 3, 4, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 4);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_ARRAY | T_NULL);
+	array_append(types, T_INT64);
+	array_append(types, T_BOOL);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("list.insertListElements", AR_INSERTLISTELEMENTS, 3, 4, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, T_ARRAY | T_NULL);
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("list.dedup", AR_DEDUP, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
 	types = array_new(SIType, 4);
 	array_append(types, SI_ALL);            // accumulator initial value
 	array_append(types, T_ARRAY | T_NULL);  // array to iterate over
@@ -547,4 +899,3 @@ void Register_ListFuncs() {
 							  ListReduceCtx_Clone);
 	AR_RegFunc(func_desc);
 }
-
