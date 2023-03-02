@@ -82,7 +82,6 @@ static bool Constraint_EnforceUniqueEntity
 			// entity satisfies constraint in a vacuous truth manner
 			holds = true;
 			goto cleanup;
-			break;
 		}
 
 		// create RediSearch query node according to entity attr type
@@ -90,13 +89,8 @@ static bool Constraint_EnforceUniqueEntity
 
 	    if(!(t & SI_INDEXABLE)) {
 			// TODO: see RediSearch MULTI-VALUE index.
-			assert("check with Neo implementations" && false);
-	    	// none indexable type, consult with the none indexed field
-	    	node = RediSearch_CreateTagNode(rs_idx, INDEX_FIELD_NONE_INDEXED);
-	    	RSQNode *child = RediSearch_CreateTokenNode(rs_idx,
-	    			INDEX_FIELD_NONE_INDEXED, field);
-
-	    	RediSearch_QueryNodeAddChild(node, child);
+			holds = true;
+			goto cleanup;
 	    } else if(t == T_STRING) {
             node = RediSearch_CreateTagNode(rs_idx, field);
             RSQNode *child = RediSearch_CreateTagTokenNode(rs_idx, v->stringval);
