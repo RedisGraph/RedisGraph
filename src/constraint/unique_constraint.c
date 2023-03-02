@@ -122,16 +122,17 @@ static bool Constraint_EnforceUniqueEntity
 	// query RediSearch index
 	//--------------------------------------------------------------------------
 
-	// constraint holds if there are no duplicates, 1 or no index matches
-	// TODO: consider testing for the document ID see if equals to entity ID
-	int matches = 0;
+	// constraint holds if there are no duplicates, a single index match
     iter = RediSearch_GetResultsIterator(root, rs_idx);
-	for(; matches < 2; matches++) {
-		if(RediSearch_ResultsIteratorNext(iter, rs_idx, NULL) == NULL) {
-			break;
-		}
+	if(Constraint_GetEntityType(c) == GETYPE_NODE) {
+		const EntityID *id =
+			(EntityID*)RediSearch_ResultsIteratorNext(iter, rs_idx, NULL);
+		holds = (*id == ENTITY_GET_ID(e));
+	} else {
+		const EdgeIndexKey *id =
+			(EdgeIndexKey*)RediSearch_ResultsIteratorNext(iter, rs_idx, NULL);
+		holds = (id->edge_id == ENTITY_GET_ID(e));
 	}
-	holds = (matches == 1);
 
 cleanup:
 	if(iter != NULL) {
@@ -141,7 +142,7 @@ cleanup:
 	}
 
 	if(holds == false && err_msg != NULL) {
-		// entity violates constraint, set reply error
+		// entity violates constraint, compose error message
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		SchemaType st = (_c->et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
 		Schema *s = GraphContext_GetSchemaByID(gc, _c->schema_id, st);
