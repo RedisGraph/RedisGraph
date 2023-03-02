@@ -143,3 +143,25 @@ class testShortestPath(FlowTestsBase):
         # The shorter 2-hop traversal should be found
         expected_result = [[1, 4]]
         self.env.assertEqual(actual_result.result_set, expected_result)
+
+        # Traverse both relationship types
+        query = """MATCH (a {v: 1}), (b {v: 4}) WHERE length(shortestPath((a)-[:E|:E2*]->())) > 0 RETURN a.v, b.v"""
+        try:
+            redis_graph.query(query)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("A shortestPath requires bound nodes", str(e))
+
+        # shortestPath requires bound nodes
+        queries = [
+            """MATCH (a {v: 1}), (b {v: 4}) WHERE length(shortestPath((a)-[:E|:E2*]->())) > 0 RETURN a.v, b.v""",
+            """MATCH (a {v: 1}), (b {v: 4}) WHERE length(shortestPath(()-[:E|:E2*]->(b))) > 0 RETURN a.v, b.v""",
+            """MATCH (a {v: 1}), (b {v: 4}) WHERE length(shortestPath(()-[:E|:E2*]->())) > 0 RETURN a.v, b.v""",
+            """MATCH (a {v: 1}), (b {v: 4}) WHERE length(shortestPath((z)-[:E|:E2*]->(x))) > 0 RETURN a.v, b.v""",
+            """MATCH (a {v: 1}), (b {v: 4}) WHERE length(shortestPath(({v:1})-[:E|:E2*]->())) > 0 RETURN a.v, b.v"""
+        ]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertIn("A shortestPath requires bound nodes", str(e))
