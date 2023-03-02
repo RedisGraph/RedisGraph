@@ -327,7 +327,7 @@ static bool _Constraint_Create
 	//--------------------------------------------------------------------------
 
 	c = Constraint_New((struct GraphContext *)gc, ct, s_id, attr_ids, props, n,
-			et);
+			et, &error_msg);
 
 	// failed to add constraint
 	if(c == NULL) {

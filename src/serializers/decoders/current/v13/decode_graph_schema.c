@@ -139,7 +139,7 @@ static void _RdbLoadConstaint
 			GETYPE_NODE : GETYPE_EDGE;
 
 		c = Constraint_New((struct GraphContext*)gc, t, Schema_GetID(s),
-				attr_ids, attr_strs, n, et);
+				attr_ids, attr_strs, n, et, NULL);
 
 		// set constraint status to active
 		// only active constraints are encoded

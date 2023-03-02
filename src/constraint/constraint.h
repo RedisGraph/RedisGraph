@@ -51,7 +51,8 @@ Constraint Constraint_New
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint8_t n_fields,         // number of fields
-	GraphEntityType et        // entity type
+	GraphEntityType et,       // entity type
+	const char **err_msg      // error message
 );
 
 // returns constraint type

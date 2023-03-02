@@ -333,6 +333,10 @@ class testConstraintNodes():
         self.env.assertFalse("New_Attr" in attributes)
         self.env.assertFalse("None_Existing_Attr" in attributes)
 
+        #-----------------------------------------------------------------------
+        # unique constraint missing supporting exact-match index
+        #-----------------------------------------------------------------------
+
     def test05_constraint_create_drop_simultanously(self):
         # make sure there are no constraints in the graph
         for c in list_constraints(self.g):

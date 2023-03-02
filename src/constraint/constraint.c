@@ -61,7 +61,8 @@ Constraint Constraint_New
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint8_t n_fields,         // number of fields
-	GraphEntityType et        // entity type
+	GraphEntityType et,       // entity type
+	const char **err_msg      // error message
 ) {
 	ASSERT(t == CT_UNIQUE || t == CT_EXISTS);
 
@@ -75,7 +76,9 @@ Constraint Constraint_New
 
 		// supporting index is missing, can't create constraint
 		if(idx == NULL) {
-			// TODO: emit appropriate error message
+			if(err_msg != NULL) {
+				*err_msg = "missing supporting exact-match index";
+			}
 			return NULL;
 		}
 
