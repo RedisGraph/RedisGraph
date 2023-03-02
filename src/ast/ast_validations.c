@@ -48,7 +48,7 @@ static bool _ValidateAllShortestPaths
 	// allShortestPaths is invalid in the MATCH predicate
 	if(t == CYPHER_AST_MATCH) {
 		const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(root);
-		return !(predicate != NULL && !_ValidateAllShortestPaths(predicate));
+		return predicate == NULL || _ValidateAllShortestPaths(predicate);
 	}
 
 	// recursively traverse all children
