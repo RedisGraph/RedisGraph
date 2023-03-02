@@ -46,3 +46,4 @@ void RdbLoadGraphSchema_v13
 	RedisModuleIO *rdb,
 	GraphContext *gc
 );
+

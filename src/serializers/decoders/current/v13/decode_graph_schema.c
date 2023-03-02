@@ -5,6 +5,7 @@
  */
 
 #include "decode_v13.h"
+#include "../../../../schema/schema.h"
 
 static void _RdbLoadFullTextIndex
 (
@@ -102,8 +103,6 @@ static void _RdbLoadConstaint
 ) {
 	/* Format:
 	 * constraint type
-	 * entity type
-	 * label / relationship-type
 	 * fields count
 	 * field IDs */
 
@@ -114,18 +113,6 @@ static void _RdbLoadConstaint
 	//--------------------------------------------------------------------------
 
 	ConstraintType t = RedisModule_LoadUnsigned(rdb);
-
-	//--------------------------------------------------------------------------
-	// decode constraint entity type
-	//--------------------------------------------------------------------------
-
-	GraphEntityType et = RedisModule_LoadUnsigned(rdb);
-
-	//--------------------------------------------------------------------------
-	// decode constraint label / relationship-type
-	//--------------------------------------------------------------------------
-
-	int lbl = RedisModule_LoadUnsigned(rdb);
 
 	//--------------------------------------------------------------------------
 	// decode constraint fields count
@@ -148,8 +135,11 @@ static void _RdbLoadConstaint
 	}
 
 	if(!already_loaded) {
-		c = Constraint_New((struct GraphContext*)gc, t, lbl, attr_ids,
-				attr_strs, n, et);
+		GraphEntityType et = (Schema_GetType(s) == SCHEMA_NODE) ?
+			GETYPE_NODE : GETYPE_EDGE;
+
+		c = Constraint_New((struct GraphContext*)gc, t, Schema_GetID(s),
+				attr_ids, attr_strs, n, et);
 
 		// set constraint status to active
 		// only active constraints are encoded

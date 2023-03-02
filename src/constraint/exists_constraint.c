@@ -6,6 +6,8 @@
 
 #include "RG.h"
 #include "constraint.h"
+#include "../query_ctx.h"
+#include "../schema/schema.h"
 #include "../graph/query_graph.h"
 #include "../graph/entities/attribute_set.h"
 
@@ -16,7 +18,7 @@ struct _ExistsConstraint {
 	uint8_t n_attr;                // number of fields
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
-	int lbl;                       // enforced label/relationship-type
+	int schema_id;                 // enforced schema ID
     Attribute_ID *attrs;           // enforced attributes
 	const char **attr_names;       // enforced attribute names
     ConstraintStatus status;       // constraint status
@@ -26,32 +28,52 @@ struct _ExistsConstraint {
 
 typedef struct _ExistsConstraint* ExistsConstraint;
 
+static const char *_node_violation_err_msg =
+	"exists constraint violation, node of type %s missing attribute %s";
+
+static const char *_edge_violation_err_msg =
+	"exists constraint violation, edge of relationship-type %s missing attribute %s";
+
 // enforces mandatory constraint on given entity
 static bool Constraint_EnforceExists
 (
-	const Constraint c,   // constraint to enforce
-	const GraphEntity *e  // enforced entity
+	const Constraint c,    // constraint to enforce
+	const GraphEntity *e,  // enforced entity
+	char **err_msg         // report error message
 ) {
 	ExistsConstraint _c = (ExistsConstraint)(c);
 
-	// TODO: might want to introduce a GraphEntity_ContainsAttributes function
-	// see if entity has all enforced attributes
+	// TODO: switch to attribute matrix
 	for(uint8_t i = 0; i < _c->n_attr; i++) {
 		Attribute_ID attr_id = _c->attrs[i];
 		if(GraphEntity_GetProperty(e, attr_id) == ATTRIBUTE_NOTFOUND) {
-			// missing mandatory attribute
+			// entity violates constraint
+			if(err_msg != NULL) {
+				// compose error message
+				GraphContext *gc = QueryCtx_GetGraphCtx();
+				SchemaType st = (_c->et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+				Schema *s = GraphContext_GetSchemaByID(gc, _c->schema_id, st);
+
+				if(Constraint_GetEntityType(c) == GETYPE_NODE) {
+					asprintf(err_msg, _node_violation_err_msg, Schema_GetName(s),
+							_c->attr_names[i]);
+				} else {
+					asprintf(err_msg, _edge_violation_err_msg, Schema_GetName(s),
+							_c->attr_names[i]);
+				}
+			}
 			return false;
 		}
 	}
 
-	// all mandatory attributes are found
+	// constraint holds for entity
 	return true;
 }
 
 // create a new exists constraint
 Constraint Constraint_ExistsNew
 (
-	LabelID l,                // label/relation ID
+	int schema_id,            // schema ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint8_t n_fields,         // number of fields
@@ -69,10 +91,10 @@ Constraint Constraint_ExistsNew
 	// initialize constraint
 	c->t               = CT_EXISTS;
 	c->et              = et;
-	c->lbl             = l;
 	c->status          = CT_PENDING;
 	c->n_attr          = n_fields;
 	c->enforce         = Constraint_EnforceExists;
+	c->schema_id       = schema_id;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 
 	return (Constraint)c;

@@ -122,8 +122,6 @@ static void _RdbSaveConstraint
 ) {
 	/* Format:
 	 * constraint type
-	 * entity type
-	 * label / relationship-type
 	 * fields count
 	 * field IDs */
 
@@ -138,21 +136,7 @@ static void _RdbSaveConstraint
 	RedisModule_SaveUnsigned(rdb, t);
 
 	//--------------------------------------------------------------------------
-	// encode entity type
-	//--------------------------------------------------------------------------
-
-	GraphEntityType et = Constraint_GetEntityType(c);
-	RedisModule_SaveUnsigned(rdb, et);
-
-	//--------------------------------------------------------------------------
-	// encode label / relationship-type
-	//--------------------------------------------------------------------------
-
-	int lbl = Constraint_GetLabelID(c);
-	RedisModule_SaveUnsigned(rdb, lbl);
-
-	//--------------------------------------------------------------------------
-	// encode number of fields
+	// encode constraint fields count
 	//--------------------------------------------------------------------------
 
 	const Attribute_ID *attrs;
@@ -160,7 +144,7 @@ static void _RdbSaveConstraint
 	RedisModule_SaveUnsigned(rdb, n);
 
 	//--------------------------------------------------------------------------
-	// encode fields
+	// encode constraint fields
 	//--------------------------------------------------------------------------
 
 	for(uint8_t i = 0; i < n; i++) {

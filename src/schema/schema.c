@@ -54,6 +54,15 @@ int Schema_GetID(const Schema *s) {
   return s->id;
 }
 
+// return schema type
+SchemaType Schema_GetType
+(
+	const Schema *s
+) {
+	ASSERT(s != NULL);
+	return s->type;
+}
+
 bool Schema_HasIndices(const Schema *s) {
 	ASSERT(s);
 	return (s->fulltextIdx || s->index);
@@ -203,7 +212,8 @@ static int _Schema_RemoveExactMatchIndex
 	uint n = array_len(s->constraints);
 	for(uint i = 0; i < n; i++) {
 		Constraint c = s->constraints[i];
-		if(Constraint_ContainsAttribute(c, attr_id)) {
+		if(Constraint_GetType(c) == CT_UNIQUE &&
+		   Constraint_ContainsAttribute(c, attr_id)) {
 			ErrorCtx_SetError("Index supports constraint");
 			return INDEX_FAIL;
 		}
@@ -432,7 +442,7 @@ void Schema_AddConstraint
 }
 
 // removes constraint from schema
-bool Schema_RemoveConstraint
+void Schema_RemoveConstraint
 (
 	Schema *s,    // schema
 	Constraint c  // constraint to remove
@@ -447,18 +457,19 @@ bool Schema_RemoveConstraint
 		if(c == s->constraints[i]) {
 			Constraint_IncPendingChanges(c);
 			array_del_fast(s->constraints, i);
-			return true;
+			return;
 		}
 	}
 
-	return false;
+	ASSERT(false);
 }
 
 // enforce all constraints under given schema on entity
 bool Schema_EnforceConstraints
 (
-	const Schema *s,      // schema
-	const GraphEntity *e  // entity to enforce
+	const Schema *s,       // schema
+	const GraphEntity *e,  // entity to enforce
+	char **err_msg         // report error message
 ) {
 	// validations
 	ASSERT(s != NULL);
@@ -469,7 +480,7 @@ bool Schema_EnforceConstraints
 	for(uint i = 0; i < n; i++) {
 		Constraint c = s->constraints[i];
 		if(Constraint_GetStatus(c) != CT_FAILED &&
-		   !Constraint_EnforceEntity(c, e)) {
+		   !Constraint_EnforceEntity(c, e, err_msg)) {
 			// entity failed to pass constraint
 			return false;
 		}

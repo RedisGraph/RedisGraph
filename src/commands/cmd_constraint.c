@@ -15,7 +15,7 @@
 // constraint operation
 typedef enum {
 	CT_CREATE,  // create constraint
-	CT_DELETE   // delete constraint
+	CT_DROP     // drop constraint
 } ConstraintOp;
 
 static inline int _cmp_Attribute_ID
@@ -28,6 +28,7 @@ static inline int _cmp_Attribute_ID
 	return *_a - *_b;
 }
 
+// parse command arguments
 static int Constraint_Parse
 (
 	RedisModuleCtx *ctx,
@@ -48,31 +49,31 @@ static int Constraint_Parse
 	*graph_name = *argv++;
 
 	//--------------------------------------------------------------------------
-	// get constraint operation CREATE/DEL
+	// get constraint operation CREATE/DROP
 	//--------------------------------------------------------------------------
 
 	const char *token = RedisModule_StringPtrLen(*argv++, NULL);
 	if(strcasecmp(token, "CREATE") == 0) {
 		*op = CT_CREATE;
-	} else if(strcasecmp(token, "DEL") == 0) {
-		*op = CT_DELETE;
+	} else if(strcasecmp(token, "DROP") == 0) {
+		*op = CT_DROP;
 	} else {
 		RedisModule_ReplyWithError(ctx, "Invalid constraint operation");
 		return REDISMODULE_ERR;
 	}
 
 	//--------------------------------------------------------------------------
-	// get constraint type UNIQUE/MANDATORY
+	// get constraint type UNIQUE/EXISTS
 	//--------------------------------------------------------------------------
 
 	token = RedisModule_StringPtrLen(*argv++, NULL);
 	if(strcasecmp(token, "UNIQUE") == 0) {
 		*ct = CT_UNIQUE;
-	} else if(strcasecmp(token, "MANDATORY") == 0) {
+	} else if(strcasecmp(token, "EXISTS") == 0) {
 		*ct = CT_EXISTS;
 	} else {
 		RedisModule_ReplyWithError(ctx, "Invalid constraint type");
-		return REDISMODULE_ERR; //currently only unique constraint is supported
+		return REDISMODULE_ERR;
 	}
 
 	//--------------------------------------------------------------------------
@@ -80,7 +81,7 @@ static int Constraint_Parse
 	//--------------------------------------------------------------------------
 
 	token = RedisModule_StringPtrLen(*argv++, NULL);
-	if(strcasecmp(token, "LABEL") == 0) {
+	if(strcasecmp(token, "NODE") == 0) {
 		*type = GETYPE_NODE;
 	} else if(strcasecmp(token, "RELATIONSHIP") == 0) {
 		*type = GETYPE_EDGE;
@@ -102,13 +103,13 @@ static int Constraint_Parse
 	token = RedisModule_StringPtrLen(*argv++, NULL);
 	long long _prop_count;
 	if(strcasecmp(token, "PROPERTIES") == 0) {
-		if (RedisModule_StringToLongLong(*argv++, &_prop_count) != REDISMODULE_OK
-				|| _prop_count < 1 || _prop_count > 254) {
+		if(RedisModule_StringToLongLong(*argv++, &_prop_count) != REDISMODULE_OK
+				|| _prop_count < 1 || _prop_count > 256) {
 			RedisModule_ReplyWithError(ctx, "Invalid property count");
 			return REDISMODULE_ERR;
 		}
 	} else {
-		RedisModule_ReplyWithError(ctx, "7th arg isn't PROPERTIES");
+		RedisModule_ReplyWithError(ctx, "missing PROPERTIES argument");
 		return REDISMODULE_ERR;
 	}
 
@@ -125,8 +126,8 @@ static int Constraint_Parse
 	return REDISMODULE_OK;
 }
 
-// GRAPH.CONSTRAIN <key> DEL UNIQUE/MANDATORY LABEL/RELATIONSHIP label PROPERTIES prop_count prop0, prop1...
-static bool _Constraint_Delete
+// GRAPH.CONSTRAIN <key> DROP UNIQUE/EXISTS [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
+static bool _Constraint_Drop
 (
 	RedisModuleCtx *ctx,    // redis module context
 	RedisModuleString *key, // graph key to operate on
@@ -198,12 +199,12 @@ static bool _Constraint_Delete
 	// acquire graph write lock
 	Graph_AcquireWriteLock(gc->g);
 
-	res = Schema_RemoveConstraint(s, c);
-	ASSERT(res == true);
+	Schema_RemoveConstraint(s, c);
 
 	// release graph R/W lock
 	Graph_ReleaseLock(gc->g);
 
+	// TODO: consider disallowing droping a pending constraint
 	// asynchronously delete constraint
 	Indexer_DropConstraint(c);
 
@@ -218,7 +219,7 @@ cleanup:
 	return res;
 }
 
-// GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY LABEL/RELATIONSHIP label PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAIN <key> CREATE UNIQUE/EXISTS [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
 static bool _Constraint_Create
 (
 	RedisModuleCtx *ctx,    // redis module context
@@ -271,7 +272,7 @@ static bool _Constraint_Create
 		}
 	}
 
-	// duplicates found, faile operation
+	// duplicates found, fail operation
 	if(dups) {
 		res = false;
 		goto cleanup;
@@ -281,8 +282,7 @@ static bool _Constraint_Create
 	// must be aligned with attribute names array
 	for(uint i = 0; i < n; i++) {
 		// get attribute id for attribute name
-		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, props[i]);
-		attr_ids[i] = attr_id;
+		Attribute_ID attr_id = attr_ids[i];
 
 		// update props to hold graph context's attribute name
 		props[i] = GraphContext_GetAttributeString(gc, attr_id);
@@ -315,8 +315,7 @@ static bool _Constraint_Create
 		} else {
 			// previous constraint creation had failed
 			// remove constrain from schema
-			bool constraint_removed = Schema_RemoveConstraint(s, c);
-			ASSERT(constraint_removed == true);
+			Schema_RemoveConstraint(s, c);
 
 			// free failed constraint
 			Constraint_Free(&c);
@@ -368,8 +367,8 @@ cleanup:
 }
 
 // command handler for GRAPH.CONSTRAIN command
-// GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY LABEL/RELATIONSHIP label PROPERTIES prop_count prop0, prop1...
-// GRAPH.CONSTRAIN <key> DEL UNIQUE/MANDATORY LABEL/RELATIONSHIP label PROPERTIES prop_count prop0, prop1...  int Graph_Constraint
+// GRAPH.CONSTRAIN <key> CREATE UNIQUE/EXISTS [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAIN <key> DROP   UNIQUE/EXISTS [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
 int Graph_Constraint
 (
 	RedisModuleCtx *ctx,
@@ -413,17 +412,19 @@ int Graph_Constraint
 		success = _Constraint_Create(ctx, key_name, ct, entity_type, label,
 				prop_count, props_cstr);
 	} else {
-		// CT_DELETE
-		success = _Constraint_Delete(ctx, key_name, ct, entity_type, label,
+		// CT_DROP
+		success = _Constraint_Drop(ctx, key_name, ct, entity_type, label,
 				prop_count, props_cstr);
 	}
 
 	if(success == true) {
 		RedisModule_ReplyWithSimpleString(ctx, "OK");
+		// TODO: see if we can pospone this replication
+		// to the point where the constraint is full enforced.
 		RedisModule_ReplicateVerbatim(ctx);
 		return REDISMODULE_OK;
 	}
 
-	return REDISMODULE_ERR;    
+	return REDISMODULE_ERR;
 }
 

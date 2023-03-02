@@ -323,15 +323,15 @@ void Indexer_EnforceConstraint
 
 	// increase graph reference count
 	// count will be reduced once this task is perfomed
-	// this is done to handle the case where a graph has pending index
-	// population tasks and it is being asked to be deleted
+	// this is done to handle the case where a graph has pending constraint
+	// enforcement tasks and it is being asked to be deleted
 	GraphContext_IncreaseRefCount(gc);
 
 	_indexer_AddTask(INDEXER_CONSTRAINT_ENFORCE, ctx);
 }
 
 // drops constraint asynchronously
-// this function simply place the drop request onto a queue
+// this function simply place the drop constraint request onto the queue
 // eventually the indexer working thread will pick it up and drop the constraint
 void Indexer_DropConstraint
 (

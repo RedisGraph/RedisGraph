@@ -3,7 +3,7 @@ from constraint_utils import *
 
 GRAPH_ID = "constraints"
 
-class testConstraintFlowNodes():
+class testConstraintNodes():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         self.con = self.env.getConnection()
@@ -14,8 +14,8 @@ class testConstraintFlowNodes():
         g = self.g
         g.query("CREATE (:Engineer:Person {name: 'Mike', age: 10, height: 180})")
         g.query("CREATE (:Engineer:Person {name: 'Tim', age: 20, height: 190})")
-        g.query("CREATE (:Person:engineer {name: 'Rick', age: 30, height: 200})")
-        g.query("CREATE (:Person:engineer {name: 'Andrew', age: 36, height: 173})")
+        g.query("CREATE (:Person:Engineer {name: 'Rick', age: 30, height: 200})")
+        g.query("CREATE (:Person:Engineer {name: 'Andrew', age: 36, height: 173})")
         g.query("MATCH (a{name: 'Andrew'}),({name:'Rick'}) CREATE (a)-[:Knows {since:1984}]->(b)")
 
     def test01_create_constraint(self):
@@ -23,8 +23,8 @@ class testConstraintFlowNodes():
         # create constraints
         #-----------------------------------------------------------------------
 
-        # create mandatory node constraint over Person height
-        create_mandatory_node_constraint(self.g, 'Person', 'height')
+        # create exists node constraint over Person height
+        create_exists_node_constraint(self.g, 'Person', 'height')
 
         # create unique node constraint over Person height
         create_unique_node_constraint(self.g, 'Person', 'height')
@@ -32,8 +32,8 @@ class testConstraintFlowNodes():
         # create unique node constraint over Person name and age
         create_unique_node_constraint(self.g, 'Person', 'name', 'age')
 
-        # create mandatory edge constraint over
-        create_mandatory_edge_constraint(self.g, 'Knows', 'since')
+        # create exists edge constraint over
+        create_exists_edge_constraint(self.g, 'Knows', 'since')
 
         # create unique edge constraint over
         create_unique_edge_constraint(self.g, 'Knows', 'since')
@@ -46,10 +46,10 @@ class testConstraintFlowNodes():
 
     def test02_constraint_violations(self):
         # active constrains:
-        # 1. mandatory node constraint over Person height
+        # 1. exists node constraint over Person height
         # 2. unique node constraint over Person height
         # 3. unique node constraint over Person name and age
-        # 4. mandatory edge constraint over Knows since
+        # 4. exists edge constraint over Knows since
         # 5. unique edge constraint over Knows since
 
         g = self.g
@@ -58,14 +58,14 @@ class testConstraintFlowNodes():
         expected_result_set = g.query("MATCH (n) RETURN n ORDER BY ID(n)").result_set
 
         #-----------------------------------------------------------------------
-        # create a node that violates the mandatory constraint
+        # create a node that violates the exists constraint
         #-----------------------------------------------------------------------
 
         try:
             g.query("CREATE (:Person)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, node of type Person missing attribute height", str(e))
 
         #-----------------------------------------------------------------------
         # create a node that violates the unique constraint
@@ -75,7 +75,7 @@ class testConstraintFlowNodes():
             g.query("MATCH (p:Person) CREATE (:Person{height:p.height})")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation on node of type Person", str(e))
 
         #-----------------------------------------------------------------------
         # create a node that violates the composite unique constraint
@@ -85,17 +85,17 @@ class testConstraintFlowNodes():
             g.query("MATCH (p:Person) CREATE (:Person{height:rand(), name:p.name, age:p.age})")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation on node of type Person", str(e))
 
         #-----------------------------------------------------------------------
-        # node update that violates the mandatory constraint
+        # node update that violates the exists constraint
         #-----------------------------------------------------------------------
 
         try:
             g.query("MATCH (n:Person) SET n.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, node of type Person missing attribute height", str(e))
 
         #-----------------------------------------------------------------------
         # node update that violates the unique constraint
@@ -105,7 +105,7 @@ class testConstraintFlowNodes():
             g.query("MATCH (a:Person), (b:Person) WHERE a<>b SET a.height = b.height")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation on node of type Person", str(e))
 
         #-----------------------------------------------------------------------
         # node update that violates the composite unique constraint
@@ -115,17 +115,17 @@ class testConstraintFlowNodes():
             g.query("MATCH (a:Person), (b:Person) WHERE a<>b SET a.name = b.name, a.age = b.age")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation on node of type Person", str(e))
 
         #-----------------------------------------------------------------------
-        # node merge-match that violates the mandatory constraint
+        # node merge-match that violates the exists constraint
         #-----------------------------------------------------------------------
 
         try:
             g.query("MERGE (n:Person {name: 'Andrew'}) ON MATCH SET n.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, node of type Person missing attribute height", str(e))
 
         #-----------------------------------------------------------------------
         # node merge-match that violates the unique constraint
@@ -135,7 +135,7 @@ class testConstraintFlowNodes():
             g.query("MERGE (p:Person {height:180}) ON MATCH SET p.height = 190")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation on node of type Person", str(e))
 
         #-----------------------------------------------------------------------
         # node merge-match that violates the composite unique constraint
@@ -145,17 +145,17 @@ class testConstraintFlowNodes():
             g.query("MERGE (p:Person {name:'Mike'}) ON MATCH SET p.age = 20, p.height = 190")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation on node of type Person", str(e))
 
         #-----------------------------------------------------------------------
-        # node merge-create that violates the mandatory constraint
+        # node merge-create that violates the exists constraint
         #-----------------------------------------------------------------------
 
         try:
             g.query("MERGE (n:Person {name: 'Dor', height: 187}) ON CREATE SET n.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, node of type Person missing attribute height", str(e))
 
         #-----------------------------------------------------------------------
         # node merge-create that violates the unique constraint
@@ -165,7 +165,7 @@ class testConstraintFlowNodes():
             g.query("MERGE (p:Person {name: 'Dor', height:187}) ON CREATE SET p.height = 190")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation on node of type Person", str(e))
 
         #-----------------------------------------------------------------------
         # node merge-create that violates the composite unique constraint
@@ -175,17 +175,17 @@ class testConstraintFlowNodes():
             g.query("MERGE (p:Person {name:'Dor', height:187}) ON CREATE SET p.age = 10, p.name = 'Mike'")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation on node of type Person", str(e))
 
         #-----------------------------------------------------------------------
-        # node merge that violates the mandatory constraint
+        # node merge that violates the exists constraint
         #-----------------------------------------------------------------------
 
         try:
             g.query("MERGE (n:Person {name: 'Dor'})")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, node of type Person missing attribute height", str(e))
 
         #-----------------------------------------------------------------------
         # node merge that violates the unique constraint
@@ -195,7 +195,7 @@ class testConstraintFlowNodes():
             g.query("MERGE (p:Person {name: 'Dor', height:180})")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation on node of type Person", str(e))
 
         #-----------------------------------------------------------------------
         # node merge that violates the composite unique constraint
@@ -205,26 +205,26 @@ class testConstraintFlowNodes():
             g.query("MERGE (p:Person {v:12, name:'Mike', age:10})")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, node of type Person missing attribute height", str(e))
 
         #-----------------------------------------------------------------------
-        # node label update which will conflict with mandatory constraint
+        # node label update which will conflict with exists constraint
         #-----------------------------------------------------------------------
-        # 1. mandatory node constraint over Person height
+        # 1. exists node constraint over Person height
         # 2. unique node constraint over Person height
         # 3. unique node constraint over Person name and age
 
         g.query("CREATE (:Architect)")
 
         #-----------------------------------------------------------------------
-        # node label update which will conflict with mandatory constraint
+        # node label update which will conflict with exists constraint
         #-----------------------------------------------------------------------
 
         try:
             g.query("MATCH (n:Architect) SET n:Person")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, node of type Person missing attribute height", str(e))
 
         # add attributes to Architect which will conflict with both unique constraints
         g.query("MATCH (n:Architect) SET n.name = 'Mike', n.age = 10, n.height = 180")
@@ -237,7 +237,7 @@ class testConstraintFlowNodes():
             g.query("MATCH (n:Architect) SET n:Person")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation on node of type Person", str(e))
 
         # delete Architect
         g.query("MATCH (n:Architect) DELETE n")
@@ -262,9 +262,11 @@ class testConstraintFlowNodes():
         constraints = list_constraints(self.g)
         self.env.assertEqual(len(constraints), 0)
 
+    # TODO: add test which tries to remove index that supports a unique constraint
+
     def test04_invalid_constraint_command(self):
         # constraint create command:
-        # GRAPH.CONSTRAIN <key> CREATE/DEL UNIQUE/MANDATORY LABEL/RELATIONSHIP label PROPERTIES prop_count prop0...
+        # GRAPH.CONSTRAIN <key> CREATE/DEL UNIQUE/EXISTS [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0...
 
         #-----------------------------------------------------------------------
         # invalid constraint operation
@@ -288,7 +290,7 @@ class testConstraintFlowNodes():
         # invalid entity type
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "MANDATORY", "INVALID_ENTITY_TYPE", "New_Label", "PROPERTIES", 1, "New_Attr")
+            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "EXISTS", "INVALID_ENTITY_TYPE", "New_Label", "PROPERTIES", 1, "New_Attr")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Invalid constraint entity type", str(e))
@@ -303,7 +305,7 @@ class testConstraintFlowNodes():
             self.env.assertContains("Unable to drop constraint on, no such constraint.", str(e))
 
         #-----------------------------------------------------------------------
-        # del constraint on non exsisting attribute type
+        # del constraint on non exsisting attribute
         #-----------------------------------------------------------------------
         try:
             drop_unique_node_constraint(self.g, "Person", "None_Existing_Attr")
@@ -398,10 +400,10 @@ class testConstraintFlowNodes():
         self.env.assertEqual(constraints[0].status, "OPERATIONAL")
 
         #-----------------------------------------------------------------------
-        # try to create mandatory constraint over Person name
+        # try to create exists constraint over Person name
         #-----------------------------------------------------------------------
 
-        create_mandatory_node_constraint(self.g, "Person", "name", sync=True)
+        create_exists_node_constraint(self.g, "Person", "name", sync=True)
 
         # make sure constraint creation faile
         constraints = list_constraints(self.g)
@@ -416,7 +418,7 @@ class testConstraintFlowNodes():
         # try deleting a failed constraint
         #-----------------------------------------------------------------------
 
-        drop_mandatory_node_constraint(self.g, "Person", "name")
+        drop_exists_node_constraint(self.g, "Person", "name")
 
         # make sure constraint was deleted
         constraints = list_constraints(self.g)
@@ -427,13 +429,13 @@ class testConstraintFlowNodes():
         self.env.assertEqual(c.status, "OPERATIONAL")
 
         #-----------------------------------------------------------------------
-        # re-create mandatory constraint
+        # re-create exists constraint
         #-----------------------------------------------------------------------
 
         # add missing name attribute to resolve conflict
         self.g.query("MATCH (p:Person) WHERE p.name is NULL SET p.name = 'kramer'")
 
-        create_mandatory_node_constraint(self.g, "Person", "name", sync=True)
+        create_exists_node_constraint(self.g, "Person", "name", sync=True)
 
         # make sure constraint creation succeeded
         constraints = list_constraints(self.g)
@@ -451,9 +453,9 @@ class testConstraintFlowNodes():
             self.g.query("CREATE (:Artist {nickname: 'Banksy'})")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Artist", str(e))
+            self.env.assertContains("unique constraint violation on node of type Artist", str(e))
 
-class testConstraintFlowEdges():
+class testConstraintEdges():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         self.con = self.env.getConnection()
@@ -472,8 +474,8 @@ class testConstraintFlowEdges():
         # create constraints
         #-----------------------------------------------------------------------
 
-        # create mandatory edge constraint over Person height
-        create_mandatory_edge_constraint(self.g, 'Person', 'height')
+        # create exists edge constraint over Person height
+        create_exists_edge_constraint(self.g, 'Person', 'height')
 
         # create unique edge constraint over Person height
         create_unique_edge_constraint(self.g, 'Person', 'height')
@@ -487,9 +489,9 @@ class testConstraintFlowEdges():
         for c in constraints:
             self.env.assertTrue(c.status != 'FAILED')
 
-    def test02_constraint_violations(self):
+    def test02_edge_constraint_violations(self):
         # active constrains:
-        # 1. mandatory edge constraint over Person height
+        # 1. exists edge constraint over Person height
         # 2. unique edge constraint over Person height
         # 3. unique edge constraint over Person name and age
 
@@ -499,14 +501,14 @@ class testConstraintFlowEdges():
         expected_result_set = g.query("MATCH ()-[e]->() RETURN e ORDER BY ID(e)").result_set
 
         #-----------------------------------------------------------------------
-        # create an edge that violates the mandatory constraint
+        # create an edge that violates the exists constraint
         #-----------------------------------------------------------------------
 
         try:
             g.query("CREATE ()-[:Person]->()")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, edge of relationship-type Person missing attribute height", str(e))
 
         #-----------------------------------------------------------------------
         # create an edge that violates the unique constraint
@@ -516,7 +518,7 @@ class testConstraintFlowEdges():
             g.query("MATCH ()-[e:Person]->() CREATE ()-[:Person{height:e.height}]->()")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation, on edge of relationship-type Person", str(e))
 
         #-----------------------------------------------------------------------
         # create an edge that violates the composite unique constraint
@@ -526,17 +528,17 @@ class testConstraintFlowEdges():
             g.query("MATCH ()-[e:Person]->() CREATE ()-[:Person{height:rand(), name:e.name, age:e.age}]->()")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation, on edge of relationship-type Person", str(e))
 
         #-----------------------------------------------------------------------
-        # edge update that violates the mandatory constraint
+        # edge update that violates the exists constraint
         #-----------------------------------------------------------------------
 
         try:
             g.query("MATCH ()-[e:Person]->() SET e.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, edge of relationship-type Person missing attribute height", str(e))
 
         #-----------------------------------------------------------------------
         # edge update that violates the unique constraint
@@ -546,7 +548,7 @@ class testConstraintFlowEdges():
             g.query("MATCH ()-[a:Person]->(), ()-[b:Person]->() WHERE a<>b SET a.height = b.height")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation, on edge of relationship-type Person", str(e))
 
         #-----------------------------------------------------------------------
         # edge update that violates the composite unique constraint
@@ -556,17 +558,17 @@ class testConstraintFlowEdges():
             g.query("MATCH ()-[a:Person]->(), ()-[b:Person]->() WHERE a<>b SET a.name = b.name, a.age = b.age")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation, on edge of relationship-type Person", str(e))
 
         #-----------------------------------------------------------------------
-        # edge merge-match that violates the mandatory constraint
+        # edge merge-match that violates the exists constraint
         #-----------------------------------------------------------------------
 
         try:
             g.query("MERGE ()-[e:Person {name: 'Andrew'}]->() ON MATCH SET e.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, edge of relationship-type Person missing attribute height", str(e))
 
         #-----------------------------------------------------------------------
         # edge merge-match that violates the unique constraint
@@ -576,7 +578,7 @@ class testConstraintFlowEdges():
             g.query("MERGE ()-[e:Person {height:180}]->() ON MATCH SET e.height = 190")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation, on edge of relationship-type Person", str(e))
 
         #-----------------------------------------------------------------------
         # edge merge-match that violates the composite unique constraint
@@ -586,17 +588,17 @@ class testConstraintFlowEdges():
             g.query("MERGE ()-[e:Person {name:'Mike'}]->() ON MATCH SET e.age = 20, e.height = 190")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation, on edge of relationship-type Person", str(e))
 
         #-----------------------------------------------------------------------
-        # edge merge-create that violates the mandatory constraint
+        # edge merge-create that violates the exists constraint
         #-----------------------------------------------------------------------
 
         try:
             g.query("MERGE ()-[e:Person {name: 'Dor', height: 187}]->() ON CREATE SET e.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, edge of relationship-type Person missing attribute height", str(e))
 
         #-----------------------------------------------------------------------
         # edge merge-create that violates the unique constraint
@@ -606,7 +608,7 @@ class testConstraintFlowEdges():
             g.query("MERGE ()-[e:Person {name: 'Dor', height:187}]->() ON CREATE SET e.height = 190")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation, on edge of relationship-type Person", str(e))
 
         #-----------------------------------------------------------------------
         # edge merge-create that violates the composite unique constraint
@@ -616,17 +618,17 @@ class testConstraintFlowEdges():
             g.query("MERGE ()-[e:Person {name:'Dor', height:187}]->() ON CREATE SET e.age = 10, e.name = 'Mike'")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation, on edge of relationship-type Person", str(e))
 
         #-----------------------------------------------------------------------
-        # edge merge that violates the mandatory constraint
+        # edge merge that violates the exists constraint
         #-----------------------------------------------------------------------
 
         try:
             g.query("MERGE ()-[e:Person {name: 'Dor'}]->()")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, edge of relationship-type Person missing attribute height", str(e))
 
         #-----------------------------------------------------------------------
         # edge merge that violates the unique constraint
@@ -636,7 +638,7 @@ class testConstraintFlowEdges():
             g.query("MERGE ()-[e:Person {name: 'Dor', height:180}]->()")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("unique constraint violation, on edge of relationship-type Person", str(e))
 
         #-----------------------------------------------------------------------
         # edge merge that violates the composite unique constraint
@@ -646,7 +648,7 @@ class testConstraintFlowEdges():
             g.query("MERGE ()-[e:Person {v:12, name:'Mike', age:10}]->()")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Person", str(e))
+            self.env.assertContains("exists constraint violation, edge of relationship-type Person missing attribute height", str(e))
 
         # validate graph did not changed
         actual_result_set = self.g.query("MATCH ()-[e]->() RETURN e ORDER BY ID(e)").result_set
@@ -670,7 +672,7 @@ class testConstraintFlowEdges():
 
     def test04_invalid_constraint_command(self):
         # constraint create command:
-        # GRAPH.CONSTRAIN <key> CREATE/DEL UNIQUE/MANDATORY LABEL/RELATIONSHIP label PROPERTIES prop_count prop0...
+        # GRAPH.CONSTRAIN <key> CREATE/DEL UNIQUE/EXISTS [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0...
 
         #-----------------------------------------------------------------------
         # invalid constraint operation
@@ -694,7 +696,7 @@ class testConstraintFlowEdges():
         # invalid entity type
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "MANDATORY", "INVALID_ENTITY_TYPE", "New_Label", "PROPERTIES", 1, "New_Attr")
+            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "EXISTS", "INVALID_ENTITY_TYPE", "New_Label", "PROPERTIES", 1, "New_Attr")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Invalid constraint entity type", str(e))
@@ -804,10 +806,10 @@ class testConstraintFlowEdges():
         self.env.assertEqual(constraints[0].status, "OPERATIONAL")
 
         #-----------------------------------------------------------------------
-        # try to create mandatory constraint over Person name
+        # try to create exists constraint over Person name
         #-----------------------------------------------------------------------
 
-        create_mandatory_edge_constraint(self.g, "Person", "name", sync=True)
+        create_exists_edge_constraint(self.g, "Person", "name", sync=True)
 
         # make sure constraint creation faile
         constraints = list_constraints(self.g)
@@ -822,7 +824,7 @@ class testConstraintFlowEdges():
         # try deleting a failed constraint
         #-----------------------------------------------------------------------
 
-        drop_mandatory_edge_constraint(self.g, "Person", "name")
+        drop_exists_edge_constraint(self.g, "Person", "name")
 
         # make sure constraint was deleted
         constraints = list_constraints(self.g)
@@ -833,13 +835,13 @@ class testConstraintFlowEdges():
         self.env.assertEqual(c.status, "OPERATIONAL")
 
         #-----------------------------------------------------------------------
-        # re-create mandatory constraint
+        # re-create exists constraint
         #-----------------------------------------------------------------------
 
         # add missing name attribute to resolve conflict
         self.g.query("MATCH ()-[e:Person]->() WHERE e.name is NULL SET e.name = 'kramer'")
 
-        create_mandatory_edge_constraint(self.g, "Person", "name", sync=True)
+        create_exists_edge_constraint(self.g, "Person", "name", sync=True)
 
         # make sure constraint creation succeeded
         constraints = list_constraints(self.g)
@@ -857,5 +859,5 @@ class testConstraintFlowEdges():
             self.g.query("CREATE ()-[:Artist {nickname: 'Banksy'}]->()")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("constraint violation on label Artist", str(e))
+            self.env.assertContains("unique constraint violation, on edge of relationship-type Artist", str(e))
 

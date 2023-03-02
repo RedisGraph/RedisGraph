@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "constraint.h"
+#include "../query_ctx.h"
 #include "../index/index.h"
 #include "redisearch_api.h"
 #include "../graph/entities/attribute_set.h"
@@ -17,7 +18,7 @@ struct _UniqueConstraint {
 	uint8_t n_attr;                // number of fields
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
-	int lbl;                       // enforced label/relationship-type
+	int schema_id;                 // enforced schema ID
     Attribute_ID *attrs;           // enforced attributes
 	const char **attr_names;       // enforced attribute names
     ConstraintStatus status;       // constraint status
@@ -28,12 +29,19 @@ struct _UniqueConstraint {
 
 typedef struct _UniqueConstraint* UniqueConstraint;
 
+static const char *_node_violation_err_msg =
+	"unique constraint violation on node of type %s";
+
+static const char *_edge_violation_err_msg =
+	"unique constraint violation, on edge of relationship-type %s";
+
 // enforces unique constraint on given entity
 // returns true if entity confirms with constraint false otherwise
 static bool Constraint_EnforceUniqueEntity
 (
-	const Constraint c,   // constraint to enforce
-	const GraphEntity *e  // enforced entity
+	const Constraint c,    // constraint to enforce
+	const GraphEntity *e,  // enforced entity
+	char **err_msg         // report error message
 ) {
 	// validations
 	ASSERT(c != NULL);
@@ -60,7 +68,10 @@ static bool Constraint_EnforceUniqueEntity
     RSResultsIterator *iter = NULL;
 	const AttributeSet attributes = GraphEntity_GetAttributes(e);
 
-    // create a RediSearch query
+	//--------------------------------------------------------------------------
+	// create a RediSearch query
+	//--------------------------------------------------------------------------
+
     for(uint8_t i = 0; i < _c->n_attr; i++) {
 		Attribute_ID attr_id = _c->attrs[i];
 		const char *field = _c->attr_names[i];
@@ -78,6 +89,7 @@ static bool Constraint_EnforceUniqueEntity
         t = SI_TYPE(*v);
 
 	    if(!(t & SI_INDEXABLE)) {
+			// TODO: see RediSearch MULTI-VALUE index.
 			assert("check with Neo implementations" && false);
 	    	// none indexable type, consult with the none indexed field
 	    	node = RediSearch_CreateTagNode(rs_idx, INDEX_FIELD_NONE_INDEXED);
@@ -116,7 +128,8 @@ static bool Constraint_EnforceUniqueEntity
 	// query RediSearch index
 	//--------------------------------------------------------------------------
 
-	// constraint holds if there are no duplicates, 1 or less index matches
+	// constraint holds if there are no duplicates, 1 or no index matches
+	// TODO: consider testing for the document ID see if equals to entity ID
 	int matches = 0;
     iter = RediSearch_GetResultsIterator(root, rs_idx);
 	for(; matches < 2; matches++) {
@@ -124,7 +137,7 @@ static bool Constraint_EnforceUniqueEntity
 			break;
 		}
 	}
-	holds = (matches <= 1);
+	holds = (matches == 1);
 
 cleanup:
 	if(iter != NULL) {
@@ -133,12 +146,24 @@ cleanup:
 		RediSearch_QueryNodeFree(root);
 	}
 
+	if(holds == false && err_msg != NULL) {
+		// entity violates constraint, set reply error
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		SchemaType st = (_c->et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+		Schema *s = GraphContext_GetSchemaByID(gc, _c->schema_id, st);
+		if(Constraint_GetEntityType(c) == GETYPE_NODE) {
+			asprintf(err_msg, _node_violation_err_msg, Schema_GetName(s));
+		} else {
+			asprintf(err_msg, _edge_violation_err_msg, Schema_GetName(s));
+		}
+	}
+
     return holds;
 }
 
 Constraint Constraint_UniqueNew
 (
-	LabelID l,                // label/relation ID
+	int schema_id,            // schema ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint8_t n_fields,         // number of fields
@@ -157,11 +182,11 @@ Constraint Constraint_UniqueNew
 	// initialize constraint
 	c->t               = CT_UNIQUE;
 	c->et              = et;
-	c->lbl             = l;
 	c->idx             = idx;
-	c->status          = CT_PENDING;
 	c->n_attr          = n_fields;
+	c->status          = CT_PENDING;
 	c->enforce         = Constraint_EnforceUniqueEntity;
+	c->schema_id       = schema_id;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 
 	return (Constraint)c;

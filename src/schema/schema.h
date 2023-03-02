@@ -48,6 +48,7 @@ const char *Schema_GetName
 	const Schema *s
 );
 
+// return schema type
 SchemaType Schema_GetType
 (
 	const Schema *s
@@ -84,8 +85,6 @@ int Schema_AddIndex
 	IndexField *field,  // field to index
 	IndexType type       // type of entities to index
 );
-
-struct GraphContext;
 
 // removes index
 int Schema_RemoveIndex
@@ -172,7 +171,7 @@ void Schema_AddConstraint
 );
 
 // removes constraint from schema
-bool Schema_RemoveConstraint
+void Schema_RemoveConstraint
 (
 	Schema *s,    // schema
 	Constraint c  // constraint to remove
@@ -181,7 +180,8 @@ bool Schema_RemoveConstraint
 // enforce all constraints under given schema on entity
 bool Schema_EnforceConstraints
 (
-	const Schema *s,      // schema
-	const GraphEntity *e  // entity to enforce
+	const Schema *s,       // schema
+	const GraphEntity *e,  // entity to enforce
+	char **err_msg         // report error message
 );
 

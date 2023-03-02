@@ -84,11 +84,13 @@ static void _CommitNodes
 		if(constraint_violation == false) {
 			for(uint j = 0; j < label_count; j++) {
 				Schema *s = GraphContext_GetSchemaByID(gc, labels[j], SCHEMA_NODE);
-				if(!Schema_EnforceConstraints(s, (GraphEntity*)n)) {
+				char *err_msg = NULL;
+				if(!Schema_EnforceConstraints(s, (GraphEntity*)n, &err_msg)) {
 					// constraint violation
+					ASSERT(err_msg != NULL);
 					constraint_violation = true;
-					ErrorCtx_SetError("constraint violation on label %s",
-							Schema_GetName(s));
+					ErrorCtx_SetError("%s", err_msg);
+					free(err_msg);
 					break;
 				}
 			}
@@ -171,10 +173,14 @@ static void _CommitEdges
 		//----------------------------------------------------------------------
 
 		if(constraint_violation == false) {
-			if(!Schema_EnforceConstraints(s, (GraphEntity*)e)) {
-				// constraint violated! break
+			char *err_msg = NULL;
+			if(!Schema_EnforceConstraints(s, (GraphEntity*)e, &err_msg)) {
+				// constraint violated!
+				ASSERT(err_msg != NULL);
 				constraint_violation = true;
-				ErrorCtx_SetError("constraint violation on label %s", s->name);
+				ASSERT(err_msg != NULL);
+				ErrorCtx_SetError("%s", err_msg);
+				free(err_msg);
 			}
 		}
 	}

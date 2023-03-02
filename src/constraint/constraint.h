@@ -19,7 +19,8 @@ typedef struct _Constraint *Constraint;
 typedef bool (*EnforcementCB)
 (
 	const Constraint c,
-	const GraphEntity *e
+	const GraphEntity *e,
+	char **err_msg
 );
 
 // different states a constraint can be at
@@ -65,8 +66,8 @@ GraphEntityType Constraint_GetEntityType
 	const Constraint c  // constraint to query
 );
 
-// returns constraint label/relationship-type
-int Constraint_GetLabelID
+// returns constraint schema ID
+int Constraint_GetSchemaID
 (
 	const Constraint c  // constraint to query
 );
@@ -147,8 +148,9 @@ void Constraint_EnforceEdges
 // false otherwise
 bool Constraint_EnforceEntity
 (
-	Constraint c,             // constraint to enforce
-	const GraphEntity *e      // enforced entity
+	Constraint c,          // constraint to enforce
+	const GraphEntity *e,  // enforced entity
+	char **err_msg         // report error message
 );
 
 // free constraint

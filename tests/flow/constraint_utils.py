@@ -81,30 +81,27 @@ def create_constraint(g, ct_type, entity_type, lbl, *props, sync=False):
 def create_unique_constraint(g, entity_type, lbl, *props, sync=False):
     return create_constraint(g, "unique", entity_type, lbl, *props, sync=sync)
 
-def create_mandatory_constraint(g, entity_type, lbl, *props, sync=False):
-    return create_constraint(g, "mandatory", entity_type, lbl, *props, sync=sync)
+def create_exists_constraint(g, entity_type, lbl, *props, sync=False):
+    return create_constraint(g, "exists", entity_type, lbl, *props, sync=sync)
 
 def create_unique_node_constraint(g, lbl, *props, sync=False):
     # create exact-match index
     create_node_exact_match_index(g, lbl, *props, sync=False)
-    return create_unique_constraint(g, "LABEL", lbl, *props, sync=sync)
+    return create_unique_constraint(g, "NODE", lbl, *props, sync=sync)
 
 def create_unique_edge_constraint(g, rel, *props, sync=False):
     # create exact-match index
     create_edge_exact_match_index(g, rel, *props, sync=False)
     return create_unique_constraint(g, "RELATIONSHIP", rel, *props, sync=sync)
 
-def create_mandatory_node_constraint(g, lbl, *props, sync=False):
-    return create_mandatory_constraint(g, "LABEL", lbl, *props, sync=sync)
+def create_exists_node_constraint(g, lbl, *props, sync=False):
+    return create_exists_constraint(g, "NODE", lbl, *props, sync=sync)
 
-def create_mandatory_edge_constraint(g, lbl, *props, sync=False):
-    return create_mandatory_constraint(g, "RELATIONSHIP", lbl, *props, sync=sync)
+def create_exists_edge_constraint(g, lbl, *props, sync=False):
+    return create_exists_constraint(g, "RELATIONSHIP", lbl, *props, sync=sync)
 
 def drop_constraint(g, ct_type, entity_type, lbl, *props):
-    if(entity_type == "NODE"):
-        entity_type = "LABEL"
-
-    params = ["GRAPH.CONSTRAINT", g.name, "DEL", ct_type, entity_type, lbl, "PROPERTIES", len(props)]
+    params = ["GRAPH.CONSTRAINT", g.name, "DROP", ct_type, entity_type, lbl, "PROPERTIES", len(props)]
     params.extend(props)
     res = g.execute_command(*params)
     return res
@@ -112,20 +109,20 @@ def drop_constraint(g, ct_type, entity_type, lbl, *props):
 def drop_unique_constraint(g, lbl_type, lbl, *props):
     return drop_constraint(g, "unique", lbl_type, lbl, *props)
 
-def drop_mandatory_constraint(g, lbl_type, lbl, *props):
-    return drop_constraint(g, "mandatory", lbl_type, lbl, *props)
+def drop_exists_constraint(g, lbl_type, lbl, *props):
+    return drop_constraint(g, "exists", lbl_type, lbl, *props)
 
 def drop_unique_node_constraint(g, lbl, *props):
-    return drop_unique_constraint(g, "LABEL", lbl, *props)
+    return drop_unique_constraint(g, "NODE", lbl, *props)
 
 def drop_unique_edge_constraint(g, lbl, *props):
     return drop_unique_constraint(g, "RELATIONSHIP", lbl, *props)
 
-def drop_mandatory_node_constraint(g, lbl, *props):
-    return drop_mandatory_constraint(g, "LABEL", lbl, *props)
+def drop_exists_node_constraint(g, lbl, *props):
+    return drop_exists_constraint(g, "NODE", lbl, *props)
 
-def drop_mandatory_edge_constraint(g, lbl, *props):
-    return drop_mandatory_constraint(g, "RELATIONSHIP", lbl, *props)
+def drop_exists_edge_constraint(g, lbl, *props):
+    return drop_exists_constraint(g, "RELATIONSHIP", lbl, *props)
 
 def list_constraints(g):
     q = "CALL db.constraints() YIELD type, label, properties, entitytype, status"

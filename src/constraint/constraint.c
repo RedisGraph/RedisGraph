@@ -16,6 +16,19 @@
 
 #include <stdatomic.h>
 
+// opaque structure representing a constraint
+typedef struct _Constraint {
+	uint8_t n_attr;                // number of fields
+	ConstraintType t;              // constraint type
+	EnforcementCB enforce;         // enforcement function
+	int schema_id;                 // enforced label/relationship-type
+	Attribute_ID *attrs;           // enforced attributes
+	const char **attr_names;       // enforced attribute names
+	ConstraintStatus status;       // constraint status
+	uint _Atomic pending_changes;  // number of pending changes
+	GraphEntityType et;            // entity type
+} _Constraint;
+
 // Extern functions
 
 // create a new unique constraint
@@ -39,25 +52,12 @@ extern Constraint Constraint_ExistsNew
 	GraphEntityType et        // entity type
 );
 
-// opaque structure representing a constraint
-typedef struct _Constraint {
-	uint8_t n_attr;                // number of fields
-	ConstraintType t;              // constraint type
-	EnforcementCB enforce;         // enforcement function
-	int lbl;                       // enforced label/relationship-type
-    Attribute_ID *attrs;           // enforced attributes
-	const char **attr_names;       // enforced attribute names
-    ConstraintStatus status;       // constraint status
-    uint _Atomic pending_changes;  // number of pending changes
-	GraphEntityType et;            // entity type
-} _Constraint;
-
 // create a new constraint
 Constraint Constraint_New
 (
 	struct GraphContext *gc,
 	ConstraintType t,         // type of constraint
-	LabelID l,                // label/relation ID
+	int schema_id,            // schema ID
 	Attribute_ID *fields,     // enforced fields
 	const char **attr_names,  // enforced attribute names
 	uint8_t n_fields,         // number of fields
@@ -70,20 +70,21 @@ Constraint Constraint_New
 	if(t == CT_UNIQUE) {
 		// a unique constraints requires an index
 		// try to get supporting index
-		SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-		Index idx = GraphContext_GetIndexByID((GraphContext*) gc, l, fields,
-				n_fields, IDX_EXACT_MATCH, et);
+		Index idx = GraphContext_GetIndexByID((GraphContext*) gc, schema_id,
+				fields, n_fields, IDX_EXACT_MATCH, et);
 
 		// supporting index is missing, can't create constraint
 		if(idx == NULL) {
+			// TODO: emit appropriate error message
 			return NULL;
 		}
 
 		// create a new unique constraint
-		c = Constraint_UniqueNew(l, fields, attr_names, n_fields, et, idx);
+		c = Constraint_UniqueNew(schema_id, fields, attr_names, n_fields, et,
+				idx);
 	} else {
 		// create a new exists constraint
-		c = Constraint_ExistsNew(l, fields, attr_names, n_fields, et);
+		c = Constraint_ExistsNew(schema_id, fields, attr_names, n_fields, et);
 	}
 
 	ASSERT(Constraint_GetStatus(c) == CT_PENDING);
@@ -110,14 +111,14 @@ GraphEntityType Constraint_GetEntityType
 	return c->et;
 }
 
-// returns constraint label/relationship-type
-int Constraint_GetLabelID
+// returns constraint schema ID
+int Constraint_GetSchemaID
 (
 	const Constraint c  // constraint to query
 ) {
 	ASSERT(c != NULL);
 
-	return c->lbl;
+	return c->schema_id;
 }
 
 // returns constraint status
@@ -260,12 +261,12 @@ void Constraint_EnforceNodes
 	ASSERT(c != NULL);
 	ASSERT(g != NULL);
 
-	LabelID            l          = c->lbl;  // constraint label ID
-	RG_MatrixTupleIter it         = {0};     // matrix iterator
-	bool               holds      = true;    // constraint holds
-	GrB_Index          rowIdx     = 0;       // current row being scanned
-	int                enforced   = 0;       // #entities in current batch
-	int                batch_size = 10000;   // #entities to enforce in one go
+	RG_MatrixTupleIter it         = {0};           // matrix iterator
+	bool               holds      = true;          // constraint holds
+	GrB_Index          rowIdx     = 0;             // current row being scanned
+	int                enforced   = 0;             // #entities in current batch
+	int                schema_id  = c->schema_id;  // constraint schema ID
+	int                batch_size = 10000;         // #entities to enforce
 
 	while(holds) {
 		// lock graph for reading
@@ -274,13 +275,12 @@ void Constraint_EnforceNodes
 		// constraint state changed, abort enforcement
 		// this can happen if for example the following sequance is issued:
 		// 1. CREATE CONSTRAINT...
-		// 2. DELETE CONSTRAINT...
+		// 2. DROP CONSTRAINT...
 		if(Constraint_PendingChanges(c) > 1) {
-			// TODO: Log?
 			break;
 		}
 
-		const RG_Matrix m = Graph_GetLabelMatrix(g, l);
+		const RG_Matrix m = Graph_GetLabelMatrix(g, schema_id);
 		ASSERT(m != NULL);
 
 		// reset number of enforce nodes in batch
@@ -291,9 +291,7 @@ void Constraint_EnforceNodes
 		//----------------------------------------------------------------------
 
 		GrB_Info info;
-		info = RG_MatrixTupleIter_attach(&it, m);
-		ASSERT(info == GrB_SUCCESS);
-		info = RG_MatrixTupleIter_iterate_range(&it, rowIdx, UINT64_MAX);
+		info = RG_MatrixTupleIter_AttachRange(&it, m, rowIdx, UINT64_MAX);
 		ASSERT(info == GrB_SUCCESS);
 
 		//----------------------------------------------------------------------
@@ -306,7 +304,7 @@ void Constraint_EnforceNodes
 		{
 			Node n;
 			Graph_GetNode(g, id, &n);
-			if(!c->enforce(c, (GraphEntity*)&n)) {
+			if(!c->enforce(c, (GraphEntity*)&n, NULL)) {
 				// found node which violate constraint
 				holds = false;
 				break;
@@ -354,15 +352,15 @@ void Constraint_EnforceEdges
 	RG_MatrixTupleIter it = {0};
 
 	// TODO: change to RelationID
-	LabelID   r            = c->lbl;  // edge relationship type ID
-	bool      holds        = true;    // constraint holds
-	EntityID  src_id       = 0;       // current processed row idx
-	EntityID  dest_id      = 0;       // current processed column idx
-	EntityID  edge_id      = 0;       // current processed edge id
-	EntityID  prev_src_id  = 0;       // last processed row idx
-	EntityID  prev_dest_id = 0;       // last processed column idx
-	int       enforced     = 0;       // number of entities enforced in current batch
-	int       batch_size   = 1000;    // max number of entities to enforce in one go
+	LabelID   r            = c->schema_id;  // edge relationship type ID
+	bool      holds        = true;          // constraint holds
+	EntityID  src_id       = 0;             // current processed row idx
+	EntityID  dest_id      = 0;             // current processed column idx
+	EntityID  edge_id      = 0;             // current processed edge id
+	EntityID  prev_src_id  = 0;             // last processed row idx
+	EntityID  prev_dest_id = 0;             // last processed column idx
+	int       enforced     = 0;             // # entities enforced in batch
+	int       batch_size   = 1000;          // max number of entities to enforce
 
 	while(holds) {
 		// lock graph for reading
@@ -373,7 +371,6 @@ void Constraint_EnforceEdges
 		// 1. CREATE CONSTRAINT...
 		// 2. DELETE CONSTRAINT...
 		if(Constraint_PendingChanges(c) > 1) {
-			// TODO: Log?
 			break;
 		}
 
@@ -418,7 +415,7 @@ void Constraint_EnforceEdges
 
 			if(SINGLE_EDGE(edge_id)) {
 				Graph_GetEdge(g, edge_id, &e);
-				if(!c->enforce(c, (GraphEntity*)&e)) {
+				if(!c->enforce(c, (GraphEntity*)&e, NULL)) {
 					holds = false;
 					break;
 				}
@@ -429,7 +426,7 @@ void Constraint_EnforceEdges
 				for(uint i = 0; i < edgeCount; i++) {
 					edge_id = edgeIds[i];
 					Graph_GetEdge(g, edge_id, &e);
-					if(!c->enforce(c, (GraphEntity*)&e)) {
+					if(!c->enforce(c, (GraphEntity*)&e, NULL)) {
 						holds = false;
 						break;
 					}
@@ -470,13 +467,14 @@ void Constraint_EnforceEdges
 // false otherwise
 bool Constraint_EnforceEntity
 (
-	Constraint c,             // constraint to enforce
-	const GraphEntity *e      // enforced entity
+	Constraint c,          // constraint to enforce
+	const GraphEntity *e,  // enforced entity
+	char **err_msg         // report error message
 ) {
 	ASSERT(c != NULL);
 	ASSERT(e != NULL);
 
-	return c->enforce(c, e);
+	return c->enforce(c, e, err_msg);
 }
 
 void Constraint_Free

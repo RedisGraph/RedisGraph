@@ -116,7 +116,7 @@ static void _EmitConstraint
 		if(t == CT_UNIQUE) {
 			*ctx->yield_type = SI_ConstStringVal("unique");
 		} else {
-			*ctx->yield_type = SI_ConstStringVal("mandatory");
+			*ctx->yield_type = SI_ConstStringVal("exists");
 		}
 	}
 
@@ -127,7 +127,7 @@ static void _EmitConstraint
 	if(ctx->yield_label) {
 		SchemaType t = (Constraint_GetEntityType(c) == GETYPE_NODE) ?
 			SCHEMA_NODE : SCHEMA_EDGE;
-		Schema *s = GraphContext_GetSchemaByID(gc, Constraint_GetLabelID(c), t);
+		Schema *s = GraphContext_GetSchemaByID(gc, Constraint_GetSchemaID(c), t);
 		*ctx->yield_label = SI_ConstStringVal((char *)Schema_GetName(s));
 	}
 
