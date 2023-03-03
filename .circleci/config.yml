@@ -548,16 +548,14 @@ workflows:
           <<: *always
       - build_memcheck:
           context: common
-          #@@<<: *on-any-branch
-          <<: *never
+          <<: *on-any-branch
       - build_macos:
           context: common
-          #@@<<: *on-integ-and-version-tags
-          <<: *always
+          #<<: *on-integ-and-version-tags
+          <<: *never
       - platform_build:
           context: common
-          #@@<<: *on-integ-and-version-tags
-          <<: *always
+          <<: *on-integ-and-version-tags
           matrix:
             parameters:
               platform: [bionic, xenial, centos7, rocky8]
@@ -566,7 +564,7 @@ workflows:
           <<: *on-integ-branch
           requires:
             - platform_build
-            - build_macos
+            #- build_macos
       - release_automation:
           context: common
           <<: *on-version-tags
@@ -577,7 +575,7 @@ workflows:
           <<: *on-version-tags
           requires:
             - platform_build
-            - build_macos
+            #- build_macos
       - performance_ci_automation_not_integ:
           context: common
           <<: *not-on-integ-branch
