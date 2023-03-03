@@ -4,3 +4,5 @@ redisgraph-bulk-loader
 click>=6.7
 behave>=1.2
 pathos>=0.2.8
+rltest
+ramp-packer
