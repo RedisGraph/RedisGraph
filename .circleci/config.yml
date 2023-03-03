@@ -503,7 +503,7 @@ workflows:
           <<: *always
           matrix:
             parameters:
-              platform: [bionic, xenial, centos7, centos8]
+              platform: [bionic, xenial, centos7, rocky8]
       - deploy_branch:
           context: common
           <<: *on-integ-branch
