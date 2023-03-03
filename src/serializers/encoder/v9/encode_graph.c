@@ -166,7 +166,7 @@ void RdbSaveGraph_v9(RedisModuleIO *rdb, void *value) {
 
 	if(current_state == ENCODE_STATE_INIT) {
 		// Inital state, populate encoding context header
-		GraphEncodeContext_InitHeader(gc->encoding_context, gc->graph_name, gc->g);
+		GraphEncodeContext_InitHeader(gc->encoding_context, gc->graph_name, gc->g, GraphContext_SchemaCount(gc, SCHEMA_NODE), GraphContext_SchemaCount(gc, SCHEMA_EDGE));
 	}
 
 	// Save header
