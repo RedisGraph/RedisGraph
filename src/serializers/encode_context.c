@@ -81,15 +81,16 @@ static bool _MultiEdgeMatrix(GrB_Matrix R, GrB_Monoid min_monoid) {
 	return multi_edge;
 }
 
-void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_name, Graph *g) {
+void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_name, Graph *g, int labels, int types) {
 	ASSERT(g != NULL);
 	ASSERT(ctx != NULL);
 
 	int l_count = Graph_LabelTypeCount(g);
 	int r_count = Graph_RelationTypeCount(g);
-	if(strcmp(graph_name, "Merchant") == 0) {
-		r_count = 36;
-		l_count = 44;
+	if(labels != l_count || types != r_count) {
+		RedisModule_Log(NULL, "notice", "#labels matrices=%d, #labels schemas=%d, #types matrices=%d, #types schemas=%d", l_count, labels, r_count, types);
+		l_count = labels;
+		r_count = types;
 	}
 
 	GraphEncodeHeader *header = &(ctx->header);

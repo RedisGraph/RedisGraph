@@ -60,7 +60,7 @@ GraphEncodeContext *GraphEncodeContext_New();
 void GraphEncodeContext_Reset(GraphEncodeContext *ctx);
 
 // Populates graph encode context header.
-void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_name, Graph *g);
+void GraphEncodeContext_InitHeader(GraphEncodeContext *ctx, const char *graph_name, Graph *g, int labels, int types);
 
 // Retrieve the graph current encoding phase.
 EncodeState GraphEncodeContext_GetEncodeState(const GraphEncodeContext *ctx);
