@@ -62,21 +62,63 @@ commands:
           shell: /bin/bash -l -eo pipefail
           command: |
             export HOMEBREW_NO_AUTO_UPDATE=1
+            ./deps/readies/bin/getpy2
             ./deps/readies/bin/getaws
             ls -l /usr/local/bin/python* || true
             echo "python3: $(command -v python3)"
             python3 --version
             python3 -m pip list
 
-  setup-prerequisits:
+  install-prerequisites:
+    parameters:
+      redis_version:
+        type: string
+        default: "6"
+      getredis_params:
+        type: string
+        default: ""
+      benchmarks:
+        type: string
+        default: "no"
     steps:
       - setup-automation
+      - run:
+          name: Install remote benchmark python dependencies
+          command: |
+            if [[ "<<parameters.benchmarks>>" == "yes" ]]; then
+              python3 -m pip install -r ./tests/benchmarks/requirements.txt
+            fi
       - run:
           name: System setup
           shell: /bin/bash -l -eo pipefail
           command: |
             ./sbin/system-setup.py
             python3 -m pip list
+      - run:
+          name: Install Redis
+          shell: /bin/bash -l -eo pipefail
+          command: |
+            python3 ./deps/readies/bin/getredis -v '<<parameters.redis_version>>' --force <<parameters.getredis_params>>
+            redis-server --version
+      - run:
+          name: Install remote benchmark tool dependencies
+          command: |
+            if [[ "<<parameters.benchmarks>>" == "yes" ]]; then
+              VERSION=0.14.8 ./deps/readies/bin/getterraform
+            fi
+
+  save-tests-logs:
+    steps:
+      - run:
+          name: Cleanup test log dir
+          command: |
+            rm -f tests/flow/logs/*.{aof,rdb}
+            rm -f tests/tck/logs/*.{aof,rdb}
+          when: always
+      - store_artifacts:
+          path: tests/flow/logs
+      - store_artifacts:
+          path: tests/tck/logs
 
   persist-artifacts:
     steps:
@@ -187,24 +229,26 @@ commands:
 jobs:
   build:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - restore_cache:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
-          command: bash -l -c "make all package"
+          shell: /bin/bash -l -eo pipefail
+          command: make all package
       - save_cache:
           paths:
             - deps/GraphBLAS/build
           key: v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
-          command: bash -l -c "make test"
+          shell: /bin/bash -l -eo pipefail
+          command: make test
       - early-return-for-forked-pull-requests
       - run:
           name: Persist Artifact for CI benchmarks
@@ -219,32 +263,33 @@ jobs:
 
   coverage:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - restore_cache:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build for coverage
-          command: bash -l -c "make COV=1"
+          shell: /bin/bash -l -eo pipefail
+          command: make COV=1
       - run:
           name: Test with coverage
           shell: /bin/bash -l -eo pipefail
           command: |
             make test COV=1
             make cov-upload
-          no_output_timeout: 30m
+          no_output_timeout: 45m
 
   build_memcheck:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - restore_cache:
           keys:
             - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
@@ -278,21 +323,23 @@ jobs:
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - restore_cache:
           keys:
             - GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Build
+          shell: /bin/bash -l -eo pipefail
           command: |
-            bash -l -c "make all package"
+            make all package
       - save_cache:
           paths:
             - deps/GraphBLAS/build
           key: GraphBLAS-mac-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
           name: Test
-          command: bash -l -c "make test"
+          shell: /bin/bash -l -eo pipefail
+          command: make test
       - store_artifacts:
           path: ~/project/tests/flow/logs
       - persist-artifacts
@@ -309,7 +356,7 @@ jobs:
 
   deploy_branch:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - attach_workspace:
           at: artifacts
@@ -323,7 +370,7 @@ jobs:
 
   deploy_release:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - attach_workspace:
           at: artifacts
@@ -337,8 +384,10 @@ jobs:
 
   release_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-buster
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
+      - early-returns
+      - early-return-for-forked-pull-requests
       - checkout
       - setup-automation
       - run:
@@ -347,8 +396,10 @@ jobs:
 
   nightly_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-buster
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
+      - early-returns
+      - early-return-for-forked-pull-requests
       - checkout
       - setup-automation
       - run:
@@ -357,22 +408,22 @@ jobs:
 
   performance_ci_automation_not_integ:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout
-      - setup-prerequisits
+      - install-prerequisites
       - attach_workspace:
           at: /workspace
       - benchmark-automation
 
   performance_ci_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout
-      - setup-prerequisits
+      - install-prerequisites
       - attach_workspace:
           at: /workspace
       - run:
@@ -383,11 +434,11 @@ jobs:
 
   nightly_performance_automation:
     docker:
-      - image: redisfab/rmbuilder:6.2.5-x64-bionic
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
     steps:
       - early-returns
       - checkout-all
-      - setup-prerequisits
+      - install-prerequisites
       - attach_workspace:
           at: /workspace
       - run:
@@ -473,9 +524,15 @@ on-integ-and-version-tags: &on-integ-and-version-tags
     tags:
       only: /^v[0-9].*/
 
-context: &context
-  context:
-    - common
+on-perf-tags: &on-perf-tags
+  filters:
+    branches:
+      only:
+        - master
+        - /^\d+\.\d+.*$/
+        - /^perf-.*$/
+    tags:
+      only: /^v[0-9].*/
 
 #----------------------------------------------------------------------------------------------------------------------------------
 
