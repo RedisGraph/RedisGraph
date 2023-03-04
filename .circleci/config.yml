@@ -554,7 +554,7 @@ workflows:
       - build:
           <<: *not-on-integ-branch
       - platform_build:
-          #@<<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
           <<: *always
           context: common
           matrix:
@@ -567,13 +567,15 @@ workflows:
       - coverage:
           <<: *always
       - build_memcheck:
-          <<: *on-any-branch
+          #@@<<: *on-any-branch
+          <<: *never
           context: common
       - upload-artifacts:
           name: upload-artifacts-to-staging-lab
           staging-lab: "1"
           context: common
-          <<: *on-integ-branch
+          #@@<<: *on-integ-branch
+          <<: *always
           requires:
             - platform_build
             #- build_macos
@@ -595,7 +597,8 @@ workflows:
           requires:
             - build
       - performance_ci_automation:
-          <<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
+          <<: *never
           context: common
           requires:
             - platform_build
