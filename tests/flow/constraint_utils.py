@@ -43,7 +43,7 @@ def get_constraint(g, ct_type, entity_type, lbl, *props):
             WHERE type = '{ct_type}' AND label = '{lbl}' AND {props_filter}
             RETURN type, label, properties, entitytype, status"""
 
-    result = g.query(q).result_set
+    result = g.query(q, read_only=True).result_set
     c = None
     if len(result) == 1:
         row = result[0]
@@ -64,7 +64,7 @@ def wait_on_constraint(g, ct_type, entity_type, lbl, *props):
     AND {props_filter} RETURN count(1)"""
 
     while True:
-        result = g.query(q)
+        result = g.query(q, read_only=True)
         if result.result_set[0][0] == 0:
             break
         time.sleep(0.5) # sleep 500ms
@@ -126,7 +126,7 @@ def drop_exists_edge_constraint(g, lbl, *props):
 
 def list_constraints(g):
     q = "CALL db.constraints() YIELD type, label, properties, entitytype, status"
-    results = g.query(q).result_set
+    results = g.query(q, read_only=True).result_set
 
     constraints = []
     for row in results:

@@ -169,9 +169,9 @@ class testReplication(FlowTestsBase):
         env.assertEquals(replica_result, result)
 
         # make sure both primary and replica have the same set of constraints
-        result = origin.query(q).result_set
-        replica_result = replica.query(q, read_only=True).result_set
-        env.assertEquals(replica_result, result)
+        origin_result = list_constraints(origin)
+        replica_result = list_constraints(replica)
+        env.assertEquals(replica_result, origin_result)
 
         # drop constraint
         drop_unique_node_constraint(origin, "L", "id")
@@ -191,15 +191,7 @@ class testReplication(FlowTestsBase):
         source_con.execute_command("WAIT", "1", "0")
 
         # make sure both primary and replica have the same set of constraints
-        origin_result = origin.query(q).result_set
-        replica_result = replica.query(q, read_only=True).result_set
-        env.assertEquals(replica_result, origin_result)
-
-        # the WAIT command forces master slave sync to complete
-        source_con.execute_command("WAIT", "1", "0")
-
-        # make sure both primary and replica have the same set of constraints
-        origin_result = origin.query(q).result_set
-        replica_result = replica.query(q, read_only=True).result_set
+        origin_result = list_constraints(origin)
+        replica_result = list_constraints(replica)
         env.assertEquals(replica_result, origin_result)
 
