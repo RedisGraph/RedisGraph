@@ -244,7 +244,8 @@ commands:
 jobs:
   build:
     docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+      # bionic to be used in performance tests
+      - image: redisfab/rmbuilder:6.2.7-x64-bionic
     resource_class: large
     parameters:
       persist:
@@ -424,6 +425,8 @@ jobs:
           command: |
             mkdir -p bin
             ln -s /workspace/artifacts bin/artifacts
+            du -ah --apparent-size /workspace
+            unzip `ls /workspace/artifacts/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip | grep -v rce` -d /workspace/
       - benchmark-automation
 
   performance_ci_automation:
@@ -439,6 +442,9 @@ jobs:
       - run:
           name: Unzip module artifact
           command: |
+            mkdir -p bin
+            ln -s /workspace/artifacts bin/artifacts
+            du -ah --apparent-size /workspace
             unzip `ls /workspace/artifacts/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip | grep -v rce` -d /workspace/
       - benchmark-automation
 
