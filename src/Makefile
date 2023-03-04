@@ -277,10 +277,10 @@ package: redisgraph.so
 	@$(ROOT)/sbin/pack.sh
 
 upload-release:
-	$(SHOW)RELEASE=1 ./sbin/upload-artifacts
+	@RELEASE=1 $(ROOT)/sbin/upload-artifacts
 
 upload-artifacts:
-	$(SHOW)SNAPSHOT=1 ./sbin/upload-artifacts
+	@SNAPSHOT=1 $(ROOT)/sbin/upload-artifacts
 
 .PHONY: package upload-artifacts upload-release
 

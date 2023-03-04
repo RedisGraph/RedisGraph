@@ -208,7 +208,7 @@ commands:
         default: $CIRCLE_USERNAME
       module_path:
         type: string
-        default: ~/workspace/$MODULE_ARTIFACT
+        default: /workspace/$MODULE_ARTIFACT
     steps:
       - run:
           name: Install remote benchmark tool dependencies
@@ -439,7 +439,7 @@ jobs:
       - run:
           name: Unzip module artifact
           command: |
-            unzip `ls /workspace/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip | grep -v rce` -d /workspace/
+            unzip `ls /workspace/artifacts/$PACKAGE_NAME.Linux-ubuntu18.04-x86_64.*.zip | grep -v rce` -d /workspace/
       - benchmark-automation
 
   nightly_performance_automation:
@@ -554,8 +554,7 @@ workflows:
       - build:
           <<: *not-on-integ-branch
       - platform_build:
-          #@@<<: *on-integ-and-version-tags
-          <<: *always
+          <<: *on-integ-and-version-tags
           context: common
           matrix:
             parameters:
@@ -567,15 +566,13 @@ workflows:
       - coverage:
           <<: *always
       - build_memcheck:
-          #@@<<: *on-any-branch
-          <<: *never
+          <<: *on-any-branch
           context: common
       - upload-artifacts:
           name: upload-artifacts-to-staging-lab
           staging-lab: "1"
           context: common
-          #@@<<: *on-integ-branch
-          <<: *always
+          <<: *on-integ-branch
           requires:
             - platform_build
             #- build_macos
@@ -597,8 +594,7 @@ workflows:
           requires:
             - build
       - performance_ci_automation:
-          #@@<<: *on-integ-and-version-tags
-          <<: *never
+          <<: *on-integ-and-version-tags
           context: common
           requires:
             - platform_build
