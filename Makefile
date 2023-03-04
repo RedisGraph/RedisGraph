@@ -1,6 +1,7 @@
-.PHONY: all parser clean package docker docker_push docker_alpine builddocs localdocs deploydocs test benchmark test_valgrind help
+.PHONY: all parser clean package docker docker_push docker_alpine builddocs localdocs deploydocs test benchmark test_valgrind help \
+	upload-release upload-artifacts
 
-define HELP
+define HELPTEXT
 make all              # Build everything
   DEBUG=1               # Build for debugging
   COV=1                 # Build for coverage analysis (implies DEBUG=1)
@@ -22,25 +23,31 @@ make format           # Apply source code formatting
 endef
 
 all:
-	@$(MAKE) -C ./src all
+	@$(MAKE) -C src all
 
 clean:
-	@$(MAKE) -C ./src $@
+	@$(MAKE) -C src $@
 
 clean-parser:
-	$(MAKE) -C ./deps/libcypher-parser distclean
+	$(MAKE) -C deps/libcypher-parser distclean
 
 clean-graphblas:
-	$(MAKE) -C ./deps/GraphBLAS clean
+	$(MAKE) -C deps/GraphBLAS clean
 
 package: all
-	@$(MAKE) -C ./src package
+	@$(MAKE) -C src package
+
+upload-release:
+	@$(MAKE) -C src upload-release
+
+upload-artifacts:
+	@$(MAKE) -C src upload-artifacts
 
 docker:
-	@$(MAKE) -C ./build/docker
+	@$(MAKE) -C build/docker
 
 docker_alpine:
-	@$(MAKE) -C ./build/docker OSNICK=alpine3
+	@$(MAKE) -C build/docker OSNICK=alpine3
 
 docker_push: docker
 	@docker push redislabs/redisgraph:latest
@@ -55,30 +62,29 @@ deploydocs: builddocs
 	@mkdocs gh-deploy
 
 test:
-	@$(MAKE) -C ./src test
+	@$(MAKE) -C src test
 
 benchmark:
-	@$(MAKE) -C ./src benchmark
+	@$(MAKE) -C src benchmark
 
 memcheck:
-	@$(MAKE) -C ./src memcheck
+	@$(MAKE) -C src memcheck
 
 cov-upload:
-	@$(MAKE) -C ./src cov-upload
+	@$(MAKE) -C src cov-upload
 
 format:
 	astyle -Q --options=.astylerc -R --ignore-exclude-errors "./*.c,*.h,*.cpp"
 
-ifneq ($(HELP),)
+ifneq ($(HELPTEXT),)
 ifneq ($(filter help,$(MAKECMDGOALS)),)
 HELPFILE:=$(shell mktemp /tmp/make.help.XXXX)
 endif
 endif
 
 help:
-	$(file >$(HELPFILE),$(HELP))
+	$(file >$(HELPFILE),$(HELPTEXT))
 	@echo
 	@cat $(HELPFILE)
 	@echo
 	@-rm -f $(HELPFILE)
-

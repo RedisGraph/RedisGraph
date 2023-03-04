@@ -19,17 +19,7 @@ ADD . /build
 RUN ./deps/readies/bin/getbash
 {% endif %}
 RUN ./deps/readies/bin/getupdates
-RUN ./deps/readies/bin/getpy3
-RUN ./sbin/system-setup.py
-
-RUN if command -v apt-get &> /dev/null; then \
-        locale-gen --purge en_US.UTF-8 ;\
-        dpkg-reconfigure -f noninteractive locales ;\
-    fi
-
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US.UTF-8
-ENV LC_ALL=en_US.UTF-8
+RUN VERBOSE=1 ./sbin/setup
 
 RUN make
 

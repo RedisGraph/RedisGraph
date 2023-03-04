@@ -13,25 +13,23 @@ import paella
 #----------------------------------------------------------------------------------------------
 
 class RedisGraphSetup(paella.Setup):
-    def __init__(self, nop=False):
-        paella.Setup.__init__(self, nop)
+    def __init__(self, args):
+        paella.Setup.__init__(self, args.nop)
 
     def common_first(self):
         self.install_downloaders()
-        self.pip_install("wheel virtualenv")
-        self.pip_install("setuptools --upgrade")
 
-        self.run("%s/bin/enable-utf8" % READIES)
+        self.run(f"{READIES}/bin/enable-utf8", sudo=self.os != 'macos')
         self.install("git automake libtool autoconf")
 
     def debian_compat(self):
         self.install("locales")
-        self.run("%s/bin/getgcc" % READIES)
+        self.run(f"{READIES}/bin/getgcc")
         self.install("peg")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
-        self.run("%s/bin/getepel" % READIES)
+        self.run("%s/bin/getepel" % READIES, sudo=True)
         self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")
         self.install_peg()
@@ -42,7 +40,7 @@ class RedisGraphSetup(paella.Setup):
 
     def macos(self):
         self.install_gnu_utils()
-        self.run("%s/bin/getgcc --modern" % READIES)
+        self.run(f"{READIES}/bin/getgcc --modern")
         self.install("redis")
         self.install_peg()
 
@@ -55,8 +53,9 @@ class RedisGraphSetup(paella.Setup):
         self.install("valgrind")
 
     def common_last(self):
+        self.run("%s/bin/getaws" % READIES)
         self.install("astyle", _try=True) # fails for centos7
-        self.run("%s/bin/getcmake" % READIES)
+        self.run(f"{self.python} {READIES}/bin/getcmake --usr"),
         self.run(f"{self.python} {READIES}/bin/getrmpytools --reinstall --ramp-version pypi:2.5.2")
 
         self.pip_install("-r tests/requirements.txt")
@@ -70,15 +69,15 @@ class RedisGraphSetup(paella.Setup):
             tar xzf peg.tar.gz
             cd peg-0.1.18
             make
-            make install MANDIR=.
+            $(command -v sudo) make install MANDIR=.
             cd /tmp
-            rm -rf $build_dir /tmp/pegman
+            rm -rf $build_dir
             """)
 
 #----------------------------------------------------------------------------------------------
 
 parser = argparse.ArgumentParser(description='Set up system for build.')
-parser.add_argument('-n', '--nop', action="store_true", help='no operation')
+parser.add_argument('-n', '--nop', action="store_true", help='No operation')
 args = parser.parse_args()
 
-RedisGraphSetup(nop=args.nop).setup()
+RedisGraphSetup(args).setup()

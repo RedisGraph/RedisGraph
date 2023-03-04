@@ -275,7 +275,14 @@ endif
 
 package: redisgraph.so
 	@$(ROOT)/sbin/pack.sh
-.PHONY: package
+
+upload-release:
+	@RELEASE=1 $(ROOT)/sbin/upload-artifacts
+
+upload-artifacts:
+	@SNAPSHOT=1 $(ROOT)/sbin/upload-artifacts
+
+.PHONY: package upload-artifacts upload-release
 
 #----------------------------------------------------------------------------------------------
 
