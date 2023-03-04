@@ -210,7 +210,7 @@ static bool _Constraint_Drop
 
 cleanup:
 	if(res == false) {
-		RedisModule_ReplyWithError(ctx, "Unable to drop constraint on, no such constraint.");
+		RedisModule_ReplyWithError(ctx, "Unable to drop constraint, no such constraint.");
 	}
 
 	// decrease graph reference count

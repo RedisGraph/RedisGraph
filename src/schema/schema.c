@@ -212,7 +212,8 @@ static int _Schema_RemoveExactMatchIndex
 	uint n = array_len(s->constraints);
 	for(uint i = 0; i < n; i++) {
 		Constraint c = s->constraints[i];
-		if(Constraint_GetType(c) == CT_UNIQUE &&
+		if(Constraint_GetStatus(c) != CT_FAILED &&
+		   Constraint_GetType(c) == CT_UNIQUE   &&
 		   Constraint_ContainsAttribute(c, attr_id)) {
 			ErrorCtx_SetError("Index supports constraint");
 			return INDEX_FAIL;

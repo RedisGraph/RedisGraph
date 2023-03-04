@@ -1,4 +1,5 @@
 from common import *
+from index_utils import *
 from constraint_utils import *
 
 GRAPH_ID = "constraints"
@@ -262,8 +263,6 @@ class testConstraintNodes():
         constraints = list_constraints(self.g)
         self.env.assertEqual(len(constraints), 0)
 
-    # TODO: add test which tries to remove index that supports a unique constraint
-
     def test04_invalid_constraint_command(self):
         # constraint create command:
         # GRAPH.CONSTRAIN <key> CREATE/DEL UNIQUE/EXISTS [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0...
@@ -302,7 +301,7 @@ class testConstraintNodes():
             drop_unique_node_constraint(self.g, "None_Existing_Label", "age")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Unable to drop constraint on, no such constraint.", str(e))
+            self.env.assertContains("Unable to drop constraint, no such constraint.", str(e))
 
         #-----------------------------------------------------------------------
         # del constraint on non exsisting attribute
@@ -311,7 +310,7 @@ class testConstraintNodes():
             drop_unique_node_constraint(self.g, "Person", "None_Existing_Attr")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Unable to drop constraint on, no such constraint.", str(e))
+            self.env.assertContains("Unable to drop constraint, no such constraint.", str(e))
 
         #-----------------------------------------------------------------------
         # create constraint which already exists
@@ -458,6 +457,38 @@ class testConstraintNodes():
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("unique constraint violation on node of type Artist", str(e))
+
+    def test08_remove_supporting_index(self):
+        # try to create unique index without a supporting index
+        try:
+            create_constraint(self.g, "unique", "node", "Author", "nickname", "birthdate")
+            self.assertFalse(1)
+        except ResponseError as e:
+            self.env.assertContains("missing supporting exact-match index", str(e))
+
+        # create supporting index
+        create_node_exact_match_index(self.g, "Author", "nickname", "birthdate")
+
+        # create unique index
+        create_constraint(self.g, "unique", "node", "Author", "nickname", "birthdate")
+
+        # try to drop supporting index
+        try:
+            drop_exact_match_index(self.g, "Author", "nickname")
+        except ResponseError as e:
+            self.env.assertContains("Index supports constraint", str(e))
+
+        try:
+            drop_exact_match_index(self.g, "Author", "birthdate")
+        except ResponseError as e:
+            self.env.assertContains("Index supports constraint", str(e))
+
+        # drop constraint
+        drop_unique_node_constraint(self.g, "Author", "nickname", "birthdate")
+
+        # try to drop supporting index
+        drop_exact_match_index(self.g, "Author", "nickname")
+        drop_exact_match_index(self.g, "Author", "birthdate")
 
 class testConstraintEdges():
     def __init__(self):
@@ -712,7 +743,7 @@ class testConstraintEdges():
             drop_unique_edge_constraint(self.g, "None_Existing_Label", "age")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Unable to drop constraint on, no such constraint.", str(e))
+            self.env.assertContains("Unable to drop constraint, no such constraint.", str(e))
 
         #-----------------------------------------------------------------------
         # del constraint on non exsisting attribute type
@@ -721,7 +752,7 @@ class testConstraintEdges():
             drop_unique_edge_constraint(self.g, "Person", "None_Existing_Attr")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Unable to drop constraint on, no such constraint.", str(e))
+            self.env.assertContains("Unable to drop constraint, no such constraint.", str(e))
 
         #-----------------------------------------------------------------------
         # create constraint which already exists
