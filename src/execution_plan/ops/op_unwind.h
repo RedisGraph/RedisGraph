@@ -18,7 +18,7 @@ typedef struct {
 	SIValue list;          // list which the unwind operation is performed on
 	AR_ExpNode *exp;       // arithmetic expression (evaluated as an SIArray)
 	int unwindRecIdx;      // update record at this index
-	bool from_foreach;     // constructed in the construction of a Foreach op
+	bool from_foreach;     // part of the Foreach execution-plan pattern
 	Record currentRecord;  // record to clone and add a value from the list
 } OpUnwind;
 

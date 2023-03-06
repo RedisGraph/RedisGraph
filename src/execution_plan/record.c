@@ -15,12 +15,15 @@ static void _RecordPropagateEntry
 (
 	Record dest,
 	Record src,
-	uint idx
+	uint idx,
+	bool make_volatile
 ) {
 	Entry e = src->entries[idx];
 	dest->entries[idx] = e;
 	// if the entry is a scalar, make sure both Records don't believe they own the allocation
-	if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&src->entries[idx].value.s);
+	if(make_volatile && e.type == REC_TYPE_SCALAR) {
+		SIValue_MakeVolatile(&src->entries[idx].value.s);
+	}
 }
 
 // this function is currently unused
@@ -125,7 +128,7 @@ void Record_Merge
 		RecordEntryType b_type = b->entries[i].type;
 
 		if(a_type == REC_TYPE_UNKNOWN && b_type != REC_TYPE_UNKNOWN) {
-			_RecordPropagateEntry(a, b, i);
+			_RecordPropagateEntry(a, b, i, true);
 		}
 	}
 }
@@ -133,12 +136,13 @@ void Record_Merge
 void Record_TransferEntries
 (
 	Record *to,
-	Record from
+	Record from,
+	bool make_volatile
 ) {
 	uint len = Record_length(from);
 	for(uint i = 0; i < len; i++) {
 		if(from->entries[i].type != REC_TYPE_UNKNOWN) {
-			_RecordPropagateEntry(*to, from, i);
+			_RecordPropagateEntry(*to, from, i, make_volatile);
 		}
 	}
 }

@@ -71,7 +71,8 @@ void Record_Merge
 void Record_TransferEntries
 (
 	Record *to,
-	Record from
+	Record from,
+	bool make_volatile
 );
 
 // returns number of entries record can hold

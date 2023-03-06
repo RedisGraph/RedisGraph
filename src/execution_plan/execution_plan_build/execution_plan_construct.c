@@ -225,11 +225,12 @@ static void _buildForeachOp
 	AST *body_ast = rm_malloc(sizeof(AST));
 	body_ast->root = new_root;
 	body_ast->free_root = true;
-	body_ast->anot_ctx_collection = plan->ast_segment->anot_ctx_collection;
-	body_ast->referenced_entities = raxClone(plan->ast_segment->referenced_entities);
+	body_ast->parse_result = NULL;
 	body_ast->ref_count = ref_count;
 	body_ast->params_parse_result = NULL;
-	body_ast->parse_result = NULL;
+	body_ast->anot_ctx_collection = plan->ast_segment->anot_ctx_collection;
+	body_ast->referenced_entities =
+		raxClone(plan->ast_segment->referenced_entities);
 
 	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	embedded_plan->ast_segment = body_ast;
@@ -267,6 +268,9 @@ static void _buildForeachOp
 	QueryCtx_SetAST(body_ast);
 	ExecutionPlan_PopulateExecutionPlan(embedded_plan);
 	QueryCtx_SetAST(orig_ast);
+
+	// free the artificial body array (not its components)
+	array_free(clauses);
 
 	// create the Foreach op, and update (outer) plan root
 	OpBase *foreach = NewForeachOp(plan);

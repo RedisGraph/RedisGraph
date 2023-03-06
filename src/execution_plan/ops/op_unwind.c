@@ -87,10 +87,10 @@ static OpResult UnwindInit
 			(OpBase_Type(opBase->children[0]) == OPType_ARGUMENT_LIST);
 	}
 
-	// TODO: After execution-plan freeing refactoring (and changing plan of the
-	// ArgumentList of Foreach to outer plan) - if the child plan is different
-	// from this op's plan, check that its record mapping is indeed a subset of
-	// this op's plan's record-mapping
+	// TODO: After execution-plan freeing refactoring (and changing the plan of
+	// the ArgumentList of Foreach to outer plan) - if the child plan is
+	// different from this op's plan, check that its record mapping is indeed a
+	// subset of this op's plan's record-mapping
 
 	return OP_OK;
 }
@@ -141,7 +141,7 @@ pull:
 			// mapping of the current plan (embedded inside Foreach), which
 			// extends the consumed record
 			op->currentRecord = OpBase_CreateRecord((OpBase *)op);
-			Record_TransferEntries(&op->currentRecord, r);
+			Record_TransferEntries(&op->currentRecord, r, false);
 		} else {
 			// free current record to accommodate new record
 			OpBase_DeleteRecord(op->currentRecord);
