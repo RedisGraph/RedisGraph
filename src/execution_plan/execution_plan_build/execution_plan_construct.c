@@ -207,11 +207,11 @@ static void _buildForeachOp
 	//--------------------------------------------------------------------------
 	// construct AST from Foreach body
 	uint nclauses = cypher_ast_foreach_nclauses(clause);
-	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, nclauses);
+	const cypher_astnode_t **clauses = array_new(cypher_astnode_t *, nclauses);
 	for(uint i = 0; i < nclauses; i++) {
 		const cypher_astnode_t *inner_clause =
 			cypher_ast_foreach_get_clause(clause, i);
-		array_append(clauses, cypher_ast_clone(inner_clause));
+		array_append(clauses, inner_clause);
 	}
 
 	struct cypher_input_range range = {0};
@@ -225,20 +225,15 @@ static void _buildForeachOp
 	AST *body_ast = rm_malloc(sizeof(AST));
 	body_ast->root = new_root;
 	body_ast->free_root = true;
-	body_ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
+	body_ast->anot_ctx_collection = plan->ast_segment->anot_ctx_collection;
 	body_ast->referenced_entities = raxClone(plan->ast_segment->referenced_entities);
 	body_ast->ref_count = ref_count;
 	body_ast->params_parse_result = NULL;
 	body_ast->parse_result = NULL;
 
-	body_ast->root = plan->ast_segment->root;
-	AST_AnnotateNamedPaths(body_ast);
-	body_ast->root = new_root;
-
 	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	embedded_plan->ast_segment = body_ast;
 	embedded_plan->record_map = raxClone(plan->record_map);
-
 
 	//--------------------------------------------------------------------------
 	// build Unwind op
