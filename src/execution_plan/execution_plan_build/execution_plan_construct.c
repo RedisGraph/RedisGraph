@@ -207,10 +207,10 @@ static void _buildForeachOp
 	//--------------------------------------------------------------------------
 	// construct AST from Foreach body
 	uint nclauses = cypher_ast_foreach_nclauses(clause);
-	const cypher_astnode_t **clauses = array_new(cypher_astnode_t *, nclauses);
+	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, nclauses);
 	for(uint i = 0; i < nclauses; i++) {
-		const cypher_astnode_t *inner_clause =
-			cypher_ast_foreach_get_clause(clause, i);
+		cypher_astnode_t *inner_clause =
+			(cypher_astnode_t *)cypher_ast_foreach_get_clause(clause, i);
 		array_append(clauses, inner_clause);
 	}
 
