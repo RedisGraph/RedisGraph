@@ -272,31 +272,40 @@ static void _buildCallSubqueryPlan
 	// -------------------------------------------------------------------------
 	// build an AST from the subquery, and set it
 	// -------------------------------------------------------------------------
+	// save the original AST
 	AST *orig_ast = QueryCtx_GetAST();
-	AST subquery_ast = {
-		.anot_ctx_collection = orig_ast->anot_ctx_collection,
-		.free_root = true,
-		.referenced_entities = orig_ast->referenced_entities,
-	};
+
+	// create an AST from the body of the subquery
+	AST *subquery_ast = rm_malloc(sizeof(AST));
+	subquery_ast->free_root = true;
+	subquery_ast->parse_result = NULL;
+	subquery_ast->params_parse_result = NULL;
+	subquery_ast->anot_ctx_collection = orig_ast->anot_ctx_collection;
+	subquery_ast->referenced_entities = raxClone(orig_ast->referenced_entities);
+
+	uint *ref_count = rm_malloc(sizeof(uint));
+	*ref_count = 1;
+	subquery_ast->ref_count = ref_count;
 
 	// build the query, to be the root of the temporary AST
-	uint child_count = cypher_astnode_nchildren(clause);
-	cypher_astnode_t *children[child_count];
+	uint clause_count = cypher_astnode_nchildren(clause);
+	cypher_astnode_t *clauses[clause_count];
+
 	// Explicitly collect all child nodes from the clause.
-	for(uint i = 0; i < child_count; i ++) {
-		children[i] = (cypher_astnode_t *)cypher_astnode_get_child(clause, i);
+	for(uint i = 0; i < clause_count; i ++) {
+		clauses[i] = (cypher_astnode_t *)cypher_astnode_get_child(clause, i);
 	}
 	struct cypher_input_range range = {0};
 
-	subquery_ast.root = cypher_ast_query(NULL,
+	subquery_ast->root = cypher_ast_query(NULL,
 							0,
-							children,
-							child_count,
-							children,
-							child_count,
+							clauses,
+							clause_count,
+							clauses,
+							clause_count,
 							range);
 
-	QueryCtx_SetAST(&subquery_ast);
+	QueryCtx_SetAST(subquery_ast);
 
 	// -------------------------------------------------------------------------
 	// build the embedded execution plan corresponding to the subquery
@@ -332,7 +341,8 @@ static void _buildCallSubqueryPlan
 	bool is_returning = OpBase_Type(embedded_plan->root) == OPType_RESULTS;
 
 	// -------------------------------------------------------------------------
-	// get rid of the Results op if it exists
+	// Get rid of the Results op if it exists.
+	// Bind returning projection to the outer-scope execution-plan.
 	// -------------------------------------------------------------------------
 	if(is_returning) {
 		// remove the Results op from the execution-plan
@@ -345,21 +355,18 @@ static void _buildCallSubqueryPlan
 				OPType_PROJECT);
 
 			// bind the returning projection to the outer plan
-			// TODO: Do this later (after affecting the projections), and modify this so that the Project record_offsets
-			// change accordingly to the new plan, and it call OpBase_Modifies() on all its projections!!
-			// ExecutionPlan_bindOpToPlan(returning_proj, plan);
+				// TODO: Do this later (after affecting the projections), and modify this so that the Project record_offsets
+				// change accordingly to the new plan, and it calls OpBase_Modifies() on all its projections!!
+				// ExecutionPlan_bindOpToPlan(returning_proj, plan);
 			ProjectBindToPlan(returning_proj, plan);
 			goto skip_projections_modification;
 		}
 
-		// project all existing entries according to the following transformation: 'alias' --> '_alias'
-		// (later to be changed to some un-parsable character)
-		// Just make an Arithmetic_Expression with `AR_EXP_FromASTNode(cypher_ast_identifier(alias))` or using `AR_EXP_NewVariableOperandNode()`
-		// for every alias in the outer record-mapping, in which the resolved_name is the new name for it.
-		// remember to keep this mapping, so that we can go the other way around (at the moment just add `_` and remove it later)
+		// Project all existing entries according to the following transformation: 'alias' --> '@alias'.
+		// If an alias is imported, it needs to stay in the record mapping (already a projection in the Project op).
 
 		uint mapping_size = raxSize(ExecutionPlan_GetMappings(plan));
-		// create an array containing coupled names ("a1", "_a1", "a2", "_a2", ...)
+		// create an array containing coupled names ("a1", "@a1", "a2", "@a2", ...)
 		// of the original names and the internal (temporary) representation of them.
 		char **names = array_new(char *, mapping_size);
 		AR_ExpNode **new_exps = array_new(AR_ExpNode *, mapping_size);
@@ -372,7 +379,7 @@ static void _buildCallSubqueryPlan
 			sprintf(curr, "%.*s", (int)it.key_len, it.key);
 			// think about working with sds
 			char *internal_rep = calloc(1, it.key_len + 2);
-			sprintf(internal_rep, "_%.*s", (int)it.key_len, it.key);
+			sprintf(internal_rep, "@%.*s", (int)it.key_len, it.key);
 			// append original name
 			array_append(names, curr);
 			// append internal (temporary) name
@@ -463,16 +470,10 @@ static void _buildCallSubqueryPlan
 		}
 
 		// bind the RETURN projection (last one) to the outer plan ('plan')
-			// find it (not necessarily the last op - SKIP, LIMIT, ORDER BY etc.)
-			// bind it: `op->plan = plan`
 		ExecutionPlan_bindOpToPlan(returning_proj, plan);
 
-
-		// DONE! Make sure it works..
-		// TODO: Extend this to support SKIP, LIMIT, ORDER BY, UNION (AND ANY
-		// COMBINATION OF THEM!)
-		// Notice the differences in execution-plans for every clause, specifically
-		// UNION is very different.
+		// TODO: Extend this to support UNION as well (unique exec-plan, which
+		// this mechanism is not yet good for)
 	}
 
 skip_projections_modification:

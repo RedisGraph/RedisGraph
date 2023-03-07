@@ -252,6 +252,27 @@ class testCallSubqueryFlow():
         self.env.assertEquals(res.result_set[0][0],
         Node(label='N', properties={'name': 'Raz', 'v': 1}))
 
+    def test09_temp_ret_eager(self):
+        """Temporary test for the returning eager subquery case"""
+
+        # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
+        # execute a query with an eager and returning subquery inside
+        res = graph.query(
+            """
+            CALL {
+                MATCH (n:N)
+                SET n.v = n.v + 1
+                RETURN n
+            }
+            RETURN n ORDER BY n.v ASC
+            """
+        )
+
+        # make sure the wanted actions occurred
+        self.env.assertEquals(res.properties_set, 2)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz', 'v': 2}))
+        self.env.assertEquals(res.result_set[1][0], Node(label='N', properties={'name': 'Raz', 'v': 5}))
+
 
 
     # TODO: Add this test when eager returning clauses are supported

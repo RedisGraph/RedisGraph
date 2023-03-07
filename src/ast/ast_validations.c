@@ -1216,7 +1216,7 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	}
 
 	if(!_ValidateShortestPaths(body)) {
-		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
+		ErrorCtx_SetError("RedisGraph currently only supports shortestPaths in WITH or RETURN clauses");
 		return AST_INVALID;
 	}
 
@@ -2027,7 +2027,7 @@ AST_Validation AST_Validate_Query
 	}
 
 	if(!_ValidateShortestPaths(body)) {
-		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
+		ErrorCtx_SetError("RedisGraph currently only supports shortestPaths in WITH or RETURN clauses");
 		return AST_INVALID;
 	}
 
