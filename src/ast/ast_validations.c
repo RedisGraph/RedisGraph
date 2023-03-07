@@ -1210,10 +1210,14 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	}
 
 	// validate positions of allShortestPaths
-	bool invalid = _ValidateAllShortestPaths(body);
-	if(invalid) {
+	if(!_ValidateAllShortestPaths(body)) {
 		ErrorCtx_SetError("RedisGraph support allShortestPaths only in match clauses");
-		return VISITOR_BREAK;
+		return AST_INVALID;
+	}
+
+	if(!_ValidateShortestPaths(body)) {
+		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
+		return AST_INVALID;
 	}
 
 	// validate that the with imports (if exist) are simple, i.e., 'WITH a'
