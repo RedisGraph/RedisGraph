@@ -100,6 +100,12 @@ XXH32_hash_t GraphContext_GetVersion
 	const GraphContext *gc
 );
 
+// estimate graph's memory usage
+size_t GraphContext_MemoryUsage
+(
+	const GraphContext *gc
+);
+
 //------------------------------------------------------------------------------
 // Schema API
 //------------------------------------------------------------------------------

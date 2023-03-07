@@ -63,19 +63,35 @@ static int _GraphContextType_AuxLoad(RedisModuleIO *rdb, int encver, int when) {
 	return REDISMODULE_OK;
 }
 
-static void _GraphContextType_Free(void *value) {
+// returns graph's memory usage
+// usage:
+// 127.0.0.1:6379> MEMORY USAGE <graph_key>
+// (integer) 146533720
+static size_t _GraphContextType_MemUsage
+(
+	const void* gc
+) {
+	return GraphContext_MemoryUsage((const GraphContext*)gc);
+}
+
+static void _GraphContextType_Free
+(
+	void *value
+) {
 	GraphContext *gc = value;
 	GraphContext_DecreaseRefCount(gc);
 }
 
 int GraphContextType_Register(RedisModuleCtx *ctx) {
 	RedisModuleTypeMethods tm = { 0 };
-	tm.free               =  _GraphContextType_Free;
-	tm.version            =  REDISMODULE_TYPE_METHOD_VERSION;
-	tm.rdb_load           =  _GraphContextType_RdbLoad;
-	tm.rdb_save           =  _GraphContextType_RdbSave;
-	tm.aux_save           =  _GraphContextType_AuxSave;
-	tm.aux_load           =  _GraphContextType_AuxLoad;
+
+	tm.free               =  _GraphContextType_Free          ;
+	tm.version            =  REDISMODULE_TYPE_METHOD_VERSION ;
+	tm.rdb_load           =  _GraphContextType_RdbLoad       ;
+	tm.rdb_save           =  _GraphContextType_RdbSave       ;
+	tm.aux_save           =  _GraphContextType_AuxSave       ;
+	tm.aux_load           =  _GraphContextType_AuxLoad       ;
+	tm.mem_usage          =  _GraphContextType_MemUsage      ;
 	tm.aux_save_triggers  =  REDISMODULE_AUX_BEFORE_RDB | REDISMODULE_AUX_AFTER_RDB;
 
 	GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata",
