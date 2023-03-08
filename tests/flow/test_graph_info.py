@@ -1,18 +1,14 @@
 # GRAPH.INFO mostly being useful only concurrently, requires concurrent tests.
-from common import *
-from pathos.pools import ProcessPool as Pool
 import csv
 import time
-from click.testing import CliRunner
-from redisgraph_bulk_loader.bulk_insert import bulk_insert
-
 from common import *
-import time
 from enum import Enum
+from click.testing import CliRunner
+from pathos.pools import ProcessPool as Pool
+from redisgraph_bulk_loader.bulk_insert import bulk_insert
 
 GRAPH_ID = "GRAPH_INFO_TEST"
 GRAPH_ID_2 = "GRAPH_INFO_TEST_2"
-
 
 # GRAPH.INFO commands
 INFO_QUERIES_CURRENT_COMMAND = 'GRAPH.INFO QUERIES CURRENT'
@@ -49,7 +45,6 @@ ALL_READONLY_KINDS = [
     ReadOnlyQueryKind.PROFILE
 ]
 
-
 class WriteQueryKind(Enum):
     QUERY = 0
     PROFILE = 1
@@ -63,7 +58,6 @@ class QueryFailureSimulationKind(Enum):
     TIMEOUT = 0
     FAIL_RUNTIME = 1
     FAIL_EARLY = 2
-
 
 def thread_execute_command(cmd_and_args, _args):
     env = Env(decodeResponses=True)
@@ -111,8 +105,6 @@ def get_total_executing_queries_from_info_cmd_result(info):
     return info[1][5]
 
 def get_unix_timestamp_milliseconds():
-    import time
-
     return (int)(time.time_ns() / 1000000)
 
 class _testGraphInfoFlowBase(FlowTestsBase):
@@ -227,84 +219,6 @@ class _testGraphInfoFlowBase(FlowTestsBase):
             waited_time += wait_step
             if waited_time >= timeout:
                 return None
-    
-
-    # Runs a read-only query. A read-only query isn't just based on whether
-    # it is run via GRAPH.RO_QUERY but it can also be an ordinary GRAPH.QUERY
-    # that just doesn't change anything. In the code we analyse the AST of the
-    # received query and so determine whether it is a write or read-only query.
-    #
-    # That said, we should check that both of the cases lead to the same result.
-    #
-    # This uses the execute_command instead of graph methods as the graph
-    # methods silently perform other queries which break the statistics.
-    #
-    # Additionally, this function may simulate a problem for a query.
-    # This is useful for counting the number of failed queries.
-    def _run_readonly_query(self, kind: ReadOnlyQueryKind, problem_kind=None):
-        timeout = 0
-        query = 'MATCH (pppp) RETURN pppp'
-        if kind == ReadOnlyQueryKind.EXPLAIN:
-            query = 'CREATE (p:Person) RETURN p'
-
-        if problem_kind == QueryFailureSimulationKind.TIMEOUT:
-            assert kind != ReadOnlyQueryKind.EXPLAIN, \
-                'the EXPLAIN queries never time out'
-            query = LONG_CALCULATION_QUERY
-            timeout = 1
-        elif problem_kind == QueryFailureSimulationKind.FAIL_RUNTIME:
-            assert kind != ReadOnlyQueryKind.EXPLAIN, \
-                'the EXPLAIN queries never fail at runtime'
-            # Such queries will be successfully parsed and will require a
-            # traversal during the execution. The parser can't know here whether
-            # it may fail or not, so it successfully builds an execution plan
-            # for the query and begins the execution.
-            query = 'MATCH (p:Person), (p2:Person) RETURN p2.age / p.age'
-        elif problem_kind == QueryFailureSimulationKind.FAIL_EARLY:
-            # Parsing error is an example of a "fail early" thing.
-            # Another example is when the parser immediately sees the
-            # division by zero.
-            query = 'RETURN 1/0'
-        elif problem_kind is not None:
-            assert False, \
-                f"Unknown failure simulation kind: {problem_kind}"
-
-        if kind == ReadOnlyQueryKind.RO_QUERY:
-            return self.conn.execute_command('GRAPH.RO_QUERY', GRAPH_ID, query, 'TIMEOUT', timeout)
-        elif kind == ReadOnlyQueryKind.QUERY:
-            return self.conn.execute_command('GRAPH.QUERY', GRAPH_ID, query, 'TIMEOUT', timeout)
-        elif kind == ReadOnlyQueryKind.EXPLAIN:
-            graph = Graph(self.conn, GRAPH_ID)
-            return graph.explain(query)
-        elif kind == ReadOnlyQueryKind.PROFILE:
-            return self.conn.execute_command('GRAPH.PROFILE', GRAPH_ID, query, 'TIMEOUT', timeout)
-        else:
-            assert False, \
-                f"Unknown read only kind: {kind}"
-
-    def _run_write_query(self,
-    kind: WriteQueryKind, problem_kind=None):
-        query = 'CREATE (m:Miracle) RETURN m'
-        timeout = 0
-
-        if problem_kind == QueryFailureSimulationKind.TIMEOUT:
-            query = 'UNWIND (range(0, 10000000)) AS x WITH x CREATE(b:Book { id: x })'
-            timeout = 1
-        elif problem_kind == QueryFailureSimulationKind.FAIL_RUNTIME:
-            query = 'CREATE (t:T { n: 0 }), (t2:T { n: 20 }) RETURN t2.n / t.n'
-        elif problem_kind == QueryFailureSimulationKind.FAIL_EARLY:
-            query = 'RETURN 1/0'
-        elif problem_kind is not None:
-            assert False, \
-                f"Unknown failure simulation kind: {problem_kind}"
-
-        if kind == WriteQueryKind.QUERY:
-            return self.conn.execute_command('GRAPH.QUERY', GRAPH_ID, query, 'TIMEOUT', timeout)
-        elif kind == WriteQueryKind.PROFILE:
-            return self.conn.execute_command('GRAPH.PROFILE', GRAPH_ID, query, 'TIMEOUT', timeout)
-        else:
-            assert False, \
-                f"Unknown write kind: {kind}"
 
 class testGraphInfoFlow(_testGraphInfoFlowBase):
     def __init__(self):
@@ -329,7 +243,8 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         info = self._wait_till_queries_start_being_executed(timeout=10)
         self.env.assertIsNotNone(info)
 
-        waiter.wait()
+        # get() is blocking, so the result will return only once the query is
+        # finished being executed
         results = waiter.get().result_set
         # Validate the GRAPH.QUERY result.
         self.env.assertEquals(results[0][0], 90000)
