@@ -249,3 +249,86 @@ class testGraphInfoFlow(_testGraphInfoFlowBase):
         # Validate the GRAPH.QUERY result.
         self.env.assertEquals(results[0][0], 90000)
         self._assert_one_executing_query(info, query, assert_receive_time=query_issue_timestamp_ms)
+
+    def test03_graph_info_queries_prev_and_current(self):
+        prev_query_string = """CYPHER end=100 RETURN reduce(sum = 0, n IN range(1, $end) | sum ^ n)"""
+        graph = Graph(self.conn, GRAPH_ID)
+
+        results = graph.query(prev_query_string)
+        self.env.assertEquals(results.result_set[0][0], 0, depth=1)
+
+        query_issue_timestamp_ms = get_unix_timestamp_milliseconds()
+        query = """UNWIND (range(0, 10000000)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
+        waiter = run_concurrently((query), thread_run_query)
+
+        # Wait until the concurrent query (UNWIND) starts execution: until
+        # another redis client with the query above issues a query and it
+        # starts being executed.
+        self.env.assertTrue(self._wait_for_number_of_clients(2), depth=1)
+        # Got two clients connected.
+
+        # Wait until the query starts execution and get the statistics.
+        info = self._wait_till_queries_start_being_executed(prev=True, timeout=10)
+        self.env.assertIsNotNone(info)
+
+        waiter.wait()
+        results = waiter.get().result_set
+        # Validate the GRAPH.QUERY result.
+        self.env.assertEquals(results[0][0], 90000)
+        # The very last query in the combined output should the query
+        # which is currently being executed.
+        current_query = list_to_dict(list_to_dict(info)['Queries'][-1])
+        self.env.assertGreaterEqual(current_query['Received at'], query_issue_timestamp_ms, depth=1)
+        self.env.assertEqual(current_query['Stage'], QUERY_STAGE_EXECUTING, depth=1)
+        self.env.assertEqual(current_query['Graph name'], GRAPH_ID, depth=1)
+        self.env.assertEqual(current_query['Query'], query, depth=1)
+
+        # The query right before the current should be the last executed
+        # (finished) query which we know as we issued it right before the
+        # current one.
+        prev_query = list_to_dict(list_to_dict(info)['Queries'][-2])
+        self.env.assertLessEqual(prev_query['Received at'], query_issue_timestamp_ms, depth=1)
+        self.env.assertEqual(prev_query['Stage'], QUERY_STAGE_FINISHED, depth=1)
+        self.env.assertEqual(prev_query['Graph name'], GRAPH_ID, depth=1)
+        self.env.assertEqual(prev_query['Query'], prev_query_string, depth=1)
+
+    def test04_non_existing_subcommand_handling(self):
+        """
+        This ensures that the non-existing commands are handled well.
+        """
+        try:
+            results = self.conn.execute_command('GRAPH.INFO TY47ADASD')
+            assert False, \
+                f"Shouldn't have reached with this point, result: {results}"
+        except redis.exceptions.ResponseError as e:
+            self.env.assertEquals(UNKNOWN_SUBCOMMAND, str(e), depth=1)
+
+    def test05_change_finished_queries_limit(self):
+        """
+        Perform two queries and check that one(the last) appears in the
+        PREV output. It should be there as we've just raised the limit to one.
+        Also, we should check that this is the last query there, not the first,
+        as we use a circular buffer for that purpose and we want to keep track
+        of only the "last N" entries.
+        """
+        MAX_QUERIES = 1
+
+        self._recreate_graph_empty()
+        result = self.conn.execute_command('GRAPH.CONFIG', 'set', 'MAX_INFO_QUERIES', MAX_QUERIES)
+        self.env.assertIn("OK", str(result), depth=1)
+
+        queries = [
+            """UNWIND (range(0, 10)) AS x WITH x AS x WHERE (x / 7) = 1 RETURN x""",
+            """UNWIND (range(0, 10)) AS x WITH x AS x WHERE (x / 7) = 1 RETURN x""",
+        ]
+
+        for query in queries:
+            graph = Graph(self.conn, GRAPH_ID)
+            results = graph.query(query)
+            self.env.assertEquals(results.result_set[0][0], 7, depth=1)
+
+        # Check that the query stored is the last execute one.
+        results = self.conn.execute_command(INFO_QUERIES_PREV_COMMAND)
+        self.env.assertEquals(len(results[1]), MAX_QUERIES)
+        last_query = results[1][-1]
+        self.env.assertEquals(last_query[-5], queries[-1])
