@@ -5,6 +5,7 @@
  */
 
 #include "rmalloc.h"
+
 #include "../errors.h"
 
 #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
@@ -17,9 +18,9 @@
 // in which case when the allocation is freed we will deduct
 // actual allocated size from 'n_alloced' which can lead to negative values if
 // bytes requested < bytes allocated
-static __thread int64_t n_alloced; 
+static __thread int64_t n_alloced;
 static int64_t mem_capacity;  // maximum memory consumption for thread
- 
+
 // function pointers which hold the original address of RedisModule_Alloc*
 static void (*RedisModule_Free_Orig)(void *ptr);
 static void * (*RedisModule_Alloc_Orig)(size_t bytes);
@@ -44,7 +45,7 @@ static inline void _nmalloc_increment(int64_t n_bytes) {
 		// set n_alloced to MIN to avoid further out of memory exceptions
 		// TODO: consider switching to double -inf
 		n_alloced = INT64_MIN;
-		
+
 		// throw exception cause memory limit exceeded
 		ErrorCtx_SetError("Query's mem consumption exceeded capacity");
 	}
@@ -86,12 +87,12 @@ void rm_free_with_capacity(void *ptr) {
 void rm_set_mem_capacity(int64_t cap) {
 	bool is_capped = (mem_capacity > 0); // current allocator applies memory cap
 	bool should_cap = (cap > 0); // should we use a memory capped allocator
-	
+
 	// The local enforced capacity should be set
 	// before resetting function pointers
 	// for instance if we're switching to capped allocator
 	// we want the memory cap to be set
-	mem_capacity = cap; 
+	mem_capacity = cap;
 	if(should_cap && !is_capped) {
 		// store the function pointer original values and change them
 		// to the capped version

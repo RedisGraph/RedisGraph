@@ -2,6 +2,8 @@ from common import *
 
 redis_con = None
 redis_graph = None
+# Number of options available.
+NUMBER_OF_OPTIONS = 15
 
 
 class testConfig(FlowTestsBase):
@@ -24,8 +26,7 @@ class testConfig(FlowTestsBase):
         # Try reading all configurations
         config_name = "*"
         response = redis_con.execute_command("GRAPH.CONFIG GET " + config_name)
-        # 12 configurations should be reported
-        self.env.assertEquals(len(response), 13)
+        self.env.assertEquals(len(response), NUMBER_OF_OPTIONS)
 
     def test02_config_get_invalid_name(self):
         global redis_graph

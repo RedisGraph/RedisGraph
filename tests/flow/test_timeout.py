@@ -90,7 +90,7 @@ class testQueryTimeout():
                 # multi index scans
                 "MATCH (a:Person), (b:Person), (c:Person) WHERE a.age > 40 AND b.height < 150 AND c.weight = 50 RETURN a,b,c"
                 ]
-        
+
         timeouts = []
 
         # run each query with timeout and limit
@@ -104,7 +104,7 @@ class testQueryTimeout():
                 print(q)
                 print(res.run_time_ms)
                 self.env.assertTrue(False)
-        
+
         for i, q in enumerate(queries):
             try:
                 # query is expected to timeout
@@ -139,13 +139,13 @@ class testQueryTimeout():
         self.env.stop()
 
         try:
-            env = Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
-            env.getConnection().ping()
+            Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
             self.env.assertTrue(False)
         except:
             self.env.assertTrue(True)
 
     def test06_error_timeout_default_higher_than_timeout_max(self):
+        self.env.stop()
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
 
         # get current timeout configuration
@@ -197,16 +197,14 @@ class testQueryTimeout():
             for query in queries:
                 try:
                     # The query is expected to timeout
-                    res = redis_graph.query(query)
-                    print(query)
-                    print(res.run_time_ms)
+                    redis_graph.query(query)
                     self.env.assertTrue(False)
                 except ResponseError as error:
                     self.env.assertContains("Query timed out", str(error))
 
             # disable timeout_default, timeout_max should be enforced
             redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_DEFAULT", 0)
-        
+
         # revert timeout_default to 10
         redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_DEFAULT", 10)
 
@@ -225,7 +223,7 @@ class testQueryTimeout():
             except ResponseError as error:
                 self.env.assertContains("The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value", str(error))
 
-    def test09_fallback(self):
+    def test_09_fallback(self):
         self.env.flush()
         self.env.stop()
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1")
@@ -253,7 +251,7 @@ class testQueryTimeout():
             except:
                 self.env.assertTrue(False)
 
-    def test10_set_old_timeout_when_new_config_set(self):
+    def test09_set_old_timeout_when_new_config_set(self):
         redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_DEFAULT", 10)
 
         # try to set timeout
@@ -265,7 +263,7 @@ class testQueryTimeout():
 
     # When timeout occurs while executing a PROFILE command, only the error-message
     # should return to user
-    def test11_profile_no_double_response(self):
+    def test10_profile_no_double_response(self):
         # reset timeout params to default
         self.env.flush()
         self.env.stop()
@@ -281,12 +279,12 @@ class testQueryTimeout():
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             self.env.assertTrue(True)
-        
+
         # make sure no pending result exists
         res = redis_graph.query("RETURN 1")
         self.env.assertEquals(res.result_set[0][0], 1)
 
-    def test12_concurrent_timeout(self):
+    def test11_concurrent_timeout(self):
         # skip test if we're running under Valgrind
         if VALGRIND or "to_thread" not in dir(asyncio):
             self.env.skip() # valgrind is not working correctly with multi processing
