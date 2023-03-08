@@ -16,7 +16,7 @@
 #include "../../datatypes/array.h"
 #include "../../util/json_encoder.h"
 #include "../deps/oniguruma/src/oniguruma.h"
-#include<math.h>
+#include <math.h>
 
 // toString supports only integer, float, string, boolean, point, duration, 
 // date, time, localtime, localdatetime or datetime values
@@ -688,7 +688,7 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 	return tokens;
 }
 
-#define SWAP(T, a, b) do { T tmp = a; a = b; b = tmp; } while (0)
+#define __SWAP(T, a, b) do { T tmp = a; a = b; b = tmp; } while (0)
 
 /*
 
@@ -749,7 +749,9 @@ static double levenshtein_distance(
 	double deletionWeight,
 	double substitutionWeight
 ) {
-	double distance_array[len2+1];
+
+	// dynamically allocate the array since it might be large
+	double *distance_array = (double *)rm_malloc((len2+1)*sizeof(double));
 	distance_array[0] = 0;
 
 	// initialize the first row
@@ -773,10 +775,12 @@ static double levenshtein_distance(
 		}
 	}
 
-	return distance_array[len2];
+	double res = distance_array[len2];
+	rm_free(distance_array);
+	return res;
 }
 
-static inline bool lev_distance_parse_params
+static bool lev_distance_parse_params
 (
 	const struct Pair *distFuncParams,
 	double *insertionWeight,
@@ -835,6 +839,152 @@ static double hamming_distance(const char *S1, const char *S2, size_t len1, size
 	return distance;
 }
 
+static double jaro_similarity(const char *S1, const char *S2, size_t len1, size_t len2) {
+	// S1 should be the shorter string,
+	// we allowed cause it's a symmetric function
+	if(len1 > len2) {
+		__SWAP(const char *, S1, S2);
+		__SWAP(size_t, len1, len2);
+	}
+
+	if(len2 == 0) {
+		// both stings are empty
+		return 1.0;
+	} else if(len2 == 1) {
+		return S1[0] == S2[0] ? 1 : 0;
+	}
+
+    // maximum distance upto which matching
+    // is allowed
+	size_t range = MAX(0, (len2 / 2 - 1));
+	bool *matchIndexes = (bool*)rm_calloc(len2, sizeof(bool));
+	char *v1 = (char*)rm_malloc(len1*sizeof(char));
+	size_t n_match = 0;
+	size_t i, j;
+
+	// for each character in S1,
+	// find if there is any matching character in range
+	for(i = 0; i < len1; i++) {
+		size_t end = MIN(len2 - 1, i + range);
+		for(j = (i > range) ? i - range : 0; j <= end; j++) {
+			if(S1[i] == S2[j] && !matchIndexes[j]) {
+				v1[n_match] = S1[i];
+				matchIndexes[j] = true;
+				n_match++;
+				break;
+			}
+		}
+	}
+
+	char *v2 = (char*)rm_malloc(n_match);
+	for(i = 0, j = 0; i < len2; i++) {
+		if(matchIndexes[i]) {
+			v2[j] = S2[i];
+			j++;
+		}
+	}
+
+	// find the number of transpositions
+	size_t n_transpositions = 0;
+	for(i = 0; i < n_match; i++) {
+		if(v1[i] != v2[i]) {
+			n_transpositions++;
+		}
+	}
+
+	rm_free(v1);
+	rm_free(v2);
+	rm_free(matchIndexes);
+
+	// if no matches found, similarity is 0
+	if(n_match == 0) {
+		return 0;
+	}
+
+	// return the Jaro similarity
+	return ((double)n_match/len1 + (double)n_match/len2 + 
+	(n_match - ((double)n_transpositions/2))/n_match)/3;
+}
+
+static bool jaro_winkler_parse_params(const struct Pair *distFuncParams, double *scaleFactor, double *threshold) {
+	if(distFuncParams != NULL) {
+		for(int i = 0; i < array_len((void *)distFuncParams); i++) {
+			SIValue k = distFuncParams[i].key;
+			SIValue v = distFuncParams[i].val;
+			if(SI_TYPE(k) != T_STRING) {
+				Error_SITypeMismatch(k, T_STRING);
+				return false;
+			}
+
+			if(SI_TYPE(v) != T_DOUBLE) {
+				Error_SITypeMismatch(v, T_DOUBLE);
+				return false;
+			}
+
+			if(strcmp(k.stringval, "ScaleFactor") == 0) {
+				*scaleFactor = v.doubleval;
+
+				if(unlikely(*scaleFactor < 0.0 || *scaleFactor > 0.25)) {
+					ErrorCtx_RaiseRuntimeException
+					("ArgumentError: string.distance(), scaleFactor value is out of bounds");
+					return false;
+				}
+			} else if(strcmp(k.stringval, "threshold") == 0) {
+				*threshold = v.doubleval;
+
+				if(unlikely(*threshold < 0.0 || *threshold > 1.0)) {
+					ErrorCtx_RaiseRuntimeException
+					("ArgumentError: string.distance(), threshold value is out of bounds");
+					return false;
+				}
+			} else {
+				ErrorCtx_RaiseRuntimeException
+				("ArgumentError: map argument to string.distance() has an invalid key");
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+static double jaro_winkler_distance(
+	const char *S1, 
+	const char *S2, 
+	size_t len1, 
+	size_t len2, 
+	double scaleFactor,
+	double threshold
+) {
+	// S1 should be the shorter string,
+	// it's allowed cause it's a symmetric function
+	if(len1 > len2) {
+		__SWAP(const char *, S1, S2);
+		__SWAP(size_t, len1, len2);
+	}
+	double j = jaro_similarity(S1, S2, len1, len2);
+
+	if(j == 0) {
+		return 1.0;
+	}
+
+	// find the number of common prefix characters
+	size_t prefix = 0;
+	for(size_t i = 0; i < MIN(len1,4); i++) {
+		if(S1[i] == S2[i]) {
+			prefix++;
+		} else {
+			break;
+		}
+	}
+
+	// calculate the Jaro-Winkler similarity
+	double sim_w = (j < threshold) ? j : j + scaleFactor * prefix * (1.0 - j);
+
+	// return the Jaro-Winkler distance
+	return 1.0 - sim_w;
+}
+
 // given two strings, return their distance according to a specified distance function.
 // string.distance(str1, str2, distFunc = 'Lev', distFuncParams = {}) → floating-point
 SIValue AR_DISTANCE_STR(SIValue *argv, int argc, void *private_data) {
@@ -884,6 +1034,20 @@ SIValue AR_DISTANCE_STR(SIValue *argv, int argc, void *private_data) {
 		);
 	} else if (strcmp(distFunc, "Ham") == 0) {
 		res = hamming_distance(S1, S2, len1, len2);
+	} else if (strcmp(distFunc, "Jaro") == 0) {
+		// Jaro distance is 1 - Jaro similarity
+		res = 1.0 - jaro_similarity(S1, S2, len1, len2);
+	} else if (strcmp(distFunc, "JaroW") == 0) {
+		double scaleFactor = 0.1;
+		double threshold = 0.7;
+		if(!jaro_winkler_parse_params(
+			distFuncParams,
+			&scaleFactor,
+			&threshold)
+		) {
+			return SI_NullVal();
+		}
+		res = jaro_winkler_distance(S1, S2, len1, len2, scaleFactor, threshold);
 	} else {
 		ErrorCtx_RaiseRuntimeException
 		("ArgumentError: string.distance() has an invalid distance function");
