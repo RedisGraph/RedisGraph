@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "../errors.h"
+#include "../configuration/config.h"
 #include "cmd_context.h"
 #include "../ast/ast.h"
 #include "../util/arr.h"
@@ -26,8 +27,6 @@ typedef struct {
 	QueryCtx *query_ctx;      // query context
 	ExecutionCtx *exec_ctx;   // execution context
 	CommandCtx *command_ctx;  // command context
-	bool readonly_query;      // read only query
-	bool profile;             // profile query
 	CronTaskHandle timeout;   // timeout cron task
 } GraphQueryCtx;
 
@@ -37,8 +36,7 @@ static GraphQueryCtx *GraphQueryCtx_New
 	RedisModuleCtx *rm_ctx,
 	ExecutionCtx *exec_ctx,
 	CommandCtx *command_ctx,
-	bool readonly_query,
-	bool profile,
+	QueryExecutionTypeFlag flags,
 	CronTaskHandle timeout
 ) {
 	GraphQueryCtx *ctx = rm_malloc(sizeof(GraphQueryCtx));
@@ -47,20 +45,19 @@ static GraphQueryCtx *GraphQueryCtx_New
 	ctx->exec_ctx        =  exec_ctx;
 	ctx->graph_ctx       =  graph_ctx;
 	ctx->query_ctx       =  QueryCtx_GetQueryCtx();
+	ctx->query_ctx->flags = flags;
 	ctx->command_ctx     =  command_ctx;
-	ctx->readonly_query  =  readonly_query;
-	ctx->profile         =  profile;
 	ctx->timeout         =  timeout;
 
 	return ctx;
 }
 
-void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
+static void inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
 	ASSERT(ctx != NULL);
 	rm_free(ctx);
 }
 
-void static abort_and_check_timeout
+static bool abort_and_check_timeout
 (
 	GraphQueryCtx *gq_ctx,
 	ExecutionPlan *plan
@@ -71,9 +68,45 @@ void static abort_and_check_timeout
 	}
 
 	// emit error if query timed out
-	if(ExecutionPlan_Drained(plan)) {
+	// TODO for the abort feature this won't necessarily mean a timeout,
+	// it will also flag the aborted queries.
+	const bool has_timed_out = ExecutionPlan_Drained(plan);
+	if (has_timed_out) {
 		ErrorCtx_SetError("Query timed out");
 	}
+
+	return has_timed_out;
+}
+
+static void _info_indicate_query_already_waiting(const GraphQueryCtx *gq_ctx) {
+	ASSERT(gq_ctx);
+	ASSERT(gq_ctx->command_ctx);
+	const struct QueryCtx *context = gq_ctx->query_ctx;
+	if (!context || !gq_ctx->command_ctx) {
+		return;
+	}
+
+	const millis_t milliseconds_waited = CommandCtx_GetTimeSpent(gq_ctx->command_ctx);
+	const uint64_t received_milliseconds = CommandCtx_GetReceivedTimestamp(gq_ctx->command_ctx);
+	Info_AddWaitingQueryInfo(
+		&gq_ctx->graph_ctx->info,
+		context,
+		milliseconds_waited,
+		received_milliseconds
+	);
+}
+
+static void _info_indicate_query_finished
+(
+	GraphQueryCtx *gq_ctx
+) {
+	if (!gq_ctx || !gq_ctx->query_ctx || !gq_ctx->graph_ctx) {
+		return;
+	}
+
+	Info *info = &gq_ctx->graph_ctx->info;
+
+	Info_IncrementNumberOfQueries(info, gq_ctx->query_ctx->flags, gq_ctx->query_ctx->status);
 }
 
 static bool _index_operation_delete
@@ -251,9 +284,9 @@ inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 	return strcasecmp(CommandCtx_GetCommandName(ctx), "graph.RO_QUERY") == 0;
 }
 
-// _ExecuteQuery accepts a GraphQeuryCtx as an argument
+// _ExecuteQuery accepts a GraphQueryCtx as an argument
 // it may be called directly by a reader thread or the Redis main thread,
-// or dispatched as a worker thread job
+// or dispatched as a worker thread job when is used for writing.
 static void _ExecuteQuery(void *args) {
 	ASSERT(args != NULL);
 
@@ -261,17 +294,17 @@ static void _ExecuteQuery(void *args) {
 	QueryCtx        *query_ctx    =  gq_ctx->query_ctx;
 	GraphContext    *gc           =  gq_ctx->graph_ctx;
 	RedisModuleCtx  *rm_ctx       =  gq_ctx->rm_ctx;
-	bool            profile       =  gq_ctx->profile;
-	bool            readonly      =  gq_ctx->readonly_query;
 	ExecutionCtx    *exec_ctx     =  gq_ctx->exec_ctx;
 	CommandCtx      *command_ctx  =  gq_ctx->command_ctx;
 	AST             *ast          =  exec_ctx->ast;
 	ExecutionPlan   *plan         =  exec_ctx->plan;
 	ExecutionType   exec_type     =  exec_ctx->exec_type;
+	const bool profile            = CHECK_FLAG(query_ctx->flags, QueryExecutionTypeFlag_PROFILE);
+	const bool readonly           = !CHECK_FLAG(query_ctx->flags, QueryExecutionTypeFlag_WRITE);
 
 	// if we have migrated to a writer thread,
 	// update thread-local storage and track the CommandCtx
-	if(command_ctx->thread == EXEC_THREAD_WRITER) {
+	if (command_ctx->thread == EXEC_THREAD_WRITER) {
 		QueryCtx_SetTLS(query_ctx);
 		CommandCtx_TrackCtx(command_ctx);
 	}
@@ -279,14 +312,16 @@ static void _ExecuteQuery(void *args) {
 	// instantiate the query ResultSet
 	bool compact = command_ctx->compact;
 	// replicated command don't need to return result
-	ResultSetFormatterType resultset_format = 
+	ResultSetFormatterType resultset_format =
 		profile || command_ctx->replicated_command
-		? FORMATTER_NOP 
-		: (compact) 
-			? FORMATTER_COMPACT 
+		? FORMATTER_NOP
+		: (compact)
+			? FORMATTER_COMPACT
 			: FORMATTER_VERBOSE;
 	ResultSet *result_set = NewResultSet(rm_ctx, resultset_format);
-	if(exec_ctx->cached) ResultSet_CachedExecution(result_set); // indicate a cached execution
+	if(exec_ctx->cached) {
+		ResultSet_CachedExecution(result_set); // indicate a cached execution
+	}
 
 	QueryCtx_SetResultSet(result_set);
 
@@ -304,6 +339,11 @@ static void _ExecuteQuery(void *args) {
 		CommandCtx_ThreadSafeContextUnlock(command_ctx);
 	}
 
+	Info_IndicateQueryStartedExecution(
+		&gq_ctx->graph_ctx->info,
+		gq_ctx->query_ctx
+	);
+
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
 		// set policy after lock acquisition,
 		// avoid resetting policies between readers and writers
@@ -312,15 +352,27 @@ static void _ExecuteQuery(void *args) {
 		ExecutionPlan_PreparePlan(plan);
 		if(profile) {
 			ExecutionPlan_Profile(plan);
-			abort_and_check_timeout(gq_ctx, plan);
+			if (abort_and_check_timeout(gq_ctx, plan)) {
+				query_ctx->status = QueryExecutionStatus_TIMEDOUT;
+			}
 
 			if(!ErrorCtx_EncounteredError()) {
+				Info_IndicateQueryStartedReporting(
+					&gq_ctx->graph_ctx->info,
+					gq_ctx->query_ctx
+				);
 				ExecutionPlan_Print(plan, rm_ctx);
+				Info_IndicateQueryFinishedReporting(
+					&gq_ctx->graph_ctx->info,
+					gq_ctx->query_ctx
+				);
 			}
 		}
 		else {
 			result_set = ExecutionPlan_Execute(plan);
-			abort_and_check_timeout(gq_ctx, plan);
+			if (abort_and_check_timeout(gq_ctx, plan)) {
+				query_ctx->status = QueryExecutionStatus_TIMEDOUT;
+			}
 		}
 
 		ExecutionPlan_Free(plan);
@@ -337,19 +389,30 @@ static void _ExecuteQuery(void *args) {
 		UndoLog_Rollback(query_ctx->undo_log);
 		// clear resultset statistics, avoiding commnad being replicated
 		ResultSet_Clear(result_set);
+		if (query_ctx->status != QueryExecutionStatus_TIMEDOUT) {
+			query_ctx->status = QueryExecutionStatus_FAILURE;
+		}
 	}
-	
+
 	// replicate command if graph was modified
 	if(ResultSetStat_IndicateModification(&result_set->stats)) {
 		QueryCtx_Replicate(query_ctx);
 	}
-	
+
 	QueryCtx_UnlockCommit();
 
 	if(!profile || ErrorCtx_EncounteredError()) {
 		// if we encountered an error, ResultSet_Reply will emit the error
 		// send result-set back to client
+		Info_IndicateQueryStartedReporting(
+			&gq_ctx->graph_ctx->info,
+			gq_ctx->query_ctx
+		);
 		ResultSet_Reply(result_set);
+		Info_IndicateQueryFinishedReporting(
+			&gq_ctx->graph_ctx->info,
+			gq_ctx->query_ctx
+		);
 	}
 
 	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
@@ -360,6 +423,7 @@ static void _ExecuteQuery(void *args) {
 				QueryCtx_GetExecutionTime(), NULL);
 
 	// clean up
+	_info_indicate_query_finished(gq_ctx);
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_DecreaseRefCount(gc);
 	CommandCtx_Free(command_ctx);
@@ -400,12 +464,6 @@ void _query(bool profile, void *args) {
 
 	CommandCtx_TrackCtx(command_ctx);
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
-
-	if(strcmp(command_ctx->query, "") == 0) {
-		ErrorCtx_SetError("Error: empty query.");
-		goto cleanup;
-	}
-
 	QueryCtx_BeginTimer(); // start query timing
 
 	// parse query parameters and build an execution plan or retrieve it from the cache
@@ -440,8 +498,18 @@ void _query(bool profile, void *args) {
 	}
 
 	// populate the container struct for invoking _ExecuteQuery.
+	QueryExecutionTypeFlag flags = QueryExecutionTypeFlag_READ;
+	if (!readonly) {
+		flags |= QueryExecutionTypeFlag_WRITE;
+	}
+	if (profile) {
+		flags |= QueryExecutionTypeFlag_PROFILE;
+	}
 	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
-											  readonly, profile, timeout_task);
+											  flags, timeout_task);
+	// Report to the info tracker that this query has already been in the
+	// waiting stage for some time and the info tracker should register it.
+	_info_indicate_query_already_waiting(gq_ctx);
 
 	// if 'thread' is redis main thread, continue running
 	// if readonly is true we're executing on a worker thread from

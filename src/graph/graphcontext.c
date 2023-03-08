@@ -57,7 +57,7 @@ inline void GraphContext_DecreaseRefCount
 	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) == 0) {
 		bool async_delete;
 		Config_Option_get(Config_ASYNC_DELETE, &async_delete);
-		
+
 		// remove graph context from global `graphs_in_keyspace` array
 		_GraphContext_RemoveFromRegistry(gc);
 
@@ -84,14 +84,18 @@ GraphContext *GraphContext_New
 ) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-	gc->version          = 0;  // initial graph version
-	gc->slowlog          = SlowLog_New();
-	gc->ref_count        = 0;  // no refences
-	gc->attributes       = raxNew();
-	gc->index_count      = 0;  // no indicies
-	gc->string_mapping   = array_new(char *, 64);
-	gc->encoding_context = GraphEncodeContext_New();
-	gc->decoding_context = GraphDecodeContext_New();
+	gc->version               = 0;  // initial graph version
+	gc->slowlog               = SlowLog_New();
+	gc->ref_count             = 0;  // no refences
+	gc->attributes            = raxNew();
+	gc->node_attributes_count = 0;
+	gc->edge_attributes_count = 0;
+	gc->index_count           = 0;  // no indicies
+	gc->string_mapping        = array_new(char *, 64);
+	gc->encoding_context      = GraphEncodeContext_New();
+	gc->decoding_context      = GraphDecodeContext_New();
+	const bool info_created   = Info_New(&gc->info);
+	ASSERT(info_created);
 
 	// read NODE_CREATION_BUFFER size from configuration
 	// this value controls how much extra room we're willing to spend for:
@@ -223,6 +227,16 @@ XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
 	return gc->version;
 }
 
+uint64_t GraphContext_AllNodePropertyNamesCount(const GraphContext *gc) {
+	ASSERT(gc);
+	return gc->node_attributes_count;
+}
+
+uint64_t GraphContext_AllEdgePropertyNamesCount(const GraphContext *gc) {
+	ASSERT(gc);
+	return gc->edge_attributes_count;
+}
+
 // Update graph context version
 static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str) {
 	ASSERT(gc != NULL);
@@ -241,6 +255,38 @@ static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str) {
 	XXH32_update(state, str, strlen(str));
 	gc->version = XXH32_digest(state);
 	XXH32_freeState(state);
+}
+
+void GraphContext_IncreasePropertyNamesCount
+(
+	GraphContext *gc,
+	const uint64_t count,
+	const GraphEntityType entity_type
+) {
+	ASSERT(gc);
+	ASSERT(entity_type != GETYPE_UNKNOWN);
+
+	if (entity_type == GETYPE_EDGE) {
+		gc->edge_attributes_count += count;
+	} else if (entity_type == GETYPE_NODE) {
+		gc->node_attributes_count += count;
+	}
+}
+
+void GraphContext_DecreasePropertyNamesCount
+(
+	GraphContext *gc,
+	const uint64_t count,
+	const GraphEntityType entity_type
+) {
+	ASSERT(gc);
+	ASSERT(entity_type != GETYPE_UNKNOWN);
+
+	if (entity_type == GETYPE_EDGE) {
+		gc->edge_attributes_count -= count;
+	} else if (entity_type == GETYPE_NODE) {
+		gc->node_attributes_count -= count;
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -331,10 +377,12 @@ Attribute_ID GraphContext_FindOrAddAttribute
 	const char *attribute,
 	bool* created
 ) {
+	ASSERT(gc);
+
 	bool created_flag = false;
 	unsigned char *attr = (unsigned char*)attribute;
 	uint l = strlen(attribute);
-	
+
 	// acquire a read lock for looking up the attribute
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 
@@ -400,7 +448,12 @@ Attribute_ID GraphContext_GetAttributeID
 	return (uintptr_t)id;
 }
 
-void GraphContext_RemoveAttribute(GraphContext *gc, Attribute_ID id) {
+void GraphContext_RemoveAttribute
+(
+	GraphContext *gc,
+	Attribute_ID id
+) {
+	ASSERT(gc);
 	ASSERT(id == array_len(gc->string_mapping) - 1);
 	pthread_rwlock_wrlock(&gc->_attribute_rwlock);
 	const char *attribute = gc->string_mapping[id];
@@ -417,17 +470,43 @@ void GraphContext_RemoveAttribute(GraphContext *gc, Attribute_ID id) {
 bool GraphContext_HasIndices(GraphContext *gc) {
 	ASSERT(gc != NULL);
 
-	uint schema_count = array_len(gc->node_schemas);
-	for(uint i = 0; i < schema_count; i++) {
-		if(Schema_HasIndices(gc->node_schemas[i])) return true;
+	const bool has_node_indices = GraphContext_NodeIndexCount(gc);
+	const bool has_edge_indices = GraphContext_EdgeIndexCount(gc);
+
+	return has_node_indices || has_edge_indices;
+}
+
+uint64_t _count_indices_from_schemas(const Schema** schemas) {
+	ASSERT(schemas);
+	uint64_t count = 0;
+
+	const uint32_t length = array_len(schemas);
+	for (uint32_t i = 0; i < length; ++i) {
+		const Schema *schema = schemas[i];
+		ASSERT(schema);
+		if (!schema) {
+			return count;
+		}
+		count += Schema_IndexCount(schema);
 	}
 
-	schema_count = array_len(gc->relation_schemas);
-	for(uint i = 0; i < schema_count; i++) {
-		if(Schema_HasIndices(gc->relation_schemas[i])) return true;
-	}
+	return count;
+}
 
-	return false;
+uint64_t GraphContext_NodeIndexCount
+(
+	const GraphContext *gc
+) {
+	ASSERT(gc);
+	return _count_indices_from_schemas((const Schema**)gc->node_schemas);
+}
+
+uint64_t GraphContext_EdgeIndexCount
+(
+	const GraphContext *gc
+) {
+	ASSERT(gc);
+	return _count_indices_from_schemas((const Schema**)gc->relation_schemas);
 }
 Index GraphContext_GetIndexByID
 (
@@ -676,13 +755,19 @@ static void _GraphContext_Free(void *arg) {
 
 	bool async_delete;
 	Config_Option_get(Config_ASYNC_DELETE, &async_delete);
-	
+
 	RedisModuleCtx *ctx = NULL;
 	if(async_delete) {
 		ctx = RedisModule_GetThreadSafeContext(NULL);
 		// GIL need to be acquire because RediSearch change Redis global data structure
 		RedisModule_ThreadSafeContextLock(ctx);
 	}
+
+	//--------------------------------------------------------------------------
+	// Free the info structure
+	//--------------------------------------------------------------------------
+	const bool info_freed = Info_Free(&gc->info);
+	ASSERT(info_freed);
 
 	//--------------------------------------------------------------------------
 	// Free node schemas

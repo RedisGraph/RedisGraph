@@ -26,7 +26,7 @@ void reconf_handler(Config_Option_Field type) {
 				ThreadPools_SetMaxPendingWork(max_queued_queries);
 			}
 			break;
-		
+
 		//----------------------------------------------------------------------
 		// query mem capacity
 		//----------------------------------------------------------------------
@@ -40,10 +40,23 @@ void reconf_handler(Config_Option_Field type) {
 			}
 			break;
 
+		//----------------------------------------------------------------------
+		// max graph info query prev count
+		//----------------------------------------------------------------------
+
+		case Config_CMD_INFO_MAX_QUERY_COUNT:
+			{
+				uint32_t count = 0;
+				bool res = Config_Option_get(type, &count);
+				ASSERT(res);
+				Info_SetCapacityForFinishedQueriesStorage(count);
+			}
+			break;
+
         //----------------------------------------------------------------------
         // all other options
         //----------------------------------------------------------------------
-        default : 
+        default :
 			return;
     }
 }

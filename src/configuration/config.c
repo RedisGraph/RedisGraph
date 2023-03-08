@@ -215,7 +215,7 @@ static bool Config_enforce_timeout_max
 #endif
 		return false;
 	}
-	
+
 	config.timeout_max     = timeout_max;
 	config.timeout_default = timeout_default;
 	return true;
@@ -651,7 +651,7 @@ int Config_Init
 							"Failed setting field '%s' with error: %s", field_str, error);
 			} else {
 				RedisModule_Log(ctx, "error",
-							"Failed setting field '%s'", field_str);	
+							"Failed setting field '%s'", field_str);
 			}
 			return REDISMODULE_ERR;
 		}

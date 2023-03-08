@@ -145,7 +145,7 @@ void GraphEntity_ToString
 	char **buffer,
 	size_t *bufferLen,
 	size_t *bytesWritten,
-	GraphEntityStringFromat format,
+	GraphEntityStringFormat format,
 	GraphEntityType entityType
 ) {
 	// space allocation
@@ -234,7 +234,7 @@ inline bool GraphEntity_IsDeleted
 	return Graph_EntityIsDeleted(e);
 }
 
-inline const AttributeSet GraphEntity_GetAttributes
+inline AttributeSet GraphEntity_GetAttributes
 (
 	const GraphEntity *e
 ) {

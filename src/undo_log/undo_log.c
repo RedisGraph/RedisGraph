@@ -158,7 +158,7 @@ static void _UndoLog_Rollback_Set_Labels
 
 		Graph_RemoveNodeLabels(g, update_labels_op->node.id,
 				update_labels_op->label_lds, labels_count);
-				
+
 		_index_delete_node_with_labels(ctx, &(update_labels_op->node),
 				update_labels_op->label_lds, labels_count);
 
@@ -179,7 +179,7 @@ static void _UndoLog_Rollback_Remove_Labels
 		UndoLabelsOp *update_labels_op = &(op->labels_op);
 		uint         labels_count      = update_labels_op->labels_count;
 
-		Graph_LabelNode(g, update_labels_op->node.id, 
+		Graph_LabelNode(g, update_labels_op->node.id,
 				update_labels_op->label_lds, labels_count);
 
 		_index_node_with_labels(ctx, &(update_labels_op->node),
@@ -200,6 +200,11 @@ static void _UndoLog_Rollback_Create_Node
 	for(int i = seq_start; i > seq_end; --i) {
 		Node *n = &undo_list[i].create_op.n;
 		_index_delete_node(ctx, n);
+		GraphContext_DecreasePropertyNamesCount(
+			ctx->gc,
+			ATTRIBUTE_SET_COUNT(*n->attributes),
+			GETYPE_NODE
+		);
 		Graph_DeleteNode(ctx->gc->g, n);
 	}
 }
@@ -217,6 +222,12 @@ static void _UndoLog_Rollback_Create_Edge
 		Edge *e = &undo_list[i].create_op.e;
 		_index_delete_edge(ctx, e);
 		array_append(edges, *e);
+
+		GraphContext_DecreasePropertyNamesCount(
+			ctx->gc,
+			ATTRIBUTE_SET_COUNT(*e->attributes),
+			GETYPE_EDGE
+		);
 	}
 	Graph_DeleteEdges(ctx->gc->g, edges);
 	array_free(edges);
@@ -238,6 +249,11 @@ static void _UndoLog_Rollback_Delete_Node
 		Graph_CreateNode(ctx->gc->g, &n, delete_op->labels,
 				delete_op->label_count);
 		*n.attributes = delete_op->set;
+		GraphContext_IncreasePropertyNamesCount(
+			ctx->gc,
+			ATTRIBUTE_SET_COUNT(*n.attributes),
+			GETYPE_NODE
+		);
 
 		// re-introduce node to indices
 		_index_node(ctx, &n);
@@ -263,6 +279,12 @@ static void _UndoLog_Rollback_Delete_Edge
 				delete_op.relationID, &e);
 		*e.attributes = delete_op.set;
 
+		GraphContext_IncreasePropertyNamesCount(
+			ctx->gc,
+			ATTRIBUTE_SET_COUNT(*e.attributes),
+			GETYPE_EDGE
+		);
+
 		_index_edge(ctx, &e);
 	}
 }
@@ -287,7 +309,7 @@ static void _UndoLog_Rollback_Add_Schema
 			Graph_RemoveLabel(ctx->gc->g, schema_id);
 		} else {
 			Graph_RemoveRelation(ctx->gc->g, schema_id);
-		}	
+		}
 	}
 }
 
@@ -300,11 +322,10 @@ static void _UndoLog_Rollback_Add_Attribute
 ) {
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
-		Edge e;
 		UndoOp *op = undo_list + i;
 		UndoAddAttributeOp attribute_op = op->attribute_op;
 		int attribute_id = attribute_op.attribute_id;
-		GraphContext_RemoveAttribute(ctx->gc, attribute_id);	
+		GraphContext_RemoveAttribute(ctx->gc, attribute_id);
 	}
 }
 
@@ -495,8 +516,8 @@ void UndoLog_AddSchema
 
 void UndoLog_AddAttribute
 (
-	UndoLog *log,                // undo log
-	Attribute_ID attribute_id             // id of the attribute
+	UndoLog *log,                      // undo log
+	Attribute_ID attribute_id          // id of the attribute
 ) {
 	ASSERT(log != NULL);
 	UndoOp op;
@@ -516,7 +537,7 @@ void UndoLog_Rollback
 	UndoLog log
 ) {
 	ASSERT(log != NULL);
-	
+
 	QueryCtx *ctx  = QueryCtx_GetQueryCtx();
 	uint64_t count = array_len(log);
 

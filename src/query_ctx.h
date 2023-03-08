@@ -44,7 +44,7 @@ typedef struct {
 } QueryCtx_QueryData;
 
 typedef struct {
-	double timer[2];            // Query execution time tracking.
+	double timer[2];            // Query execution time tracking for profiling.
 	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
 	ResultSet *result_set;      // Save the execution result set.
 	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
@@ -56,12 +56,14 @@ typedef struct {
 	const char *command_name;       // Command name.
 } QueryCtx_GlobalExecCtx;
 
-typedef struct QueryCtx{
+typedef struct QueryCtx {
 	QueryCtx_QueryData query_data;              // The data related to the query syntax.
 	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
 	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
 	GraphContext *gc;                           // The GraphContext associated with this query's graph.
 	UndoLog undo_log;                           // Undo log for updates, used in the case of write query can fail and rollback is needed.
+	QueryExecutionTypeFlag flags;               // The execution flags.
+	QueryExecutionStatus status;                // The query execution status.
 } QueryCtx;
 
 /* Instantiate the thread-local QueryCtx on module load. */

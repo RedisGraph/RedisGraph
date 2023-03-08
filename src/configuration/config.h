@@ -40,7 +40,6 @@ typedef enum {
 typedef void (*Config_on_change)(Config_Option_Field type);
 
 // Run-time configurable fields
-#define RUNTIME_CONFIG_COUNT 8
 static const Config_Option_Field RUNTIME_CONFIGS[] = {
 	Config_TIMEOUT,
 	Config_TIMEOUT_MAX,
@@ -53,6 +52,7 @@ static const Config_Option_Field RUNTIME_CONFIGS[] = {
 	Config_CMD_INFO,
 	Config_CMD_INFO_MAX_QUERY_COUNT
 };
+static const size_t RUNTIME_CONFIG_COUNT = sizeof(RUNTIME_CONFIGS) / sizeof(RUNTIME_CONFIGS[0]);
 
 // Set module-level configurations to defaults or to user arguments where provided.
 // returns REDISMODULE_OK on success, emits an error and returns REDISMODULE_ERR on failure.

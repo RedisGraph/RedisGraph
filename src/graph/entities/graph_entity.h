@@ -30,7 +30,7 @@ typedef enum {
 	ENTITY_ID = 1,                       // print id only
 	ENTITY_LABELS_OR_RELATIONS = 1 << 1, // print label or relationship type
 	ENTITY_PROPERTIES = 1 << 2           // print properties
-} GraphEntityStringFromat;
+} GraphEntityStringFormat;
 
 typedef enum GraphEntityType {
 	GETYPE_UNKNOWN,
@@ -90,7 +90,7 @@ void GraphEntity_ToString
 	char **buffer,
 	size_t *bufferLen,
 	size_t *bytesWritten,
-	GraphEntityStringFromat format,
+	GraphEntityStringFormat format,
 	GraphEntityType entityType
 );
 
@@ -101,7 +101,7 @@ bool GraphEntity_IsDeleted
 );
 
 // returns attribute-set of entity
-const AttributeSet GraphEntity_GetAttributes
+AttributeSet GraphEntity_GetAttributes
 (
 	const GraphEntity *e
 );

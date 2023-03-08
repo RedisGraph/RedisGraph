@@ -28,9 +28,12 @@ CommandCtx *CommandCtx_New
 	bool replicated_command,
 	bool compact,
 	long long timeout,
-	bool timeout_rw
+	bool timeout_rw,
+	const simple_timer_t timer,
+	const uint64_t received_timestamp,
+	const bool should_track_info
 ) {
-	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
+	CommandCtx *context         = rm_malloc(sizeof(CommandCtx));
 	context->bc                 = bc;
 	context->ctx                = ctx;
 	context->query              = NULL;
@@ -41,6 +44,9 @@ CommandCtx *CommandCtx_New
 	context->command_name       = NULL;
 	context->timeout_rw         = timeout_rw;
 	context->replicated_command = replicated_command;
+	TIMER_ASSIGN(context->timer, timer);
+	context->received_timestamp = received_timestamp;
+	context->should_track_info  = should_track_info;
 
 	if(cmd_name) {
 		// Make a copy of command name.
@@ -132,6 +138,33 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 	 * no need to release lock. */
 	ASSERT(command_ctx != NULL && command_ctx->ctx != NULL);
 	if(command_ctx->bc) RedisModule_ThreadSafeContextUnlock(command_ctx->ctx);
+}
+
+uint64_t CommandCtx_GetTimeSpent
+(
+	CommandCtx *command_ctx
+) {
+	ASSERT(command_ctx);
+	if (!command_ctx) {
+		return 0;
+	}
+
+	const uint64_t elapsed_milliseconds = TIMER_GET_ELAPSED_MILLISECONDS(command_ctx->timer);
+	TIMER_RESTART(command_ctx->timer);
+
+	return elapsed_milliseconds;
+}
+
+uint64_t CommandCtx_GetReceivedTimestamp
+(
+	const CommandCtx *command_ctx
+) {
+	ASSERT(command_ctx);
+	if (!command_ctx) {
+		return 0;
+	}
+
+	return command_ctx->received_timestamp;
 }
 
 void CommandCtx_Free(CommandCtx *command_ctx) {

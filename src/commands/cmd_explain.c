@@ -23,24 +23,22 @@ void Graph_Explain(void *args) {
 	RedisModuleCtx *ctx         = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext   *gc          = CommandCtx_GetGraphContext(command_ctx);
 	ExecutionCtx   *exec_ctx    = NULL;
+	QueryCtx       *query_ctx   = QueryCtx_GetQueryCtx();
 
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 	CommandCtx_TrackCtx(command_ctx);
-
-	if(strcmp(command_ctx->query, "") == 0) {
-		ErrorCtx_SetError("Error: empty query.");
-		goto cleanup;
-	}
-
 	QueryCtx_BeginTimer(); // Start query timing.
 
 	/* Retrieve the required execution items and information:
 	 * 1. Execution plan
 	 * 2. Whether these items were cached or not */
-	bool           cached     =  false;
-	ExecutionPlan  *plan      =  NULL;
+	bool           cached = false;
+	ExecutionPlan  *plan  = NULL;
 	exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query);
-	if(exec_ctx == NULL) goto cleanup;
+	if (exec_ctx == NULL) {
+		query_ctx->status = QueryExecutionStatus_FAILURE;
+		goto cleanup;
+	}
 
 	plan = exec_ctx->plan;
 	ExecutionType exec_type = exec_ctx->exec_type;
@@ -59,11 +57,15 @@ void Graph_Explain(void *args) {
 	ExecutionPlan_PreparePlan(plan);
 	ExecutionPlan_Init(plan);       // Initialize the plan's ops.
 
-	if(ErrorCtx_EncounteredError()) goto cleanup;
+	if (ErrorCtx_EncounteredError()) {
+		query_ctx->status = QueryExecutionStatus_FAILURE;
+		goto cleanup;
+	}
 
 	ExecutionPlan_Print(plan, ctx); // Print the execution plan.
 
 cleanup:
+	Info_IncrementNumberOfQueries(&gc->info, query_ctx->flags, query_ctx->status);
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 	if(lock_acquired) Graph_ReleaseLock(gc->g);
 	ExecutionCtx_Free(exec_ctx);
@@ -72,4 +74,3 @@ cleanup:
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();
 }
-

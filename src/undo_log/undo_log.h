@@ -15,7 +15,7 @@
 // UndoLog
 // matains a list of undo operation reverting all changes
 // performed by a query: CREATE, UPDATE, DELETE
-// 
+//
 // upon failure for which ever reason we can apply the
 // operations within the undo log to rollback the graph to its
 // original state
