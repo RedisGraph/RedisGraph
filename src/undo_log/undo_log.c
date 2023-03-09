@@ -567,7 +567,6 @@ void UndoLog_Rollback
  	}
 
 	array_clear(log);
-
 }
 
 void UndoLog_Free

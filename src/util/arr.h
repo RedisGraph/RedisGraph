@@ -88,7 +88,8 @@ void array_debug(void *pp);
  *  */
 #define array_new(T, cap) (T *)(array_new_sz(sizeof(T), cap, 0))
 
-/* Initialize an array for a given type T with a given length. The capacity allocated is identical
+/* initialize an array for a given type T with a given length
+ * the capacity allocated is identical
  * to the length
  *  */
 #define array_newlen(T, len) (T *)(array_new_sz(sizeof(T), len, len))
@@ -202,7 +203,7 @@ static inline array_t array_ensure_len(array_t arr, size_t len) {
   } while(0)
 
 /* Get the length of the array */
-static inline uint32_t array_len(array_t arr) {
+static inline uint32_t array_len(const array_t arr) {
 	return arr ? array_hdr(arr)->len : 0;
 }
 

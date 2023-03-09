@@ -60,8 +60,9 @@ void ThreadPools_Resume
 // adds a read task
 int ThreadPools_AddWorkReader
 (
-	void (*function_p)(void *),
-	void *arg_p
+	void (*function_p)(void *),  // function to run
+	void *arg_p,                 // function arguments
+	int force                    // true will add task even if internal queue is full
 );
 
 // add a write task
