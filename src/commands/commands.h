@@ -33,6 +33,8 @@ typedef enum {
 // graph commands
 //------------------------------------------------------------------------------
 
+GRAPH_Commands CommandFromString(const char *cmd_name);
+
 void Graph_Query(void *args);
 void Graph_Profile(void *args);
 void Graph_Explain(void *args);

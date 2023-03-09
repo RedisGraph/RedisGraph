@@ -210,9 +210,22 @@ void GraphContext_RemoveAttribute
 // Index API
 //------------------------------------------------------------------------------
 
+// returns true if the passed graph context has indices, false otherwise.
 bool GraphContext_HasIndices
 (
 	GraphContext *gc
+);
+
+// returns the number of node indices within the passed graph context.
+uint64_t GraphContext_NodeIndexCount
+(
+	const GraphContext *gc
+);
+
+// returns the number of edge indices within the passed graph context.
+uint64_t GraphContext_EdgeIndexCount
+(
+	const GraphContext *gc
 );
 
 // attempt to retrieve an index on the given label and attribute IDs

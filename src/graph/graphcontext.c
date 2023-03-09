@@ -28,6 +28,20 @@ extern RedisModuleType *GraphContextRedisModuleType;
 static void _GraphContext_Free(void *arg);
 static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str);
 
+static uint64_t _count_indices_from_schemas(const Schema** schemas) {
+	ASSERT(schemas);
+	uint64_t count = 0;
+
+	const uint32_t length = array_len(schemas);
+	for (uint32_t i = 0; i < length; ++i) {
+		const Schema *schema = schemas[i];
+		ASSERT(schema);
+		count += Schema_IndexCount(schema);
+	}
+
+	return count;
+}
+
 // delete a GraphContext reference from the `graphs_in_keyspace` global array
 void _GraphContext_RemoveFromRegistry(GraphContext *gc) {
 	uint graph_count = array_len(graphs_in_keyspace);
@@ -58,7 +72,7 @@ inline void GraphContext_DecreaseRefCount
 	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) == 0) {
 		bool async_delete;
 		Config_Option_get(Config_ASYNC_DELETE, &async_delete);
-		
+
 		// remove graph context from global `graphs_in_keyspace` array
 		_GraphContext_RemoveFromRegistry(gc);
 
@@ -356,12 +370,14 @@ Attribute_ID GraphContext_FindOrAddAttribute
 (
 	GraphContext *gc,
 	const char *attribute,
-	bool* created
+	bool *created
 ) {
+	ASSERT(gc);
+
 	bool created_flag = false;
 	unsigned char *attr = (unsigned char*)attribute;
 	uint l = strlen(attribute);
-	
+
 	// acquire a read lock for looking up the attribute
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 
@@ -427,7 +443,12 @@ Attribute_ID GraphContext_GetAttributeID
 	return (uintptr_t)id;
 }
 
-void GraphContext_RemoveAttribute(GraphContext *gc, Attribute_ID id) {
+void GraphContext_RemoveAttribute
+(
+	GraphContext *gc,
+	Attribute_ID id
+) {
+	ASSERT(gc);
 	ASSERT(id == array_len(gc->string_mapping) - 1);
 	pthread_rwlock_wrlock(&gc->_attribute_rwlock);
 	const char *attribute = gc->string_mapping[id];
@@ -444,17 +465,23 @@ void GraphContext_RemoveAttribute(GraphContext *gc, Attribute_ID id) {
 bool GraphContext_HasIndices(GraphContext *gc) {
 	ASSERT(gc != NULL);
 
-	uint schema_count = array_len(gc->node_schemas);
-	for(uint i = 0; i < schema_count; i++) {
-		if(Schema_HasIndices(gc->node_schemas[i])) return true;
-	}
+	return GraphContext_NodeIndexCount(gc) || GraphContext_EdgeIndexCount(gc);
+}
 
-	schema_count = array_len(gc->relation_schemas);
-	for(uint i = 0; i < schema_count; i++) {
-		if(Schema_HasIndices(gc->relation_schemas[i])) return true;
-	}
+uint64_t GraphContext_NodeIndexCount
+(
+	const GraphContext *gc
+) {
+	ASSERT(gc);
+	return _count_indices_from_schemas((const Schema**)gc->node_schemas);
+}
 
-	return false;
+uint64_t GraphContext_EdgeIndexCount
+(
+	const GraphContext *gc
+) {
+	ASSERT(gc);
+	return _count_indices_from_schemas((const Schema**)gc->relation_schemas);
 }
 
 // attempt to retrieve an index on the given label and attribute IDs
@@ -712,10 +739,9 @@ static void _GraphContext_Free(void *arg) {
 	if(gc->decoding_context == NULL || GraphDecodeContext_Finished(gc->decoding_context)) Graph_Free(gc->g);
 	else Graph_PartialFree(gc->g);
 
-
 	bool async_delete;
 	Config_Option_get(Config_ASYNC_DELETE, &async_delete);
-	
+
 	RedisModuleCtx *ctx = NULL;
 	if(async_delete) {
 		ctx = RedisModule_GetThreadSafeContext(NULL);

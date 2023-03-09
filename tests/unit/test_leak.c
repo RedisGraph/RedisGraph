@@ -59,7 +59,7 @@ void create_numbers(Numbers **nrs, int *n) {
   }
 }
 
-void test_possibly_lost() { 
+void test_possibly_lost() {
   create_numbers(&numbers, &n);
   for (int i = 0; i < 2; i++) {
       numbers++;
@@ -75,7 +75,7 @@ char *create_banner() {
    sprintf (b, "\t|** %s **|", user);
    return b;
  }
- 
+
 char *banner;
 
 void test_reachable() {

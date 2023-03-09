@@ -158,7 +158,7 @@ uint DeleteNode
 	ASSERT(n != NULL);
 	ASSERT(gc != NULL);
 
-	// add node deletion operation to undo log	
+	// add node deletion operation to undo log
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	UndoLog_DeleteNode(&query_ctx->undo_log, n);
 
@@ -366,7 +366,7 @@ void UpdateNodeLabels
 
 		if(remove_labels_index > 0) {
 			*labels_removed_count = remove_labels_index;
-			
+
 			// update node's labels
 			Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node), remove_labels_ids,
 					remove_labels_index);
@@ -392,8 +392,8 @@ Schema *AddSchema
 
 Attribute_ID FindOrAddAttribute
 (
-	GraphContext *gc,             // graph context to add the attribute
-	const char *attribute         // attribute name
+	GraphContext *gc,     // graph context to add the attribute
+	const char *attribute // attribute name
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(attribute != NULL);

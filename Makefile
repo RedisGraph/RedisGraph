@@ -42,7 +42,7 @@ make all            # Build everything
   CLANG=1             # Build with CLang toolchain (default for macOS)
   COV=1               # Build for coverage analysis (implies DEBUG=1)
   VG=1|docker         # build for Valgrind
-  SAN=type            # build with LLVM sanitizer (type=address|memory|leak|thread) 
+  SAN=type            # build with LLVM sanitizer (type=address|memory|leak|thread)
 make clean          # Clean build products
   ALL=1               # Completely remove build products
   DEPS=1              # Also clean dependant modules
@@ -351,7 +351,7 @@ flow-tests: $(TEST_DEPS)
 
 tck-tests: $(TEST_DEPS)
 	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) PARALLEL=$(_RLTEST_PARALLEL) GEN=0 AOF=0 TCK=1 ./tests/flow/tests.sh
-	
+
 .PHONY: test unit-tests flow-tests tck-tests
 
 #----------------------------------------------------------------------------------------------

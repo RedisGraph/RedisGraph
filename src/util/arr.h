@@ -60,8 +60,8 @@ typedef void *array_t;
 #define array_sizeof(hdr) (sizeof(array_hdr_t) + (uint64_t)hdr->cap * hdr->elem_sz)
 /* Internal - get a pointer to the array header */
 #define array_hdr(arr) ((array_hdr_t *)(((char *)arr) - sizeof(array_hdr_t)))
-/* Interanl - get a pointer to an element inside the array at a given index */
-#define array_elem(arr, idx) (*((void **)((char *)arr + (idx * array_hdr(arr)->elem_sz))))
+/* Internal - get a pointer to an element inside the array at a given index */
+#define array_elem(arr, idx) ((void *)((char *)arr + (idx * array_hdr(arr)->elem_sz)))
 
 static inline uint32_t array_len(array_t arr);
 
@@ -100,6 +100,17 @@ static inline array_t array_ensure_cap(array_t arr, uint32_t cap) {
 		hdr->cap = MAX(hdr->cap * 2, cap);
 		hdr = (array_hdr_t *)array_realloc_fn(hdr, array_sizeof(hdr));
 	}
+	return (array_t)hdr->buf;
+}
+
+// Reallocates the array setting the new capacity. If there were more
+// elements, those are deleted (cut off), if less, then there will be
+// space enough to fit (capacity - length) elements.
+static inline array_t array_reset_cap(array_t arr, const uint32_t cap) {
+  array_hdr_t *hdr = array_hdr(arr);
+  hdr->cap = cap;
+  hdr->len = hdr->len > hdr->cap ? hdr->cap : hdr->len;
+  hdr = (array_hdr_t *)array_realloc_fn(hdr, array_sizeof(hdr));
 	return (array_t)hdr->buf;
 }
 
@@ -267,14 +278,14 @@ static void array_free(array_t arr) {
   })
 
 /* Remove a specified element from the array */
-#define array_del(arr, ix)                                                        \
-  __extension__({                                                                 \
-    ASSERT(array_len(arr) > ix);                                                  \
-    if (array_len(arr) - 1 > ix) {                                                \
-      memcpy(arr + ix, arr + ix + 1, sizeof(*arr) * (array_len(arr) - (ix + 1))); \
-    }                                                                             \
-    --array_hdr(arr)->len;                                                        \
-    arr;                                                                          \
+#define array_del(arr, ix)                                                         \
+  __extension__({                                                                  \
+    ASSERT(array_len(arr) > ix);                                                   \
+    if (array_len(arr) - 1 > ix) {                                                 \
+      memmove(arr + ix, arr + ix + 1, sizeof(*arr) * (array_len(arr) - (ix + 1))); \
+    }                                                                              \
+    --array_hdr(arr)->len;                                                         \
+    arr;                                                                           \
   })
 
 /* Remove a specified element from the array, but does not preserve order */

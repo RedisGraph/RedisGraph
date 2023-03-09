@@ -55,12 +55,15 @@ static GraphQueryCtx *GraphQueryCtx_New
 	return ctx;
 }
 
-void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
+static void inline GraphQueryCtx_Free
+(
+	GraphQueryCtx *ctx
+) {
 	ASSERT(ctx != NULL);
 	rm_free(ctx);
 }
 
-void static abort_and_check_timeout
+static void abort_and_check_timeout
 (
 	GraphQueryCtx *gq_ctx,
 	ExecutionPlan *plan
@@ -253,9 +256,9 @@ inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 	return strcasecmp(CommandCtx_GetCommandName(ctx), "graph.RO_QUERY") == 0;
 }
 
-// _ExecuteQuery accepts a GraphQeuryCtx as an argument
+// _ExecuteQuery accepts a GraphQueryCtx as an argument
 // it may be called directly by a reader thread or the Redis main thread,
-// or dispatched as a worker thread job
+// or dispatched as a worker thread job when used for writing.
 static void _ExecuteQuery(void *args) {
 	ASSERT(args != NULL);
 
@@ -281,14 +284,16 @@ static void _ExecuteQuery(void *args) {
 	// instantiate the query ResultSet
 	bool compact = command_ctx->compact;
 	// replicated command don't need to return result
-	ResultSetFormatterType resultset_format = 
+	ResultSetFormatterType resultset_format =
 		profile || command_ctx->replicated_command
-		? FORMATTER_NOP 
-		: (compact) 
-			? FORMATTER_COMPACT 
+		? FORMATTER_NOP
+		: (compact)
+			? FORMATTER_COMPACT
 			: FORMATTER_VERBOSE;
 	ResultSet *result_set = NewResultSet(rm_ctx, resultset_format);
-	if(exec_ctx->cached) ResultSet_CachedExecution(result_set); // indicate a cached execution
+	if (exec_ctx->cached) {
+		ResultSet_CachedExecution(result_set); // indicate a cached execution
+	}
 
 	QueryCtx_SetResultSet(result_set);
 
@@ -340,12 +345,12 @@ static void _ExecuteQuery(void *args) {
 		// clear resultset statistics, avoiding commnad being replicated
 		ResultSet_Clear(result_set);
 	}
-	
+
 	// replicate command if graph was modified
 	if(ResultSetStat_IndicateModification(&result_set->stats)) {
 		QueryCtx_Replicate(query_ctx);
 	}
-	
+
 	QueryCtx_UnlockCommit();
 
 	if(!profile || ErrorCtx_EncounteredError()) {
