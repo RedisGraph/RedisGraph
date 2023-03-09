@@ -44,14 +44,16 @@ help() {
 		DOCKER_HOST=addr      Address of Docker server (default: localhost)
 		RLEC_PORT=port        Port of RLEC database (default: 12000)
 
-		COV=1				  Run with coverage analysis
+		COV=1                 Run with coverage analysis
 		VG=1                  Run with Valgrind
 		VG_LEAKS=1            Look for memory leaks
 		VG_ACCESS=1           Look for memory access errors
 		SAN=type              Use LLVM sanitizer (type=address|memory|leak|thread) 
+		BB=1                  Enable Python debugger (break using BB() in tests)
 		GDB=1                 Enable interactive gdb debugging (in single-test mode)
 
 		RLTEST=path|'view'    Take RLTest from repo path or from local view
+		RLTEST_DEBUG=1        Show debugging printouts from tests
 		RLTEST_ARGS=args      Extra RLTest args
 
 		PARALLEL=1            Runs tests in parallel
@@ -134,6 +136,9 @@ setup_rltest() {
 	
 	if [[ $RLTEST_VERBOSE == 1 ]]; then
 		RLTEST_ARGS+=" -v"
+	fi
+	if [[ $RLTEST_DEBUG == 1 ]]; then
+		RLTEST_ARGS+=" --debug-print"
 	fi
 	if [[ -n $RLTEST_LOG && $RLTEST_LOG != 1 ]]; then
 		RLTEST_ARGS+=" -s"
@@ -227,7 +232,11 @@ setup_valgrind() {
 		--vg-no-fail-on-errors \
 		--vg-suppressions $VALGRIND_SUPRESSIONS"
 
+
+	# for module
 	export RS_GLOBAL_DTORS=1
+
+	# for RLTest
 	export VALGRIND=1
 	export VG_OPTIONS
 	export RLTEST_VG_ARGS
@@ -304,7 +313,7 @@ run_tests() {
 
 		else # EXT=1
 			rltest_config=$(mktemp "${TMPDIR:-/tmp}/xredis_rltest.XXXXXXX")
-			rm -f $rltest_config
+			[[ $KEEP != 1 ]] && rm -f $rltest_config
 			cat <<-EOF > $rltest_config
 				--env existing-env
 				--existing-env-addr $EXT_HOST:$EXT_PORT
@@ -402,7 +411,7 @@ fi
 
 if [[ -n $TEST ]]; then
 	[[ $LOG != 1 ]] && RLTEST_LOG=0
-	export BB=${BB:-1}
+	# export BB=${BB:-1}
 	export RUST_BACKTRACE=1
 fi
 
@@ -422,7 +431,7 @@ PARALLEL=${PARALLEL:-1}
 # due to Python "Can't pickle local object" problem in RLTest
 [[ $OS == macos ]] && PARALLEL=0
 
-[[ $GDB == 1 ]] && PARALLEL=0
+[[ $EXT == 1 || $EXT == run || $BB == 1 || $GDB == 1 ]] && PARALLEL=0
 
 if [[ -n $PARALLEL && $PARALLEL != 0 ]]; then
 	if [[ $PARALLEL == 1 ]]; then
@@ -439,8 +448,19 @@ if [[ -n $TEST ]]; then
 	RLTEST_TEST_ARGS+=$(echo -n " "; echo "$TEST" | awk 'BEGIN { RS=" "; ORS=" " } { print "--test " $1 }')
 fi
 
-[[ -n $TESTFILE ]] && RLTEST_TEST_ARGS+=" -f $TESTFILE"
-[[ -n $FAILEDFILE ]] && RLTEST_TEST_ARGS+=" -F $FAILEDFILE"
+if [[ -n $TESTFILE ]]; then
+	if ! is_abspath "$TESTFILE"; then
+		TESTFILE="$ROOT/$TESTFILE"
+	fi
+	RLTEST_TEST_ARGS+=" -f $TESTFILE"
+fi
+
+if [[ -n $FAILEDFILE ]]; then
+	if ! is_abspath "$FAILEDFILE"; then
+		TESTFILE="$ROOT/$FAILEDFILE"
+	fi
+	RLTEST_TEST_ARGS+=" -F $FAILEDFILE"
+fi
 
 if [[ $LIST == 1 ]]; then
 	NO_SUMMARY=1
@@ -458,8 +478,6 @@ RLTEST_LOG=${RLTEST_LOG:-$LOG}
 #	echo "Log=1!"
 #	RLTEST_LOG=1
 #fi
-
-[[ $EXT == 1 || $EXT == run || $BB == 1 ]] && PARALLEL=0
 
 [[ $UNIX == 1 ]] && RLTEST_ARGS+=" --unix"
 [[ $RANDPORTS == 1 ]] && RLTEST_ARGS+=" --randomize-ports"
