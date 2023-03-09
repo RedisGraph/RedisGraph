@@ -116,7 +116,7 @@ static void _EmitConstraint
 		if(t == CT_UNIQUE) {
 			*ctx->yield_type = SI_ConstStringVal("unique");
 		} else {
-			*ctx->yield_type = SI_ConstStringVal("exists");
+			*ctx->yield_type = SI_ConstStringVal("mandatory");
 		}
 	}
 

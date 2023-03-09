@@ -42,8 +42,8 @@ extern Constraint Constraint_UniqueNew
 	Index idx                 // index
 );
 
-// create a new exists constraint
-extern Constraint Constraint_ExistsNew
+// create a new mandatory constraint
+extern Constraint Constraint_MandatoryNew
 (
 	LabelID l,                // label/relation ID
 	Attribute_ID *fields,     // enforced fields
@@ -64,7 +64,7 @@ Constraint Constraint_New
 	GraphEntityType et,       // entity type
 	const char **err_msg      // error message
 ) {
-	ASSERT(t == CT_UNIQUE || t == CT_EXISTS);
+	ASSERT(t == CT_UNIQUE || t == CT_MANDATORY);
 
 	Constraint c = NULL;
 
@@ -86,8 +86,8 @@ Constraint Constraint_New
 		c = Constraint_UniqueNew(schema_id, fields, attr_names, n_fields, et,
 				idx);
 	} else {
-		// create a new exists constraint
-		c = Constraint_ExistsNew(schema_id, fields, attr_names, n_fields, et);
+		// create a new mandatory constraint
+		c = Constraint_MandatoryNew(schema_id, fields, attr_names, n_fields, et);
 	}
 
 	ASSERT(Constraint_GetStatus(c) == CT_PENDING);

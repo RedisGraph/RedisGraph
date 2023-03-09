@@ -34,10 +34,10 @@ typedef enum ConstraintStatus {
 // type of constraint
 // we're currently supporting two types of constraints
 // 1. unique constraint
-// 2. exists constraint
+// 2. mandatory constraint
 typedef enum {
 	CT_UNIQUE,
-	CT_EXISTS
+	CT_MANDATORY
 } ConstraintType;
 
 // create a new constraint

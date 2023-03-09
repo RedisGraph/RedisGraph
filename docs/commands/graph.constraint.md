@@ -4,14 +4,14 @@ A constraint is a rule enforced on graph entities, it's used to guarantee a cert
 
 There are two types of constraints:
 
-1. EXISTS
+1. MANDATORY
 2. UNIQUE
 
-## Exists constraint
+## Mandatory constraint
 
-An exists constraint enforces the existance of attribute(s).
+An mandatory constraint enforces the existance of attribute(s).
 
-Consider an exists constraint over the attribute `id` of all nodes with the label `Person`.
+Consider a mandatory constraint over the attribute `id` of all nodes with the label `Person`.
 The constraint will make sure that all `Person` nodes in the graph will have an `id` attribute.
 Any attempt to modify or create a `Person` node which doesn't have an `id` attribute will fail.
 
@@ -47,10 +47,10 @@ For example to create a `unique` constraint against all nodes with label `Person
 GRAPH.CONSTRAIN g CREATE UNIQUE NODE Person PROPERTIES 2 first_name, last_name
 ```
 
-Similarly to create a `exists` constraint against all edges with relationship type `Visited` enforcing the existence of the `date` attribute issue the following command:
+Similarly to create a `mandatory` constraint against all edges with relationship type `Visited` enforcing the existence of the `date` attribute issue the following command:
 
 ```
-GRAPH.CONSTRAIN g CREATE EXISTS RELATIONSHIP Visited PROPERTIES 1 date
+GRAPH.CONSTRAIN g CREATE MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
 ```
 
 Please note: constraints are created asynchronously, the constraint creation command will reply `OK` instantly to the caller and the newly created constraint is enforced gradually on all relevant entities.
@@ -75,13 +75,13 @@ For each constraint the procedure will yield the following fields:
 
 | Field        | Desc                                                  |
 | ------------ | ----------------------------------------------------- |
-| `type`       | type of constraint, either `Unique` or `Exists`       |
+| `type`       | type of constraint, either `Unique` or `Mandatory`    |
 | `label`      | label or relationship-type enforced by constraint     |
 | `properties` | list of properties enforced by constraint             |
 | `entitytype` | type of entity, either `Node` or `Relation`           |
 | `status`     | either `under construction`, `operational or `failed` |
 
-`type` - type of constraint, either `Unique` or `Exists`
+`type` - type of constraint, either `Unique` or `Mandatory`
 `label` - label or relationship-type enforced by constraint
 `properties` - list of properties enforced by constraint
 `entitytype` - type of entity, either `Node` or `Relation`
@@ -101,7 +101,7 @@ Example:
       3) "[birthdate]"
       4) "NODE"
       5) "UNDER CONSTRUCTION"
-   2) 1) "exists"
+   2) 1) "mandatory"
       2) "Person"
       3) "[first_name, last_name]"
       4) "NODE"

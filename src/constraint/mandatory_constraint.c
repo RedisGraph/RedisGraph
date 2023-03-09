@@ -14,7 +14,7 @@
 #include <stdatomic.h>
 
 // opaque structure representing a constraint
-struct _ExistsConstraint {
+struct _MandatoryConstraint {
 	uint8_t n_attr;                // number of fields
 	ConstraintType t;              // constraint type
 	EnforcementCB enforce;         // enforcement function
@@ -26,22 +26,22 @@ struct _ExistsConstraint {
 	GraphEntityType et;            // entity type
 };
 
-typedef struct _ExistsConstraint* ExistsConstraint;
+typedef struct _MandatoryConstraint* MandatoryConstraint;
 
 static const char *_node_violation_err_msg =
-	"exists constraint violation, node of type %s missing attribute %s";
+	"mandatory constraint violation, node of type %s missing attribute %s";
 
 static const char *_edge_violation_err_msg =
-	"exists constraint violation, edge of relationship-type %s missing attribute %s";
+	"mandatory constraint violation, edge of relationship-type %s missing attribute %s";
 
 // enforces mandatory constraint on given entity
-static bool Constraint_EnforceExists
+static bool Constraint_EnforceMandatory
 (
 	const Constraint c,    // constraint to enforce
 	const GraphEntity *e,  // enforced entity
 	char **err_msg         // report error message
 ) {
-	ExistsConstraint _c = (ExistsConstraint)(c);
+	MandatoryConstraint _c = (MandatoryConstraint)(c);
 
 	// TODO: switch to attribute matrix
 	for(uint8_t i = 0; i < _c->n_attr; i++) {
@@ -70,8 +70,8 @@ static bool Constraint_EnforceExists
 	return true;
 }
 
-// create a new exists constraint
-Constraint Constraint_ExistsNew
+// create a new mandatory constraint
+Constraint Constraint_MandatoryNew
 (
 	int schema_id,            // schema ID
 	Attribute_ID *fields,     // enforced fields
@@ -79,7 +79,7 @@ Constraint Constraint_ExistsNew
 	uint8_t n_fields,         // number of fields
 	GraphEntityType et        // entity type
 ) {
-    ExistsConstraint c = rm_malloc(sizeof(struct _ExistsConstraint));
+    MandatoryConstraint c = rm_malloc(sizeof(struct _MandatoryConstraint));
 
 	// introduce constraint attributes
 	c->attrs = rm_malloc(sizeof(Attribute_ID) * n_fields);
@@ -89,11 +89,11 @@ Constraint Constraint_ExistsNew
     memcpy(c->attr_names, attr_names, sizeof(char*) * n_fields);
 
 	// initialize constraint
-	c->t               = CT_EXISTS;
+	c->t               = CT_MANDATORY;
 	c->et              = et;
 	c->status          = CT_PENDING;
 	c->n_attr          = n_fields;
-	c->enforce         = Constraint_EnforceExists;
+	c->enforce         = Constraint_EnforceMandatory;
 	c->schema_id       = schema_id;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 

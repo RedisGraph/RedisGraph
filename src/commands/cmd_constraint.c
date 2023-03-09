@@ -63,14 +63,14 @@ static int Constraint_Parse
 	}
 
 	//--------------------------------------------------------------------------
-	// get constraint type UNIQUE/EXISTS
+	// get constraint type UNIQUE/MANDATORY
 	//--------------------------------------------------------------------------
 
 	token = RedisModule_StringPtrLen(*argv++, NULL);
 	if(strcasecmp(token, "UNIQUE") == 0) {
 		*ct = CT_UNIQUE;
-	} else if(strcasecmp(token, "EXISTS") == 0) {
-		*ct = CT_EXISTS;
+	} else if(strcasecmp(token, "MANDATORY") == 0) {
+		*ct = CT_MANDATORY;
 	} else {
 		RedisModule_ReplyWithError(ctx, "Invalid constraint type");
 		return REDISMODULE_ERR;
@@ -126,7 +126,7 @@ static int Constraint_Parse
 	return REDISMODULE_OK;
 }
 
-// GRAPH.CONSTRAIN <key> DROP UNIQUE/EXISTS [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAIN <key> DROP UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
 static bool _Constraint_Drop
 (
 	RedisModuleCtx *ctx,    // redis module context
@@ -219,7 +219,7 @@ cleanup:
 	return res;
 }
 
-// GRAPH.CONSTRAIN <key> CREATE UNIQUE/EXISTS [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
 static bool _Constraint_Create
 (
 	RedisModuleCtx *ctx,    // redis module context
@@ -367,8 +367,8 @@ cleanup:
 }
 
 // command handler for GRAPH.CONSTRAIN command
-// GRAPH.CONSTRAIN <key> CREATE UNIQUE/EXISTS [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
-// GRAPH.CONSTRAIN <key> DROP   UNIQUE/EXISTS [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAIN <key> DROP   UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
 int Graph_Constraint
 (
 	RedisModuleCtx *ctx,
