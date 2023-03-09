@@ -33,10 +33,11 @@ typedef enum {
 // graph commands
 //------------------------------------------------------------------------------
 
+GRAPH_Commands CommandFromString(const char *cmd_name);
+
 void Graph_Query(void *args);
 void Graph_Profile(void *args);
 void Graph_Explain(void *args);
-GRAPH_Commands CommandFromString(const char *cmd_name);
 int Graph_List(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Info(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Debug(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
