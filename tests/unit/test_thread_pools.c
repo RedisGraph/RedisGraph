@@ -41,7 +41,7 @@ void test_threadPools_threadID() {
 		int offset = i + 1;
 		TEST_ASSERT(0 == 
 				ThreadPools_AddWorkReader(get_thread_friendly_id,
-					(int*)(thread_ids + offset)));
+					(int*)(thread_ids + offset), false));
 	}
 
 	// get writer threads friendly ids

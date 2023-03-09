@@ -365,6 +365,7 @@ class testProcedures(FlowTestsBase):
                            ['READ', 'algo.SPpaths'],
                            ['READ', 'algo.SSpaths'],
                            ["READ", "algo.pageRank"],
+                           ['READ', 'db.constraints'],
                            ["WRITE", "db.idx.fulltext.createNodeIndex"],
                            ["WRITE", "db.idx.fulltext.drop"],
                            ["READ", "db.idx.fulltext.queryNodes"],

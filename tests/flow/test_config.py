@@ -5,7 +5,6 @@ redis_graph = None
 # Number of options available.
 NUMBER_OF_OPTIONS = 15
 
-
 class testConfig(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)

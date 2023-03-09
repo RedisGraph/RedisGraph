@@ -136,7 +136,7 @@ static bool _EmitIndex
 	const Schema *s,
 	IndexType type
 ) {
-	Index idx = Schema_GetIndex(s, NULL, type);
+	Index idx = Schema_GetIndex(s, NULL, 0, type);
 	if(idx == NULL) return false;
 
 	//--------------------------------------------------------------------------
@@ -348,7 +348,7 @@ ProcedureResult Proc_IndexesFree
 	return PROCEDURE_OK;
 }
 
-ProcedureCtx *Proc_IndexesCtx() {
+ProcedureCtx *Proc_IndexesCtx(void) {
 	void *privateData = NULL;
 	ProcedureOutput output;
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 8);

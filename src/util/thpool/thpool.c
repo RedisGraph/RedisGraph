@@ -200,7 +200,9 @@ void thpool_wait(thpool_* thpool_p) {
 /* Destroy the threadpool */
 void thpool_destroy(thpool_* thpool_p) {
 	/* No need to destory if it's NULL */
-	if(thpool_p == NULL) return;
+	if (thpool_p == NULL) {
+		return;
+	}
 
 	const uint32_t threads_total = thpool_p->num_threads_alive;
 
@@ -355,8 +357,7 @@ static void *thread_do(struct thread *thread_p) {
 		bsem_wait(thpool_p->jobqueue.has_jobs);
 
 		if(threads_keepalive) {
-
-			thpool_p->num_threads_working++;
+			++thpool_p->num_threads_working;
 
 			/* Read job from queue and execute it */
 			void (*func_buff)(void *);
@@ -377,6 +378,7 @@ static void *thread_do(struct thread *thread_p) {
 			pthread_mutex_unlock(&thpool_p->thcount_lock);
 		}
 	}
+
 	--thpool_p->num_threads_alive;
 
 	return NULL;

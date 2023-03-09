@@ -8,8 +8,8 @@
 
 #include "../redismodule.h"
 #include "../index/index.h"
-#include "rax.h"
 #include "redisearch_api.h"
+#include "../constraint/constraint.h"
 #include "../graph/entities/graph_entity.h"
 
 typedef enum {
@@ -21,11 +21,12 @@ typedef enum {
 // similar to a relational table structure, our schemas are a collection
 // of attributes we've encountered overtime as entities were created or updated
 typedef struct {
-	int id;             // schema id
-	char *name;         // schema name
-	SchemaType type;    // schema type (node/edge)
-	Index index;        // exact match index
-	Index fulltextIdx;  // full-text index
+	int id;                  // schema id
+	char *name;              // schema name
+	SchemaType type;         // schema type (node/edge)
+	Index index;             // exact match index
+	Index fulltextIdx;       // full-text index
+	Constraint *constraints; // constraints array
 } Schema;
 
 // creates a new schema
@@ -47,6 +48,12 @@ const char *Schema_GetName
 	const Schema *s
 );
 
+// return schema type
+SchemaType Schema_GetType
+(
+	const Schema *s
+);
+
 // returns true if schema has either a full-text or exact-match index
 bool Schema_HasIndices
 (
@@ -59,13 +66,14 @@ unsigned short Schema_IndexCount
 	const Schema *s
 );
 
-// retrieves index from attribute
+// get index from schema
 // returns NULL if index wasn't found
 Index Schema_GetIndex
 (
-	const Schema *s,
-	Attribute_ID *attribute_id,
-	IndexType type
+	const Schema *s,            // schema to get index from
+	const Attribute_ID *attrs,  // indexed attributes
+	uint n,                     // number of attributes
+	IndexType type              // type of index
 );
 
 // assign a new index to attribute
@@ -75,7 +83,7 @@ int Schema_AddIndex
 	Index *idx,         // [input/output] index to create
 	Schema *s,          // schema holding the index
 	IndexField *field,  // field to index
-	IndexType type      // type of entities to index
+	IndexType type       // type of entities to index
 );
 
 // removes index
@@ -119,3 +127,61 @@ void Schema_Free
 (
 	Schema *s
 );
+
+//------------------------------------------------------------------------------
+// constraints API
+//------------------------------------------------------------------------------
+
+// check if schema has constraints
+bool Schema_HasConstraints
+(
+	const Schema *s  // schema to query
+);
+
+// checks if schema constains constraint
+bool Schema_ContainsConstraint
+(
+	const Schema *s,            // schema to search
+	ConstraintType t,           // constraint type
+	const Attribute_ID *attrs,  // constraint attributes
+	uint attr_count             // number of attributes
+);
+
+// retrieves constraint 
+// returns NULL if constraint was not found
+Constraint Schema_GetConstraint
+(
+	const Schema *s,            // schema from which to get constraint
+	ConstraintType t,           // constraint type
+	const Attribute_ID *attrs,  // constraint attributes
+	uint attr_count             // number of attributes
+);
+
+// get all constraints in schema
+const Constraint *Schema_GetConstraints
+(
+	const Schema *s  // schema from which to extract constraints
+);
+
+// adds a constraint to schema
+void Schema_AddConstraint
+(
+	Schema *s,       // schema holding the index
+	Constraint c     // constraint to add
+);
+
+// removes constraint from schema
+void Schema_RemoveConstraint
+(
+	Schema *s,    // schema
+	Constraint c  // constraint to remove
+);
+
+// enforce all constraints under given schema on entity
+bool Schema_EnforceConstraints
+(
+	const Schema *s,       // schema
+	const GraphEntity *e,  // entity to enforce
+	char **err_msg         // report error message
+);
+

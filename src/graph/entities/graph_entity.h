@@ -66,7 +66,8 @@ SIValue *GraphEntity_GetProperty
 bool GraphEntity_SetProperty
 (
 	const GraphEntity *e,
-	Attribute_ID attr_id,SIValue value
+	Attribute_ID attr_id,
+	SIValue value
 );
 
 // returns an SIArray of all keys in graph entity properties
@@ -75,7 +76,7 @@ SIValue GraphEntity_Keys
 	const GraphEntity *e
 );
 
-// returns an SIArray of all keys and values in graph entity properties. 
+// returns an SIArray of all keys and values in graph entity properties.
 // Keys at even positions, Values at odd position of the array
 SIValue GraphEntity_Properties
 (

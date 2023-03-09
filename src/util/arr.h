@@ -60,7 +60,7 @@ typedef void *array_t;
 #define array_sizeof(hdr) (sizeof(array_hdr_t) + (uint64_t)hdr->cap * hdr->elem_sz)
 /* Internal - get a pointer to the array header */
 #define array_hdr(arr) ((array_hdr_t *)(((char *)arr) - sizeof(array_hdr_t)))
-/* Interanl - get a pointer to an element inside the array at a given index */
+/* Internal - get a pointer to an element inside the array at a given index */
 #define array_elem(arr, idx) ((void *)((char *)arr + (idx * array_hdr(arr)->elem_sz)))
 
 static inline uint32_t array_len(array_t arr);
@@ -88,7 +88,8 @@ void array_debug(void *pp);
  *  */
 #define array_new(T, cap) (T *)(array_new_sz(sizeof(T), cap, 0))
 
-/* Initialize an array for a given type T with a given length. The capacity allocated is identical
+/* initialize an array for a given type T with a given length
+ * the capacity allocated is identical
  * to the length
  *  */
 #define array_newlen(T, len) (T *)(array_new_sz(sizeof(T), len, len))
@@ -105,7 +106,7 @@ static inline array_t array_ensure_cap(array_t arr, uint32_t cap) {
 // Reallocates the array setting the new capacity. If there were more
 // elements, those are deleted (cut off), if less, then there will be
 // space enough to fit (capacity - length) elements.
-static inline array_t array_reset_cap(array_t arr, uint32_t cap) {
+static inline array_t array_reset_cap(array_t arr, const uint32_t cap) {
   array_hdr_t *hdr = array_hdr(arr);
   hdr->cap = cap;
   hdr->len = hdr->len > hdr->cap ? hdr->cap : hdr->len;
@@ -213,7 +214,7 @@ static inline array_t array_ensure_len(array_t arr, size_t len) {
   } while(0)
 
 /* Get the length of the array */
-static inline uint32_t array_len(array_t arr) {
+static inline uint32_t array_len(const array_t arr) {
 	return arr ? array_hdr(arr)->len : 0;
 }
 

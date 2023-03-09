@@ -292,7 +292,7 @@ class testQueryTimeout():
         self.env.flush()
         self.env.stop()
         self.env = Env(decodeResponses=True)
-        
+
         redis_graph.query("UNWIND range(1, 1000) AS x CREATE (:N {v:x})")
 
         def query():
@@ -300,7 +300,7 @@ class testQueryTimeout():
 
             for i in range(1, 1000):
                 g.query(f"MATCH (n:N) WHERE n.v > {i} RETURN count(1)", timeout=1000)
-        
+
         loop = asyncio.get_event_loop()
         tasks = []
         for i in range(1, 10):

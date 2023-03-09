@@ -31,10 +31,10 @@ static void _DeleteNodeFromIndices
 		ASSERT(s != NULL);
 
 		// update any indices this entity is represented in
-		Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+		Index idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);
 		if(idx) Index_RemoveNode(idx, n);
 
-		idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+		idx = Schema_GetIndex(s, NULL, 0, IDX_EXACT_MATCH);
 		if(idx) Index_RemoveNode(idx, n);
 	}
 }
@@ -52,10 +52,10 @@ static void _DeleteEdgeFromIndices
 	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
 
 	// update any indices this entity is represented in
-	Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	Index idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);
 	if(idx) Index_RemoveEdge(idx, e);
 
-	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+	idx = Schema_GetIndex(s, NULL, 0, IDX_EXACT_MATCH);
 	if(idx) Index_RemoveEdge(idx, e);
 }
 
@@ -407,8 +407,8 @@ Schema *AddSchema
 
 Attribute_ID FindOrAddAttribute
 (
-	GraphContext *gc,                  // graph context to add the attribute
-	const char *attribute              // attribute name
+	GraphContext *gc,     // graph context to add the attribute
+	const char *attribute // attribute name
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(attribute != NULL);

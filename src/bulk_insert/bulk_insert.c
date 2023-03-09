@@ -47,7 +47,7 @@ static int* _BulkInsert_ReadHeaderLabels
 
     // array of all label IDs
     int* label_ids = array_new(int, 1);
-    // account for the terminating NULL character.
+    // stack variable to contain a single label
     char label[labels_len + 1];
 
 	while (true) {
@@ -64,6 +64,7 @@ static int* _BulkInsert_ReadHeaderLabels
 		} else {
 			// reached the last (or only) label; copy it
 			size_t len = strlen(labels);
+			// Also copy the terminating NULL character.
 			memcpy(label, labels, len + 1);
 		}
 

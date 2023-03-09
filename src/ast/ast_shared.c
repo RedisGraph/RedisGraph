@@ -69,7 +69,6 @@ AST_Operator AST_ConvertOperatorNode
 
 PropertyMap *PropertyMap_New
 (
-	GraphContext *gc,
 	const cypher_astnode_t *props
 ) {
 	if(props == NULL) return NULL;

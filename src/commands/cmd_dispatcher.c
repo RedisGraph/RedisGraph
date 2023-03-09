@@ -25,8 +25,8 @@ static int _read_flags
 	RedisModuleString **argv,   // commands arguments
   	int argc,                   // number of arguments
   	bool *compact,              // compact result-set format
-	bool *should_track_info,    // whether or not we should track the info data
-	long long *timeout,         // query level timeout
+    bool *should_track_info,    // whether or not we should track the info data
+	  long long *timeout,         // query level timeout
   	bool *timeout_rw,           // apply timeout on both read and write queries
   	uint *graph_version,        // graph version [UNUSED]
   	char **errmsg               // reported error message
@@ -229,7 +229,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		return REDISMODULE_OK;
 	}
 
-	/* Determine query execution context
+
+	/* Determine the query execution context.
 	 * queries issued within a LUA script or multi exec block must
 	 * run on Redis main thread, others can run on different threads. */
 	int flags = RedisModule_GetContextFlags(ctx);
@@ -256,7 +257,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 								 is_replicated, compact, timeout, timeout_rw, timer,
 								 received_milliseconds, should_track_info);
 
-		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
+		if(ThreadPools_AddWorkReader(handler, context, false) ==
+				THPOOL_QUEUE_FULL) {
 			// report an error once our workers thread pool internal queue
 			// is full, this error usually happens when the server is
 			// under heavy load and is unable to catch up
