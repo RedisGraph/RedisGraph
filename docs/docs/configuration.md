@@ -285,6 +285,22 @@ This configuration can be set when the module loads or at runtime.
 
 `VKEY_MAX_ENTITY_COUNT` is 100,000.
 
+### CMD_INFO
+
+An on/off toggle for the `GRAPH.INFO` command. Disabling this command may increase performance and lower the memory usage and these are the main reasons for it to be disabled.
+
+#### Default
+
+`CMD_INFO` is `yes`.
+
+### MAX_INFO_QUERIES
+
+A limit for the number of finished queries stored for the `GRAPH.INFO PREV` subcommand.
+
+#### Default
+
+`MAX_INFO_QUERIES` is 10,000.
+
 ---
 
 ## Query Configurations
