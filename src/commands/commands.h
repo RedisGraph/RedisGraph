@@ -36,12 +36,12 @@ typedef enum {
 void Graph_Query(void *args);
 void Graph_Profile(void *args);
 void Graph_Explain(void *args);
+GRAPH_Commands CommandFromString(const char *cmd_name);
 int Graph_List(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Info(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Debug(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Slowlog(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
-GRAPH_Commands CommandFromString(const char *cmd_name);
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 

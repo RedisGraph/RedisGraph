@@ -480,9 +480,9 @@ void UndoLog_RemoveLabels
 // undo schema addition
 void UndoLog_AddSchema
 (
-	UndoLog *log,  // undo log
-	int schema_id, // id of the schema
-	SchemaType t   // type of the schema
+	UndoLog *log,   // undo log
+	int schema_id,  // id of the schema
+	SchemaType t    // type of the schema
 ) {
 	ASSERT(log != NULL);
 	UndoOp op;
