@@ -6,19 +6,19 @@
 
 #include "RG.h"
 #include "../errors.h"
-#include "../configuration/config.h"
-#include "cmd_context.h"
 #include "../ast/ast.h"
+#include "cmd_context.h"
 #include "../util/arr.h"
 #include "../util/cron.h"
 #include "../query_ctx.h"
+#include "execution_ctx.h"
 #include "../graph/graph.h"
-#include "../index/indexer.h"
 #include "../util/rmalloc.h"
+#include "../index/indexer.h"
 #include "../util/cache/cache.h"
 #include "../util/thpool/pools.h"
+#include "../configuration/config.h"
 #include "../execution_plan/execution_plan.h"
-#include "execution_ctx.h"
 
 // GraphQueryCtx stores the allocations required to execute a query.
 typedef struct {
