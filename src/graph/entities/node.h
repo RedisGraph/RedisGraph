@@ -40,3 +40,4 @@ void Node_ToString
 	size_t *bytesWritten,
 	GraphEntityStringFormat format
 );
+

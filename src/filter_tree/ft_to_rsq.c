@@ -7,6 +7,7 @@
 #include "ft_to_rsq.h"
 #include "RG.h"
 #include "../util/arr.h"
+#include "../index/index.h"
 #include "filter_tree_utils.h"
 #include "../datatypes/point.h"
 #include "../datatypes/array.h"

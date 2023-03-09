@@ -4,10 +4,9 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "encode_graph.h"
-#include "v13/encode_v13.h"
+#pragma once
 
-void RdbSaveGraph(RedisModuleIO *rdb, void *value) {
-	RdbSaveGraph_v13(rdb, value);
-}
+#include "proc_ctx.h"
 
+// Lists all graph indices
+ProcedureCtx *Proc_ConstraintsCtx();

@@ -14,6 +14,7 @@
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/pools.h"
+#include "../constraint/constraint.h"
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
@@ -237,6 +238,16 @@ XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
 	return gc->version;
 }
 
+// get graph from graph context
+Graph *GraphContext_GetGraph
+(
+	const GraphContext *gc
+) {
+	ASSERT(gc != NULL);
+	
+	return gc->g;
+}
+
 // Update graph context version
 static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str) {
 	ASSERT(gc != NULL);
@@ -276,6 +287,22 @@ unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t) {
 	ASSERT(gc);
 	if(t == SCHEMA_NODE) return array_len(gc->node_schemas);
 	else return array_len(gc->relation_schemas);
+}
+
+void GraphContext_ActivateAllConstraints(const GraphContext *gc) {
+	for(uint i = 0; i < array_len(gc->node_schemas); i ++) {
+		Schema *s = gc->node_schemas[i];
+		for(uint j = 0; j < array_len(s->constraints); j ++) {
+			Constraint_SetStatus(s->constraints[j], CT_ACTIVE);
+		}
+	}
+
+	for(uint i = 0; i < array_len(gc->relation_schemas); i ++) {
+		Schema *s = gc->relation_schemas[i];
+		for(uint j = 0; j < array_len(s->constraints); j ++) {
+			Constraint_SetStatus(s->constraints[j], CT_ACTIVE);
+		}
+	}
 }
 
 Schema *GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t) {
@@ -457,33 +484,40 @@ uint64_t GraphContext_EdgeIndexCount
 	return _count_indices_from_schemas((const Schema**)gc->relation_schemas);
 }
 
+// attempt to retrieve an index on the given label and attribute IDs
 Index GraphContext_GetIndexByID
 (
-	const GraphContext *gc,
-	int id,
-	Attribute_ID *attribute_id,
-	IndexType type,
-	SchemaType t
+	const GraphContext *gc,        // graph context
+	int lbl_id,                    // label / rel-type ID
+	const Attribute_ID *attrs,     // attributes
+	uint n,                        // attributes count
+	IndexType idx_type,            // index type
+	GraphEntityType entity_type    // schema type NODE / EDGE
 ) {
-
+	// validations
 	ASSERT(gc != NULL);
+	ASSERT((attrs == NULL && n == 0) || (attrs != NULL && n > 0));
 
-	// Retrieve the schema for given id
-	Schema *s = GraphContext_GetSchemaByID(gc, id, t);
-	if(s == NULL) return NULL;
+	// retrieve the schema for given id
+	SchemaType st = (entity_type == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+	Schema *s = GraphContext_GetSchemaByID(gc, lbl_id, st);
+	if(s == NULL) {
+		return NULL;
+	}
 
-	return Schema_GetIndex(s, attribute_id, type);
+	return Schema_GetIndex(s, attrs, n, idx_type);
 }
 
+// attempt to retrieve an index on the given label and attribute
 Index GraphContext_GetIndex
 (
 	const GraphContext *gc,
 	const char *label,
-	Attribute_ID *attribute_id,
+	Attribute_ID *attrs,
+	uint n,
 	IndexType type,
 	SchemaType schema_type
 ) {
-
 	ASSERT(gc    != NULL);
 	ASSERT(label != NULL);
 
@@ -491,29 +525,30 @@ Index GraphContext_GetIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) return NULL;
 
-	return Schema_GetIndex(s, attribute_id, type);
+	return Schema_GetIndex(s, attrs, n, type);
 }
 
 // create an exact match index for the given label and attribute
 bool GraphContext_AddExactMatchIndex
 (
-	Index *idx,              // [input/output] index created
-	GraphContext *gc,        // graph context
-	SchemaType schema_type,  // type of entities to index nodes/edges
-	const char *label,       // label of indexed entities
-	const char **fields,     // fields to index
-	uint fields_count        // number of fields to index
+	Index *idx,                 // [input/output] index created
+	GraphContext *gc,           // graph context
+	SchemaType schema_type,     // type of entities to index nodes/edges
+	const char *label,          // label of indexed entities
+	const char **fields_str,    // fields to index
+	uint fields_count,          // number of fields to index
+	bool should_reply           // should reply to client
 ) {
 	ASSERT(idx    !=  NULL);
 	ASSERT(gc     !=  NULL);
 	ASSERT(label  !=  NULL);
-	ASSERT(fields !=  NULL);
+	ASSERT(fields_str !=  NULL);
 	ASSERT(fields_count > 0);
 
 	// retrieve the schema for this label
 	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
-	bool      index_created = false;
-	ResultSet *result_set   = QueryCtx_GetResultSet();
+	bool      index_changed = false;
+	ResultSet *result_set   = should_reply ? QueryCtx_GetResultSet() : NULL;
 
 	if(s == NULL) {
 		// schema doesn't exists, create it
@@ -522,15 +557,16 @@ bool GraphContext_AddExactMatchIndex
 
 	for(uint i = 0; i < fields_count; i++) {
 		// create index field
-		const char *field = fields[i];
+		const char *field = fields_str[i];
 		IndexField idx_field;
 		Attribute_ID f_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
 		IndexField_Default(&idx_field, f_id, field);
-
 		if(Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH) == INDEX_OK) {
-			index_created = true;
-			// update result-set
-			ResultSet_IndexCreated(result_set, INDEX_OK);
+			index_changed = true;
+			if(should_reply) {
+				// update result-set
+				ResultSet_IndexCreated(result_set, INDEX_OK);
+			}
 		}
 	}
 
@@ -538,14 +574,16 @@ bool GraphContext_AddExactMatchIndex
 	// we don't call Index_Disable within Schema_AddIndex as multiple
 	// field additions are still considered as a "single" modification
 	// of the index
-	if(index_created) {
+	if(index_changed) {
 		Index_Disable(*idx);
 	} else {
-		// update result-set
-		ResultSet_IndexCreated(result_set, INDEX_FAIL);
+		if(should_reply) {
+			// update result-set
+			ResultSet_IndexCreated(result_set, INDEX_FAIL);
+		}
 	}
 
-	return index_created;
+	return index_changed;
 }
 
 // create a full text index for the given label and attribute
@@ -571,7 +609,7 @@ bool GraphContext_AddFullTextIndex
 
 	// retrieve the schema for this label
 	ResultSet *result_set   = QueryCtx_GetResultSet();
-	bool      index_created = false;
+	bool      index_changed = false;
 	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
 
 	if(s == NULL) {
@@ -588,7 +626,7 @@ bool GraphContext_AddFullTextIndex
 		Attribute_ID f_id = GraphContext_FindOrAddAttribute(gc, field, NULL);
 		IndexField_New(&index_field, f_id, field, weight, nostem, phonetic);
 		if(Schema_AddIndex(idx, s, &index_field, IDX_FULLTEXT) == INDEX_OK) {
-			index_created = true;
+			index_changed = true;
 			// update result-set
 			ResultSet_IndexCreated(result_set, INDEX_OK);
 		}
@@ -603,11 +641,11 @@ bool GraphContext_AddFullTextIndex
 	}
 
 	// diable index if it was created
-	if(index_created) {
+	if(index_changed) {
 		Index_Disable(*idx);
 	}
 
-	return index_created;
+	return index_changed;
 }
 
 int GraphContext_DeleteIndex
@@ -627,7 +665,7 @@ int GraphContext_DeleteIndex
 
 	if(s != NULL) {
 		res = Schema_RemoveIndex(s, field, type);
-		if(res != INDEX_FAIL) {
+		if(res == INDEX_OK) {
 			// update resultset statistics
 			ResultSet *result_set = QueryCtx_GetResultSet();
 			ResultSet_IndexDeleted(result_set, res);
@@ -771,3 +809,26 @@ static void _GraphContext_Free(void *arg) {
 	rm_free(gc);
 }
 
+void GraphContext_LockForCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+) {
+    // aquire GIL
+    RedisModule_ThreadSafeContextLock(ctx);
+
+	// acquire graph write lock
+	Graph_AcquireWriteLock(gc->g);
+}
+
+void GraphContext_UnlockCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+) {
+	// release graph R/W lock
+	Graph_ReleaseLock(gc->g);
+
+	// unlock GIL
+	RedisModule_ThreadSafeContextUnlock(ctx);
+}

@@ -6,43 +6,42 @@
 
 #pragma once
 
-#include "../../serializers_include.h"
+#include "../../../serializers_include.h"
 
-void RdbSaveGraph_v12
+GraphContext *RdbLoadGraphContext_v13
 (
-	RedisModuleIO *rdb,
-	void *value
+	RedisModuleIO *rdb
 );
 
-void RdbSaveNodes_v12
-(
-	RedisModuleIO *rdb,
-	GraphContext *gc,
-	uint64_t nodes_to_encode
-);
-
-void RdbSaveDeletedNodes_v12
+void RdbLoadNodes_v13
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
-	uint64_t deleted_nodes_to_encode
+	uint64_t node_count
 );
 
-void RdbSaveEdges_v12
+void RdbLoadDeletedNodes_v13
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
-	uint64_t edges_to_encode
+	uint64_t deleted_node_count
 );
 
-void RdbSaveDeletedEdges_v12
+void RdbLoadEdges_v13
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
-	uint64_t deleted_edges_to_encode
+	uint64_t edge_count
 );
 
-void RdbSaveGraphSchema_v12
+void RdbLoadDeletedEdges_v13
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,
+	uint64_t deleted_edge_count
+);
+
+void RdbLoadGraphSchema_v13
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc

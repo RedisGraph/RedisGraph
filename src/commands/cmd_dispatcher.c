@@ -235,7 +235,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
 								 is_replicated, compact, timeout, timeout_rw);
 
-		if(ThreadPools_AddWorkReader(handler, context) == THPOOL_QUEUE_FULL) {
+		if(ThreadPools_AddWorkReader(handler, context, false) ==
+				THPOOL_QUEUE_FULL) {
 			// report an error once our workers thread pool internal queue
 			// is full, this error usually happens when the server is
 			// under heavy load and is unable to catch up

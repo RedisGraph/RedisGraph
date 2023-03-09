@@ -4,7 +4,8 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "encode_v12.h"
+#include "encode_v13.h"
+#include "../../../util/arr.h"
 
 static void _RdbSaveAttributeKeys
 (
@@ -114,12 +115,83 @@ static inline void _RdbSaveIndexData
 	}
 }
 
+static void _RdbSaveConstraint
+(
+	RedisModuleIO *rdb,
+	const Constraint c
+) {
+	/* Format:
+	 * constraint type
+	 * fields count
+	 * field IDs */
+
+	// only encode active constraint
+	ASSERT(Constraint_GetStatus(c) == CT_ACTIVE);
+
+	//--------------------------------------------------------------------------
+	// encode constraint type
+	//--------------------------------------------------------------------------
+
+	ConstraintType t = Constraint_GetType(c);
+	RedisModule_SaveUnsigned(rdb, t);
+
+	//--------------------------------------------------------------------------
+	// encode constraint fields count
+	//--------------------------------------------------------------------------
+
+	const Attribute_ID *attrs;
+	uint8_t n = Constraint_GetAttributes(c, &attrs, NULL);
+	RedisModule_SaveUnsigned(rdb, n);
+
+	//--------------------------------------------------------------------------
+	// encode constraint fields
+	//--------------------------------------------------------------------------
+
+	for(uint8_t i = 0; i < n; i++) {
+		Attribute_ID attr = attrs[i];
+		RedisModule_SaveUnsigned(rdb, attr);
+	}
+}
+
+static void _RdbSaveConstraintsData
+(
+	RedisModuleIO *rdb,
+	Constraint *constraints
+) {
+	uint n_constraints = array_len(constraints);
+	Constraint *active_constraints = array_new(Constraint, n_constraints);
+
+	// collect active constraints
+	for (uint i = 0; i < n_constraints; i++) {
+		Constraint c = constraints[i];
+		if (Constraint_GetStatus(c) == CT_ACTIVE) {
+			array_append(active_constraints, c);
+		}
+	}
+
+	// encode number of active constraints
+	uint n_active_constraints = array_len(active_constraints);
+	RedisModule_SaveUnsigned(rdb, n_active_constraints);
+
+	// encode constraints
+	for (uint i = 0; i < n_active_constraints; i++) {
+		Constraint c = active_constraints[i];
+		_RdbSaveConstraint(rdb, c);
+	}
+
+	// clean up
+	array_free(active_constraints);
+}
+
 static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	/* Format:
 	 * id
 	 * name
 	 * #indices
-	 * (index type, indexed property) X M */
+	 * (index type, indexed property) X M 
+	 * #constraints 
+	 * (constraint type, constraint fields) X N
+	 */
 
 	// Schema ID.
 	RedisModule_SaveUnsigned(rdb, s->id);
@@ -135,9 +207,12 @@ static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 
 	// Fulltext indices.
 	_RdbSaveIndexData(rdb, s->type, s->fulltextIdx);
+
+	// Constraints.
+	_RdbSaveConstraintsData(rdb, s->constraints);
 }
 
-void RdbSaveGraphSchema_v12(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbSaveGraphSchema_v13(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas
