@@ -250,6 +250,7 @@ uint64_t GraphContext_AllNodePropertyNamesCount(const GraphContext *gc) {
 uint64_t GraphContext_AllEdgePropertyNamesCount(const GraphContext *gc) {
 	ASSERT(gc);
 	return gc->edge_attributes_count;
+}
 
 // get graph from graph context
 Graph *GraphContext_GetGraph
@@ -514,23 +515,6 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	const bool has_edge_indices = GraphContext_EdgeIndexCount(gc);
 
 	return has_node_indices || has_edge_indices;
-}
-
-uint64_t _count_indices_from_schemas(const Schema** schemas) {
-	ASSERT(schemas);
-	uint64_t count = 0;
-
-	const uint32_t length = array_len(schemas);
-	for (uint32_t i = 0; i < length; ++i) {
-		const Schema *schema = schemas[i];
-		ASSERT(schema);
-		if (!schema) {
-			return count;
-		}
-		count += Schema_IndexCount(schema);
-	}
-
-	return count;
 }
 
 uint64_t GraphContext_NodeIndexCount
