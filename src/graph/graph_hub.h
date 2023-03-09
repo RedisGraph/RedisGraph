@@ -40,14 +40,14 @@ uint CreateEdge
 	AttributeSet set  // edge attributes
 );
 
-// delete a node
-// remove the node from the relevant indexes
-// add node deletion operation to undo-log
-// return 1 on success, 0 otherwise
-uint DeleteNode
+// delete nodes
+// remove nodes from the relevant indexes
+// add node deletion operations to undo-log
+void DeleteNodes
 (
 	GraphContext *gc,  // graph context to delete the node
-	Node *n            // the node to be deleted
+	Node *nodes,       // nodes to be deleted
+	uint count         // number of nodes to delete
 );
 
 // delete an edge

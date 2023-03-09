@@ -206,10 +206,11 @@ void Graph_CreateEdge
 );
 
 // removes node and all of its connections within the graph
-void Graph_DeleteNode
+void Graph_DeleteNodes
 (
-	Graph *g,
-	Node *node
+	Graph *g,       // graph to delete nodes from
+	Node *nodes,    // nodes to delete
+	uint64_t count  // number of nodes
 );
 
 // removes edges from Graph and updates graph relevent matrices

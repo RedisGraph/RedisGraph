@@ -295,7 +295,7 @@ void test_removeNodes() {
 
 	Graph_DeleteEdges(g, edges);
 	Graph_GetNode(g, 0, &node);
-	Graph_DeleteNode(g, &node);
+	Graph_DeleteNodes(g, &node, 1);
 	
 	Graph_ReleaseLock(g);
 

@@ -150,25 +150,27 @@ uint CreateEdge
 	return ATTRIBUTE_SET_COUNT(set);
 }
 
-uint DeleteNode
+void DeleteNodes
 (
 	GraphContext *gc,
-	Node *n
+	Node *nodes,
+	uint count
 ) {
-	ASSERT(n != NULL);
 	ASSERT(gc != NULL);
+	ASSERT(nodes != NULL);
 
-	// add node deletion operation to undo log	
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_DeleteNode(&query_ctx->undo_log, n);
+	for(uint i = 0; i < count; i++) {
+		Node *n = nodes + i;
+		// add node deletion operation to undo log
+		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+		UndoLog_DeleteNode(&query_ctx->undo_log, n);
 
-	if(GraphContext_HasIndices(gc)) {
-		_DeleteNodeFromIndices(gc, n);
+		if(GraphContext_HasIndices(gc)) {
+			_DeleteNodeFromIndices(gc, n);
+		}
 	}
 
-	Graph_DeleteNode(gc->g, n);
-
-	return 1;
+	Graph_DeleteNodes(gc->g, nodes, count);
 }
 
 int DeleteEdges
@@ -176,13 +178,14 @@ int DeleteEdges
 	GraphContext *gc,
 	Edge *edges
 ) {
-	ASSERT(gc     != NULL);
-	ASSERT(edges  != NULL);
+	ASSERT(gc    != NULL);
+	ASSERT(edges != NULL);
 
 	// add edge deletion operation to undo log
-	bool      has_indecise =  GraphContext_HasIndices(gc);
+	bool      has_indecise = GraphContext_HasIndices(gc);
 	uint      count        = array_len(edges);
 	QueryCtx *query_ctx    = QueryCtx_GetQueryCtx();
+
 	for (uint i = 0; i < count; i++) {
 		UndoLog_DeleteEdge(&query_ctx->undo_log, edges + i);
 

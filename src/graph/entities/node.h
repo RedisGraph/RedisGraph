@@ -26,8 +26,8 @@ typedef int LabelID;
 
 // struct representing a node in the graph
 typedef struct {
-	AttributeSet *attributes;       // MUST be the first member of Node
-	EntityID id;                    // unique id, MUST be the second member
+	AttributeSet *attributes;  // MUST be the first member of Node
+	EntityID id;               // unique id, MUST be the second member
 } Node;
 
 // prints a string representation of the node to buffer
@@ -40,3 +40,4 @@ void Node_ToString
 	size_t *bytesWritten,
 	GraphEntityStringFromat format
 );
+
