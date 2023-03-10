@@ -81,12 +81,6 @@ For each constraint the procedure will yield the following fields:
 | `entitytype` | type of entity, either `Node` or `Relation`           |
 | `status`     | either `under construction`, `operational or `failed` |
 
-`type` - type of constraint, either `Unique` or `Mandatory`
-`label` - label or relationship-type enforced by constraint
-`properties` - list of properties enforced by constraint
-`entitytype` - type of entity, either `Node` or `Relation`
-`status` - either `under construction`, `operational or `failed`
-
 Example:
 
 ```
