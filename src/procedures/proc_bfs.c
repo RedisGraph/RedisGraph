@@ -118,11 +118,11 @@ static ProcedureResult Proc_BFS_Invoke
 
 	// remove all values with a level less than or equal to 1
 	// values of 0 are not connected to the source, and values of 1 are the source
-	GxB_Scalar thunk;
-	GxB_Scalar_new(&thunk, GrB_UINT64);
-	GxB_Scalar_setElement_UINT64(thunk, 0);
-	GxB_Vector_select(V, GrB_NULL, GrB_NULL, GxB_GT_THUNK, V, thunk, GrB_NULL);
-	GxB_Scalar_free(&thunk);
+	GrB_Scalar thunk;
+	GrB_Scalar_new(&thunk, GrB_UINT64);
+	GrB_Scalar_setElement_UINT64(thunk, 0);
+	GrB_Vector_select_Scalar(V, GrB_NULL, GrB_NULL, GrB_VALUEGT_UINT64, V, thunk, GrB_NULL);
+	GrB_Scalar_free(&thunk);
 
 	// get number of entries
 	GrB_Index nvals;
