@@ -34,7 +34,7 @@ But trying to create a third node with `first_name` Frank and `last_name` Costan
 
 - A unique constraint requires the existance of an exact-match index prior to its creation. For example, trying to create a unique constraint governing attributes: `first_name` and `last_name` of entities with label `Person` without having an exact-match index over `Person`'s `first_name` and `last_name` attributes will fail.
    
-- A unique constraint is enforced for a given node/edge only if all the constrainted properties are present (non-null).
+- A unique constraint is enforced for a given node/edge only if all the constrainted properties are set (non-null).
 - Unique constraints are not enforced for array-valued properties.
 - Trying to delete an index that supports a constraint will fail.
    
