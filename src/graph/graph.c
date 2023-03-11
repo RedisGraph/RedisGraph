@@ -810,7 +810,6 @@ void Graph_CreateEdge
 	e->destNodeID    =  dest;
 	e->relationID    =  r;
 
-
 	Graph_FormConnection(g, src, dest, id, r);
 }
 
@@ -1192,7 +1191,7 @@ int Graph_DeleteEdges
 		NodeID dest_id = Edge_GetDestNodeID(e);
 
 		ASSERT(!DataBlock_ItemIsDeleted((void *)e->attributes));
-		
+
 		// an edge of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
@@ -1232,7 +1231,7 @@ int Graph_DeleteEdges
 		// free and remove edges from datablock
 		DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
 	}
-	
+
 	Graph_SetMatrixPolicy(g, policy);
 
 	return count;
@@ -1256,7 +1255,7 @@ static void _Graph_FreeRelationMatrices
 // update entity's attribute with given value
 int Graph_UpdateEntity
 (
-	GraphEntity *ge,             // entity yo update
+	GraphEntity *ge,             // entity to update
 	Attribute_ID attr_id,        // attribute to update
 	SIValue value,               // value to be set
 	GraphEntityType entity_type  // type of the entity node/edge

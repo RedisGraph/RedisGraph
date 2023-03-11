@@ -158,7 +158,7 @@ static void _UndoLog_Rollback_Set_Labels
 
 		Graph_RemoveNodeLabels(g, update_labels_op->node.id,
 				update_labels_op->label_lds, labels_count);
-				
+
 		_index_delete_node_with_labels(ctx, &(update_labels_op->node),
 				update_labels_op->label_lds, labels_count);
 
@@ -179,7 +179,7 @@ static void _UndoLog_Rollback_Remove_Labels
 		UndoLabelsOp *update_labels_op = &(op->labels_op);
 		uint         labels_count      = update_labels_op->labels_count;
 
-		Graph_LabelNode(g, update_labels_op->node.id, 
+		Graph_LabelNode(g, update_labels_op->node.id,
 				update_labels_op->label_lds, labels_count);
 
 		_index_node_with_labels(ctx, &(update_labels_op->node),
@@ -287,7 +287,7 @@ static void _UndoLog_Rollback_Add_Schema
 			Graph_RemoveLabel(ctx->gc->g, schema_id);
 		} else {
 			Graph_RemoveRelation(ctx->gc->g, schema_id);
-		}	
+		}
 	}
 }
 
@@ -304,7 +304,7 @@ static void _UndoLog_Rollback_Add_Attribute
 		UndoOp *op = undo_list + i;
 		UndoAddAttributeOp attribute_op = op->attribute_op;
 		int attribute_id = attribute_op.attribute_id;
-		GraphContext_RemoveAttribute(ctx->gc, attribute_id);	
+		GraphContext_RemoveAttribute(ctx->gc, attribute_id);
 	}
 }
 
@@ -486,9 +486,9 @@ void UndoLog_RemoveLabels
 // undo schema addition
 void UndoLog_AddSchema
 (
-	UndoLog *log,                // undo log
-	int schema_id,               // id of the schema
-	SchemaType t                 // type of the schema
+	UndoLog *log,   // undo log
+	int schema_id,  // id of the schema
+	SchemaType t    // type of the schema
 ) {
 	ASSERT(log != NULL);
 	UndoOp op;
@@ -501,8 +501,8 @@ void UndoLog_AddSchema
 
 void UndoLog_AddAttribute
 (
-	UndoLog *log,                // undo log
-	Attribute_ID attribute_id             // id of the attribute
+	UndoLog *log,             // undo log
+	Attribute_ID attribute_id // id of the attribute
 ) {
 	ASSERT(log != NULL);
 	UndoOp op;
@@ -522,7 +522,7 @@ void UndoLog_Rollback
 	UndoLog log
 ) {
 	ASSERT(log != NULL);
-	
+
 	QueryCtx *ctx  = QueryCtx_GetQueryCtx();
 	uint64_t count = array_len(log);
 
@@ -573,7 +573,6 @@ void UndoLog_Rollback
  	}
 
 	array_clear(log);
-
 }
 
 void UndoLog_Free
