@@ -63,7 +63,7 @@ GRAPH.CONSTRAINT g CREATE MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
 
 <note><b>Note:</b>
 
-Constraints are created asynchronously. The constraint creation command will reply with `OK` and the newly created constraint is enforced gradually on all relevant entities.
+Constraints are created asynchronously. The constraint creation command will reply with `PENDING` and the newly created constraint is enforced gradually on all relevant entities.
 
 During its creation phase, a constraint's status is `PENDING`. If all governed entities confirm to the constraint - its status is updated to `OPERATIONAL`, otherwise, if a conflicting entity has been detected, the constraint status is updated to `FAILED` and the constraint is not enforced. The caller may try to resolve the conflict and recreate the constraint. To retrieve the status of all constraints - use the `db.constraints()` procedure.
    
