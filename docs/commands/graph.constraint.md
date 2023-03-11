@@ -36,6 +36,8 @@ But trying to create a third node with `first_name` Frank and `last_name` Costan
    
 - Trying to delete an index that supports a constraint will fail.
    
+- Unique constraints are enforced only if all the constrainted properties are present (non-null).
+   
 - Unique constraints are not enforced for array-valued properties.
    
 </note>
