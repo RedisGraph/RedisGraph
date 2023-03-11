@@ -55,7 +55,7 @@ GRAPH.QUERY g "CREATE INDEX FOR (p:Person) ON (p.first_name, p.last_name)"
 GRAPH.CONSTRAINT g CREATE UNIQUE NODE Person PROPERTIES 2 first_name last_name
 ```
 
-Similarly to create a mandatory constraint for all edges with relationship-type `Visited`, enforcing the existence of a `date` attribute, issue the following command:
+Similarly, to create a mandatory constraint for all edges with relationship-type `Visited`, enforcing the existence of a `date` attribute, issue the following command:
 
 ```
 GRAPH.CONSTRAINT g CREATE MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
