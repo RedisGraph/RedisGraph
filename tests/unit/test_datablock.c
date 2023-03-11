@@ -83,49 +83,110 @@ void test_dataBlockAddItem() {
 }
 
 void test_dataBlockScan() {
-	DataBlock *dataBlock = DataBlock_New(DATABLOCK_BLOCK_CAP, 1024, sizeof(int), NULL);
+	// create a datablock
+	DataBlock *dataBlock = DataBlock_New(DATABLOCK_BLOCK_CAP, 1024, sizeof(uint64_t), NULL);
 	size_t itemCount = 2048;
 	DataBlock_Accommodate(dataBlock, itemCount);
 
-	// Set items.
-	for(int i = 0 ; i < itemCount; i++) {
-		int *item = (int *)DataBlock_AllocateItem(dataBlock, NULL);
+	// set items
+	for(int i = 0; i < itemCount; i++) {
+		uint64_t *item = (uint64_t*)DataBlock_AllocateItem(dataBlock, NULL);
 		*item = i;
 	}
 
-	// Scan through items.
-	int count = 0;		// items iterated so far
-	int *item = NULL;	// current iterated item
-	uint64_t idx = 0;	// iterated item index
+	//--------------------------------------------------------------------------
+	// scan through items
+	//--------------------------------------------------------------------------
 
 	DataBlockIterator *it = DataBlock_Scan(dataBlock);
-	while((item = (int *)DataBlockIterator_Next(it, &idx))) {
-		TEST_ASSERT(count == idx);
-		TEST_ASSERT(*item == count);
-		count++;
+
+	for(int i = 0; i < 2; i++) {
+		uint64_t  idx   = 0;     // iterated item index
+		int       count = 0;     // items iterated so far
+		uint64_t *item = NULL;  // current iterated item
+
+		while((item = (uint64_t*)DataBlockIterator_Next(it, &idx))) {
+			TEST_ASSERT(count == idx);
+			TEST_ASSERT(*item == idx);
+			count++;
+		}
+		TEST_ASSERT(count == itemCount);
+
+		// call next on a depleted iterator
+		item = (uint64_t*)DataBlockIterator_Next(it, NULL);
+		TEST_ASSERT(item == NULL);
+
+		// reset iterator and rescan
+		DataBlockIterator_Reset(it);
 	}
-	TEST_ASSERT(count == itemCount);
 
-	item = (int *)DataBlockIterator_Next(it, NULL);
-	TEST_ASSERT(item == NULL);
+	// free iterator
+	DataBlockIterator_Free(it);
 
-	DataBlockIterator_Reset(it);
+	//--------------------------------------------------------------------------
+	// scan backwards
+	//--------------------------------------------------------------------------
 
-	// Re-scan through items.
-	count = 0;
-	item = NULL;
-	while((item = (int *)DataBlockIterator_Next(it, &idx))) {
-		TEST_ASSERT(count == idx);
-		TEST_ASSERT(*item == count);
-		count++;
+	it = DataBlock_ScanDesc(dataBlock);
+
+	for(int i = 0; i < 2; i++) {
+		uint64_t  idx   = 0;     // iterated item index
+		int       count = 0;     // items iterated so far
+		uint64_t *item  = NULL;  // current iterated item
+
+		while((item = (uint64_t*)DataBlockIterator_Next(it, &idx))) {
+			TEST_ASSERT(itemCount - count - 1 == idx);
+			TEST_ASSERT(*item == idx);
+			count++;
+		}
+		TEST_ASSERT(count == itemCount);
+
+		// call next on a depleted iterator
+		item = (uint64_t*)DataBlockIterator_Next(it, NULL);
+		TEST_ASSERT(item == NULL);
+
+		// reset iterator and rescan
+		DataBlockIterator_Reset(it);
 	}
-	TEST_ASSERT(count == itemCount);
 
-	item = (int *)DataBlockIterator_Next(it, NULL);
-	TEST_ASSERT(item == NULL);
+	// free iterator
+	DataBlockIterator_Free(it);
+
+	//--------------------------------------------------------------------------
+	// full scan
+	//--------------------------------------------------------------------------
+
+	it = DataBlock_FullScan(dataBlock);
+
+	for(int i = 0; i < 2; i++) {
+		uint64_t  idx   = 0;     // iterated item index
+		int       count = 0;     // items iterated so far
+		uint64_t* item  = NULL;  // current iterated item
+
+		while((item = (uint64_t*)DataBlockIterator_Next(it, &idx))) {
+			TEST_ASSERT(count == idx);
+			if((void*)(*item) != NULL) {
+				TEST_ASSERT(*item == idx);
+			}
+			count++;
+		}
+
+		// expecting to go through each entry in the datablock
+		TEST_ASSERT(count ==
+				DataBlock_BlockCount(dataBlock) * DATABLOCK_BLOCK_CAP);
+
+		// call next on a depleted iterator
+		item = (uint64_t*)DataBlockIterator_Next(it, NULL);
+		TEST_ASSERT(item == NULL);
+
+		// reset iterator and rescan
+		DataBlockIterator_Reset(it);
+	}
+
+	// free iterator
+	DataBlockIterator_Free(it);
 
 	DataBlock_Free(dataBlock);
-	DataBlockIterator_Free(it);
 }
 
 void test_dataBlockRemoveItem() {

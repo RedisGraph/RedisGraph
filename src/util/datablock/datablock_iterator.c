@@ -13,53 +13,71 @@
 
 DataBlockIterator *DataBlockIterator_New
 (
-	Block *block,
+	Block **blocks,
 	uint64_t block_cap,
-	uint64_t end_pos
+	int64_t start_pos,
+	int64_t end_pos
 ) {
-	ASSERT(block);
+	ASSERT(blocks != NULL);
+	ASSERT(block_cap > 0);
 
 	DataBlockIterator *iter = rm_malloc(sizeof(DataBlockIterator));
 
-	iter->_start_block    =  block;
-	iter->_current_block  =  block;
-	iter->_block_pos      =  0;
-	iter->_block_cap      =  block_cap;
-	iter->_current_pos    =  0;
-	iter->_end_pos        =  end_pos;
+	iter->step          = (end_pos >= start_pos) ? 1 : -1;
+	iter->blocks        = blocks;
+	iter->end_pos       = end_pos;
+	iter->start_pos     = start_pos;
+	iter->block_cap     = block_cap;
+	iter->block_pos     = ITEM_POSITION_WITHIN_BLOCK(start_pos, block_cap);
+	iter->current_pos   = start_pos;
+	iter->current_block = blocks[ITEM_IDX_TO_BLOCK_IDX(start_pos, block_cap)];
+
 	return iter;
 }
 
 void *DataBlockIterator_Next
 (
-	DataBlockIterator *iter,
+	DataBlockIterator *it,
 	uint64_t *id
 ) {
-	ASSERT(iter != NULL);
+	ASSERT(it != NULL);
 
 	// set default
-	void                 *item         =  NULL;
-	DataBlockItemHeader  *item_header  =  NULL;
+	void                *item        = NULL;
+	DataBlockItemHeader *item_header = NULL;
 
 	// have we reached the end of our iterator?
-	while(iter->_current_pos < iter->_end_pos && iter->_current_block != NULL) {
+	while(it->current_pos != it->end_pos) {
 		// get item at current position
-		Block *block = iter->_current_block;
-		item_header = (DataBlockItemHeader *)block->data + (iter->_block_pos * block->itemSize);
+		const Block *block = it->current_block;
+		item_header = (DataBlockItemHeader*)(block->data +
+			(it->block_pos * block->itemSize));
 
 		// advance to next position
-		iter->_block_pos += 1;
-		iter->_current_pos += 1;
+		it->block_pos   += it->step;
+		it->current_pos += it->step;
 
-		// advance to next block if current block consumed
-		if(iter->_block_pos == iter->_block_cap) {
-			iter->_block_pos = 0;
-			iter->_current_block = iter->_current_block->next;
+		// advance to next block if current block is consumed
+		// and iterator is within range
+		if((it->block_pos == it->block_cap || it->block_pos == -1) &&
+		   (it->current_pos != it->end_pos)) {
+			// compute position within block
+			int64_t block_pos =
+				ITEM_POSITION_WITHIN_BLOCK(it->current_pos, it->block_cap);
+			// compute block index
+			int64_t block_idx =
+				ITEM_IDX_TO_BLOCK_IDX(it->current_pos, it->block_cap);
+
+			// update iterator
+			it->block_pos     = block_pos;
+			it->current_block = it->blocks[block_idx];
 		}
 
 		if(!IS_ITEM_DELETED(item_header)) {
 			item = ITEM_DATA(item_header);
-			if(id) *id = iter->_current_pos - 1;
+			if(id != NULL) {
+				*id = it->current_pos - it->step;
+			}
 			break;
 		}
 	}
@@ -72,9 +90,13 @@ void DataBlockIterator_Reset
 	DataBlockIterator *iter
 ) {
 	ASSERT(iter != NULL);
-	iter->_block_pos      =  0;
-	iter->_current_pos    =  0;
-	iter->_current_block  =  iter->_start_block;
+
+	int64_t s = iter->start_pos;
+	int64_t cur_block_idx = ITEM_IDX_TO_BLOCK_IDX(s, iter->block_cap);
+
+	iter->block_pos     = ITEM_POSITION_WITHIN_BLOCK(s, iter->block_cap);
+	iter->current_pos   = s;
+	iter->current_block = iter->blocks[cur_block_idx];
 }
 
 void DataBlockIterator_Free

@@ -12,20 +12,23 @@
 /* Datablock iterator iterates over items within a datablock. */
 
 typedef struct {
-	Block *_start_block;			// first block accessed by iterator
-	Block *_current_block;			// current block
-	uint64_t _block_pos;			// position within a block
-	uint64_t _block_cap;            // max number of items in block
-	uint64_t _current_pos;			// iterator current position
-	uint64_t _end_pos;				// iterator won't pass end position
+	Block **blocks;              // blocks to iterate over
+	const Block *current_block;  // current block
+	int64_t block_pos;           // position within a block
+	int64_t current_pos;         // iterator global position
+	int64_t block_cap;           // max number of items in block
+	int64_t start_pos;           // iterator start position
+	int64_t end_pos;             // iterator won't pass end position
+	int8_t step;                 // advance direction forward/backwards
 } DataBlockIterator;
 
 // creates a new datablock iterator
 DataBlockIterator *DataBlockIterator_New
 (
-	Block *block,        // block from which iteration begins
-	uint64_t block_cap,  // max number of items in block
-	uint64_t end_pos	 // iteration stops here
+	Block **blocks,      // blocks to iterate over
+	uint64_t block_cap,  // block capacity
+	int64_t start_pos,   // iteration starts here
+	int64_t end_pos      // iteration stops here
 );
 
 #define DataBlockIterator_Position(iter) (iter)->_current_pos

@@ -12,22 +12,6 @@
 #include <math.h>
 #include <stdbool.h>
 
-// computes the number of blocks required to accommodate n items.
-#define ITEM_COUNT_TO_BLOCK_COUNT(n, cap) \
-    ceil((double)n / cap)
-
-// computes block index from item index.
-#define ITEM_INDEX_TO_BLOCK_INDEX(idx, cap) \
-    (idx / cap)
-
-// computes item position within a block.
-#define ITEM_POSITION_WITHIN_BLOCK(idx, cap) \
-    (idx % cap)
-
-// retrieves block in which item with index resides.
-#define GET_ITEM_BLOCK(dataBlock, idx) \
-    dataBlock->blocks[ITEM_INDEX_TO_BLOCK_INDEX(idx, dataBlock->blockCap)]
-
 static void _DataBlock_AddBlocks
 (
 	DataBlock *dataBlock,
@@ -87,13 +71,14 @@ DataBlock *DataBlock_New
 	fpDestructor fp
 ) {
 	DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
-	dataBlock->blocks      =  NULL;
-	dataBlock->itemSize    =  itemSize + ITEM_HEADER_SIZE;
-	dataBlock->itemCount   =  0;
-	dataBlock->blockCount  =  0;
-	dataBlock->blockCap    =  blockCap;
-	dataBlock->deletedIdx  =  array_new(uint64_t, 128);
-	dataBlock->destructor  =  fp;
+
+	dataBlock->blocks     = NULL;
+	dataBlock->itemSize   = itemSize + ITEM_HEADER_SIZE;
+	dataBlock->itemCount  = 0;
+	dataBlock->blockCount = 0;
+	dataBlock->blockCap   = blockCap;
+	dataBlock->deletedIdx = array_new(uint64_t, 128);
+	dataBlock->destructor = fp;
 
 	_DataBlock_AddBlocks(dataBlock,
 			ITEM_COUNT_TO_BLOCK_COUNT(itemCap, dataBlock->blockCap));
@@ -101,26 +86,67 @@ DataBlock *DataBlock_New
 	return dataBlock;
 }
 
-uint64_t DataBlock_ItemCount(const DataBlock *dataBlock) {
+// returns number of items stored
+uint64_t DataBlock_ItemCount
+(
+	const DataBlock *dataBlock
+) {
+	ASSERT(dataBlock != NULL);
+
 	return dataBlock->itemCount;
 }
 
-DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock) {
+// returns number of blocks
+uint64_t DataBlock_BlockCount
+(
+	const DataBlock *dataBlock
+) {
 	ASSERT(dataBlock != NULL);
-	Block *startBlock = dataBlock->blocks[0];
 
-	// Deleted items are skipped, we're about to perform
-	// array_len(dataBlock->deletedIdx) skips during out scan.
-	int64_t endPos = dataBlock->itemCount + array_len(dataBlock->deletedIdx);
-	return DataBlockIterator_New(startBlock, dataBlock->blockCap, endPos);
+	return dataBlock->blockCount;
 }
 
-DataBlockIterator *DataBlock_FullScan(const DataBlock *dataBlock) {
-	ASSERT(dataBlock != NULL);
-	Block *startBlock = dataBlock->blocks[0];
+// Returns an iterator which scans entire datablock
+DataBlockIterator *DataBlock_Scan
+(
+	const DataBlock *dataBlock
+) {
+	// start with first item
+	int64_t s = 0;
 
-	int64_t endPos = dataBlock->blockCount * dataBlock->blockCap;
-	return DataBlockIterator_New(startBlock, dataBlock->blockCap, endPos);
+	// end with last item
+	int64_t e = dataBlock->itemCount + array_len(dataBlock->deletedIdx);
+
+	return DataBlockIterator_New(dataBlock->blocks, dataBlock->blockCap, s, e);
+}
+
+// Returns an iterator which scans entire datablock backwards
+DataBlockIterator *DataBlock_ScanDesc
+(
+	const DataBlock *dataBlock
+) {
+	// start with last item
+	int64_t s = dataBlock->itemCount + array_len(dataBlock->deletedIdx) -1;
+
+	// end with first item
+	int64_t e = -1;
+
+	return DataBlockIterator_New(dataBlock->blocks, dataBlock->blockCap, s, e);
+}
+
+DataBlockIterator *DataBlock_FullScan
+(
+	const DataBlock *dataBlock
+) {
+	ASSERT(dataBlock != NULL);
+
+	// start with first item
+	int64_t s = 0;
+
+	// end with last item
+	int64_t e = dataBlock->blockCount * dataBlock->blockCap;
+
+	return DataBlockIterator_New(dataBlock->blocks, dataBlock->blockCap, s, e);
 }
 
 // Make sure datablock can accommodate at least k items.
@@ -209,13 +235,59 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	dataBlock->itemCount--;
 }
 
-uint DataBlock_DeletedItemsCount(const DataBlock *dataBlock) {
+uint32_t DataBlock_DeletedItemsCount(const DataBlock *dataBlock) {
 	return array_len(dataBlock->deletedIdx);
 }
 
 inline bool DataBlock_ItemIsDeleted(void *item) {
 	DataBlockItemHeader *header = GET_ITEM_HEADER(item);
 	return IS_ITEM_DELETED(header);
+}
+
+// migrates an item
+bool DataBlock_MigrateItem
+(
+	DataBlock *dataBlock,  // datablock
+	uint64_t src,          // item original position
+	uint64_t *dest         // item new position
+) {
+	// validations
+	// src must be within bounds
+	// migrated item must not be NULL
+	ASSERT(dataBlock != NULL);
+	ASSERT(!_DataBlock_IndexOutOfBounds(dataBlock, src));
+	ASSERT(DataBlock_GetItem(dataBlock, src) != NULL);
+
+	// see if there's a deleted slot to migrate to
+	// only migrate item from a higher index to a lower index
+	uint32_t n = array_len(dataBlock->deletedIdx);
+	if(n == 0) {
+		// no available slots
+		return false;
+	}
+
+	uint64_t to = dataBlock->deletedIdx[n-1];
+
+	if(to > src) {
+		// can't migrate forward
+		return false;
+	}
+
+	// mark 'to' as none deleted
+	void *to_ptr = DataBlock_GetItemHeader(dataBlock, to);
+
+	// migrate item
+	DataBlockItemHeader *src_ptr = DataBlock_GetItemHeader(dataBlock, src);
+	memmove(to_ptr, (void*)src_ptr, dataBlock->itemSize);
+
+	// we can either mark src as deleted or we can zero out its memory
+	// marking as deleted seems cheaper
+	MARK_HEADER_AS_DELETED(src_ptr);
+
+	// remove used index from free list
+	*dest = array_pop(dataBlock->deletedIdx);
+
+	return true;
 }
 
 //------------------------------------------------------------------------------
@@ -248,8 +320,76 @@ void DataBlock_MarkAsDeletedOutOfOrder
 	array_append(dataBlock->deletedIdx, idx);
 }
 
+// remove empty blocks
+// returns number of blocks removed
+int DataBlock_Trim
+(
+	DataBlock *dataBlock  // datablock to trim
+) {
+	ASSERT(dataBlock != NULL);
+
+	// DataBlock_Trim should be called as part of the GRAPH.VACUUM process
+	// the datablock is expected to have the following structure
+	//
+	// |------------------------------------------------|
+	// |*,*,*,|*,*,D,|D,D,D,|D,D,D,|_,_,_,|_,_,_,|_,_,_,|
+	//
+	// occupied entries at the begining, followed by deleted entries
+	// and possibly empty blocks
+	//
+	// Trim will locate the last none empty block and remove all following
+	// blocks, trimming the datablock above will result in a compact datablock
+	//
+	// |-------------|
+	// |*,*,*,|*,*,_,|
+	//
+
+	// determine last none empty block index
+	uint64_t max_idx = dataBlock->itemCount;
+	int last_block = ITEM_IDX_TO_BLOCK_IDX(max_idx, dataBlock->blockCap);
+	int blocks_removed = dataBlock->blockCount - 1 - last_block;
+
+	// quickly return if there are no blocks to remove
+	if(blocks_removed == 0) {
+		return blocks_removed;
+	}
+
+	//--------------------------------------------------------------------------
+	// discard empty blocks
+	//--------------------------------------------------------------------------
+	for(int i = last_block + 1; i < dataBlock->blockCount; i++) {
+		Block_Free(dataBlock->blocks[i]);
+	}
+
+	//--------------------------------------------------------------------------
+	// update datablock
+	//--------------------------------------------------------------------------
+
+	// updata datablock blockCount
+	dataBlock->blockCount = last_block + 1;
+
+	// update datablock blocks array
+	dataBlock->blocks = rm_realloc(dataBlock->blocks,
+			sizeof(Block*) * dataBlock->blockCount);
+
+	// update datablock capacity
+	dataBlock->itemCap =
+		(dataBlock->blockCount * dataBlock->blockCap);
+
+	// update last block next pointer
+	dataBlock->blocks[last_block]->next = NULL;
+
+	// clear datablock's free list
+	array_free(dataBlock->deletedIdx);
+	dataBlock->deletedIdx = array_new(uint64_t, 128);
+
+	return blocks_removed;
+}
+
 void DataBlock_Free(DataBlock *dataBlock) {
-	for(uint i = 0; i < dataBlock->blockCount; i++) Block_Free(dataBlock->blocks[i]);
+	for(uint i = 0; i < dataBlock->blockCount; i++) {
+		Block_Free(dataBlock->blocks[i]);
+	}
 
 	rm_free(dataBlock->blocks);
 	array_free(dataBlock->deletedIdx);

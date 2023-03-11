@@ -1053,22 +1053,6 @@ void Graph_DeleteNodes
 	Node *nodes,    // nodes to delete
 	uint64_t count  // number of nodes
 ) {
-	// assumption, nodes are detached
-	// there are no incoming nor outgoing edges leading to / from nodes
-	ASSERT(g != NULL);
-	ASSERT(nodes != NULL);
-
-	#if RG_DEBUG
-	for(uint i = 0; i < count; i++) {
-		Node *n = nodes + i;
-		// validate assumption
-		Edge *es = array_new(Edge, 0);
-		Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &es);
-		ASSERT(array_len(es) == 0);
-		array_free(es);
-	}
-	#endif
-
 	// nodes deletion is performed in two steps
 	// 1. update label matrices
 	//    each deleted node is removed from all applicable label matrices
@@ -1085,6 +1069,22 @@ void Graph_DeleteNodes
 	//    labels-matrix
 	//
 	//    this seperation to two phases avoids multiple flushes of labels-matrix
+
+	// assumption, nodes are detached
+	// there are no incoming nor outgoing edges leading to / from nodes
+	ASSERT(g != NULL);
+	ASSERT(nodes != NULL);
+
+	#if RG_DEBUG
+	for(uint i = 0; i < count; i++) {
+		Node *n = nodes + i;
+		// validate assumption
+		Edge *es = array_new(Edge, 0);
+		Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &es);
+		ASSERT(array_len(es) == 0);
+		array_free(es);
+	}
+	#endif
 
 	//--------------------------------------------------------------------------
 	// update label matrices
@@ -1150,7 +1150,6 @@ void Graph_DeleteNodes
 	ASSERT(info == GrB_SUCCESS);
 
     info = GxB_Matrix_Iterator_seek(iter, 0) ;
-	ASSERT(info == GrB_SUCCESS);
 
 	// for each lbls entry marked for removal
 	while(info != GxB_EXHAUSTED) {

@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 
+// sort compare function
 static int _cmp
 (
 	const void *a,
@@ -34,45 +35,31 @@ static int _cmp
 // [*,*,*,*,*,_,_,_,_,_,_]
 //
 // to free up space empty blocks are freed
-static uint64_t _Vacuum
+static void _Vacuum
 (
+	RedisModuleCtx *ctx,
 	Graph *g
 ) {
 	GrB_Index  n;     // dimention of matrices
 	GrB_Vector v;     // temporary vector
+	GrB_Matrix M;     // current matrix to adjust
+	GrB_Matrix MT;    // matrix transposed
 	GrB_Matrix PR;    // rows permutation matrix
 	GrB_Matrix PC;    // columns permutation matrix
 	GrB_Info   info;  // GraphBLAS return code
 
 	// determine number of deleted nodes
-	bool       x             = true;
 	DataBlock *nodes         = g->nodes;
 	uint64_t  *free_list     = nodes->deletedIdx;
 	uint32_t   free_list_len = DataBlock_DeletedItemsCount(nodes);
 
 	if(free_list_len == 0) {
 		// no fragmantation
-		return 0;
+		return;
 	}
-
-	// determin if there's a chance of freeing blocks
-	uint64_t cap       = DataBlock_ItemCap(nodes);
-	uint64_t count     = DataBlock_ItemCount(nodes);
-	uint64_t block_cap = DataBlock_BlockCap(nodes);
-
-	// we will be able to free space only if number of available space
-	// in the datablock is greater than a block capacity
-	uint64_t available = (cap - count) + free_list_len;
-	if(available < block_cap) {
-		// not enough empty slots
-		return 0;
-	}
-
-	// TODO: i believe in this case PC = PR transposed
-	// TODO: find a better way of constructing I
 
 	//--------------------------------------------------------------------------
-	// build a the identity NxN matrix
+	// build NxN identity matrix
 	//--------------------------------------------------------------------------
 
 	n = Graph_RequiredMatrixDim(g);
@@ -93,21 +80,23 @@ static uint64_t _Vacuum
 	info = GrB_free(&v);
 	ASSERT(info == GrB_SUCCESS);
 
+	// lock graph under write lock
+	Graph_AcquireWriteLock(g);
+
+	//--------------------------------------------------------------------------
+	// relocate nodes
+	//--------------------------------------------------------------------------
+
 	// sort deleted node list descending
 	qsort(free_list, free_list_len, sizeof(uint64_t), _cmp);
 
 	// scan nodes from end to start
 	DataBlockIterator *it = DataBlock_ScanDesc(nodes);
 
-	//--------------------------------------------------------------------------
-	// relocate nodes
-	//--------------------------------------------------------------------------
-
 	uint64_t src;   // migrated node original ID
 	uint64_t dest;  // migrated node new ID
 
-	// as long as there are nodes to migrate
-	// and node migration succedded
+	// as long as there are nodes to migrate and node migration succedded
 	while(DataBlockIterator_Next(it, &src) != NULL &&
 		  DataBlock_MigrateItem(nodes, src, &dest) == true) {
 
@@ -127,8 +116,6 @@ static uint64_t _Vacuum
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	GxB_print(PR, GxB_SHORT);
-
 	//--------------------------------------------------------------------------
 	// adjust graph matrices
 	//--------------------------------------------------------------------------
@@ -136,7 +123,7 @@ static uint64_t _Vacuum
 	Graph_ApplyAllPending(g, true);
 
 	//--------------------------------------------------------------------------
-	// swap rows PR * M
+	// shift rows PR * M
 	//--------------------------------------------------------------------------
 
 	//--------------------------------------------------------------------------
@@ -145,14 +132,18 @@ static uint64_t _Vacuum
 
 	int labels_count = Graph_LabelTypeCount(g);
 	for(int i = 0; i < labels_count; i++) {
-		GrB_Matrix M = RG_MATRIX_M(Graph_GetLabelMatrix(g, i));
+		M = RG_MATRIX_M(Graph_GetLabelMatrix(g, i));
 		info = GrB_mxm(M, NULL, NULL, GxB_ANY_PAIR_BOOL, PR, M, NULL);
 		ASSERT(info == GrB_SUCCESS);
 	}
 
+	//--------------------------------------------------------------------------
+	// adjust relation matrices
+	//--------------------------------------------------------------------------
+
 	int reltype_count = Graph_RelationTypeCount(g);
 	for(int i = 0; i < reltype_count; i++) {
-		GrB_Matrix M = RG_MATRIX_M(Graph_GetRelationMatrix(g, i, false));
+		M = RG_MATRIX_M(Graph_GetRelationMatrix(g, i, false));
 		info = GrB_mxm(M, NULL, NULL, GxB_ANY_PAIR_UINT64, PR, M, NULL);
 		ASSERT(info == GrB_SUCCESS);
 	}
@@ -161,7 +152,7 @@ static uint64_t _Vacuum
 	// adjust adjacency matrx
 	//--------------------------------------------------------------------------
 
-	GrB_Matrix M = RG_MATRIX_M(Graph_GetAdjacencyMatrix(g, false));
+	M = RG_MATRIX_M(Graph_GetAdjacencyMatrix(g, false));
 	info = GrB_mxm(M, NULL, NULL, GxB_ANY_PAIR_BOOL, PR, M, NULL);
 	ASSERT(info == GrB_SUCCESS);
 
@@ -174,10 +165,11 @@ static uint64_t _Vacuum
 	ASSERT(info == GrB_SUCCESS);
 
 	//--------------------------------------------------------------------------
-	// swap columns  M * PC
+	// shift columns  M * PC
 	//--------------------------------------------------------------------------
 
 	// PC = PR transposed
+	// if PR moved row j to row i PC will move column j to column i
 	PC = PR;
 	info = GrB_transpose(PC, NULL, NULL, PR, NULL);
 	ASSERT(info == GrB_SUCCESS);
@@ -192,8 +184,12 @@ static uint64_t _Vacuum
 		ASSERT(info == GrB_SUCCESS);
 	}
 
+	//--------------------------------------------------------------------------
+	// adjust relation matrices
+	//--------------------------------------------------------------------------
+
 	for(int i = 0; i < reltype_count; i++) {
-		GrB_Matrix M = RG_MATRIX_M(Graph_GetRelationMatrix(g, i, false));
+		M = RG_MATRIX_M(Graph_GetRelationMatrix(g, i, false));
 		info = GrB_mxm(M, NULL, NULL, GxB_ANY_PAIR_UINT64, M, PC, NULL);
 		ASSERT(info == GrB_SUCCESS);
 	}
@@ -205,26 +201,36 @@ static uint64_t _Vacuum
 	M = RG_MATRIX_M(Graph_GetAdjacencyMatrix(g, false));
 	info = GrB_mxm(M, NULL, NULL, GxB_ANY_PAIR_BOOL, M, PC, NULL);
 	ASSERT(info == GrB_SUCCESS);
-	printf("new ADJ matrix\n");
-	GxB_print(M, GxB_SHORT);
+
+	// no need to adjust node labels matrix columns
+	// as these represent label IDs which did not change
 
 	//--------------------------------------------------------------------------
-	// adjust node labels matrix
+	// compute transpose matrices
 	//--------------------------------------------------------------------------
 
-	M = RG_MATRIX_M(Graph_GetNodeLabelMatrix(g));
-	info = GrB_mxm(M, NULL, NULL, GxB_ANY_PAIR_BOOL, M, PC, NULL);
+	for(int i = 0; i < reltype_count; i++) {
+		M  = RG_MATRIX_M(Graph_GetRelationMatrix(g, i, false));
+		MT = RG_MATRIX_M(Graph_GetRelationMatrix(g, i, true));
+		info = GrB_transpose(MT, NULL, NULL, M, NULL);
+		ASSERT(info == GrB_SUCCESS);
+	}
+
+	M  = RG_MATRIX_M(Graph_GetAdjacencyMatrix(g, false));
+	MT = RG_MATRIX_M(Graph_GetAdjacencyMatrix(g, true));
+	info = GrB_transpose(MT, NULL, NULL, M, NULL);
 	ASSERT(info == GrB_SUCCESS);
 
 	// trim empty blocks
 	int blocks_removed = DataBlock_Trim(nodes);
-	printf("blocks_removed: %d\n", blocks_removed);
+	RedisModule_Log(ctx, "notice", "blocks removed: %d\n", blocks_removed);
+
+	// release graph write lock
+	Graph_ReleaseLock(g);
 
 	// clean up
 	GrB_free(&PR);
 	DataBlockIterator_Free(it);
-
-	return 0;
 }
 
 // GRAPH.VACUUM <key>
@@ -234,7 +240,8 @@ int Graph_Vacuum
 	RedisModuleString **argv,
 	int argc
 ) {
-	if(argc < 2) {
+	// validate invokation, expecting exactly 2 arguments
+	if(argc != 2) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -246,9 +253,14 @@ int Graph_Vacuum
 		return REDISMODULE_OK;
 	}
 
-	// get graph and underline datablocks
-	Graph *g = gc->g;
-	uint64_t vacuumed = _Vacuum(g);
+	// replicate command
+	RedisModule_ReplicateVerbatim(ctx);
+
+	// perfom vacuum
+	_Vacuum(ctx, gc->g);
+
+	// GraphContext_Retrieve counter part
+	GraphContext_DecreaseRefCount(gc);
 
 	RedisModule_ReplyWithSimpleString(ctx, "OK");
 

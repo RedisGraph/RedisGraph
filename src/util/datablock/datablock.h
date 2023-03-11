@@ -32,6 +32,22 @@ typedef void (*fpDestructor)(void *);
 // Checks if the deleted bit in the header is 1 or not.
 #define IS_ITEM_DELETED(header) ((header)->deleted & 1)
 
+// computes the number of blocks required to accommodate n items.
+#define ITEM_COUNT_TO_BLOCK_COUNT(n, cap) \
+    ceil((double)n / cap)
+
+// computes block index from item index.
+#define ITEM_IDX_TO_BLOCK_IDX(idx, cap) \
+    (idx / cap)
+
+// computes item position within a block.
+#define ITEM_POSITION_WITHIN_BLOCK(idx, cap) \
+    (idx % cap)
+
+// retrieves block in which item with index resides.
+#define GET_ITEM_BLOCK(dataBlock, idx) \
+    dataBlock->blocks[ITEM_IDX_TO_BLOCK_IDX(idx, dataBlock->blockCap)]
+
 /* The DataBlock is a container structure for holding arbitrary items of a uniform type
  * in order to reduce the number of alloc/free calls and improve locality of reference.
  * Item deletions are thread-safe, and a DataBlockIterator can be used to traverse a
@@ -66,7 +82,16 @@ DataBlock *DataBlock_New
 );
 
 // returns number of items stored
-uint64_t DataBlock_ItemCount(const DataBlock *dataBlock);
+uint64_t DataBlock_ItemCount
+(
+	const DataBlock *dataBlock
+);
+
+// returns number of blocks
+uint64_t DataBlock_BlockCount
+(
+	const DataBlock *dataBlock
+);
 
 // Make sure datablock can accommodate at least k items.
 void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k);
@@ -76,6 +101,9 @@ void DataBlock_Ensure(DataBlock *dataBlock, uint64_t idx);
 
 // Returns an iterator which scans entire datablock.
 DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock);
+
+// Returns an iterator which scans entire datablock backwards
+DataBlockIterator *DataBlock_ScanDesc(const DataBlock *dataBlock);
 
 // Returns an iterator which scans entire out of order datablock.
 DataBlockIterator *DataBlock_FullScan(const DataBlock *dataBlock);
@@ -92,10 +120,25 @@ void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx);
 void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx);
 
 // Returns the number of deleted items.
-uint DataBlock_DeletedItemsCount(const DataBlock *dataBlock);
+uint32_t DataBlock_DeletedItemsCount(const DataBlock *dataBlock);
 
 // Returns true if the given item has been deleted.
 bool DataBlock_ItemIsDeleted(void *item);
+
+// migrates an item
+bool DataBlock_MigrateItem
+(
+	DataBlock *dataBlock,  // datablock
+	uint64_t src,          // item original position
+	uint64_t *dest         // item new position
+);
+
+// remove empty blocks
+// returns number of blocks removed
+int DataBlock_Trim
+(
+	DataBlock *dataBlock  // datablock to trim
+);
 
 // Free block.
 void DataBlock_Free(DataBlock *block);
