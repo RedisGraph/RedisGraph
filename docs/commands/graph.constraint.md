@@ -84,7 +84,7 @@ In addition, a constraint creation command may fail asynchronously due to the fo
 To list all constraints in a given graph, use the `db.constraints` procedure:
 
 ```
-GRAPH.QUERY <key> "CALL db.constraints()"
+GRAPH.RO_QUERY <key> "CALL db.constraints()"
 ```
 
 For each constraint the procedure will yield the following fields:
@@ -100,7 +100,7 @@ For each constraint the procedure will yield the following fields:
 Example:
 
 ```
-127.0.0.1:6379> GRAPH.QUERY g "call db.constraints()"
+127.0.0.1:6379> GRAPH.RO_QUERY g "call db.constraints()"
 1) 1) "type"
    2) "label"
    3) "properties"
