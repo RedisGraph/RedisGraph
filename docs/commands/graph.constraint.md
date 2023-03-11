@@ -12,50 +12,62 @@ There are two types of constraints:
 An mandatory constraint enforces the existance of attribute(s).
 
 Consider a mandatory constraint over the attribute `id` of all nodes with the label `Person`.
-The constraint will make sure that all `Person` nodes in the graph will have an `id` attribute.
-Any attempt to modify or create a `Person` node which doesn't have an `id` attribute will fail.
+This constraint will enforce that any `Person` node in the graph has an `id` attribute.
+Any attempt to create or modify a `Person` node, such that the resulting node does not have an `id` attribute, will fail.
 
 ## Unique constraint
 
 A unique constraint enforces uniquness over attribute value(s), i.e. no duplicates are allowed.
 
 Consider a unique constraint over the attributes: `first_name` and `last_name` of all nodes with the label `Person`
-The constraint will make sure that any combination of `first_name`, `last_name`  is unique.
-e.g. a graph can contain the following `Person` nodes:
+This constraint will enforce that any combination of `first_name`, `last_name`  is unique.
+E.g., a graph can contain the following `Person` nodes:
 
 ```
 (:Person {first_name:'Frank', last_name:'Costanza'})
 (:Person {first_name:'Estelle', last_name:'Costanza'})
 ```
 
-But if we'll try to create a third node with `first_name` Frank and `last_name` Costanza, we'll get an error and the node will not be created.
+But trying to create a third node with `first_name` Frank and `last_name` Costanza, will issue an error and the query will fail.
 
-Please note: a unique constraint requires the existance of an `exact-match` index prior to its creation.
-Trying to create a unique constraint governing attributes: `first_name` and `last_name` of entities of type `Person` without having an `exact-match` index over `Person's`  `first_name` and `last_name` attributes will lead to a constraint creation failure.
+<note><b>Notes:</b>
 
-## Create constraint
+- A `UNIQUE` constraint requires the existance of an exact-match index prior to its creation. For example, trying to create a `UNIQUE` constraint governing attributes: `first_name` and `last_name` of entities with label `Person` without having an exact-match index over `Person`'s `first_name` and `last_name` attributes will fail.
+   
+- Trying to delete an index that supports a constraint will fail.
+   
+- `UNIQUE` constraints are currently not enforced for array-valued properties.
+   
+</note>
+
+## Create constraints
 
 To create a constraint use the `GRAPH.CONSTRAINT` command as folllows:
 
 ```
-GRAPH.CONSTRAIN <key> CREATE <constraint-type> <entity-type> <label/reltype> PROPERTIES <prop-count> prop0, prop1...
+GRAPH.CONSTRAINT <key> CREATE MANDATORY|UNIQUE NODE|RELATIONSHIP <label/reltype> PROPERTIES <prop-count> prop [prop...]
 ```
 
-For example to create a `unique` constraint against all nodes with label `Person` enforcing uniquness on the combined attributes: `first_name` and `last_name` issue the following command:
+For example, to create a `UNIQUE` constraint for all nodes with label `Person`, enforcing uniquness on the combination of values of attributes `first_name` and `last_name`, issue the following commands:
 
 ```
-GRAPH.CONSTRAIN g CREATE UNIQUE NODE Person PROPERTIES 2 first_name, last_name
+GRAPH.QUERY g "CREATE INDEX FOR (p:Person) ON (p.first_name, p.last_name)"
+GRAPH.CONSTRAINT g CREATE UNIQUE NODE Person PROPERTIES 2 first_name last_name
 ```
 
-Similarly to create a `mandatory` constraint against all edges with relationship type `Visited` enforcing the existence of the `date` attribute issue the following command:
+Similarly to create a `MANDATORY` constraint for all edges with relationship-type `Visited`, enforcing the existence of a `date` attribute, issue the following command:
 
 ```
-GRAPH.CONSTRAIN g CREATE MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
+GRAPH.CONSTRAINT g CREATE MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
 ```
 
-Please note: constraints are created asynchronously, the constraint creation command will reply `OK` instantly to the caller and the newly created constraint is enforced gradually on all relevant entities.
+<note><b>Note:</b>
 
-During its creation phase a constraint is considered `pending`, if all govenared entities confirms with the constraint its status is updated to `operational`, otherwise a conflicting entity has been detected, the constraint status is updated to `failure`, in such case the constraint isn't enforced, the caller can resolve the conflict and recreate the constraint. To query constraints status use the `db.constraints()` procedure.
+Constraints are created asynchronously. The constraint creation command will reply `OK`, and the newly created constraint is enforced gradually on all relevant entities.
+
+During its creation phase, a constraint is considered `PENDING`. If all governed entities confirm with the constraint - its status is updated to `OPERATIONAL`, otherwise, if a conflicting entity has been detected, the constraint status is updated to `FAILURE` and the constraint is not enforced. The caller can resolve the conflict and recreate the constraint. To query constraints status use the `db.constraints()` procedure.
+   
+</note>
 
 The constraint creation command can fail for the following reasons:
 
@@ -73,13 +85,13 @@ GRAPH.QUERY <key> "CALL db.constraints()"
 
 For each constraint the procedure will yield the following fields:
 
-| Field        | Desc                                                  |
-| ------------ | ----------------------------------------------------- |
-| `type`       | type of constraint, either `Unique` or `Mandatory`    |
-| `label`      | label or relationship-type enforced by constraint     |
-| `properties` | list of properties enforced by constraint             |
-| `entitytype` | type of entity, either `Node` or `Relation`           |
-| `status`     | either `under construction`, `operational or `failed` |
+| Field        | Desc                                                   |
+| ------------ | ------------------------------------------------------ |
+| `type`       | type of constraint, either `unique` or `mandatory`     |
+| `label`      | label or relationship-type enforced by constraint      |
+| `properties` | list of properties enforced by constraint              |
+| `entitytype` | type of entity, either `NODE` or `RELATIONSHIP`        |
+| `status`     | either `UNDER CONSTRUCTION`, `OPERATIONAL` or `FAILED` |
 
 Example:
 
@@ -102,16 +114,16 @@ Example:
       5) "OPERATIONAL"
 ```
 
-## Deleting constraint
+## Deleting constraints
 
 To delete a constraint use the `GRAPH.CONSTRAINT` command as folllows:
 
 ```
-GRAPH.CONSTRAIN <key> DROP <constraint-type> <entity-type> <label/reltype> PROPERTIES <prop-count> prop0, prop1...
+GRAPH.CONSTRAINT <key> DROP MANDATORY|UNIQUE NODE|RELATIONSHIP <label/reltype> PROPERTIES <prop-count> prop [prop...]
 ```
 
-For example: to delete the unique constraint created in the example above, issue the following command:
+For example: to delete the `UNIQUE` constraint created in the example above, issue the following command:
 
 ```
-GRAPH.CONSTRAIN g DROP UNIQUE LABEL Person PROPERTIES 2 first_name, last_name
+GRAPH.CONSTRAINT g DROP UNIQUE NODE Person PROPERTIES 2 first_name last_name
 ```
