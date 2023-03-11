@@ -34,11 +34,9 @@ But trying to create a third node with `first_name` Frank and `last_name` Costan
 
 - A unique constraint requires the existance of an exact-match index prior to its creation. For example, trying to create a unique constraint governing attributes: `first_name` and `last_name` of entities with label `Person` without having an exact-match index over `Person`'s `first_name` and `last_name` attributes will fail.
    
-- Trying to delete an index that supports a constraint will fail.
-   
 - Unique constraints are enforced only if all the constrainted properties are present (non-null).
-   
 - Unique constraints are not enforced for array-valued properties.
+- Trying to delete an index that supports a constraint will fail.
    
 </note>
 
@@ -65,9 +63,9 @@ GRAPH.CONSTRAINT g CREATE MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
 
 <note><b>Note:</b>
 
-Constraints are created asynchronously. The constraint creation command will reply `OK`, and the newly created constraint is enforced gradually on all relevant entities.
+Constraints are created asynchronously. The constraint creation command will reply with `OK` and the newly created constraint is enforced gradually on all relevant entities.
 
-During its creation phase, a constraint is considered `PENDING`. If all governed entities confirm with the constraint - its status is updated to `OPERATIONAL`, otherwise, if a conflicting entity has been detected, the constraint status is updated to `FAILURE` and the constraint is not enforced. The caller can resolve the conflict and recreate the constraint. To query constraints status use the `db.constraints()` procedure.
+During its creation phase, a constraint status is `PENDING`. If all governed entities confirm to the constraint - its status is updated to `OPERATIONAL`, otherwise, if a conflicting entity has been detected, the constraint status is updated to `FAILED` and the constraint is not enforced. The caller may try to resolve the conflict and recreate the constraint. To retrieve the status of all constraints - use the `db.constraints()` procedure.
    
 </note>
 
@@ -79,7 +77,7 @@ A constraint creation command may fail synchronously due to the following reason
 
 In addition, a constraint creation command may fail asynchronously due to the following reasons:
 
-1. The graph already contains data which violates the constraint
+1. The graph contains data which violates the constraint
 
 ## Listing constraints
 
