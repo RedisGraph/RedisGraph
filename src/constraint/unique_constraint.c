@@ -68,6 +68,10 @@ static bool Constraint_EnforceUniqueEntity
     RSResultsIterator *iter = NULL;
 	const AttributeSet attributes = GraphEntity_GetAttributes(e);
 
+	for(uint8_t i = 0; i < _c->n_attr; i++) {
+		nodes[i] = NULL;
+	}
+
 	//--------------------------------------------------------------------------
 	// create a RediSearch query
 	//--------------------------------------------------------------------------
@@ -138,7 +142,9 @@ cleanup:
 	if(iter != NULL) {
 		RediSearch_ResultsIteratorFree(iter);
 	} else {
-		RediSearch_QueryNodeFree(root);
+		for(uint8_t i = 0; i < _c->n_attr; i++) {
+			RediSearch_QueryNodeFree(nodes[i]);
+		}
 	}
 
 	if(holds == false && err_msg != NULL) {
