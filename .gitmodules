@@ -21,4 +21,4 @@
 	url = https://github.com/kkos/oniguruma.git
 [submodule "deps/hdr_histogram"]
 	path = deps/hdr_histogram
-	url = https://github.com/RedisLabsModules/readies.git
+	url = https://github.com/RedisBloom/HdrHistogram_c.git
