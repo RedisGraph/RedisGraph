@@ -154,7 +154,9 @@ void Record_Merge_Into
 		if(toIdx != raxNotFound) {
 			// found entry, override value and set type
 			Entry e = from->entries[(uint)(intptr_t)it_from.data];
-			if(e.type == REC_TYPE_UNKNOWN) continue;
+			if(e.type == REC_TYPE_UNKNOWN) {
+				continue;
+			}
 			to->entries[(uint)(intptr_t)toIdx] = e;
 			// if the entry is a scalar, make sure both Records don't believe they own the allocation
 			if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&from->entries[(uint)(intptr_t)it_from.data].value.s);

@@ -174,11 +174,10 @@ return_cycle:
         }
 
         Record clone = OpBase_DeepCloneRecord(op->r);
-        // merge consumed record into clone
-        Record_Merge(clone, consumed);
-        // Temporal note: We thought of using the below function, but SEEMS that
-        // we don't need it at the moment.
-        // Record_Merge_Into(clone, consumed);
+        // Merge consumed record into a clone of the received record.
+        // Note: Must use this instead of `Record_Merge()` in cases where the
+        // last op isn't a projection (e.g., Sort due to an ORDER BY etc.)
+        Record_Merge_Into(clone, consumed);
         OpBase_DeleteRecord(consumed);
         return clone;
     }

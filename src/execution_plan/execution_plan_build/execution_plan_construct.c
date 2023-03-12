@@ -270,22 +270,22 @@ static void _buildCallSubqueryPlan
 	const cypher_astnode_t *clause  // call subquery clause
 ) {
 	// -------------------------------------------------------------------------
-	// build an AST from the subquery, and set it
+	// build an AST from the subquery
 	// -------------------------------------------------------------------------
 	// save the original AST
 	AST *orig_ast = QueryCtx_GetAST();
 
 	// create an AST from the body of the subquery
+	uint *ref_count = rm_malloc(sizeof(uint));
+	*ref_count = 1;
+
 	AST *subquery_ast = rm_malloc(sizeof(AST));
 	subquery_ast->free_root = true;
 	subquery_ast->parse_result = NULL;
+	subquery_ast->ref_count = ref_count;
 	subquery_ast->params_parse_result = NULL;
 	subquery_ast->anot_ctx_collection = orig_ast->anot_ctx_collection;
 	subquery_ast->referenced_entities = raxClone(orig_ast->referenced_entities);
-
-	uint *ref_count = rm_malloc(sizeof(uint));
-	*ref_count = 1;
-	subquery_ast->ref_count = ref_count;
 
 	// build the query, to be the root of the temporary AST
 	uint clause_count = cypher_astnode_nchildren(clause);
@@ -305,17 +305,15 @@ static void _buildCallSubqueryPlan
 							clause_count,
 							range);
 
+	// -------------------------------------------------------------------------
+	// build the embedded execution plan corresponding to the subquery AST
+	// -------------------------------------------------------------------------
 	QueryCtx_SetAST(subquery_ast);
-
-	// -------------------------------------------------------------------------
-	// build the embedded execution plan corresponding to the subquery
-	// -------------------------------------------------------------------------
 	ExecutionPlan *embedded_plan = NewExecutionPlan();
-
-	// -------------------------------------------------------------------------
-	// return original root
-	// -------------------------------------------------------------------------
 	QueryCtx_SetAST(orig_ast);
+
+	// // release artificial clauses array
+	// array_free(clauses);
 
 	// find the deepest op in the embedded plan
 	OpBase *deepest = embedded_plan->root;
@@ -333,11 +331,12 @@ static void _buildCallSubqueryPlan
 		deepest = implicit_proj;
 	}
 
-	// characterize whether the query is eager\returning or not
+	// characterize whether the query is eager or not
 	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_DELETE,
 					OPType_MERGE, OPType_SORT};
 	bool is_eager =
 	  ExecutionPlan_LocateOpMatchingType(embedded_plan->root, types, 4) != NULL;
+	// characterize whether the query is returning or not
 	bool is_returning = OpBase_Type(embedded_plan->root) == OPType_RESULTS;
 
 	// -------------------------------------------------------------------------
@@ -357,7 +356,7 @@ static void _buildCallSubqueryPlan
 			// bind the returning projection to the outer plan
 				// TODO: Do this later (after affecting the projections), and modify this so that the Project record_offsets
 				// change accordingly to the new plan, and it calls OpBase_Modifies() on all its projections!!
-				// ExecutionPlan_bindOpToPlan(returning_proj, plan);
+				// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
 			ProjectBindToPlan(returning_proj, plan);
 			goto skip_projections_modification;
 		}
@@ -440,7 +439,6 @@ static void _buildCallSubqueryPlan
 		OpBase *import_proj = deepest;
 		ProjectAddProjections(import_proj, import_proj_exps);
 
-
 		// modify intermediate projections in the body of the subquery, except the last Return projection (first in exec-plan),
 		// to contain projections of the outer scope variables to themselves ('_alias' --> '_alias')
 			// Locate the projections - collect them in an array.
@@ -458,6 +456,7 @@ static void _buildCallSubqueryPlan
 		// Add to the RETURN projection (the 'first' projection in the embedded plan)
 		// the mapping of the internal representation of the outer-scope
 		// variables to their original names ('_alias' --> 'alias')
+			// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
 		ProjectAddProjections(returning_proj, return_proj_exps);
 
 		// the 'last' projection is the importing projection, pop it
@@ -467,9 +466,11 @@ static void _buildCallSubqueryPlan
 		for(uint i = 0; i < array_len(intermediate_projections); i++) {
 			ProjectAddProjections(intermediate_projections[i],
 				intermediate_proj_exps);
+					// TODO: Add support for UNIONs
 		}
 
 		// bind the RETURN projection (last one) to the outer plan ('plan')
+			// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
 		ExecutionPlan_bindOpToPlan(returning_proj, plan);
 
 		// TODO: Extend this to support UNION as well (unique exec-plan, which

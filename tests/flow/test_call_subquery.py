@@ -252,8 +252,8 @@ class testCallSubqueryFlow():
         self.env.assertEquals(res.result_set[0][0],
         Node(label='N', properties={'name': 'Raz', 'v': 1}))
 
-    def test09_temp_ret_eager(self):
-        """Temporary test for the returning eager subquery case"""
+    def test09_simple_ret_eager(self):
+        """Simple test for the returning eager subquery case"""
 
         # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
         # execute a query with an eager and returning subquery inside
@@ -272,6 +272,67 @@ class testCallSubqueryFlow():
         self.env.assertEquals(res.properties_set, 2)
         self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz', 'v': 2}))
         self.env.assertEquals(res.result_set[1][0], Node(label='N', properties={'name': 'Raz', 'v': 5}))
+
+    def test10_order_by(self):
+        """Test the ordering of the output of the sq, and the outer query"""
+
+        # the graph has two nodes with label `N` and prop `name` with val `Raz`
+        # with the `v` property with values 2 and 5.
+
+        res = graph.query(
+            """
+            CALL {
+                UNWIND [1, 2, 3, 4] AS x
+                MATCH (n:N {v: x})
+                RETURN n ORDER BY n.v ASC
+            }
+            RETURN n
+            """
+        )
+
+        # validate the results
+        self.env.assertEquals(len(res.result_set), 2)
+        # self.env.assertEquals(res.result_set[0][0],
+        # Node(label='N', properties={'name': 'Raz', 'v': 2}))
+        # self.env.assertEquals(res.result_set[1][0],
+        # Node(label='N', properties={'name': 'Raz', 'v': 5}))
+
+        # res = graph.query(
+        #     """
+        #     CALL {
+        #         UNWIND [1, 2, 3, 4] AS x
+        #         MATCH (n:N {v: x})
+        #         RETURN n ORDER BY n.v DESC
+        #     }
+        #     RETURN n
+        #     """
+        # )
+
+        # # validate the results
+        # self.env.assertEquals(len(res.result_set), 2)
+        # self.env.assertEquals(res.result_set[0][0],
+        # Node(label='N', properties={'name': 'Raz', 'v': 5}))
+        # self.env.assertEquals(res.result_set[1][0],
+        # Node(label='N', properties={'name': 'Raz', 'v': 2}))
+
+        # TODO: This jams the tests. Why?
+        # res = graph.query(
+        #     """
+        #     CALL {
+        #         UNWIND [1, 2, 3, 4] AS x
+        #         MATCH (n:N {v: x})
+        #         RETURN n
+        #     }
+        #     RETURN n ORDER BY n.v ASC
+        #     """
+        # )
+
+        # # validate the results
+        # self.env.assertEquals(len(res.result_set), 2)
+        # self.env.assertEquals(res.result_set[0][0],
+        # Node(label='N', properties={'name': 'Raz', 'v': 1}))
+        # self.env.assertEquals(res.result_set[1][0],
+        # Node(label='N', properties={'name': 'Raz', 'v': 4}))
 
 
 
@@ -412,58 +473,6 @@ class testCallSubqueryFlow():
     #     Node(label='', properties={}))
 
     #     # delete the node (?)
-
-
-
-    # PROBLEMATIC AT THE MOMENT!
-    # def test06_order_by(self):
-        # """Test the ordering of the output of the sq, and the outer query"""
-
-        # # the graph has one node with label `N` and prop `name` with val `Raz`
-        # # with the `v` property with value 4. Create another node with `v` set
-        # # to 1
-        # graph.query("CREATE (:N {name: 'Raz', v: 1})")
-
-        # # FOR SOME REASON, THE ORDER BY GETS STUCK!
-        # res = graph.query(
-        #     """
-        #     CALL {
-        #         UNWIND [1, 2, 3, 4] AS x
-        #         MATCH (n:N {v: x})
-        #         RETURN n ORDER BY n.v ASC
-        #     }
-        #     RETURN n
-        #     """
-        # )
-
-        # # validate the results
-        # self.env.assertEquals(len(res.result_set), 2)
-        # self.env.assertEquals(res.result_set[0][0],
-        # Node(label='N', properties={'name': 'Raz', 'v': 1}))
-        # self.env.assertEquals(res.result_set[1][0],
-        # Node(label='N', properties={'name': 'Raz', 'v': 4}))
-
-    #     res = graph.query(
-    #         """
-    #         CALL {
-    #             UNWIND [1, 2, 3, 4] AS x
-    #             MATCH (n:N {v: x})
-    #             RETURN n
-    #         }
-    #         RETURN n ORDER BY n.v ASC
-    #         """
-    #     )
-
-    #     # validate the results
-    #     self.env.assertEquals(len(res.result_set), 2)
-    #     self.env.assertEquals(res.result_set[0][0],
-    #     Node(label='N', properties={'name': 'Raz', 'v': 1}))
-    #     self.env.assertEquals(res.result_set[1][0],
-    #     Node(label='N', properties={'name': 'Raz', 'v': 4}))
-
-
-
-
 
 
 
