@@ -895,7 +895,7 @@ This section contains information on all supported functions from the Cypher que
 | startNode(_relationship_)         | Returns the source node of a relationship <br> Returns null when _relationship_ evaluates to null                                           |
 | timestamp()                       | Returns the current system timestamp (milliseconds since epoch)                                                                             |
 | type(_relationship_)              | Returns a string: the type of _relationship_ <br> Returns null when _relationship_ evaluates to null                                        |
-| typeOf(_expr_) *                  | (Since RedisGraph v2.12) <br> Returns a string: the type of a literal, an expression's evaluation, an alias, a node property, or a relationship property <br> Return value is one of `Map`, `String`, `Integer`, `Boolean`, `Float`, `Node`, `Edge`, `List`, `Path`, `Point`, or `Null` |
+| typeOf(_expr_) *                  | (Since RedisGraph v2.12) <br> Returns a string: the type of a literal, an expression's evaluation, an alias, a node's property, or a relationship's property <br> Return value is one of `Map`, `String`, `Integer`, `Boolean`, `Float`, `Node`, `Edge`, `List`, `Path`, `Point`, or `Null` |
 
 &#42; RedisGraph-specific extensions to Cypher
 
