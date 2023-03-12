@@ -17,6 +17,8 @@ GraphContext *Decode_Previous(RedisModuleIO *rdb, int encver) {
 		return RdbLoadGraphContext_v10(rdb);
 	case 11:
 		return RdbLoadGraphContext_v11(rdb);
+	case 12:
+		return RdbLoadGraphContext_v12(rdb);
 	default:
 		ASSERT(false && "attempted to read unsupported RedisGraph version from RDB file.");
 		return NULL;

@@ -6,6 +6,7 @@
 
 #include "ast_build_op_contexts.h"
 #include "../errors.h"
+#include "ast_shared.h"
 #include "../util/arr.h"
 #include "../util/rax_extensions.h"
 #include "../arithmetic/arithmetic_expression_construct.h"
@@ -22,7 +23,7 @@ static inline EdgeCreateCtx _NewEdgeCreateCtx
 	EdgeCreateCtx new_edge = {  .alias = e->alias,
 								.relation = e->reltypes[0],
 								.reltypeId = e->reltypeIDs[0],
-								.properties = PropertyMap_New(gc, props),
+								.properties = PropertyMap_New(props),
 								.src = e->src->alias,
 								.dest = e->dest->alias
 							 };
@@ -39,7 +40,7 @@ static inline NodeCreateCtx _NewNodeCreateCtx
 
 	NodeCreateCtx new_node;
 	new_node.alias = n->alias;
-	new_node.properties = PropertyMap_New(gc, ast_props);
+	new_node.properties = PropertyMap_New(ast_props);
 	array_clone(new_node.labels, n->labels);
 	array_clone(new_node.labelsId, n->labelsID);
 

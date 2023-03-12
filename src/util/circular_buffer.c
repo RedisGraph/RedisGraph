@@ -47,7 +47,7 @@ int CircularBuffer_Add
 ) {
 	ASSERT(cb != NULL);
 	ASSERT(item != NULL);
-	
+
 	// do not add item if buffer is full
 	if(unlikely(CircularBuffer_Full(cb))) {
 		return 0;

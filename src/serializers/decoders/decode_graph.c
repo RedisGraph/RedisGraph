@@ -5,9 +5,9 @@
  */
 
 #include "decode_graph.h"
-#include "current/v12/decode_v12.h"
+#include "current/v13/decode_v13.h"
 
 GraphContext *RdbLoadGraph(RedisModuleIO *rdb) {
-	return RdbLoadGraphContext_v12(rdb);
+	return RdbLoadGraphContext_v13(rdb);
 }
 

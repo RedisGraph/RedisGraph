@@ -4,7 +4,7 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "encode_v12.h"
+#include "encode_v13.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -66,7 +66,7 @@ static void _RdbSaveHeader
 	RedisModule_SaveUnsigned(rdb, header->key_count);
 
 	// save graph schemas
-	RdbSaveGraphSchema_v12(rdb, gc);
+	RdbSaveGraphSchema_v13(rdb, gc);
 }
 
 // returns a state information regarding the number of entities required
@@ -169,7 +169,7 @@ static PayloadInfo *_RdbSaveKeySchema
 	return payloads;
 }
 
-void RdbSaveGraph_v12
+void RdbSaveGraph_v13
 (
 	RedisModuleIO *rdb,
 	void *value
@@ -222,16 +222,16 @@ void RdbSaveGraph_v12
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
 		case ENCODE_STATE_NODES:
-			RdbSaveNodes_v12(rdb, gc, payload.entities_count);
+			RdbSaveNodes_v13(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_NODES:
-			RdbSaveDeletedNodes_v12(rdb, gc, payload.entities_count);
+			RdbSaveDeletedNodes_v13(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_EDGES:
-			RdbSaveEdges_v12(rdb, gc, payload.entities_count);
+			RdbSaveEdges_v13(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_DELETED_EDGES:
-			RdbSaveDeletedEdges_v12(rdb, gc, payload.entities_count);
+			RdbSaveDeletedEdges_v13(rdb, gc, payload.entities_count);
 			break;
 		case ENCODE_STATE_GRAPH_SCHEMA:
 			// skip, handled in _RdbSaveHeader

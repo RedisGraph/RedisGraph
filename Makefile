@@ -42,7 +42,7 @@ make all            # Build everything
   CLANG=1             # Build with CLang toolchain (default for macOS)
   COV=1               # Build for coverage analysis (implies DEBUG=1)
   VG=1|docker         # build for Valgrind
-  SAN=type            # build with LLVM sanitizer (type=address|memory|leak|thread) 
+  SAN=type            # build with LLVM sanitizer (type=address|memory|leak|thread)
 make clean          # Clean build products
   ALL=1               # Completely remove build products
   DEPS=1              # Also clean dependant modules
@@ -129,13 +129,17 @@ UTF8PROC_DIR = $(ROOT)/deps/utf8proc
 export UTF8PROC_BINDIR=$(DEPS_BINDIR)/utf8proc
 include $(ROOT)/build/utf8proc/Makefile.defs
 
+ONIGURUMA_DIR = $(ROOT)/deps/oniguruma
+export ONIGURUMA_BINDIR=$(DEPS_BINDIR)/oniguruma
+include $(ROOT)/build/oniguruma/Makefile.defs
+
 REDISEARCH_DIR = $(ROOT)/deps/RediSearch
 export REDISEARCH_BINROOT=$(BINROOT)
 include $(ROOT)/build/RediSearch/Makefile.defs
 
 BIN_DIRS += $(REDISEARCH_BINROOT)/search-static
 
-LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER) $(UTF8PROC)
+LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER) $(UTF8PROC) $(ONIGURUMA)
 
 #----------------------------------------------------------------------------------------------
 
@@ -177,6 +181,10 @@ ifeq ($(wildcard $(UTF8PROC)),)
 MISSING_DEPS += $(UTF8PROC)
 endif
 
+ifeq ($(wildcard $(ONIGURUMA)),)
+MISSING_DEPS += $(ONIGURUMA)
+endif
+
 ifneq ($(call files_missing,$(REDISEARCH_LIBS)),)
 MISSING_DEPS += $(REDISEARCH_LIBS)
 endif
@@ -185,7 +193,7 @@ ifneq ($(MISSING_DEPS),)
 DEPS=1
 endif
 
-DEPENDENCIES=libcypher-parser graphblas redisearch rax libxxhash utf8proc
+DEPENDENCIES=libcypher-parser graphblas redisearch rax libxxhash utf8proc oniguruma
 
 ifneq ($(filter all deps $(DEPENDENCIES) pack,$(MAKECMDGOALS)),)
 DEPS=1
@@ -211,7 +219,7 @@ include $(MK)/rules
 
 ifeq ($(DEPS),1)
 
-deps: $(LIBCYPHER_PARSER) $(GRAPHBLAS) $(LIBXXHASH) $(RAX) $(REDISEARCH_LIBS) $(UTF8PROC)
+deps: $(LIBCYPHER_PARSER) $(GRAPHBLAS) $(LIBXXHASH) $(RAX) $(REDISEARCH_LIBS) $(UTF8PROC) $(ONIGURUMA)
 
 libxxhash: $(LIBXXHASH)
 
@@ -243,6 +251,11 @@ $(UTF8PROC):
 	@echo Building $@ ...
 	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/utf8proc DEBUG=$(DEPS_DEBUG)
 
+oniguruma: $(ONIGURUMA)
+
+$(ONIGURUMA):
+	@echo Building $@ ...
+	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/oniguruma DEBUG=$(DEPS_DEBUG)
 
 redisearch: $(REDISEARCH_LIBS)
 
@@ -250,7 +263,7 @@ $(REDISEARCH_LIBS):
 	@echo Building $@ ...
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT) CC=$(CC) CXX=$(CXX)
 
-.PHONY: libcypher-parser graphblas redisearch libxxhash rax utf8proc
+.PHONY: libcypher-parser graphblas redisearch libxxhash rax utf8proc oniguruma
 
 #----------------------------------------------------------------------------------------------
 
@@ -279,6 +292,7 @@ ifeq ($(DEPS),1)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/rax clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/xxHash clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/utf8proc clean DEBUG=$(DEPS_DEBUG)
+	$(SHOW)$(MAKE) -C $(ROOT)/build/oniguruma clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/GraphBLAS clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/libcypher-parser clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) clean ALL=1 BINROOT=$(REDISEARCH_BINROOT)
@@ -337,7 +351,7 @@ flow-tests: $(TEST_DEPS)
 
 tck-tests: $(TEST_DEPS)
 	$(SHOW)MODULE=$(TARGET) BINROOT=$(BINROOT) PARALLEL=$(_RLTEST_PARALLEL) GEN=0 AOF=0 TCK=1 ./tests/flow/tests.sh
-	
+
 .PHONY: test unit-tests flow-tests tck-tests
 
 #----------------------------------------------------------------------------------------------
