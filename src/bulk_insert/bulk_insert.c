@@ -48,6 +48,7 @@ static int* _BulkInsert_ReadHeaderLabels
     // array of all label IDs
     int* label_ids = array_new(int, 1);
     // stack variable to contain a single label
+    // account for the terminating NULL character.
     char label[labels_len + 1];
 
 	while (true) {
@@ -230,14 +231,19 @@ static int _BulkInsert_ProcessNodeFile
 		GraphEntity* ge;
 		Graph_CreateNode(gc->g, &n, label_ids, label_count);
 		ge = (GraphEntity*)&n;
+		uint valid_prop_count = 0;
 		// process entity attributes
 		for (uint i = 0; i < prop_count; i++) {
 			SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
 			// skip invalid attribute values
-			if (!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE))
+			if (!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) {
 				continue;
-			GraphEntity_AddProperty(ge, prop_indices[i], value);
+			}
+			++valid_prop_count;
+ 			GraphEntity_AddProperty(ge, prop_indices[i], value);
 		}
+
+		GraphContext_IncreasePropertyNamesCount(gc, valid_prop_count, GETYPE_NODE);
 	}
 
     Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
@@ -292,6 +298,7 @@ static int _BulkInsert_ProcessEdgeFile
 
 		Graph_CreateEdge(gc->g, src, dest, type_id, &e);
 		ge = (GraphEntity*)&e;
+		uint valid_prop_count = 0;
 
 		// process entity attributes
 		for (uint i = 0; i < prop_count; i++) {
@@ -300,9 +307,11 @@ static int _BulkInsert_ProcessEdgeFile
 			if (!(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE)) {
 				continue;
 			}
-
-			GraphEntity_AddProperty(ge, prop_indices[i], value);
+			++valid_prop_count;
+ 			GraphEntity_AddProperty(ge, prop_indices[i], value);
 		}
+
+		GraphContext_IncreasePropertyNamesCount(gc, valid_prop_count, GETYPE_EDGE);
 	}
 
     array_free(type_ids);

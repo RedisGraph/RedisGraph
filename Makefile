@@ -137,9 +137,13 @@ REDISEARCH_DIR = $(ROOT)/deps/RediSearch
 export REDISEARCH_BINROOT=$(BINROOT)
 include $(ROOT)/build/RediSearch/Makefile.defs
 
+HDR_HISTOGRAM_DIR = $(ROOT)/deps/hdr_histogram
+export HDR_HISTOGRAM_BINROOT=$(DEPS_BINDIR)/hdr_histogram
+include $(ROOT)/build/hdr_histogram/Makefile.defs
+
 BIN_DIRS += $(REDISEARCH_BINROOT)/search-static
 
-LIBS=$(RAX) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER) $(UTF8PROC) $(ONIGURUMA)
+LIBS=$(RAX) $(HDR_HISTOGRAM) $(LIBXXHASH) $(GRAPHBLAS) $(REDISEARCH_LIBS) $(LIBCYPHER_PARSER) $(UTF8PROC) $(ONIGURUMA)
 
 #----------------------------------------------------------------------------------------------
 
@@ -189,11 +193,15 @@ ifneq ($(call files_missing,$(REDISEARCH_LIBS)),)
 MISSING_DEPS += $(REDISEARCH_LIBS)
 endif
 
+ifneq ($(call files_missing,$(HDR_HISTOGRAM)),)
+MISSING_DEPS += $(HDR_HISTOGRAM)
+endif
+
 ifneq ($(MISSING_DEPS),)
 DEPS=1
 endif
 
-DEPENDENCIES=libcypher-parser graphblas redisearch rax libxxhash utf8proc oniguruma
+DEPENDENCIES=libcypher-parser graphblas redisearch hdr_histogram rax libxxhash utf8proc oniguruma
 
 ifneq ($(filter all deps $(DEPENDENCIES) pack,$(MAKECMDGOALS)),)
 DEPS=1
@@ -219,7 +227,7 @@ include $(MK)/rules
 
 ifeq ($(DEPS),1)
 
-deps: $(LIBCYPHER_PARSER) $(GRAPHBLAS) $(LIBXXHASH) $(RAX) $(REDISEARCH_LIBS) $(UTF8PROC) $(ONIGURUMA)
+deps: $(LIBCYPHER_PARSER) $(HDR_HISTOGRAM) $(GRAPHBLAS) $(LIBXXHASH) $(RAX) $(REDISEARCH_LIBS) $(UTF8PROC) $(ONIGURUMA)
 
 libxxhash: $(LIBXXHASH)
 
@@ -259,11 +267,17 @@ $(ONIGURUMA):
 
 redisearch: $(REDISEARCH_LIBS)
 
+hdr_histogram: $(HDR_HISTOGRAM)
+
+$(HDR_HISTOGRAM):
+	@echo Building $@ ...
+	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/hdr_histogram DEBUG=$(DEPS_DEBUG)
+
 $(REDISEARCH_LIBS):
 	@echo Building $@ ...
 	$(SHOW)$(MAKE) -C $(REDISEARCH_DIR) STATIC=1 BINROOT=$(REDISEARCH_BINROOT) CC=$(CC) CXX=$(CXX)
 
-.PHONY: libcypher-parser graphblas redisearch libxxhash rax utf8proc oniguruma
+.PHONY: libcypher-parser graphblas redisearch libxxhash rax utf8proc oniguruma hdr_histogram
 
 #----------------------------------------------------------------------------------------------
 
@@ -290,6 +304,7 @@ else
 	$(SHOW)-rm -fr $(TARGET).debug $(BINDIR)/CMakeCache.txt $(BINDIR)/tests
 ifeq ($(DEPS),1)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/rax clean DEBUG=$(DEPS_DEBUG)
+	$(SHOW)$(MAKE) -C $(ROOT)/build/hdr_histogram clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/xxHash clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/utf8proc clean DEBUG=$(DEPS_DEBUG)
 	$(SHOW)$(MAKE) -C $(ROOT)/build/oniguruma clean DEBUG=$(DEPS_DEBUG)

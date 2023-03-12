@@ -25,16 +25,20 @@ class RedisGraphSetup(paella.Setup):
 
     def debian_compat(self):
         self.install("locales")
-        self.run("%s/bin/getgcc --modern" % READIES)
+        if self.platform.is_arm():
+            self.run("%s/bin/getgcc --modern" % READIES)
+        else:
+            self.run("%s/bin/getgcc" % READIES)
+        self.install("zlib1g-dev")
         self.install("peg")
         if self.platform.is_arm():
             self.install("python3-dev")
         self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
-        self.pip_install("-r tests/fuzz/requirements.txt --use-pep517")
+        self.pip_install("-r tests/fuzz/requirements.txt")
 
     def redhat_compat(self):
+        self.install("zlib-devel")
         self.install("redhat-lsb-core")
-        self.install("which")
         if not self.platform.is_arm():
             self.install_linux_gnu_tar()
         if self.osnick == 'ol8':
@@ -46,15 +50,15 @@ class RedisGraphSetup(paella.Setup):
 
     def fedora(self):
         self.run("%s/bin/getgcc" % READIES)
+        self.install("zlib-devel")
         self.install_peg()
 
     def macos(self):
         self.install_gnu_utils()
-        # self.run("%s/bin/getgcc --modern" % READIES)
-        self.run("brew install libomp")
+        self.install("libomp zlib")
         self.install("redis")
         self.install_peg()
-        self.pip_install("-r tests/fuzz/requirements.txt --use-pep517")
+        self.pip_install("-r tests/fuzz/requirements.txt")
 
     def alpine(self):
         self.install("automake make autoconf libtool m4")
@@ -75,8 +79,10 @@ class RedisGraphSetup(paella.Setup):
             self.install("lcov-git", aur=True)
 
         if not self.no_rmpytools:
-            self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40".format(PYTHON=self.python, READIES=READIES))
+            self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40 --ramp-version pypi:2.4.0".format(PYTHON=self.python, READIES=READIES))
             self.pip_install("-r tests/requirements.txt")
+
+        self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 
     def install_peg(self):
         self.run(r"""

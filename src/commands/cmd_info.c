@@ -76,6 +76,61 @@ typedef enum InfoQueriesFlag {
     InfoQueriesFlag_PREV = 1 << 1,
 } InfoQueriesFlag;
 
+// Flags for the "GRAPH.INFO GET".
+typedef enum InfoGetFlag {
+    InfoGetFlag_NONE = 0,
+    InfoGetFlag_MEMORY = 1 << 0,
+    InfoGetFlag_COUNTS = 1 << 1,
+    InfoGetFlag_STATISTICS = 1 << 2,
+} InfoGetFlag;
+
+// This is a data structure which has all the GRAPH.INFO GET information
+// aggregated from all the graphs in the keyspaces of all the shards.
+typedef struct AggregatedGraphGetInfo {
+    // General information.
+    uint64_t graph_count;
+    uint64_t node_count;
+    uint64_t relationship_count;
+    uint64_t node_label_count;
+    uint64_t relationship_type_count;
+    uint64_t node_index_count;
+    uint64_t relationship_index_count;
+    uint64_t node_property_name_count;
+    uint64_t edge_property_name_count;
+
+    // COUNTS
+    FinishedQueryCounters counters;
+
+    // MEM TODO
+
+    // STAT
+    Statistics statistics;
+} AggregatedGraphGetInfo;
+
+// Initialise the AggregatedGraphGetInfo object.
+static bool _AggregatedGraphGetInfo_New
+(
+    AggregatedGraphGetInfo *info
+) {
+    ASSERT(info && "Info is not provided.");
+    if (!info) {
+        return false;
+    }
+    return Statistics_New(&info->statistics);
+}
+
+static void _AggregatedGraphGetInfo_Free
+(
+    AggregatedGraphGetInfo *info
+) {
+    ASSERT(info && "Info is not provided.");
+    if (!info) {
+        return;
+    }
+
+    Statistics_Free(&info->statistics);
+}
+
 // The data we need to extract from the callback for the circular buffer which
 // we later print out in the reply of the "GRAPH.INFO QUERIES PREV".
 // It is used as a "user data" field in the view callback.
@@ -116,6 +171,103 @@ static uint64_t _info_queries_max_count() {
     return max_elements_count;
 }
 
+// Aggregates the information used for the "GRAPH.INFO GET" from the specified
+// graph.
+static bool AggregatedGraphGetInfo_AddFromGraphContext
+(
+    AggregatedGraphGetInfo *info,
+    const GraphContext *gc
+) {
+    ASSERT(info && gc);
+    if (!info || !gc) {
+        return false;
+    }
+
+    CHECKED_ADD_OR_RETURN(info->node_count, Graph_NodeCount(gc->g), false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->relationship_count,
+        Graph_EdgeCount(gc->g),
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->node_label_count,
+        Graph_LabelTypeCount(gc->g),
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->relationship_type_count,
+        Graph_RelationTypeCount(gc->g),
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->node_index_count,
+        GraphContext_NodeIndexCount(gc),
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->relationship_index_count,
+        GraphContext_EdgeIndexCount(gc),
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->node_property_name_count,
+        GraphContext_AllNodePropertyNamesCount(gc),
+        false);
+
+    CHECKED_ADD_OR_RETURN(
+        info->edge_property_name_count,
+        GraphContext_AllEdgePropertyNamesCount(gc),
+        false
+    );
+
+    FinishedQueryCounters_Add(&info->counters, Info_GetFinishedQueryCounters(gc->info));
+    Statistics_Add(&info->statistics, Info_GetStatistics(gc->info));
+
+    ++info->graph_count;
+
+    return true;
+}
+
+// Parses out a single flag from a string, which is suitable for the
+// "GRAPH.INFO GET" command.
+static InfoGetFlag _parse_info_get_flag_from_string
+(
+    const char *str
+) {
+    if (!strcasecmp(str, INFO_GET_MEMORY_ARG)) {
+        return InfoGetFlag_MEMORY;
+    } else if (!strcasecmp(str, INFO_GET_COUNTS_ARG)) {
+        return InfoGetFlag_COUNTS;
+    } else if (!strcasecmp(str, INFO_GET_STATISTICS_ARG)) {
+        return InfoGetFlag_STATISTICS;
+    }
+    return InfoGetFlag_NONE;
+}
+
+// Parses out all the flags from an array of strings. The flags extracted are to
+// be used for the "GRAPH.INFO GET" command.
+static InfoGetFlag _parse_info_get_flags_from_args
+(
+    const RedisModuleString **argv,
+    const int argc
+) {
+    InfoGetFlag flags = InfoGetFlag_NONE;
+
+    if (!argv || argc <= 0) {
+        return flags;
+    }
+
+    int read = 0;
+    while (read < argc) {
+        const char *arg = RedisModule_StringPtrLen(argv[read], NULL);
+        flags |= _parse_info_get_flag_from_string(arg);
+        ++read;
+    }
+
+    return flags;
+}
+
 static bool _collect_queries_info_from_graph
 (
     RedisModuleCtx *ctx,
@@ -152,6 +304,32 @@ static bool _collect_queries_info_from_graph
     }
 
     return true;
+}
+
+// Returns a GraphContext object of a graph found by name.
+static GraphContext* _find_graph_with_name
+(
+    const char *graph_name
+) {
+    ASSERT(graph_name);
+    if (!graph_name) {
+        return NULL;
+    }
+
+    const uint32_t graphs_count = array_len(graphs_in_keyspace);
+
+    for (uint32_t i = 0; i < graphs_count; ++i) {
+        GraphContext *gc = graphs_in_keyspace[i];
+        if (!gc) {
+            return NULL;
+        }
+
+        if (!strcasecmp(graph_name, gc->graph_name)) {
+            return gc;
+        }
+    }
+
+    return NULL;
 }
 
 // Collects all the global information from all the graphs.
@@ -258,6 +436,14 @@ static bool _is_compact_mode(const char *arg) {
 
 static bool _is_queries_cmd(const char *cmd) {
     return !strcasecmp(cmd, SUBCOMMAND_NAME_QUERIES);
+}
+
+static bool _is_get_cmd(const char *cmd) {
+    return !strcasecmp(cmd, SUBCOMMAND_NAME_GET);
+}
+
+static bool _is_reset_cmd(const char *cmd) {
+    return !strcasecmp(cmd, SUBCOMMAND_NAME_RESET);
 }
 
 // Parses out a single "GRAPH.INFO QUERIES" flag.
@@ -745,6 +931,437 @@ static int _reply_with_queries_info_from_all_graphs
     return REDISMODULE_OK;
 }
 
+// Resets the information gathered so far in all the graphs.
+static int _reset_all_graphs_info
+(
+    RedisModuleCtx *ctx
+) {
+    ASSERT(ctx && graphs_in_keyspace);
+    if (!ctx || !graphs_in_keyspace) {
+        return REDISMODULE_ERR;
+    }
+
+    const uint32_t graphs_count = array_len(graphs_in_keyspace);
+
+    for (uint32_t i = 0; i < graphs_count; ++i) {
+        GraphContext *gc = graphs_in_keyspace[i];
+        ASSERT(gc);
+        if (!gc) {
+            return REDISMODULE_ERR;
+        }
+        Info_Reset(&gc->info);
+    }
+    REDISMODULE_ASSERT(module_reply_bool(ctx, true));
+    return REDISMODULE_OK;
+}
+
+// Resets the specified graphs information gathered so far.
+static int _reset_graph_info
+(
+    RedisModuleCtx *ctx,
+    const char *graph_name
+) {
+    ASSERT(ctx && graphs_in_keyspace);
+    if (!ctx || !graphs_in_keyspace) {
+        return REDISMODULE_ERR;
+    }
+
+    GraphContext *gc = _find_graph_with_name(graph_name);
+    if (!gc) {
+        RedisModule_ReplyWithError(ctx, ERROR_COULD_NOT_FIND_GRAPH);
+        return REDISMODULE_ERR;
+    }
+
+    Info_Reset(&gc->info);
+
+    REDISMODULE_ASSERT(module_reply_bool(ctx, true));
+
+    return REDISMODULE_OK;
+}
+
+// Replies with an aggregated information over all the graphs.
+// This is a part of the "GRAPH.INFO GET *" reply.
+static int _reply_with_get_aggregated_graph_info
+(
+    RedisModuleCtx *ctx,
+    const AggregatedGraphGetInfo info,
+    const bool is_compact_mode,
+    const InfoGetFlag flags
+) {
+    ASSERT(ctx);
+
+    ReplyRecorder recorder REPLY_AUTO_FINISH;
+    REDISMODULE_ASSERT(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of graphs",
+        info.graph_count
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of nodes",
+        info.node_count
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of relationships",
+        info.relationship_count
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of node labels",
+        info.node_label_count
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of relationship types",
+        info.relationship_type_count
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of node indices",
+        info.node_index_count
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of relationship indices",
+        info.relationship_index_count
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Total number of edge properties",
+        info.edge_property_name_count
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Total number of node properties",
+        info.node_property_name_count
+    ));
+
+    if (CHECK_FLAG(flags, InfoGetFlag_COUNTS)) {
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Total number of queries",
+            FinishedQueryCounters_GetTotalCount(info.counters)
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Successful read-only queries",
+            info.counters.readonly_succeeded_count
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Successful write queries",
+            info.counters.write_succeeded_count
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Failed read-only queries",
+            info.counters.readonly_failed_count
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Failed write queries",
+            info.counters.write_failed_count
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Timed out read-only queries",
+            info.counters.readonly_timedout_count
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Timed out write queries",
+            info.counters.write_timedout_count
+        ));
+    }
+
+    if (CHECK_FLAG(flags, InfoGetFlag_STATISTICS)) {
+        const Percentiles percentiles
+            = Statistics_GetPercentiles(info.statistics);
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
+            &recorder,
+            "Query total durations",
+            (long long*)percentiles.total_durations,
+            sizeof(percentiles.total_durations) / sizeof(percentiles.total_durations[0])
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
+            &recorder,
+            "Query wait durations",
+            (long long*)percentiles.wait_durations,
+            sizeof(percentiles.wait_durations) / sizeof(percentiles.wait_durations[0])
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
+            &recorder,
+            "Query execution durations",
+            (long long*)percentiles.execution_durations,
+            sizeof(percentiles.execution_durations) / sizeof(percentiles.execution_durations[0])
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
+            &recorder,
+            "Query report durations",
+            (long long*)percentiles.report_durations,
+            sizeof(percentiles.report_durations) / sizeof(percentiles.report_durations[0])
+        ));
+
+        // TODO memory
+    }
+
+    if (CHECK_FLAG(flags, InfoGetFlag_MEMORY)) {
+        REDISMODULE_ASSERT(ReplyRecorder_AddString(
+            &recorder,
+            "[MEM]",
+            "The flag is not implemented."
+        ));
+    }
+
+    return REDISMODULE_OK;
+}
+
+// Replies with an information of the specified graph.
+// This is a part of the "GRAPH.INFO GET <key>" reply.
+static int _reply_with_get_graph_info
+(
+    RedisModuleCtx *ctx,
+    GraphContext *gc,
+    const bool is_compact_mode,
+    const InfoGetFlag flags
+) {
+    ASSERT(ctx && gc && gc->g);
+
+    ReplyRecorder recorder REPLY_AUTO_FINISH;
+    REDISMODULE_ASSERT(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of nodes",
+        Graph_NodeCount(gc->g)
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of relationships",
+        Graph_EdgeCount(gc->g)
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of node labels",
+        Graph_LabelTypeCount(gc->g)
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of relationship types",
+        Graph_RelationTypeCount(gc->g)
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of node indices",
+        GraphContext_NodeIndexCount(gc)
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of relationship indices",
+        GraphContext_EdgeIndexCount(gc)
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Number of unique property names",
+        GraphContext_AttributeCount(gc)
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Total number of edge properties",
+        GraphContext_AllEdgePropertyNamesCount(gc)
+    ));
+
+    REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+        &recorder,
+        "Total number of node properties",
+        GraphContext_AllNodePropertyNamesCount(gc)
+    ));
+
+    if (CHECK_FLAG(flags, InfoGetFlag_COUNTS)) {
+        const FinishedQueryCounters counters
+            = Info_GetFinishedQueryCounters(gc->info);
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Total number of queries",
+            FinishedQueryCounters_GetTotalCount(counters)
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Successful read-only queries",
+            counters.readonly_succeeded_count
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Successful write queries",
+            counters.write_succeeded_count
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Failed read-only queries",
+            counters.readonly_failed_count
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Failed write queries",
+            counters.write_failed_count
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Timed out read-only queries",
+            counters.readonly_timedout_count
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
+            &recorder,
+            "Timed out write queries",
+            counters.write_timedout_count
+        ));
+    }
+
+    if (CHECK_FLAG(flags, InfoGetFlag_STATISTICS)) {
+        const Statistics statistics
+            = Info_GetStatistics(gc->info);
+        const Percentiles percentiles
+            = Statistics_GetPercentiles(statistics);
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
+            &recorder,
+            "Query total durations",
+            (long long*)percentiles.total_durations,
+            sizeof(percentiles.total_durations) / sizeof(percentiles.total_durations[0])
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
+            &recorder,
+            "Query wait durations",
+            (long long*)percentiles.wait_durations,
+            sizeof(percentiles.wait_durations) / sizeof(percentiles.wait_durations[0])
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
+            &recorder,
+            "Query execution durations",
+            (long long*)percentiles.execution_durations,
+            sizeof(percentiles.execution_durations) / sizeof(percentiles.execution_durations[0])
+        ));
+
+        REDISMODULE_ASSERT(ReplyRecorder_AddNumbers(
+            &recorder,
+            "Query report durations",
+            (long long*)percentiles.report_durations,
+            sizeof(percentiles.report_durations) / sizeof(percentiles.report_durations[0])
+        ));
+
+        // TODO memory
+    }
+
+    if (CHECK_FLAG(flags, InfoGetFlag_MEMORY)) {
+        REDISMODULE_ASSERT(ReplyRecorder_AddString(
+            &recorder,
+            "[MEM]",
+            "The flag is not implemented."
+        ));
+    }
+
+    return REDISMODULE_OK;
+}
+
+// Handles the specific graph information request.
+// This is an action of the "GRAPH.INFO GET <key>" command.
+static int _get_graph_info
+(
+    RedisModuleCtx *ctx,
+    const char *graph_name,
+    const bool is_compact_mode,
+    const InfoGetFlag flags
+) {
+    ASSERT(ctx && graph_name);
+
+    GraphContext *gc = _find_graph_with_name(graph_name);
+    if (!gc) {
+        RedisModule_ReplyWithError(ctx, ERROR_COULD_NOT_FIND_GRAPH);
+        return REDISMODULE_ERR;
+    }
+
+    return _reply_with_get_graph_info(ctx, gc, is_compact_mode, flags);
+}
+
+// Handles graph information request regarding all the graphs available.
+// This is an action of the "GRAPH.INFO GET *" command.
+static int _get_all_graphs_info
+(
+    RedisModuleCtx *ctx,
+    const bool is_compact_mode,
+    const InfoGetFlag flags
+) {
+    ASSERT(ctx);
+    const uint32_t graphs_count = array_len(graphs_in_keyspace);
+    AggregatedGraphGetInfo info = {};
+    const bool initialised = _AggregatedGraphGetInfo_New(&info);
+    ASSERT(initialised && "Couldn't initialise aggregated info.");
+    if (!initialised) {
+        RedisModule_ReplyWithError(ctx, "Couldn't initialise aggregated info.");
+        return REDISMODULE_ERR;
+    }
+
+    for (uint32_t i = 0; i < graphs_count; ++i) {
+        const GraphContext *gc = graphs_in_keyspace[i];
+        if (!gc) {
+            return REDISMODULE_ERR;
+        }
+
+        if (!AggregatedGraphGetInfo_AddFromGraphContext(&info, gc)) {
+            RedisModule_ReplyWithError(ctx, ERROR_VALUES_OVERFLOW);
+            return REDISMODULE_ERR;
+        }
+    }
+
+    REDISMODULE_ASSERT(_reply_with_get_aggregated_graph_info(
+        ctx,
+        info,
+        is_compact_mode,
+        flags
+    ));
+
+    _AggregatedGraphGetInfo_Free(&info);
+
+    return REDISMODULE_OK;
+}
+
 // Parses and handles the "GRAPH.INFO QUERIES" command.
 static int _reply_with_queries
 (
@@ -851,6 +1468,65 @@ static int _info_queries
     );
 
     return ret;
+}
+
+// Handles the "GRAPH.INFO GET" subcommand.
+// The format is "GRAPH.INFO GET <key> [MEM] [COUNTS] [STAT]".
+static int _info_get
+(
+    RedisModuleCtx *ctx,
+    const RedisModuleString **argv,
+    const int argc,
+    const bool is_compact_mode
+) {
+    ASSERT(ctx);
+    int result = REDISMODULE_ERR;
+
+    if (argc < 2) {
+        return RedisModule_WrongArity(ctx);
+    }
+
+    const char *graph_name = RedisModule_StringPtrLen(argv[1], NULL);
+
+    if (!graph_name) {
+        RedisModule_ReplyWithError(ctx, ERROR_NO_GRAPH_NAME_SPECIFIED);
+        return REDISMODULE_ERR;
+    }
+    const InfoGetFlag flags = _parse_info_get_flags_from_args(argv + 1, argc - 1);
+
+    if (!strcasecmp(graph_name, ALL_GRAPH_KEYS_MASK)) {
+        return _get_all_graphs_info(ctx, is_compact_mode, flags);
+    }
+
+    return _get_graph_info(ctx, graph_name, is_compact_mode, flags);
+}
+
+// Handles the "GRAPH.INFO RESET" subcommand.
+// The format is "GRAPH.INFO RESET <key>".
+static int _info_reset
+(
+    RedisModuleCtx *ctx,
+    const RedisModuleString **argv,
+    const int argc
+) {
+    ASSERT(ctx && argv);
+
+    if (argc < 2) {
+        return RedisModule_WrongArity(ctx);
+    }
+
+    const char *graph_name = RedisModule_StringPtrLen(argv[1], NULL);
+
+    if (!graph_name) {
+        RedisModule_ReplyWithError(ctx, ERROR_NO_GRAPH_NAME_SPECIFIED);
+        return REDISMODULE_ERR;
+    }
+
+    if (!strcasecmp(graph_name, ALL_GRAPH_KEYS_MASK)) {
+        return _reset_all_graphs_info(ctx);
+    }
+
+    return _reset_graph_info(ctx, graph_name);
 }
 
 // Attempts to find the specified subcommand of "GRAPH.INFO" and dispatch it.

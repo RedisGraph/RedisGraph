@@ -16,7 +16,7 @@
 #include "util/num.h"
 #include <sys/types.h>
 #include "../query_ctx.h"
-// #include "hdr/hdr_histogram.h"
+#include "hdr/hdr_histogram.h"
 #include "util/thpool/pools.h"
 #include "util/circular_buffer_nrg.h"
 
@@ -104,6 +104,16 @@ static void _rwlock_cleanup
 
 static CircularBufferNRG finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+
+static bool _histogram_init(hdr_histogram **histogram) {
+    REQUIRE_ARG_OR_RETURN(histogram, false);
+
+    return !hdr_init(
+        1,
+        MILLIS_T_MAX,
+        3,
+        histogram);
+}
 
 uint64_t FinishedQueryCounters_GetTotalCount
 (
@@ -584,6 +594,144 @@ static bool _Info_UnlockWaitingQueries(Info *info) {
     return _unlock_rwlock(&info->waiting_queries_rwlock);
 }
 
+bool Statistics_New(Statistics *stat) {
+    bool histogram_initialized = _histogram_init(&stat->wait_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
+    histogram_initialized = _histogram_init(&stat->execution_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
+    histogram_initialized = _histogram_init(&stat->report_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
+    histogram_initialized = _histogram_init(&stat->total_durations);
+
+    REQUIRE_TRUE_OR_RETURN(histogram_initialized, false);
+
+    return true;
+}
+
+void Statistics_Add
+(
+    Statistics *lhs,
+    const Statistics rhs
+) {
+    REQUIRE_ARG(lhs);
+
+    hdr_add(lhs->wait_durations, rhs.wait_durations);
+    hdr_add(lhs->execution_durations, rhs.execution_durations);
+    hdr_add(lhs->report_durations, rhs.report_durations);
+    hdr_add(lhs->total_durations, rhs.total_durations);
+}
+
+void Statistics_RecordWaitDuration
+(
+    Statistics *statistics,
+    const millis_t duration
+) {
+    REQUIRE_ARG(statistics);
+    hdr_record_value(statistics->wait_durations, duration);
+}
+
+void Statistics_RecordExecutionDuration
+(
+    Statistics *statistics,
+    const millis_t duration
+) {
+    REQUIRE_ARG(statistics);
+    hdr_record_value(statistics->execution_durations, duration);
+}
+
+void Statistics_RecordReportDuration
+(
+    Statistics *statistics,
+    const millis_t duration
+) {
+    REQUIRE_ARG(statistics);
+    hdr_record_value(statistics->report_durations, duration);
+}
+
+void Statistics_RecordTotalDuration
+(
+    Statistics *statistics,
+    const millis_t duration
+) {
+    REQUIRE_ARG(statistics);
+    hdr_record_value(statistics->total_durations, duration);
+}
+
+Percentiles Statistics_GetPercentiles(const Statistics stat) {
+    static const double QUANTILES[] = {
+        25.0f,
+        50.0f,
+        75.0f,
+        90.0f,
+        95.0f,
+        99.0f
+    };
+    static const size_t LENGTH = sizeof(QUANTILES) / sizeof(QUANTILES[0]);
+    ASSERT(LENGTH == PERCENTILE_COUNT);
+
+    Percentiles percentiles = {};
+
+    bool ret = true;
+
+    if (stat.wait_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            stat.wait_durations,
+            QUANTILES,
+            percentiles.wait_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
+
+    if (stat.execution_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            stat.execution_durations,
+            QUANTILES,
+            percentiles.execution_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
+
+    if (stat.report_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            stat.report_durations,
+            QUANTILES,
+            percentiles.report_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
+
+    if (stat.total_durations->total_count) {
+        ret = !hdr_value_at_percentiles(
+            stat.total_durations,
+            QUANTILES,
+            percentiles.total_durations,
+            LENGTH);
+        ASSERT(ret);
+    }
+
+    return percentiles;
+}
+
+void Statistics_Reset(Statistics *statistics) {
+    hdr_reset(statistics->wait_durations);
+    hdr_reset(statistics->execution_durations);
+    hdr_reset(statistics->report_durations);
+    hdr_reset(statistics->total_durations);
+}
+
+void Statistics_Free(Statistics *statistics) {
+    hdr_close(statistics->wait_durations);
+    hdr_close(statistics->execution_durations);
+    hdr_close(statistics->report_durations);
+    hdr_close(statistics->total_durations);
+}
+
 bool Info_New(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, false);
     // HACK: Compensate for the main thread.
@@ -608,7 +756,7 @@ bool Info_New(Info *info) {
 
     REQUIRE_TRUE_OR_RETURN(lock_initialized, false);
 
-    // REQUIRE_TRUE_OR_RETURN(Statistics_New(&info->statistics), false);
+    REQUIRE_TRUE_OR_RETURN(Statistics_New(&info->statistics), false);
 
     return true;
 }
@@ -617,7 +765,7 @@ void Info_Reset(Info *info) {
     REQUIRE_ARG(info);
 
     _FinishedQueryCounters_Reset(&info->finished_query_counters);
-    // Statistics_Reset(&info->statistics);
+    Statistics_Reset(&info->statistics);
 }
 
 bool Info_Free(Info *info) {
@@ -632,7 +780,7 @@ bool Info_Free(Info *info) {
         &info->inverse_global_lock);
     ASSERT(lock_destroyed == 0 && "Global rwlock destroy error.");
 
-    // Statistics_Free(&info->statistics);
+    Statistics_Free(&info->statistics);
 
     return lock_destroyed == 0;
 }
@@ -704,7 +852,7 @@ void Info_IndicateQueryStartedExecution
                 &info->working_queries_per_thread,
                 thread_id,
                 query_info);
-            // Statistics_RecordWaitDuration(&info->statistics, QueryInfo_GetWaitingTime(query_info));
+            Statistics_RecordWaitDuration(&info->statistics, QueryInfo_GetWaitingTime(query_info));
             ASSERT(set);
             if (!set) {
                 _Info_UnlockWaitingQueries(info);
@@ -742,7 +890,7 @@ void Info_IndicateQueryStartedReporting
     query_info->stage = QueryStage_REPORTING;
     QueryInfo_UpdateExecutionTime(query_info);
     QueryInfo_ResetStageTimer(query_info);
-    // Statistics_RecordExecutionDuration(&info->statistics, QueryInfo_GetExecutionTime(*query_info));
+    Statistics_RecordExecutionDuration(&info->statistics, QueryInfo_GetExecutionTime(*query_info));
 }
 
 void Info_IndicateQueryFinishedReporting
@@ -771,10 +919,10 @@ void Info_IndicateQueryFinishedReporting
     query_info->stage = QueryStage_FINISHED;
     QueryInfo_UpdateReportingTime(query_info);
     QueryInfo_ResetStageTimer(query_info);
-    // Statistics_RecordReportDuration(&info->statistics, QueryInfo_GetReportingTime(*query_info));
+    Statistics_RecordReportDuration(&info->statistics, QueryInfo_GetReportingTime(*query_info));
     FinishedQueryInfo finished = FinishedQueryInfo_FromQueryInfo(*query_info);
     const millis_t total_duration = _FinishedQueryInfo_GetTotalDuration(finished);
-    // Statistics_RecordTotalDuration(&info->statistics, total_duration);
+    Statistics_RecordTotalDuration(&info->statistics, total_duration);
     _add_finished_query(finished);
     QueryInfoStorage_ResetElement(
         &info->working_queries_per_thread,
@@ -911,6 +1059,10 @@ QueryInfoStorage* Info_GetWaitingQueriesStorage(Info *info) {
 QueryInfoStorage* Info_GetWorkingQueriesStorage(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, NULL);
     return &info->working_queries_per_thread;
+}
+
+Statistics Info_GetStatistics(const Info info) {
+    return info.statistics;
 }
 
 static void _FinishedQueryInfoDeleter(void *user_data, void *info) {

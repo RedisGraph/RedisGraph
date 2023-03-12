@@ -23,8 +23,18 @@
 #include "../util/num.h"
 #include "../util/simple_timer.h"
 
+typedef struct hdr_histogram hdr_histogram;
 typedef enum QueryExecutionTypeFlag QueryExecutionTypeFlag;
 typedef enum QueryExecutionStatus QueryExecutionStatus;
+
+// Define the indices for the percentiles within an array of values.
+#define PERCENTILE_25 0
+#define PERCENTILE_50 1
+#define PERCENTILE_75 2
+#define PERCENTILE_90 3
+#define PERCENTILE_95 4
+#define PERCENTILE_99 5
+#define PERCENTILE_COUNT (PERCENTILE_99 + 1)
 
 typedef uint32_t millis_t;
 #define MILLIS_T_MAX UINT32_MAX
@@ -194,6 +204,47 @@ uint32_t QueryInfoIterator_Length(const QueryInfoIterator *);
 // Returns true if the iterator has no more elements to iterate over.
 bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *);
 
+// The type of values is int64_t due to the hdr_histogram API limitations.
+// Ideally, should be the "millis_t".
+typedef struct Percentiles {
+    // Sum of the three durations below.
+    int64_t total_durations[PERCENTILE_COUNT];
+    // The wait durations distribution.
+    int64_t wait_durations[PERCENTILE_COUNT];
+    // The execution durations distribution.
+    int64_t execution_durations[PERCENTILE_COUNT];
+    // The report durations distribution.
+    int64_t report_durations[PERCENTILE_COUNT];
+} Percentiles;
+
+// duration statistics.
+typedef struct Statistics {
+    // Statistics for the wait durations in milliseconds.
+    hdr_histogram *wait_durations;
+    // Statistics for the execution durations in milliseconds.
+    hdr_histogram *execution_durations;
+    // Statistics for the report durations in milliseconds.
+    hdr_histogram *report_durations;
+    // Statistics for the three durations above in total, in milliseconds.
+    hdr_histogram *total_durations;
+} Statistics;
+
+// Initializes the data in already allocated object.
+// Returns false on error, true otherwise.
+bool Statistics_New(Statistics *);
+// Adds (merges) the data from another statistics object.
+void Statistics_Add(Statistics *lhs, const Statistics rhs);
+void Statistics_RecordWaitDuration(Statistics *, const millis_t);
+void Statistics_RecordExecutionDuration(Statistics *, const millis_t);
+void Statistics_RecordReportDuration(Statistics *, const millis_t);
+void Statistics_RecordTotalDuration(Statistics *, const millis_t);
+// Returns the percentiles of values of durations of each stage of a query.
+Percentiles Statistics_GetPercentiles(const Statistics);
+// Resets the statistics.
+void Statistics_Reset(Statistics *statistics);
+// Frees the memory allocated for statistics.
+void Statistics_Free(Statistics *statistics);
+
 // Information about a graph.
 typedef struct Info {
     // Storage for query information for waiting queries.
@@ -208,6 +259,8 @@ typedef struct Info {
     atomic_uint_fast64_t max_query_pipeline_time;
     // Finished query counters with states.
     FinishedQueryCounters finished_query_counters;
+    // Statistics of the queries we currently keep track of.
+    Statistics statistics;
 
     // A global lock for the object. Used as an inverse lock - allows parallel
     // writers but just one reader. This is done that way as the parallel
@@ -286,6 +339,8 @@ QueryInfoStorage* Info_GetWaitingQueriesStorage(Info *info);
 // Returns a pointer to the underlying working queries storage per thread.
 // Must be accessed within the Info_Lock and Info_Unlock.
 QueryInfoStorage* Info_GetWorkingQueriesStorage(Info *info);
+// Returns the statistics accumulated.
+Statistics Info_GetStatistics(const Info);
 // Resizes the finished queries storage.
 void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count);
 // Views the circular buffer of finished queries.

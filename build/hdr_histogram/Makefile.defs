@@ -1,0 +1,2 @@
+
+export HDR_HISTOGRAM=$(HDR_HISTOGRAM_BINROOT)/src/libhdr_histogram_static.a
