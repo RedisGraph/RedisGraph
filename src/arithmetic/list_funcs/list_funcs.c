@@ -937,7 +937,7 @@ SIValue AR_UNION(SIValue *argv, int argc, void *private_data) {
 
 	if (dup == 0) {
 		return sortAndDedup(res);
-	} // else dup == 1
+	}
 
 	return res;
 }
