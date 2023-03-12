@@ -1545,6 +1545,10 @@ static bool _dispatch_subcommand
 
     if (_is_queries_cmd(subcommand_name)) {
         *result = _info_queries(ctx, argv + 1, argc - 1, is_compact_mode);
+    } else if (_is_get_cmd(subcommand_name)) {
+        *result = _info_get(ctx, argv, argc, is_compact_mode);
+    } else if (_is_reset_cmd(subcommand_name)) {
+        *result = _info_reset(ctx, argv, argc);
     } else {
         return false;
     }
