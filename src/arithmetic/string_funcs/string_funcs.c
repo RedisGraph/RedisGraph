@@ -224,6 +224,10 @@ SIValue AR_JOIN(SIValue *argv, int argc, void *private_data) {
 
 	uint32_t count = SIArray_Length(list);
 
+	if(count == 0) {
+		return SI_ConstStringVal("");
+	}
+
 	size_t delimeter_len = strlen(delimiter);
 	uint str_len = delimeter_len * (count - 1);
 	for(uint i = 0; i < count; i++) {

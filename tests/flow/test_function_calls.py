@@ -2483,6 +2483,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN string.join(['HELL','OW', 'NOW'], ' ')"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = ['']
+        query = """RETURN string.join([])"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
   
     def test90_size(self):
         query_to_expected_result = {
