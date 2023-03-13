@@ -63,16 +63,10 @@ static OpResult ForeachInit
 }
 
 // if there is a record to return, it is returned
-// otherwise, returns NULL
+// otherwise, returns NULL (last value in op->records)
 static Record _handoff(OpForeach *op) {
 	ASSERT(op->records != NULL);
-
-	Record r = NULL;
-	if(array_len(op->records) > 0) {
-		r = array_pop(op->records);
-	}
-
-	return r;
+	return array_pop(op->records);
 }
 
 // the Foreach consume function aggregates all the records from the supplier if
@@ -102,8 +96,12 @@ static Record ForeachConsume
 	// construct an array of records to hold all consumed records (eagerly)
 	// and an array holding clones of the input records with the mapping of the
 	// embedded plan
-	op->records = array_new(Record, 0);
-	op->body_records = array_new(Record, 0);
+	op->records = array_new(Record, 1);
+	op->body_records = array_new(Record, 1);
+
+	// insert a NULL value to op->records, so that execution terminates when it
+	// is consumed by the parent
+	array_append(op->records, NULL);
 
 	Record r = NULL;
 	if(op->supplier) {
@@ -121,9 +119,9 @@ static Record ForeachConsume
 		}
 	} else {
 		// static list, create a dummy empty record just to kick start the
-		// argument-list operation
-		r = OpBase_CreateRecord(op->body);
-		array_append(op->body_records, r);
+		// argument-list operation, and a dummy to pass on
+		array_append(op->records, OpBase_CreateRecord(opBase));
+		array_append(op->body_records, OpBase_CreateRecord(op->body));
 	}
 
 	// plant a clone of the list of arguments in argument_list operation
@@ -135,6 +133,9 @@ static Record ForeachConsume
 		OpBase_DeleteRecord(r);
 	}
 
+	// all body_records have been freed
+	op->body_records = NULL;
+
 	return _handoff(op);
 }
 
@@ -145,9 +146,9 @@ static void _freeInternals
 ) {
 	// free records still held by this operation
 	if(op->records != NULL) {
-		// free record list components
+		// free record list components (except last element, which is NULL)
 		uint nrecords = array_len(op->records);
-		for(uint i = 0; i < nrecords; i++) {
+		for(uint i = 1; i < nrecords; i++) {
 			OpBase_DeleteRecord(op->records[i]);
 		}
 

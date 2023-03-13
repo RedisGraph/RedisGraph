@@ -601,3 +601,34 @@ class testForeachFlow():
         # make sure no nodes were created, and one property was set
         self.env.assertEquals(res.nodes_created, 0)
         self.env.assertEquals(res.properties_set, 1)
+
+    def test12_passes_empty_record(self):
+        """Tests that when FOREACH is the first clause in the query, it passes
+        on an empty record so that the rest of the execution-plan is executed
+        as well"""
+
+        # flush the graph, reset cache
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create a node with label `N`
+        res = graph.query("CREATE (:N)")
+        self.env.assertEquals(res.nodes_created, 1)
+
+        # execute a query in which FOREACH is the first clause, and it is
+        # followed by a scan that finds this node
+        res = graph.query(
+            """
+            FOREACH(i in [1] |
+                MERGE (:N)
+            )
+            WITH 1 AS x
+            MATCH (n:N)
+            RETURN n
+            """
+        )
+
+        # assure that no nodes were created, and one node was returned
+        self.env.assertEquals(res.nodes_created, 0)
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N'))
