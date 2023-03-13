@@ -62,21 +62,18 @@ static bool Constraint_EnforceUniqueEntity
 
     SIType t;
     SIValue *v;
+	uint8_t i     = 0;
     RSQNode *node = NULL;  // RediSearch query node
     RSQNode *root = NULL;  // root of RediSearch query tree
 	RSQNode *nodes[_c->n_attr];
     RSResultsIterator *iter = NULL;
 	const AttributeSet attributes = GraphEntity_GetAttributes(e);
 
-	for(uint8_t i = 0; i < _c->n_attr; i++) {
-		nodes[i] = NULL;
-	}
-
 	//--------------------------------------------------------------------------
 	// create a RediSearch query
 	//--------------------------------------------------------------------------
 
-    for(uint8_t i = 0; i < _c->n_attr; i++) {
+    for(i = 0; i < _c->n_attr; i++) {
 		Attribute_ID attr_id = _c->attrs[i];
 		const char *field = _c->attr_names[i];
 
@@ -142,8 +139,8 @@ cleanup:
 	if(iter != NULL) {
 		RediSearch_ResultsIteratorFree(iter);
 	} else {
-		for(uint8_t i = 0; i < _c->n_attr; i++) {
-			RediSearch_QueryNodeFree(nodes[i]);
+		for(uint8_t j = 0; j < i; j++) {
+			RediSearch_QueryNodeFree(nodes[j]);
 		}
 	}
 
