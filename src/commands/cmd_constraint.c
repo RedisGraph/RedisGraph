@@ -104,7 +104,7 @@ static int Constraint_Parse
 	long long _prop_count;
 	if(strcasecmp(token, "PROPERTIES") == 0) {
 		if(RedisModule_StringToLongLong(*argv++, &_prop_count) != REDISMODULE_OK
-				|| _prop_count < 1 || _prop_count > 256) {
+				|| _prop_count < 1 || _prop_count > 255) {
 			RedisModule_ReplyWithError(ctx, "Invalid property count");
 			return REDISMODULE_ERR;
 		}
