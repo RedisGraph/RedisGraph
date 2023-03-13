@@ -134,6 +134,7 @@ static Record ForeachConsume
 	}
 
 	// all body_records have been freed
+	array_free(op->body_records);
 	op->body_records = NULL;
 
 	return _handoff(op);
