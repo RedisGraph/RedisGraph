@@ -539,7 +539,7 @@ class testForeachFlow():
             """
         )
 
-        # make sure three relationships were created
+        # make sure three nodes were created
         self.env.assertEquals(res.nodes_created, 3)
 
         # reference named paths defined in the outer scope, in the list exp
@@ -581,7 +581,7 @@ class testForeachFlow():
             """
         )
 
-        # make sure no nodes or properties were created
+        # make sure no nodes were created, and one property was set
         self.env.assertEquals(res.nodes_created, 0)
         self.env.assertEquals(res.properties_set, 1)
 
@@ -598,6 +598,6 @@ class testForeachFlow():
             """
         )
 
-        # make sure no nodes were created and no properties were set
+        # make sure no nodes were created, and one property was set
         self.env.assertEquals(res.nodes_created, 0)
         self.env.assertEquals(res.properties_set, 1)

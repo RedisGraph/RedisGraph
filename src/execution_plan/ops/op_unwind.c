@@ -29,7 +29,6 @@ OpBase *NewUnwindOp
 	op->list          = SI_NullVal();
 	op->listIdx       = 0;
 	op->listLen       = 0;
-	op->from_foreach  = false;
 	op->currentRecord = NULL;
 
 	// Set our Op operations
@@ -80,17 +79,7 @@ static OpResult UnwindInit
 	if(op->op.childCount == 0) {
 		// no child operation, list must be static
 		_initList(op);
-	} else {
-		// if the op is created as part of a Foreach clause, it is not responsible
-		// for freeing its record
-		op->from_foreach =
-			(OpBase_Type(opBase->children[0]) == OPType_ARGUMENT_LIST);
 	}
-
-	// TODO: After execution-plan freeing refactoring (and changing the plan of
-	// the ArgumentList of Foreach to outer plan) - if the child plan is
-	// different from this op's plan, check that its record mapping is indeed a
-	// subset of this op's plan's record-mapping
 
 	return OP_OK;
 }
@@ -135,18 +124,11 @@ static Record UnwindConsume
 	// did we managed to get new data?
 pull:
 	if((r = OpBase_Consume(child))) {
+		// free current record
+		OpBase_DeleteRecord(op->currentRecord);
+
 		// assign new record
-		if(op->from_foreach) {
-			// clone the entries of the consumed record to a record with the
-			// mapping of the current plan (embedded inside Foreach), which
-			// extends the consumed record
-			op->currentRecord = OpBase_CreateRecord((OpBase *)op);
-			Record_TransferEntries(&op->currentRecord, r, false);
-		} else {
-			// free current record to accommodate new record
-			OpBase_DeleteRecord(op->currentRecord);
-			op->currentRecord = r;
-		}
+		op->currentRecord = r;
 
 		// reset index and set list
 		_initList(op);
@@ -198,7 +180,7 @@ static void UnwindFree
 
 	// if the op is constructed due to a Foreach op, than Foreach is responsible
 	// for the record
-	if(op->currentRecord != NULL && !op->from_foreach) {
+	if(op->currentRecord != NULL) {
 		OpBase_DeleteRecord(op->currentRecord);
 	}
 
