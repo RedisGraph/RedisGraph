@@ -87,7 +87,10 @@ static GraphContext *_DecodeHeader
 
 	// if it is the first key of this graph,
 	// allocate all the data structures, with the appropriate dimensions
-	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
+	bool first_vkey =
+		GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0;
+
+	if(first_vkey == true) {
 		_InitGraphDataStructure(gc->g, node_count, edge_count,
 			deleted_node_count, deleted_edge_count, label_count, relation_count);
 
@@ -103,7 +106,7 @@ static GraphContext *_DecodeHeader
 	}
 
 	// decode graph schemas
-	RdbLoadGraphSchema_v13(rdb, gc);
+	RdbLoadGraphSchema_v13(rdb, gc, !first_vkey);
 
 	return gc;
 }

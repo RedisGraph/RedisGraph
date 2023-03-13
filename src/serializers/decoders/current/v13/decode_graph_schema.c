@@ -185,18 +185,29 @@ static void _RdbLoadSchema
 	 * (constraint type, constraint fields) X N
 	 */
 
-	int id = RedisModule_LoadUnsigned(rdb);
-	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
-	Schema *s = NULL;
+	Schema *s    = NULL;
+	int     id   = RedisModule_LoadUnsigned(rdb);
+	char   *name = RedisModule_LoadStringBuffer(rdb, NULL);
+
 	if(!already_loaded) {
 		s = Schema_New(type, id, name);
-		if(type == SCHEMA_NODE) array_append(gc->node_schemas, s);
-		else array_append(gc->relation_schemas, s);
+		if(type == SCHEMA_NODE) {
+			ASSERT(array_len(gc->node_schemas) == id);
+			array_append(gc->node_schemas, s);
+		} else {
+			ASSERT(array_len(gc->relation_schemas) == id);
+			array_append(gc->relation_schemas, s);
+		}
 	}
+
 	RedisModule_Free(name);
 
+	//--------------------------------------------------------------------------
+	// load indices
+	//--------------------------------------------------------------------------
+
 	uint index_count = RedisModule_LoadUnsigned(rdb);
-	for (uint index = 0; index < index_count; index++) {
+	for(uint index = 0; index < index_count; index++) {
 		IndexType index_type = RedisModule_LoadUnsigned(rdb);
 
 		switch(index_type) {
@@ -212,7 +223,10 @@ static void _RdbLoadSchema
 		}
 	}
 
+	//--------------------------------------------------------------------------
 	// load constraints
+	//--------------------------------------------------------------------------
+
 	_RdbLoadConstaints(rdb, gc, s, already_loaded);
 }
 
@@ -230,7 +244,12 @@ static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-void RdbLoadGraphSchema_v13(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadGraphSchema_v13
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,
+	bool already_loaded
+) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas
@@ -245,8 +264,6 @@ void RdbLoadGraphSchema_v13(RedisModuleIO *rdb, GraphContext *gc) {
 
 	// #Node schemas
 	uint schema_count = RedisModule_LoadUnsigned(rdb);
-
-	bool already_loaded = array_len(gc->node_schemas) > 0;
 
 	// Load each node schema
 	gc->node_schemas = array_ensure_cap(gc->node_schemas, schema_count);
