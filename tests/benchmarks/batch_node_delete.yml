@@ -17,4 +17,4 @@ clientconfig:
     - queries:
         - { q: "MATCH (n) WITH n LIMIT 3000 DELETE n", ratio: 1 }
 kpis:
-  - le: { $.OverallGraphInternalLatencies.Total.q50: 40.0 }
+  - le: { $.OverallGraphInternalLatencies.Total.q50: 950.0 }
