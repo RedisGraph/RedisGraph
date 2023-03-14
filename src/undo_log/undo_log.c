@@ -200,7 +200,7 @@ static void _UndoLog_Rollback_Create_Node
 	for(int i = seq_start; i > seq_end; --i) {
 		Node *n = &undo_list[i].create_op.n;
 		_index_delete_node(ctx, n);
-		Graph_DeleteNode(ctx->gc->g, n);
+		Graph_DeleteNodes(ctx->gc->g, n, 1);
 	}
 }
 
@@ -371,9 +371,12 @@ void UndoLog_DeleteNode
 
 	UndoOp op;
 
-	op.type                        =  UNDO_DELETE_NODE;
-	op.delete_node_op.id           =  node->id;
-	op.delete_node_op.set          =  AttributeSet_Clone(*node->attributes);
+	op.type              = UNDO_DELETE_NODE;
+	op.delete_node_op.id = node->id;
+
+	// take ownership over node's attribute-set
+	op.delete_node_op.set = *node->attributes;
+	*node->attributes = NULL;
 
 	Graph *g = QueryCtx_GetGraph();
 	NODE_GET_LABELS(g, node, op.delete_node_op.label_count);
@@ -396,12 +399,15 @@ void UndoLog_DeleteEdge
 
 	UndoOp op;
 
-	op.type                       = UNDO_DELETE_EDGE;
-	op.delete_edge_op.id          = edge->id;
-	op.delete_edge_op.relationID  = edge->relationID;
-	op.delete_edge_op.srcNodeID   = edge->srcNodeID;
-	op.delete_edge_op.destNodeID  = edge->destNodeID;
-	op.delete_edge_op.set         = AttributeSet_Clone(*edge->attributes);
+	op.type                      = UNDO_DELETE_EDGE;
+	op.delete_edge_op.id         = edge->id;
+	op.delete_edge_op.relationID = edge->relationID;
+	op.delete_edge_op.srcNodeID  = edge->srcNodeID;
+	op.delete_edge_op.destNodeID = edge->destNodeID;
+
+	// take ownership over edge's attribute-set
+	op.delete_edge_op.set = AttributeSet_Clone(*edge->attributes);
+	*edge->attributes = NULL;
 
 	_UndoLog_AddOperation(log, &op);
 }

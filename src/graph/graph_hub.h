@@ -50,6 +50,16 @@ uint DeleteNode
 	Node *n            // the node to be deleted
 );
 
+// delete nodes
+// remove nodes from the relevant indexes
+// add node deletion operations to undo-log
+void DeleteNodes
+(
+	GraphContext *gc,  // graph context to delete the node
+	Node *nodes,       // nodes to be deleted
+	uint count         // number of nodes to delete
+);
+
 // delete an edge
 // delete the edge from the graph
 // delete the edge from the relevant indexes

@@ -205,11 +205,12 @@ void Graph_CreateEdge
 	Edge *e
 );
 
-// removes node and all of its connections within the graph
-void Graph_DeleteNode
+// remove nodes and all relevent connections within the graph
+void Graph_DeleteNodes
 (
-	Graph *g,
-	Node *node
+	Graph *g,       // graph to delete nodes from
+	Node *nodes,    // nodes to delete
+	uint64_t count  // number of nodes
 );
 
 // removes edges from Graph and updates graph relevent matrices

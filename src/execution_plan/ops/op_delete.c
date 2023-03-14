@@ -21,7 +21,7 @@ static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static OpResult DeleteReset(OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
-static int is_entity_cmp
+static int entity_cmp
 (
 	const GraphEntity *a,
 	const GraphEntity *b
@@ -33,16 +33,19 @@ static void _DeleteEntities
 (
 	OpDelete *op
 ) {
-	uint node_deleted          = 0;
-	uint edge_deleted          = 0;
-	uint node_count            = array_len(op->deleted_nodes);
-	uint edge_count            = array_len(op->deleted_edges);
+	uint node_count   = array_len(op->deleted_nodes);
+	uint edge_count   = array_len(op->deleted_edges);
+	uint node_deleted = 0;
+	uint edge_deleted = 0;
 
 	// nothing to delete, quickly return
 	if((node_count + edge_count) == 0) return;
 
+	Graph        *g  = op->gc->g;
+	GraphContext *gc = op->gc;
+
 	//--------------------------------------------------------------------------
-	// removing duplicates
+	// removing node duplicates
 	//--------------------------------------------------------------------------
 
 	// remove node duplicates
@@ -50,7 +53,7 @@ static void _DeleteEntities
 	Node *distinct_nodes = array_new(Node, 1);
 
 	qsort(nodes, node_count, sizeof(Node),
-			(int(*)(const void*, const void*))is_entity_cmp);
+			(int(*)(const void*, const void*))entity_cmp);
 
 	for(uint i = 0; i < node_count; i++) {
 		while(i < node_count - 1 &&
@@ -68,19 +71,22 @@ static void _DeleteEntities
 		array_append(distinct_nodes, *n);
 
 		// mark node's edges for deletion
-		Graph_GetNodeEdges(op->gc->g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION,
+		Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION,
 				&op->deleted_edges);
 	}
 
-	node_count =  array_len(distinct_nodes);
-	edge_count =  array_len(op->deleted_edges);
+	node_count = array_len(distinct_nodes);
+	edge_count = array_len(op->deleted_edges);
 
+	//--------------------------------------------------------------------------
 	// remove edge duplicates
+	//--------------------------------------------------------------------------
+
 	Edge *edges = op->deleted_edges;
 	Edge *distinct_edges = array_new(Edge, 1);
 
 	qsort(edges, edge_count, sizeof(Edge),
-			(int(*)(const void*, const void*))is_entity_cmp);
+			(int(*)(const void*, const void*))entity_cmp);
 
 	for(uint i = 0; i < edge_count; i++) {
 		while(i < edge_count - 1 &&
@@ -106,12 +112,11 @@ static void _DeleteEntities
 		// required as a deleted node must be detached
 
 		// delete edges
-		edge_deleted += DeleteEdges(op->gc, distinct_edges);
+		edge_deleted += DeleteEdges(gc, distinct_edges);
 
 		// delete nodes
-		for(uint i = 0; i < node_count; i++) {
-			node_deleted += DeleteNode(op->gc, distinct_nodes + i);
-		}
+		DeleteNodes(gc, distinct_nodes, node_count);
+		node_deleted = node_count;
 
 		// stats must be updated under lock due to for replication
 		if(op->stats != NULL) {
