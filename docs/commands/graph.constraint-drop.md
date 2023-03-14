@@ -11,7 +11,7 @@ Deleted a graph constraint.
 
 [Examples](#examples)
 
-For an introduction to constraints see [GRAPH.CONSTRAINT CREATE](https://github.com/RedisGraph/RedisGraph/blob/master/docs/commands/graph.constraint-create.md)
+For an introduction to constraints see [GRAPH.CONSTRAINT CREATE](/commands/graph.constraint-create.md)
 
 ## Required arguments
 
