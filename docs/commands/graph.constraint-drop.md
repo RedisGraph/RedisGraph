@@ -26,7 +26,7 @@ is the constraint type: either `MANDATORY` or `UNIQUE`.
 
 </details>
 
-<details open><summary><code>entitiesType</code></summary>
+<details open><summary><code>entityType</code></summary>
 
 is the graph entity type on which the constraint should be enforced: either `NODE` or `RELATIONSHIP`.
 
