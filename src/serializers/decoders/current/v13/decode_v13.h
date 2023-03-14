@@ -44,6 +44,7 @@ void RdbLoadDeletedEdges_v13
 void RdbLoadGraphSchema_v13
 (
 	RedisModuleIO *rdb,
-	GraphContext *gc
+	GraphContext *gc,
+	bool already_loaded
 );
 
