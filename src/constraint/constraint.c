@@ -354,8 +354,6 @@ void Constraint_EnforceEdges
 	GrB_Info info;
 	RG_MatrixTupleIter it = {0};
 
-	// TODO: change to RelationID
-	LabelID   r            = c->schema_id;  // edge relationship type ID
 	bool      holds        = true;          // constraint holds
 	EntityID  src_id       = 0;             // current processed row idx
 	EntityID  dest_id      = 0;             // current processed column idx
@@ -363,6 +361,7 @@ void Constraint_EnforceEdges
 	EntityID  prev_src_id  = 0;             // last processed row idx
 	EntityID  prev_dest_id = 0;             // last processed column idx
 	int       enforced     = 0;             // # entities enforced in batch
+	int       schema_id    = c->schema_id;  // edge relationship type ID
 	int       batch_size   = 1000;          // max number of entities to enforce
 
 	while(holds) {
@@ -383,16 +382,14 @@ void Constraint_EnforceEdges
 		prev_dest_id = dest_id;
 
 		// fetch relation matrix
-		const RG_Matrix m = Graph_GetRelationMatrix(g, r, false);
+		const RG_Matrix m = Graph_GetRelationMatrix(g, schema_id, false);
 		ASSERT(m != NULL);
 
 		//----------------------------------------------------------------------
 		// resume scanning from previous row/col indices
 		//----------------------------------------------------------------------
 
-		info = RG_MatrixTupleIter_attach(&it, m);
-		ASSERT(info == GrB_SUCCESS);
-		info = RG_MatrixTupleIter_iterate_range(&it, src_id, UINT64_MAX);
+		info = RG_MatrixTupleIter_AttachRange(&it, m, src_id, UINT64_MAX);
 		ASSERT(info == GrB_SUCCESS);
 
 		// skip previously enforced edges
@@ -414,7 +411,7 @@ void Constraint_EnforceEdges
 			Edge e;
 			e.srcNodeID  = src_id;
 			e.destNodeID = dest_id;
-			e.relationID = r;
+			e.relationID = schema_id;
 
 			if(SINGLE_EDGE(edge_id)) {
 				Graph_GetEdge(g, edge_id, &e);
