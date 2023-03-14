@@ -59,6 +59,17 @@ static OpResult ForeachInit
 	// validate found operation type, expecting ArgumentList
 	ASSERT(OpBase_Type((const OpBase *)op->argument_list) == OPType_ARGUMENT_LIST);
 
+	// construct an array of records to hold all consumed records (eagerly)
+	// and an array holding clones of the input records with the mapping of the
+	// embedded plan (body)
+	op->records = array_new(Record, 1);
+	op->body_records = array_new(Record, 1);
+
+	// insert a NULL value to both arrays, so that execution terminates when it
+	// is consumed by the parent
+	array_append(op->records, NULL);
+	array_append(op->body_records, NULL);
+
     return OP_OK;
 }
 
@@ -93,16 +104,6 @@ static Record ForeachConsume
 	// mark that the aggregation has occurred, so it won't occur again
 	op->first = false;
 
-	// construct an array of records to hold all consumed records (eagerly)
-	// and an array holding clones of the input records with the mapping of the
-	// embedded plan
-	op->records = array_new(Record, 1);
-	op->body_records = array_new(Record, 1);
-
-	// insert a NULL value to op->records, so that execution terminates when it
-	// is consumed by the parent
-	array_append(op->records, NULL);
-
 	Record r = NULL;
 	if(op->supplier) {
 		// eagerly drain supplier
@@ -114,7 +115,7 @@ static Record ForeachConsume
 			Record body_rec = OpBase_CreateRecord(op->body);
 			// copy the consumed record's entries to the record to be sent to
 			// the body
-			Record_DeepClone(r, body_rec);
+			Record_Clone(r, body_rec);
 			array_append(op->body_records, body_rec);
 		}
 	} else {
@@ -124,18 +125,15 @@ static Record ForeachConsume
 		array_append(op->body_records, OpBase_CreateRecord(op->body));
 	}
 
-	// plant the clone records array (with the correct mapping) in argument_list
+	// pass body_records onwards to argumentList
 	ArgumentList_AddRecordList(op->argument_list, op->body_records);
+	op->body_records = NULL;
 
 	// call consume on loop body first op
 	// the result is thrown away
 	while((r = OpBase_Consume(op->body))) {
 		OpBase_DeleteRecord(r);
 	}
-
-	// all body_records have been freed
-	array_free(op->body_records);
-	op->body_records = NULL;
 
 	return _handoff(op);
 }

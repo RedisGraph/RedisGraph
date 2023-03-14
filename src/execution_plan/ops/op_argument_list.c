@@ -8,6 +8,7 @@
 #include "op_argument_list.h"
 
 // forward declarations
+static void ArgumentListFree(OpBase *opBase);
 static Record ArgumentListConsume(OpBase *opBase);
 static OpResult ArgumentListReset(OpBase *opBase);
 static OpBase *ArgumentListClone(const ExecutionPlan *plan, const OpBase *opBase);
@@ -49,7 +50,9 @@ static Record ArgumentListConsume
 	ASSERT(op->records != NULL);
 
 	if(op->rec_idx < op->rec_len) {
-		return op->records[op->rec_idx++];
+		// first value is NULL, thus terminates execution when popped
+		return array_pop(op->records);
+		op->rec_idx++;
 	}
 
 	// depleted!
@@ -62,9 +65,19 @@ static OpResult ArgumentListReset
 ) {
 	ArgumentList *op = (ArgumentList *)opBase;
 
-	op->records = NULL;
 	op->rec_len = 0;
 	op->rec_idx = 0;
+
+	// free remaining records
+	if(op->records != NULL) {
+		uint nrecords = array_len(op->records);
+		for(uint i = 0; i < nrecords; i++) {
+			OpBase_DeleteRecord(op->records[i]);
+		}
+
+		array_free(op->records);
+		op->records = NULL;
+	}
 
 	return OP_OK;
 }
@@ -76,4 +89,22 @@ static inline OpBase *ArgumentListClone
 ) {
 	ASSERT(opBase->type == OPType_ARGUMENT_LIST);
 	return NewArgumentListOp(plan);
+}
+
+static void ArgumentListFree
+(
+	OpBase *opBase
+) {
+	ArgumentList *op = (ArgumentList *)opBase;
+
+	// free remaining records
+	if(op->records != NULL) {
+		uint nrecords = array_len(op->records);
+		for(uint i = 0; i < nrecords; i++) {
+			OpBase_DeleteRecord(op->records[i]);
+		}
+
+		array_free(op->records);
+		op->records = NULL;
+	}
 }

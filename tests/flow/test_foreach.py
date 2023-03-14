@@ -426,7 +426,7 @@ class testForeachFlow():
         self.env.assertEquals(res.nodes_deleted, 0)
 
         # validate that the altered state is correct
-        res = graph.query("MATCH (t:TEMP) return t")
+        res = graph.query("MATCH (t:TEMP) RETURN t ORDER BY t.v ASC")
         t1 = Node(label='TEMP', properties={'v': 3,
                                             'li': [1, 2, 3, 4, 3, 'RAZ'],
                                             'name': 'raz'})
@@ -632,3 +632,11 @@ class testForeachFlow():
         self.env.assertEquals(res.nodes_created, 0)
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(res.result_set[0][0], Node(label='N'))
+
+    def test13_empty_list(self):
+        """Tests that given an empty list, Foreach passes no records"""
+
+        res = graph.query("FOREACH(n IN [] | CREATE (:N))")
+
+        # no nodes should have been created
+        self.env.assertEquals(res.nodes_created, 0)

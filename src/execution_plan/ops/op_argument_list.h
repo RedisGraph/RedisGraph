@@ -14,7 +14,7 @@
 
 typedef struct {
 	OpBase op;              // OpBase
-	const Record *records;  // internal Record list
+	Record *records;  // internal Record list
 	uint rec_len;           // number of records to emit
 	uint rec_idx;           // index of current record
 } ArgumentList;
