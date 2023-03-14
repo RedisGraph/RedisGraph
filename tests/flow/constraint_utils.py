@@ -79,10 +79,10 @@ def create_constraint(g, ct_type, entity_type, lbl, *props, sync=False):
     return res
 
 def create_unique_constraint(g, entity_type, lbl, *props, sync=False):
-    return create_constraint(g, "unique", entity_type, lbl, *props, sync=sync)
+    return create_constraint(g, "UNIQUE", entity_type, lbl, *props, sync=sync)
 
 def create_mandatory_constraint(g, entity_type, lbl, *props, sync=False):
-    return create_constraint(g, "mandatory", entity_type, lbl, *props, sync=sync)
+    return create_constraint(g, "MANDATORY", entity_type, lbl, *props, sync=sync)
 
 def create_unique_node_constraint(g, lbl, *props, sync=False):
     # create exact-match index
@@ -107,10 +107,10 @@ def drop_constraint(g, ct_type, entity_type, lbl, *props):
     return res
 
 def drop_unique_constraint(g, lbl_type, lbl, *props):
-    return drop_constraint(g, "unique", lbl_type, lbl, *props)
+    return drop_constraint(g, "UNIQUE", lbl_type, lbl, *props)
 
 def drop_mandatory_constraint(g, lbl_type, lbl, *props):
-    return drop_constraint(g, "mandatory", lbl_type, lbl, *props)
+    return drop_constraint(g, "MANDATORY", lbl_type, lbl, *props)
 
 def drop_unique_node_constraint(g, lbl, *props):
     return drop_unique_constraint(g, "NODE", lbl, *props)

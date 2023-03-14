@@ -45,3 +45,13 @@ void str_ExtendBuffer
 	size_t *bufferLen,    // size of buffer
 	size_t extensionLen   // number of bytes to add
 );
+
+// Utility function to check if the string matches
+// the regex pattern between from and to indices.
+bool str_MatchRegex
+(
+	const char* regex,   // regex pattern to match with
+	const char* str,     // string to match
+	int from,	         // starting index
+	int to		         // ending index
+);

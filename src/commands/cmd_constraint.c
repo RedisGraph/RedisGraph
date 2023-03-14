@@ -5,6 +5,7 @@
  */
 
 #include "RG.h"
+#include "util/strutil.h"
 #include "../query_ctx.h"
 #include "../index/indexer.h"
 #include "../graph/graph_hub.h"
@@ -105,7 +106,7 @@ static int Constraint_Parse
 	if(strcasecmp(token, "PROPERTIES") == 0) {
 		if(RedisModule_StringToLongLong(*argv++, &_prop_count) != REDISMODULE_OK
 				|| _prop_count < 1 || _prop_count > 255) {
-			RedisModule_ReplyWithError(ctx, "Invalid property count");
+			RedisModule_ReplyWithError(ctx, "Number of properties must be an integer between 1 and 255");
 			return REDISMODULE_ERR;
 		}
 	} else {
@@ -274,6 +275,7 @@ static bool _Constraint_Create
 
 	// duplicates found, fail operation
 	if(dups) {
+		error_msg = "Properties cannot appear more than once";
 		res = false;
 		goto cleanup;
 	}
@@ -375,7 +377,7 @@ int Graph_Constraint
 	RedisModuleString **argv,
 	int argc
 ) {
-	if(argc < 9) {
+	if(argc < 8) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -403,6 +405,10 @@ int Graph_Constraint
 	const char *props_cstr[prop_count];
 	for(uint8_t i = 0; i < prop_count; i++) {
 		props_cstr[i] = RedisModule_StringPtrLen(props[i], NULL);
+		if(str_MatchRegex("[a-zA-Z_][a-zA-Z0-9_$]*", props_cstr[i], 0, strlen(props_cstr[i])) == false) {
+			RedisModule_ReplyWithError(ctx, "At least one property name is invalid");
+			return REDISMODULE_ERR;
+		}
 	}
 
 	bool success = false;
@@ -418,7 +424,7 @@ int Graph_Constraint
 	}
 
 	if(success == true) {
-		RedisModule_ReplyWithSimpleString(ctx, "OK");
+		RedisModule_ReplyWithSimpleString(ctx, op == CT_CREATE ? "PENDING" : "OK");
 		// TODO: see if we can pospone this replication
 		// to the point where the constraint is full enforced.
 		RedisModule_ReplicateVerbatim(ctx);
