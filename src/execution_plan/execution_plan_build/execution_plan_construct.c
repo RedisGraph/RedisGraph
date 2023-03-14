@@ -362,7 +362,7 @@ static void _buildCallSubqueryPlan
 		}
 
 		// Project all existing entries according to the following transformation: 'alias' --> '@alias'.
-		// If an alias is imported, it needs to stay in the record mapping (already a projection in the Project op).
+		// If an alias is imported, it needs to stay in the record mapping as well.
 
 		uint mapping_size = raxSize(ExecutionPlan_GetMappings(plan));
 		// create an array containing coupled names ("a1", "@a1", "a2", "@a2", ...)
@@ -385,22 +385,6 @@ static void _buildCallSubqueryPlan
 			array_append(names, internal_rep);
 		}
 
-		// create AR_EXPNodes for the import projection
-		AR_ExpNode ** import_proj_exps = array_new(AR_ExpNode *, mapping_size);
-		for(uint i = 0; i < mapping_size; i++) {
-			// get alias
-			char *orig_alias = names[i];
-			// advance index to the internal name index
-			i++;
-
-			// create the AR_EXPNode from it
-			struct cypher_input_range range = {0};
-			AR_ExpNode *new_node = AR_EXP_FromASTNode(cypher_ast_identifier(orig_alias, strlen(orig_alias), range));
-			new_node->resolved_name = names[i];
-			array_append(import_proj_exps, new_node);
-		}
-
-
 		// create AR_EXPNodes for the intermediate projections
 		AR_ExpNode ** intermediate_proj_exps = array_new(AR_ExpNode *, mapping_size);
 		for(uint i = 0; i < mapping_size; i++) {
@@ -419,6 +403,25 @@ static void _buildCallSubqueryPlan
 			array_append(intermediate_proj_exps, new_node);
 		}
 
+		// modify the first projection (imports) to contain the transformation `n`-->`_n`
+		OpBase *import_proj = deepest;
+
+		// add the internal names of the outer-scope aliases to the record-mapping
+		for(uint i = 0; i < mapping_size; i++) {
+			// skip the original name
+			i++;
+
+			OpBase_AliasModifier(import_proj, names[i-1], names[i]);
+		}
+
+		// modify to the intermidiate project_exps
+		ProjectAddProjections(import_proj, intermediate_proj_exps);
+
+
+		// find 'first' Project op in the embedded execution-plan (return)
+		OpBase *returning_proj = ExecutionPlan_LocateOp(embedded_plan->root,
+			OPType_PROJECT);
+
 		// create AR_EXPNodes for the return projection
 		AR_ExpNode ** return_proj_exps = array_new(AR_ExpNode *, mapping_size);
 		for(uint i = 0; i < mapping_size; i++) {
@@ -435,29 +438,21 @@ static void _buildCallSubqueryPlan
 			array_append(return_proj_exps, new_node);
 		}
 
-		// modify the first projection (imports) to contain the transformation `n`-->`_n`
-		OpBase *import_proj = deepest;
-		ProjectAddProjections(import_proj, import_proj_exps);
-
-		// modify intermediate projections in the body of the subquery, except the last Return projection (first in exec-plan),
-		// to contain projections of the outer scope variables to themselves ('_alias' --> '_alias')
-			// Locate the projections - collect them in an array.
-			// Add the projections to them ('_alias' -> '_alias', which can be achieved by adding the '_alias' only as the AR_EXP)
-		OpBase **intermediate_projections = array_new(OpBase *, 2);
-		// find 'first' Project op in the embedded execution-plan (return)
-		OpBase *returning_proj = ExecutionPlan_LocateOp(embedded_plan->root,
-			OPType_PROJECT);
-
-		// collect all the intermediate Project ops (from the child of the
-		// return projection)
-		ExecutionPlan_LocateOps(intermediate_projections,
-			returning_proj->children[0], OPType_PROJECT);
-
 		// Add to the RETURN projection (the 'first' projection in the embedded plan)
 		// the mapping of the internal representation of the outer-scope
 		// variables to their original names ('_alias' --> 'alias')
 			// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
 		ProjectAddProjections(returning_proj, return_proj_exps);
+
+
+		// modify intermediate projections in the body of the subquery, except the last Return projection (first in exec-plan),
+		// to contain projections of the outer scope variables to themselves ('_alias' --> '_alias')
+		OpBase **intermediate_projections = array_new(OpBase *, 1);
+
+		// collect all the intermediate Project ops (from the child of the
+		// return projection)
+		ExecutionPlan_LocateOps(intermediate_projections,
+			returning_proj->children[0], OPType_PROJECT);
 
 		// the 'last' projection is the importing projection, pop it
 		array_pop(intermediate_projections);
@@ -468,6 +463,10 @@ static void _buildCallSubqueryPlan
 				intermediate_proj_exps);
 					// TODO: Add support for UNIONs
 		}
+
+
+
+
 
 		// bind the RETURN projection (last one) to the outer plan ('plan')
 			// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)

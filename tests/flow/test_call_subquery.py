@@ -273,58 +273,128 @@ class testCallSubqueryFlow():
         self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz', 'v': 2}))
         self.env.assertEquals(res.result_set[1][0], Node(label='N', properties={'name': 'Raz', 'v': 5}))
 
+        # import outer-scope aliases, reference them inside and outside the sq
+        res = graph.query(
+            """
+            WITH 2 AS x
+            CALL {
+                WITH x
+                MATCH (n:N {v: x})
+                SET n.v = 2 * n.v
+                RETURN n
+            }
+            RETURN n, x
+            """
+        )
+
+        # make sure the wanted actions occurred
+        self.env.assertEquals(res.properties_set, 1)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz', 'v': 4}))
+        self.env.assertEquals(res.result_set[0][1], 2)
+
+    # test FOREACH within CALL {} (updating (eager), returning)
+    def test10_foreach(self):
+        """Test that FOREACH works properly when used inside a subquery"""
+
+        # the graph has two nodes, with `name` 'Raz' and `v` 4 and 5
+
+        res = graph.query(
+            """
+            CALL {
+                MATCH (n:N)
+                FOREACH (i in [1] |
+                    SET n.v = n.v + 1
+                )
+                RETURN n
+            }
+            RETURN n ORDER BY n.v ASC
+            """
+        )
+
+        # assert the correctness of the results
+        self.env.assertEquals(res.result_set[0][0],
+            Node(label='N', properties={'name': 'Raz', 'v': 5}))
+        self.env.assertEquals(res.result_set[1][0],
+            Node(label='N', properties={'name': 'Raz', 'v': 6}))
+
+        # TODO: add another query with a non-returning subquery
+
+    # tests that SKIP and LIMIT work properly
+    def test11_skip_limit(self):
+        """Test that SKIP works properly when placed inside a subquery"""
+
+        # the graph has two nodes, with `name` 'Raz' and `v` 5 and 6
+
+        res = graph.query(
+            """
+            CALL {
+                MATCH (n)
+                RETURN n
+                ORDER BY n.v ASC
+                SKIP 1
+            }
+            RETURN n
+            """
+        )
+
+        # assert that only one record was returned
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0],
+            Node(label='N', properties={'name': 'Raz', 'v': 6}))
+
+        # TODO: Add tests for LIMIT.
 
 
 
 
 
-    # def test10_order_by(self):
-    #     """Test the ordering of the output of the sq, and the outer query"""
+    def test12_order_by(self):
+        """Test the ordering of the output of the sq, and the outer query"""
 
-    #     # the graph has two nodes with label `N` and prop `name` with val `Raz`
-    #     # with the `v` property with values 2 and 5.
+        # the graph has two nodes with label `N` and prop `name` with val `Raz`
+        # with the `v` property with values 2 and 5.
 
-    #     res = graph.query(
-    #         """
-    #         CALL {
-    #             UNWIND [1, 2, 3, 4, 5] AS x
-    #             MATCH (n:N {v: x})
-    #             RETURN n ORDER BY n.v ASC
-    #         }
-    #         RETURN n
-    #         """
-    #     )
+        res = graph.query(
+            """
+            CALL {
+                UNWIND [1, 2, 3, 4, 5, 6, 7] AS x
+                MATCH (n:N {v: x})
+                RETURN n ORDER BY n.v ASC
+            }
+            RETURN n
+            """
+        )
 
-    #     # validate the results
-    #     self.env.assertEquals(len(res.result_set), 2)
-    #     self.env.assertEquals(res.result_set[0][0],
-    #     Node(label='N', properties={'name': 'Raz', 'v': 2}))
-    #     self.env.assertEquals(res.result_set[1][0],
-    #     Node(label='N', properties={'name': 'Raz', 'v': 5}))
+        # validate the results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 5}))
+        self.env.assertEquals(res.result_set[1][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 6}))
 
-    #     res = graph.query(
-    #         """
-    #         CALL {
-    #             UNWIND [1, 2, 3, 4, 5] AS x
-    #             MATCH (n:N {v: x})
-    #             RETURN n ORDER BY n.v DESC
-    #         }
-    #         RETURN n
-    #         """
-    #     )
-
-    #     # validate the results
-    #     self.env.assertEquals(len(res.result_set), 2)
-    #     self.env.assertEquals(res.result_set[0][0],
-    #     Node(label='N', properties={'name': 'Raz', 'v': 5}))
-    #     self.env.assertEquals(res.result_set[1][0],
-    #     Node(label='N', properties={'name': 'Raz', 'v': 2}))
-
-        # TODO: This jams the tests. Why?
+        # TODO: These two jam the db. Why?
         # res = graph.query(
         #     """
         #     CALL {
-        #         UNWIND [1, 2, 3, 4] AS x
+        #         UNWIND [1, 2, 3, 4, 5, 6, 7] AS x
+        #         MATCH (n:N {v: x})
+        #         RETURN n ORDER BY n.v DESC
+        #     }
+        #     RETURN n
+        #     """
+        # )
+
+        # # validate the results
+        # self.env.assertEquals(len(res.result_set), 2)
+        # self.env.assertEquals(res.result_set[0][0],
+        # Node(label='N', properties={'name': 'Raz', 'v': 5}))
+        # self.env.assertEquals(res.result_set[1][0],
+        # Node(label='N', properties={'name': 'Raz', 'v': 6}))
+
+        # res = graph.query(
+        #     """
+        #     CALL {
+        #         UNWIND [1, 2, 3, 4, 5, 6, 7] AS x
         #         MATCH (n:N {v: x})
         #         RETURN n
         #     }
@@ -341,41 +411,7 @@ class testCallSubqueryFlow():
 
 
 
-    # TODO: Add this test when eager returning clauses are supported
-    # def test09_foreach(self):
-    #     """Test that FOREACH works properly when used inside a subquery"""
-
-    #     # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
-
-    #     res = graph.query(
-    #         """
-    #         CALL {
-    #             MATCH (n:N)
-    #             FOREACH (i in [1] |
-    #                 SET n.v = n.v + 1
-    #             )
-    #             RETURN n
-    #         }
-    #         RETURN n
-    #         """
-    #     )
-
-    #     # assert the correctness of the results
-    #     self.env.assertEquals(res.result_set[0][0],
-    #     Node(label='N', properties={'name': 'Raz', 'v': 2}))
-    #     self.env.assertEquals(res.result_set[1][0],
-    #     Node(label='N', properties={'name': 'Raz', 'v': 5}))
-
-        # TODO: add another query with a non-returning subquery
-
-
-
-
-
-
-
-    # # TODO: Add this once skip is supported (see construction, which at the
-    # # moment assumes Project is the last operation of a returning subquery)
+    # # TODO: Add this once UNION is supported
     # def test09_union(self):
     #     """Test that UNION works properly within a subquery"""
 
@@ -404,36 +440,9 @@ class testCallSubqueryFlow():
     #     Node(label='N', properties={'name': 'Raz', 'v': 4}))
 
 
-    # # TODO: Add this once skip is supported (see construction, which at the
-    # # moment assumes Project is the last operation of a returning subquery)
-    # def test09_skip(self):
-    #     """Test that SKIP works properly when placed inside a subquery"""
-
-    #     # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
-
-    #     res = graph.query(
-    #         """
-    #         CALL {
-    #             MATCH (n)
-    #             RETURN n
-    #             SKIP 1
-    #         }
-    #         RETURN n
-    #         """
-    #     )
-
-    #     # assert that only one record was returned
-    #     self.env.assertEquals(len(res.result_set), 1)
-
-
-
-
-
-
-
-
     # # TODO: Add these tests once the eager returning case is implemented
-    # def test07_update(self):
+        # Note: It's supported (eager returning case) - modify the test to match new db state.
+    # def test13_update(self):
     #     """Test that updates within the subquery are applied appropriately and
     #     later read correctly"""
 
