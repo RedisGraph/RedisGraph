@@ -3,14 +3,14 @@ syntax: |
   GRAPH.CONSTRAINT DROP key 
     MANDATORY|UNIQUE
     NODE label | RELATIONSHIP reltype
-    PROPERTIES <prop-count> prop [prop...]  
+    PROPERTIES prop-count prop [prop...]  
 ---
 
 Deleted a graph constraint.
 
 [Examples](#examples)
 
-For an introduction to constraints see [GRAPH.CONSTRAINT CREATE](/commands/graph.constraint-create.md)
+For an introduction to constraints see [GRAPH.CONSTRAINT CREATE](/commands/graph.constraint-create)
 
 ## Required arguments
 
@@ -43,10 +43,15 @@ is a list of `propCount` property names.
 
 </details>
 
+## Return value
+
+@simple-string-reply - `OK` if executed correctly, or @error-reply otherwise.
+
 ## Examples
 
 To delete a unique constraint for all nodes with label `Person` enforcing uniqueness on the combination of values of attributes `first_name` and `last_name`, issue the following commands:
 
 ```
-GRAPH.CONSTRAINT g DROP UNIQUE NODE Person PROPERTIES 2 first_name last_name
+redis> GRAPH.CONSTRAINT DROP g UNIQUE NODE Person PROPERTIES 2 first_name last_name
+OK
 ```
