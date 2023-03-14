@@ -43,11 +43,6 @@ static int Constraint_Parse
 	uint8_t *prop_count,
 	RedisModuleString ***props
 ) {
-	//--------------------------------------------------------------------------
-	// get graph name
-	//--------------------------------------------------------------------------
-
-	*graph_name = *argv++;
 
 	//--------------------------------------------------------------------------
 	// get constraint operation CREATE/DROP
@@ -62,6 +57,12 @@ static int Constraint_Parse
 		RedisModule_ReplyWithError(ctx, "Invalid constraint operation");
 		return REDISMODULE_ERR;
 	}
+
+	//--------------------------------------------------------------------------
+	// get graph name
+	//--------------------------------------------------------------------------
+
+	*graph_name = *argv++;
 
 	//--------------------------------------------------------------------------
 	// get constraint type UNIQUE/MANDATORY
@@ -368,9 +369,9 @@ cleanup:
 	return res;
 }
 
-// command handler for GRAPH.CONSTRAIN command
-// GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
-// GRAPH.CONSTRAIN <key> DROP   UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
+// command handler for GRAPH.CONSTRAINT command
+// GRAPH.CONSTRAINT CREATE <key> UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAINT DROP <key> UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
 int Graph_Constraint
 (
 	RedisModuleCtx *ctx,

@@ -280,7 +280,7 @@ class testConstraintNodes():
         # invalid constraint type
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "INVALID_CT", "New_Label", "Person", "PROPERTIES", 1, "New_Attr")
+            self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "INVALID_CT", "New_Label", "Person", "PROPERTIES", 1, "New_Attr")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Invalid constraint type", str(e))
@@ -289,7 +289,7 @@ class testConstraintNodes():
         # invalid entity type
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "MANDATORY", "INVALID_ENTITY_TYPE", "New_Label", "PROPERTIES", 1, "New_Attr")
+            self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "INVALID_ENTITY_TYPE", "New_Label", "PROPERTIES", 1, "New_Attr")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Invalid constraint entity type", str(e))
@@ -298,7 +298,7 @@ class testConstraintNodes():
         # invalid property name
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "MANDATORY", "NODE", "label", "PROPERTIES", 2, 1, 2)
+            self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "NODE", "label", "PROPERTIES", 2, 1, 2)
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("At least one property name is invalid", str(e))
@@ -307,7 +307,7 @@ class testConstraintNodes():
         # invalid property name
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "MANDATORY", "NODE", "label", "PROPERTIES", 2, '1pb', '2pb')
+            self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "NODE", "label", "PROPERTIES", 2, '1pb', '2pb')
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("At least one property name is invalid", str(e))
@@ -316,7 +316,7 @@ class testConstraintNodes():
         # invalid property count
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "MANDATORY", "NODE", "label", "PROPERTIES", 0)
+            self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "NODE", "label", "PROPERTIES", 0)
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Number of properties must be an integer between 1 and 255", str(e))
@@ -325,7 +325,7 @@ class testConstraintNodes():
         # invalid property count
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "MANDATORY", "NODE", "label", "PROPERTIES", -1, 12)
+            self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "NODE", "label", "PROPERTIES", -1, 12)
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Number of properties must be an integer between 1 and 255", str(e))
@@ -749,7 +749,7 @@ class testConstraintEdges():
         # invalid constraint operation
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "INVALID_OP", "unique", "RELATIONSHIP", "New_Label", "PROPERTIES", 1, "New_Attr")
+            self.con.execute_command("GRAPH.CONSTRAINT", "INVALID_OP", GRAPH_ID, "unique", "RELATIONSHIP", "New_Label", "PROPERTIES", 1, "New_Attr")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Invalid constraint operation", str(e))
@@ -758,7 +758,7 @@ class testConstraintEdges():
         # invalid constraint type
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "INVALID_CT", "New_Label", "Person", "PROPERTIES", 1, "New_Attr")
+            self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "INVALID_CT", "New_Label", "Person", "PROPERTIES", 1, "New_Attr")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Invalid constraint type", str(e))
@@ -767,7 +767,7 @@ class testConstraintEdges():
         # invalid entity type
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", GRAPH_ID, "CREATE", "MANDATORY", "INVALID_ENTITY_TYPE", "New_Label", "PROPERTIES", 1, "New_Attr")
+            self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "INVALID_ENTITY_TYPE", "New_Label", "PROPERTIES", 1, "New_Attr")
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Invalid constraint entity type", str(e))
