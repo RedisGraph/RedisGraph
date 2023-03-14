@@ -3,7 +3,7 @@ syntax: |
   GRAPH.CONSTRAINT CREATE key 
     MANDATORY|UNIQUE
     NODE label | RELATIONSHIP reltype
-    PROPERTIES <prop-count> prop [prop...]  
+    PROPERTIES prop-count prop [prop...]  
 ---
 
 Creates a graph constraint.
@@ -94,7 +94,7 @@ is a list of `propCount` property names.
 <note><b>Notes:</b>
 
 - Constraints are created asynchronously. The constraint creation command will reply with `PENDING` and the newly created constraint is enforced gradually on all relevant entities.
-  During its creation phase, a constraint's status is `PENDING`. If all governed entities confirm to the constraint - its status is updated to `OPERATIONAL`, otherwise, if a conflicting entity has been detected, the constraint status is updated to `FAILED` and the constraint is not enforced. The caller may try to resolve the conflict and recreate the constraint. To retrieve the status of all constraints - use the `db.constraints()` procedure.
+  During its creation phase, a constraint's status is `PENDING`. If all governed entities confirm to the constraint - its status is updated to `OPERATIONAL`, otherwise, if a conflict has been detected, the constraint status is updated to `FAILED` and the constraint is not enforced. The caller may try to resolve the conflict and recreate the constraint. To retrieve the status of all constraints - use the `db.constraints()` procedure.
 - A constraint creation command may fail synchronously due to the following reasons:
   1. Syntax error
   2. Constraint already exists
@@ -106,28 +106,38 @@ is a list of `propCount` property names.
 
 </note>
 
+## Return value
+
+@simple-string-reply - `PENDING` if executed correctly and the constraint is being created asynchronously, or @error-reply otherwise.
+
+
 ## Examples
 
 To create a unique constraint for all nodes with label `Person` enforcing uniqueness on the combination of values of attributes `first_name` and `last_name`, issue the following commands:
 
 ```
-GRAPH.QUERY g "CREATE INDEX FOR (p:Person) ON (p.first_name, p.last_name)"
-GRAPH.CONSTRAINT CREATE g UNIQUE NODE Person PROPERTIES 2 first_name last_name
+redis> GRAPH.QUERY g "CREATE INDEX FOR (p:Person) ON (p.first_name, p.last_name)"
+1) 1) "Indices created: 2"
+   2) "Cached execution: 0"
+   3) "Query internal execution time: 25.779500 milliseconds"
+redis> GRAPH.CONSTRAINT CREATE g UNIQUE NODE Person PROPERTIES 2 first_name last_name
+PENDING
 ```
 
 Similarly, to create a mandatory constraint for all edges with relationship-type `Visited`, enforcing the existence of a `date` attribute, issue the following command:
 
 ```
-GRAPH.CONSTRAINT CREATE g MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
+redis> GRAPH.CONSTRAINT CREATE g MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
+PENDING
 ```
 
 ## Deleting a constraint
 
-See [GRAPH.CONSTRAINT DROP](/commands/graph.constraint-drop.md)
+See [GRAPH.CONSTRAINT DROP](/commands/graph.constraint-drop)
 
 ## Listing constraints
 
-To list all constraints on a given graph, use the `db.constraints` procedure:
+To list all constraints enforced on a given graph, use the `db.constraints` procedure:
 
 ```
 GRAPH.RO_QUERY <key> "CALL db.constraints()"
@@ -138,15 +148,15 @@ For each constraint the procedure will yield the following fields:
 | Field        | Desc                                                   |
 | ------------ | ------------------------------------------------------ |
 | `type`       | type of constraint, either `UNIQUE` or `MANDATORY`     |
-| `label`      | label or relationship-type enforced by constraint      |
-| `properties` | list of properties enforced by constraint              |
+| `label`      | label or relationship-type enforced by the constraint  |
+| `properties` | list of properties enforced by the constraint          |
 | `entitytype` | type of entity, either `NODE` or `RELATIONSHIP`        |
 | `status`     | either `UNDER CONSTRUCTION`, `OPERATIONAL` or `FAILED` |
 
 Example:
 
 ```
-127.0.0.1:6379> GRAPH.RO_QUERY g "call db.constraints()"
+redis> GRAPH.RO_QUERY g "call db.constraints()"
 1) 1) "type"
    2) "label"
    3) "properties"
