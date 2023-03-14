@@ -92,7 +92,7 @@ is the number of properties following. Valid values are between 1 and 255.
 
 </details>
 
-<details open><summary><code>label/prop...</code></summary>
+<details open><summary><code>prop...</code></summary>
 
 is a list of `propCount` property names.
 
