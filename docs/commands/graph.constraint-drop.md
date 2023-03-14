@@ -2,8 +2,7 @@
 syntax: |
   GRAPH.CONSTRAINT DROP key 
     MANDATORY|UNIQUE
-    NODE|RELATIONSHIP
-    label/reltype
+    NODE label | RELATIONSHIP reltype
     PROPERTIES <prop-count> prop [prop...]  
 ---
 
@@ -26,15 +25,9 @@ is the constraint type: either `MANDATORY` or `UNIQUE`.
 
 </details>
 
-<details open><summary><code>entityType</code></summary>
-
-is the graph entity type on which the constraint should be enforced: either `NODE` or `RELATIONSHIP`.
-
-</details>
-
-<details open><summary><code>label/reltype</code></summary>
-
-is the name of the node label or relationship type on which the constraint should be enforced.
+<details open><summary><code>NODE label | RELATIONSHIP reltype</code></summary>
+  
+is the graph entity type (`NODE` or `RELATIONSHIP`) and the name of the node label or relationship type on which the constraint should be enforced.
 
 </details>
 
