@@ -142,3 +142,31 @@ void str_ExtendBuffer
 	*bufferLen += extensionLen;
 	*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
 }
+
+// utility function to append a string to a buffer of int32_t elements
+int32_t *str_toInt32
+(
+	const char *str,       // string to convert
+	const size_t str_len,  // length of string
+	size_t *len            // length of returned array
+) {
+	// Allocate a buffer to hold the Unicode characters
+	// str_len is uppper bound on number of Unicode characters
+	utf8proc_int32_t *res = (utf8proc_int32_t *)rm_malloc(str_len * sizeof(utf8proc_int32_t));
+
+	// hold current Unicode character
+	utf8proc_int32_t c;
+	int i = 0;
+	int offset = 0;
+	const char *end = str + str_len;
+	for(; str < end; i += 1) {
+		str += utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+		res[i] = c;
+	}
+
+	if(len) {
+		*len = i;
+	}
+
+	return res;
+}

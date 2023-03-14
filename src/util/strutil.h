@@ -6,6 +6,7 @@
 
 #pragma once
 
+
 // return utf8 encoded length of string
 int str_length
 (
@@ -44,4 +45,12 @@ void str_ExtendBuffer
 	char **buf,           // buffer to populate
 	size_t *bufferLen,    // size of buffer
 	size_t extensionLen   // number of bytes to add
+);
+
+// utility function to append a string to array of int32_t elements
+int32_t *str_toInt32
+(
+	const char *str,       // string to convert
+	const size_t str_len,  // length of string
+	size_t *len            // length of returned array
 );

@@ -2590,6 +2590,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        expected_result = [[['😉'], ['😉']]]
+        query = """RETURN string.matchRegEx('a😉b丁c😉', '😉')"""
+        actual_result = graph.query(query)
+        print(actual_result)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
         # proof for Avi that I need to change the parser
         #expected_result = [[[]]]
         #query = """RETURN string.matchRegEx('aa', '(?:\\?)')"""
@@ -2728,6 +2734,32 @@ class testFunctionCallsFlow(FlowTestsBase):
             % (str1, str2, InsertionWeight, DeletionWeight, SubstitutionWeight)
         actual_result = graph.query(query)
         assert actual_result.result_set[0][0] == expected_result
+
+    def jaro_test(
+        self,
+        str1,
+        str2,
+        expected_result,
+        accuracy=0.0
+    ):
+        query = """RETURN string.distance("%s", "%s", 'Jaro')""" \
+            % (str1, str2)
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(expected_result, actual_result.result_set[0][0], accuracy)
+
+    def jarow_test(
+        self,
+        str1,
+        str2,
+        expected_result,
+        accuracy=0.0,
+        ScaleFactor=0.1,
+        threshold=0.7
+    ):
+        query = """RETURN string.distance("%s", "%s", 'JaroW', {ScaleFactor: %f, threshold: %f})""" \
+            % (str1, str2, ScaleFactor, threshold)
+        actual_result = graph.query(query)
+        self.env.assertAlmostEqual(expected_result, actual_result.result_set[0][0], accuracy)
 
     def test92_string_distance(self):
         # NULL input should return NULL
@@ -2872,6 +2904,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.lev_test('a', 'ab', 5.0, InsertionWeight=5.0, SubstitutionWeight=5.0)
         self.lev_test('ab', 'a', 1.0, InsertionWeight=5.0, SubstitutionWeight=5.0)
 
+        self.lev_test('😉', '😉', 0.0)
+        self.lev_test('a😉', '😉', 1.0)
+        self.lev_test('aa😉', 'a😉', 1.0)
+        self.lev_test('aa😉c丁丁', 'a😉c', 3.0)
+
         ## Test Hamming distance ##
         expected_result = [0.0]
         query = """RETURN string.distance('ab', 'ab', 'Ham')"""
@@ -2900,6 +2937,31 @@ class testFunctionCallsFlow(FlowTestsBase):
 
         expected_result = [3.0]
         query = """RETURN string.distance('ttt', 'aaa', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [0.0]
+        query = """RETURN string.distance('😉', '😉', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [-1.0]
+        query = """RETURN string.distance('a😉', '😉', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [1.0]
+        query = """RETURN string.distance('a😉', 'b😉', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [2.0]
+        query = """RETURN string.distance('aa😉c', 'ab😉d', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        expected_result = [3.0]
+        query = """RETURN string.distance('s丁e😉c丁丁', 's丁d😉cmm', 'Ham')"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
@@ -2941,131 +3003,36 @@ class testFunctionCallsFlow(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("ArgumentError: string.distance(), threshold value is out of bounds", str(e))
 
-        expected_result = [0.0]
-        query = """RETURN string.distance('al', 'al', 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0], expected_result)
+        self.jaro_test('al', 'al', 0.0)
+        self.jaro_test('al', 'ab', 0.333333333333333)
 
-        query = """RETURN string.distance('martha', 'marhta', 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.03888888888888886, actual_result.result_set[0][0], 0.0000000000000001)
-
-        query = """RETURN string.distance("jones", "johnson", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.16761904761904767, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("abcvwxyz", "cabvwxyz", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.0625, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("dwayne", "duane", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.15999999999999992, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("dixon", "dicksonx", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.18666666666666676, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("fvie", "ten", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(1.0, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("", "", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("foo", "foo", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("foo", "foo", 'JaroW', {ScaleFactor : 0.25})"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("foo", "foo ", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.05833333333333335, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("foo", "foo  ", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.09333333333333327, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("foo", "  foo", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.48888888888888893, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("foo", "foo  ", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.09333333333333327, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("", "a", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(1.0, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("aaapppp", "", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(1.0, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("frog", "fog", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.07500000000000007, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("frog", "fog", 'JaroW', {ScaleFactor : 0.25})"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.0625, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("frog", "fog", 'JaroW', {ScaleFactor : 0.25, threshold : 1.0})"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.0833333333333334, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("fly", "ant", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(1.0, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("elephant", "hippo", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.5583333333333333, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("hippo", "elephant", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.5583333333333333, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("hippo", "zzzzzzzz", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(1.0, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("hello", "hallo", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.12, actual_result.result_set[0][0], 0)
-
-        query = """RETURN string.distance("ABC Corporation", "ABC Corp", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.09333333333333338, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("D N H Enterprises Inc", "D &amp; H Enterprises, Inc.", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.14183421516754857, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("My Gym Children's Fitness Center", "My Gym. Childrens Fitness", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.05800000000000005, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("PENNSYLVANIA", "PENNCISYLVNIA", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.10198135198135194, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("zac ephron", "zac efron", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.06222222222222218, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("zac ephron", "kai ephron", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.1333333333333333, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("brittney spears", "britney spears", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.013333333333333308, actual_result.result_set[0][0], 1e-15)
-
-        query = """RETURN string.distance("brittney spears", "brittney startzman", 'JaroW')"""
-        actual_result = graph.query(query)
-        self.env.assertAlmostEqual(0.10666666666666658, actual_result.result_set[0][0], 1e-15)
+        self.jarow_test('al', 'al', 0.0)
+        self.jarow_test('martha', 'marhta', 0.03888888888888886, 0.0000000000000001)
+        self.jarow_test("jones", "johnson", 0.16761904761904767, 1e-15)
+        self.jarow_test("abcvwxyz", "cabvwxyz", 0.0625)
+        self.jarow_test("dwayne", "duane", 0.15999999999999992, 1e-15)
+        self.jarow_test("dixon", "dicksonx", 0.18666666666666676, 1e-15)
+        self.jarow_test("fvie", "ten", 1.0, 0)
+        self.jarow_test("", "", 0, 0)
+        self.jarow_test("foo", "foo", 0, 0)
+        self.jarow_test("foo", "foo", 0, 0, 0.25)
+        self.jarow_test("foo", "foo ", 0.05833333333333335, 1e-15)
+        self.jarow_test("foo", "  foo", 0.48888888888888893, 1e-15)
+        self.jarow_test("foo", "foo  ", 0.09333333333333327, 1e-15)
+        self.jarow_test("", "a", 1.0, 0)
+        self.jarow_test("aaappp", "", 1.0, 0)
+        self.jarow_test("frog", "fog", 0.07500000000000007, 1e-15)
+        self.jarow_test("frog", "fog", 0.0625, 0, 0.25)
+        self.jarow_test("frog", "fog", 0.0833333333333334, 0, 0.25, 1.0)
+        self.jarow_test("fly", "ant", 1.0, 0)
+        self.jarow_test("elephant", "hippo", 0.5583333333333333, 1e-15)
+        self.jarow_test("hippo", "zzzzzzzz", 1.0, 0)
+        self.jarow_test("hello", "hallo", 0.12, 0)
+        self.jarow_test("ABC Corporation", "ABC Corp", 0.09333333333333338, 1e-15)
+        self.jarow_test("D N H Enterprises Inc", "D &amp; H Enterprises, Inc.", 0.14183421516754857, 1e-15)
+        self.jarow_test("My Gym Children's Fitness Center", "My Gym. Childrens Fitness", 0.05800000000000005, 1e-15)
+        self.jarow_test("PENNSYLVANIA", "PENNCISYLVNIA", 0.10198135198135194, 1e-15)
+        self.jarow_test("zac ephron", "zac efron", 0.06222222222222218, 1e-15)
+        self.jarow_test("zac ephron", "kai ephron", 0.1333333333333333, 1e-15)
+        self.jarow_test("brittney spears", "britney spears", 0.013333333333333308, 1e-15)
+        self.jarow_test("brittney spears", "brittney startzman", 0.10666666666666658, 1e-15)

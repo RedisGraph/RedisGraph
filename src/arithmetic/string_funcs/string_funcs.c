@@ -741,14 +741,19 @@ Wagner–Fischer algorithm is not comutative when insertion and deletion have di
 see from the example above.
 This is why in that case there is a need to execute it twice. */
 static double levenshtein_distance(
-	const char *S1,
-	const char *S2,
-	size_t len1,
-	size_t len2,
+	const char *_S1,
+	const char *_S2,
+	size_t _len1,
+	size_t _len2,
 	double insertionWeight,
 	double deletionWeight,
 	double substitutionWeight
 ) {
+
+	size_t len1, len2;
+	int32_t *S1, *S2;
+	S1 = str_toInt32(_S1, _len1, &len1);
+	S2 = str_toInt32(_S2, _len2, &len2);
 
 	// dynamically allocate the array since it might be large
 	double *distance_array = (double *)rm_malloc((len2+1)*sizeof(double));
@@ -777,6 +782,8 @@ static double levenshtein_distance(
 
 	double res = distance_array[len2];
 	rm_free(distance_array);
+	rm_free(S1);
+	rm_free(S2);
 	return res;
 }
 
@@ -824,8 +831,21 @@ static bool lev_distance_parse_params
 	return true;
 }
 
-static double hamming_distance(const char *S1, const char *S2, size_t len1, size_t len2) {
+static double hamming_distance
+(
+	const char *_S1,
+	const char *_S2,
+	size_t _len1,
+	size_t _len2
+) {
+	size_t len1, len2;
+	int32_t *S1, *S2;
+	S1 = str_toInt32(_S1, _len1, &len1);
+	S2 = str_toInt32(_S2, _len2, &len2);
+
 	if(len1 != len2) {
+		rm_free(S1);
+		rm_free(S2);
 		return -1;
 	}
 
@@ -836,14 +856,23 @@ static double hamming_distance(const char *S1, const char *S2, size_t len1, size
 		}
 	}
 
+	rm_free(S1);
+	rm_free(S2);
 	return distance;
 }
 
-static double jaro_similarity(const char *S1, const char *S2, size_t len1, size_t len2) {
+static double jaro_similarity_Int32
+(
+	int32_t *S1,
+	int32_t *S2,
+	size_t len1,
+	size_t len2
+) {
+
 	// S1 should be the shorter string,
 	// we allowed cause it's a symmetric function
 	if(len1 > len2) {
-		__SWAP(const char *, S1, S2);
+		__SWAP(int32_t *, S1, S2);
 		__SWAP(size_t, len1, len2);
 	}
 
@@ -906,6 +935,30 @@ static double jaro_similarity(const char *S1, const char *S2, size_t len1, size_
 	(n_match - ((double)n_transpositions/2))/n_match)/3;
 }
 
+static double jaro_similarity
+(
+	const char *_S1,
+	const char *_S2,
+	size_t _len1,
+	size_t _len2
+) {
+	if(_len1 == 0 && _len2 == 0) {
+		// both stings are empty
+		return 1.0;
+	}
+
+	size_t len1, len2;
+	int32_t *S1, *S2;
+	S1 = str_toInt32(_S1, _len1, &len1);
+	S2 = str_toInt32(_S2, _len2, &len2);
+
+	double res = jaro_similarity_Int32(S1, S2, len1, len2);
+
+	rm_free(S1);
+	rm_free(S2);
+	return res;
+}
+
 static bool jaro_winkler_parse_params(const struct Pair *distFuncParams, double *scaleFactor, double *threshold) {
 	if(distFuncParams != NULL) {
 		for(int i = 0; i < array_len((void *)distFuncParams); i++) {
@@ -949,22 +1002,30 @@ static bool jaro_winkler_parse_params(const struct Pair *distFuncParams, double 
 }
 
 static double jaro_winkler_distance(
-	const char *S1, 
-	const char *S2, 
-	size_t len1, 
-	size_t len2, 
+	const char *_S1,
+	const char *_S2,
+	size_t _len1,
+	size_t _len2,
 	double scaleFactor,
 	double threshold
 ) {
+
+	size_t len1, len2;
+	int32_t *S1, *S2;
+	S1 = str_toInt32(_S1, _len1, &len1);
+	S2 = str_toInt32(_S2, _len2, &len2);
+
 	// S1 should be the shorter string,
 	// it's allowed cause it's a symmetric function
 	if(len1 > len2) {
-		__SWAP(const char *, S1, S2);
+		__SWAP(int32_t *, S1, S2);
 		__SWAP(size_t, len1, len2);
 	}
-	double j = jaro_similarity(S1, S2, len1, len2);
+	double j = jaro_similarity_Int32(S1, S2, len1, len2);
 
 	if(j == 0) {
+		rm_free(S1);
+		rm_free(S2);
 		return 1.0;
 	}
 
@@ -977,6 +1038,9 @@ static double jaro_winkler_distance(
 			break;
 		}
 	}
+
+	rm_free(S1);
+	rm_free(S2);
 
 	// calculate the Jaro-Winkler similarity
 	double sim_w = (j < threshold) ? j : j + scaleFactor * prefix * (1.0 - j);
