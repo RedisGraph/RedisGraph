@@ -124,7 +124,7 @@ static Record ForeachConsume
 		array_append(op->body_records, OpBase_CreateRecord(op->body));
 	}
 
-	// plant a clone of the list of arguments in argument_list operation
+	// plant the clone records array (with the correct mapping) in argument_list
 	ArgumentList_AddRecordList(op->argument_list, op->body_records);
 
 	// call consume on loop body first op
@@ -147,7 +147,7 @@ static void _freeInternals
 ) {
 	// free records still held by this operation
 	if(op->records != NULL) {
-		// free record list components (except last element, which is NULL)
+		// free record list components (except first element, which is NULL)
 		uint nrecords = array_len(op->records);
 		for(uint i = 1; i < nrecords; i++) {
 			OpBase_DeleteRecord(op->records[i]);

@@ -10,7 +10,7 @@
 #include "../util/rmalloc.h"
 
 // migrate the entry at the given index in the source Record to the same index
-// in the destination. Ownership is determined according to transfer_ownership
+// in the destination. Ownership is transferred according to transfer_ownership
 static void _RecordPropagateEntry
 (
 	Record dest,
@@ -144,7 +144,7 @@ void Record_TransferEntries
 (
 	Record *to,              // destination record
 	Record from,             // src record
-	bool transfer_ownership  // does the ownership upon the record stay or not
+	bool transfer_ownership  // does the ownership of the record stay or not
 ) {
 	uint len = Record_length(from);
 	for(uint i = 0; i < len; i++) {

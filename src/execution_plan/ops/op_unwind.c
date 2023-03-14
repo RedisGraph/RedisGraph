@@ -178,8 +178,6 @@ static void UnwindFree
 		op->exp = NULL;
 	}
 
-	// if the op is constructed due to a Foreach op, than Foreach is responsible
-	// for the record
 	if(op->currentRecord != NULL) {
 		OpBase_DeleteRecord(op->currentRecord);
 	}

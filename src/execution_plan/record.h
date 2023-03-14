@@ -73,7 +73,7 @@ void Record_TransferEntries
 (
 	Record *to,              // destination record
 	Record from,             // src record
-	bool transfer_ownership  // does the ownership upon the record stay or not
+	bool transfer_ownership  // transfer ownership of the record to dest or not
 );
 
 // returns number of entries record can hold
