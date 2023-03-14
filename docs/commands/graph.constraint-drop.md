@@ -2,8 +2,7 @@
 syntax: |
   GRAPH.CONSTRAINT DROP key 
     MANDATORY|UNIQUE
-    NODE|RELATIONSHIP
-    label/reltype
+    NODE label | RELATIONSHIP reltype
     PROPERTIES <prop-count> prop [prop...]  
 ---
 
@@ -11,7 +10,7 @@ Deleted a graph constraint.
 
 [Examples](#examples)
 
-For an introduction to constraints see [GRAPH.CONSTRAINT CREATE](https://github.com/RedisGraph/RedisGraph/blob/master/docs/commands/graph.constraint-create.md)
+For an introduction to constraints see [GRAPH.CONSTRAINT CREATE](/commands/graph.constraint-create.md)
 
 ## Required arguments
 
@@ -26,32 +25,23 @@ is the constraint type: either `MANDATORY` or `UNIQUE`.
 
 </details>
 
-<details open><summary><code>entitiesType</code></summary>
-
-is the entities type on which the constraint should be enforced: either `NODE` or `RELATIONSHIP`.
-
-</details>
-
-<details open><summary><code>label/reltype</code></summary>
-
-is the name of the node label or relationship type on which the constraint should be enforced.
+<details open><summary><code>NODE label | RELATIONSHIP reltype</code></summary>
+  
+is the graph entity type (`NODE` or `RELATIONSHIP`) and the name of the node label or relationship type on which the constraint is enforced.
 
 </details>
 
-<details open><summary><code>label/propCount</code></summary>
+<details open><summary><code>propCount</code></summary>
 
 is the number of properties following. Valid values are between 1 and 255.
 
 </details>
 
-<details open><summary><code>label/prop...</code></summary>
+<details open><summary><code>prop...</code></summary>
 
 is a list of `propCount` property names.
 
 </details>
-
-
-
 
 ## Examples
 
