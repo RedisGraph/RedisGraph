@@ -22,12 +22,12 @@ Schema *Schema_New
 
 	Schema *s = rm_malloc(sizeof(Schema));
 
-	s->id           =  id;
-	s->type         =  type;
-	s->index        =  NULL;
-	s->fulltextIdx  =  NULL;
-	s->constraints  =  array_new(Constraint, 0);
-	s->name         =  rm_strdup(name);
+	s->id          = id;
+	s->type        = type;
+	s->name        = rm_strdup(name);
+	s->index       = NULL;
+	s->fulltextIdx = NULL;
+	s->constraints = array_new(Constraint, 0);
 
 	return s;
 }
