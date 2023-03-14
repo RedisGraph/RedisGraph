@@ -144,7 +144,7 @@ void Record_TransferEntries
 (
 	Record *to,              // destination record
 	Record from,             // src record
-	bool transfer_ownership  // does the ownership of the record stay or not
+	bool transfer_ownership  // transfer ownership of the record to dest or not
 ) {
 	uint len = Record_length(from);
 	for(uint i = 0; i < len; i++) {
