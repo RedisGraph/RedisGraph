@@ -27,7 +27,7 @@ is the constraint type: either `MANDATORY` or `UNIQUE`.
 
 <details open><summary><code>NODE label | RELATIONSHIP reltype</code></summary>
   
-is the graph entity type (`NODE` or `RELATIONSHIP`) and the name of the node label or relationship type on which the constraint should be enforced.
+is the graph entity type (`NODE` or `RELATIONSHIP`) and the name of the node label or relationship type on which the constraint is enforced.
 
 </details>
 
@@ -42,9 +42,6 @@ is the number of properties following. Valid values are between 1 and 255.
 is a list of `propCount` property names.
 
 </details>
-
-
-
 
 ## Examples
 
