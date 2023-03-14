@@ -130,7 +130,7 @@ GRAPH.CONSTRAINT CREATE g MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
 
 ## Deleting a constraint
 
-See [GRAPH.CONSTRAINT DROP](https://github.com/RedisGraph/RedisGraph/blob/master/docs/commands/graph.constraint-drop.md)
+See [GRAPH.CONSTRAINT DROP](/commands/graph.constraint-drop.md)
 
 ## Listing constraints
 
