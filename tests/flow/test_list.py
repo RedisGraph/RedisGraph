@@ -1469,30 +1469,36 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
-        # NULL, NULL input should return NULL
+        # [1,3,2], NULL input should return [1,2,3]
         expected_result = [[1,2,3]]
         query = """RETURN list.union([1,3,2], null)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
-        # NULL, NULL input should return NULL
+        # NULL, [1,3,2] input should return [1,2,3]
         expected_result = [[1,2,3]]
         query = """RETURN list.union(null, [1,3,2], 0)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        # [null,1,3,2], [null,4,null] input should return [1,2,3,4,None]
         expected_result = [[1,2,3,4,None]]
         query = """RETURN list.union([null,1,3,2], [null,4,null])"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        set_semantics = 0
+        bag_semantics = 1
+
+        # [null,1,3,2], [null,4,null,7,2] input should return [1,2,3,4,7,None]
         expected_result = [[1,2,3,4,7,None]]
-        query = """RETURN list.union([null,1,3,2], [null,4,null,7,2], 0)"""
+        query = f"""RETURN list.union([null,1,3,2], [null,4,null,7,2], {set_semantics})"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        # [null,1,3,2], [null,4,null,7,2] input should return [None,1,3,2,None,4,None,7,2]
         expected_result = [[None,1,3,2,None,4,None,7,2]]
-        query = """RETURN list.union([null,1,3,2], [null,4,null,7,2], 1)"""
+        query = f"""RETURN list.union([null,1,3,2], [null,4,null,7,2], {bag_semantics})"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
