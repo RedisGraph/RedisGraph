@@ -1821,11 +1821,11 @@ class testList(FlowTestsBase):
 
         # NULL, NULL input should return NULL
         expected_result = [None]
-        query = """RETURN list.flatten(null, 2)"""
+        query = """RETURN list.flatten(null, null)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
-        # Returns list when levels is evaluated to 0
+        # Returns same list when levels is evaluated to 0
         expected_result = [[1,4,3,None]]
         query = """RETURN list.flatten([1,4,3,null], 0)"""
         actual_result = redis_graph.query(query)

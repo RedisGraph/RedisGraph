@@ -1191,22 +1191,20 @@ SIValue AR_FLATTEN(SIValue *argv, int argc, void *private_data) {
 	array_append(stack, frame);
 	while(array_len(stack) > 0) {
 		uint32_t len = array_len(stack);
-		_Stack_frame *cur_frame = &stack[len - 1];
-		SIValue *l = &cur_frame->list;
+		_Stack_frame *cur_frame = stack + (len - 1);
 		if(level > levels) {
 			// if we are above the levels limit,
 			// pop and append the current list without flattening
-			ASSERT(SI_TYPE(*l) == T_ARRAY);
-			SIArray_Append(&res, *l);
+			ASSERT(SI_TYPE(cur_frame->list) == T_ARRAY);
+			SIArray_Append(&res, cur_frame->list);
 			array_pop(stack);
 			level--;
 			continue;
 		}
 
 		bool level_inc = false;
-		while(cur_frame->index < SIArray_Length(*l)) {
-			SIValue v = SIArray_Get(*l, cur_frame->index);
-			cur_frame->index++;
+		while(cur_frame->index < SIArray_Length(cur_frame->list)) {
+			SIValue v = SIArray_Get(cur_frame->list, cur_frame->index++);
 
 			if (SI_TYPE(v) == T_ARRAY) {
 				frame.list = v;
