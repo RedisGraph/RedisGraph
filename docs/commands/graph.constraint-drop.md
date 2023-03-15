@@ -3,7 +3,7 @@ syntax: |
   GRAPH.CONSTRAINT DROP key 
     MANDATORY|UNIQUE
     NODE label | RELATIONSHIP reltype
-    PROPERTIES prop-count prop [prop...]  
+    PROPERTIES propCount prop [prop...]  
 ---
 
 Deleted a graph constraint.
