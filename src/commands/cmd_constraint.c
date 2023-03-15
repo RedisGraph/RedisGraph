@@ -13,6 +13,8 @@
 #include "../graph/graphcontext.h"
 #include "constraint/constraint.h"
 
+#define PROPERTY_NAME_PATTERN "[a-zA-Z_][a-zA-Z0-9_$]*"
+
 // constraint operation
 typedef enum {
 	CT_CREATE,  // create constraint
@@ -369,8 +371,6 @@ cleanup:
 	return res;
 }
 
-#define PROPERTY_NAME_PATTERN "[a-zA-Z_][a-zA-Z0-9_$]*"
-
 // command handler for GRAPH.CONSTRAINT command
 // GRAPH.CONSTRAINT CREATE <key> UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
 // GRAPH.CONSTRAINT DROP <key> UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
@@ -404,7 +404,7 @@ int Graph_Constraint
 		return REDISMODULE_ERR;
 	}
 
-	// extract constraint properties
+	// extract constraint properties and validate property name
 	const char *props_cstr[prop_count];
 	for(uint8_t i = 0; i < prop_count; i++) {
 		props_cstr[i] = RedisModule_StringPtrLen(props[i], NULL);

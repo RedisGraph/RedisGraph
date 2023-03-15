@@ -88,8 +88,8 @@
 #endif
 
 #define RedisModule_ReplyWithErrorFormat(ctx, fmt, ...) do { \
-	int size = snprintf(NULL, 0, fmt, ##__VA_ARGS__);        \
-	char *str = malloc(size + 1);                            \
-	sprintf(str, fmt, ##__VA_ARGS__);                        \
+	char *str;                                               \
+	asprintf(&str, fmt, ##__VA_ARGS__);                      \
 	RedisModule_ReplyWithError(ctx, str);                    \
+	free(str);                                               \
 } while(0)
