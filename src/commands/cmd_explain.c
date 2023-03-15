@@ -37,8 +37,8 @@ void Graph_Explain(void *args) {
 	/* Retrieve the required execution items and information:
 	 * 1. Execution plan
 	 * 2. Whether these items were cached or not */
-	bool           cached     =  false;
-	ExecutionPlan  *plan      =  NULL;
+	bool           cached =  false;
+	ExecutionPlan  *plan  =  NULL;
 	exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query);
 	if(exec_ctx == NULL) goto cleanup;
 

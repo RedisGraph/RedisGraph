@@ -67,4 +67,3 @@ void CircularBuffer_Free
 (
 	CircularBuffer *cb  // buffer to free
 );
-

@@ -34,7 +34,7 @@ static void _IncrementalHashEntity(XXH64_state_t *state, const char **labels,
 		res = XXH64_update(state, &_set->attr_count, sizeof(_set->attr_count));
 		ASSERT(res != XXH_ERROR);
 
-		for(int i = 0; i < _set->attr_count; i++) {
+		for (uint16_t i = 0; i < _set->attr_count; ++i) {
 			Attribute *a = _set->attributes + i;
 
 			// update hash with attribute ID

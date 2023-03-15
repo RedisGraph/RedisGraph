@@ -5,10 +5,12 @@
  */
 
 #include "schema.h"
+#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
+#include "../constraint/constraint.h"
 
 Schema *Schema_New
 (
@@ -20,11 +22,12 @@ Schema *Schema_New
 
 	Schema *s = rm_malloc(sizeof(Schema));
 
-	s->id           =  id;
-	s->type         =  type;
-	s->index        =  NULL;
-	s->fulltextIdx  =  NULL;
-	s->name         =  rm_strdup(name);
+	s->id          = id;
+	s->type        = type;
+	s->name        = rm_strdup(name);
+	s->index       = NULL;
+	s->fulltextIdx = NULL;
+	s->constraints = array_new(Constraint, 0);
 
 	return s;
 }
@@ -51,6 +54,15 @@ int Schema_GetID(const Schema *s) {
   return s->id;
 }
 
+// return schema type
+SchemaType Schema_GetType
+(
+	const Schema *s
+) {
+	ASSERT(s != NULL);
+	return s->type;
+}
+
 bool Schema_HasIndices(const Schema *s) {
 	ASSERT(s);
 	return (s->fulltextIdx || s->index);
@@ -69,34 +81,59 @@ unsigned short Schema_IndexCount
 	return n;
 }
 
+// get index from schema
+// returns NULL if index wasn't found
 Index Schema_GetIndex
 (
-	const Schema *s,
-	Attribute_ID *attr_id,
-	IndexType type
+	const Schema *s,            // schema to get index from
+	const Attribute_ID *attrs,  // indexed attributes
+	uint n,                     // number of attributes
+	IndexType type              // type of index
 ) {
+	// validations
 	ASSERT(s != NULL);
+	ASSERT((attrs == NULL && n == 0) || (attrs != NULL && n > 0));
 
-	Index idx = NULL;
+	Index idx         = NULL;  // index to return
+	uint  idx_count   = 0;     // number of indicies to consider
+	Index indicies[2] = {0};   // indicies to consider
+
 	if(type != IDX_ANY) {
-		idx = (type == IDX_EXACT_MATCH) ? s->index : s->fulltextIdx;
-		// return NULL if the index does not exist, or an attribute was
-		// specified but does not reside on the index
-		if(idx != NULL && (attr_id && !Index_ContainsAttribute(idx, *attr_id))) {
-			idx = NULL;
+		// consider specified index
+		idx_count   = 1;
+		indicies[0] = (type == IDX_EXACT_MATCH) ? s->index : s->fulltextIdx;
+	} else  {
+		// consider both exact-match and fulltext indicies
+		idx_count   = 2;
+		indicies[0] = s->index;
+		indicies[1] = s->fulltextIdx;
+	}
+
+	//--------------------------------------------------------------------------
+	// return first index which contains all specified attributes
+	//--------------------------------------------------------------------------
+
+	for(uint i = 0; i < idx_count; i++) {
+		idx = indicies[i];
+
+		// index doesn't exists
+		if(idx == NULL) {
+			continue;
 		}
-	} else if(attr_id) {
-		// ANY index, specified attribute id
-		// return the first index containing attribute
-		if(s->index && Index_ContainsAttribute(s->index, *attr_id)) {
-			idx = s->index;
+
+		// make sure index contains all specified attributes
+		bool all_attr_found = true;
+		for(uint i = 0; i < n; i++) {
+			if(!Index_ContainsAttribute(idx, attrs[i])) {
+				idx = NULL;
+				all_attr_found = false;
+				break;
+			}
 		}
-		if(s->fulltextIdx && Index_ContainsAttribute(s->fulltextIdx, *attr_id)) {
-			idx = s->fulltextIdx;
+
+		if(all_attr_found == true) {
+			break;
 		}
-	} else {
-		// ANY index, unspecified attribute id, return the first extant index
-		idx = (s->index != NULL) ? s->index : s->fulltextIdx;
 	}
 
 	return idx;
@@ -116,7 +153,7 @@ int Schema_AddIndex
 	ASSERT(field != NULL);
 
 	// see if index already exists
-	Index _idx = Schema_GetIndex(s, NULL, type);
+	Index _idx = Schema_GetIndex(s, NULL, 0, type);
 
 	// index exists, make sure attribute isn't already indexed
 	if(_idx != NULL) {
@@ -155,14 +192,32 @@ static int _Schema_RemoveExactMatchIndex
 	ASSERT(field != NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
-	if(attribute_id == ATTRIBUTE_ID_NONE) {
+
+	// convert attribute name to attribute ID
+	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, field);
+	if(attr_id == ATTRIBUTE_ID_NONE) {
 		return INDEX_FAIL;
 	}
 
-	Index idx = Schema_GetIndex(s, &attribute_id, IDX_EXACT_MATCH);
+	// try to get index
+	Index idx = Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH);
 	if(idx == NULL) {
 		return INDEX_FAIL;
+	}
+
+	//--------------------------------------------------------------------------
+	// make sure index doesn't supports any constraints
+	//--------------------------------------------------------------------------
+
+	uint n = array_len(s->constraints);
+	for(uint i = 0; i < n; i++) {
+		Constraint c = s->constraints[i];
+		if(Constraint_GetStatus(c) != CT_FAILED &&
+		   Constraint_GetType(c) == CT_UNIQUE   &&
+		   Constraint_ContainsAttribute(c, attr_id)) {
+			ErrorCtx_SetError("Index supports constraint");
+			return INDEX_FAIL;
+		}
 	}
 
 	Index_RemoveField(idx, field);
@@ -182,8 +237,7 @@ static int _Schema_RemoveFullTextIndex
 ) {
 	ASSERT(s != NULL);
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	Index idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);
 	if(idx == NULL) {
 		return INDEX_FAIL;
 	}
@@ -286,17 +340,184 @@ void Schema_RemoveEdgeFromIndices
 	if(idx) Index_RemoveEdge(idx, e);
 }
 
+//------------------------------------------------------------------------------
+// constraints API
+//------------------------------------------------------------------------------
+
+// check if schema has constraints
+bool Schema_HasConstraints
+(
+	const Schema *s  // schema to query
+) {
+	ASSERT(s != NULL);
+	return (s->constraints != NULL && array_len(s->constraints) > 0);
+}
+
+// checks if schema constains constraint
+bool Schema_ContainsConstraint
+(
+	const Schema *s,            // schema to search
+	ConstraintType t,           // constraint type
+	const Attribute_ID *attrs,  // constraint attributes
+	uint attr_count             // number of attributes
+) {
+	// validations
+	ASSERT(s          != NULL);
+	ASSERT(attrs      != NULL);
+	ASSERT(attr_count > 0);
+
+	Constraint c = Schema_GetConstraint(s, t, attrs, attr_count);
+	return (c != NULL && Constraint_GetStatus(c) != CT_FAILED);
+}
+
+// retrieves constraint 
+// returns NULL if constraint was not found
+Constraint Schema_GetConstraint
+(
+	const Schema *s,            // schema from which to get constraint
+	ConstraintType t,           // constraint type
+	const Attribute_ID *attrs,  // constraint attributes
+	uint attr_count             // number of attributes
+) {
+	// validations
+	ASSERT(s          != NULL);
+	ASSERT(attrs      != NULL);
+	ASSERT(attr_count > 0);
+
+	// search for constraint
+	uint n = array_len(s->constraints);
+	for(uint i = 0; i < n; i++) {
+		Constraint c = s->constraints[i];
+
+		// check constraint type
+		if(Constraint_GetType(c) != t) {
+			continue;
+		}
+
+		// make sure constraint attribute count matches
+		const Attribute_ID *c_attrs;
+		uint n = Constraint_GetAttributes(c, &c_attrs, NULL);
+		if(n != attr_count) {
+			continue;
+		}
+
+		// match each attribute
+		bool match = true;  // optimistic
+		for(uint j = 0; j < n; j++) {
+			if(c_attrs[j] != attrs[j]) {
+				match = false;
+				break;
+			}
+		}
+
+		if(match == true) {
+			return c;
+		}
+	}
+
+	// no constraint was found
+	return NULL;
+}
+
+// get all constraints in schema
+const Constraint *Schema_GetConstraints
+(
+	const Schema *s  // schema from which to extract constraints
+) {
+	// validations
+	ASSERT(s != NULL);
+	ASSERT(s->constraints != NULL);
+
+	return s->constraints;
+}
+
+// adds a constraint to schema
+void Schema_AddConstraint
+(
+	Schema *s,       // schema holding the index
+	Constraint c     // constraint to add
+) {
+	ASSERT(s != NULL);
+	ASSERT(c != NULL);
+	array_append(s->constraints, c);
+}
+
+// removes constraint from schema
+void Schema_RemoveConstraint
+(
+	Schema *s,    // schema
+	Constraint c  // constraint to remove
+) {
+	// validations
+	ASSERT(s != NULL);
+	ASSERT(c != NULL);
+
+	// search for constraint
+	uint n = array_len(s->constraints);
+	for(uint i = 0; i < n; i++) {
+		if(c == s->constraints[i]) {
+			Constraint_IncPendingChanges(c);
+			array_del_fast(s->constraints, i);
+			return;
+		}
+	}
+
+	ASSERT(false);
+}
+
+// enforce all constraints under given schema on entity
+bool Schema_EnforceConstraints
+(
+	const Schema *s,       // schema
+	const GraphEntity *e,  // entity to enforce
+	char **err_msg         // report error message
+) {
+	// validations
+	ASSERT(s != NULL);
+	ASSERT(e != NULL);
+	
+	// see if entity holds under all schema's constraints
+	uint n = array_len(s->constraints);
+	for(uint i = 0; i < n; i++) {
+		Constraint c = s->constraints[i];
+		if(Constraint_GetStatus(c) != CT_FAILED &&
+		   !Constraint_EnforceEntity(c, e, err_msg)) {
+			// entity failed to pass constraint
+			return false;
+		}
+	}
+
+	// entity passed all constraint
+	return true;
+}
+
 void Schema_Free
 (
 	Schema *s
 ) {
 	ASSERT(s != NULL);
 
-	if(s->name) rm_free(s->name);
+	if(s->name) {
+		rm_free(s->name);
+	}
 
-	// Free indicies.
-	if(s->index) Index_Free(s->index);
-	if(s->fulltextIdx) Index_Free(s->fulltextIdx);
+	// free constraints
+	if(s->constraints != NULL) {
+		uint n = array_len(s->constraints);
+		for(uint i = 0; i < n; i++) {
+			Constraint_Free(s->constraints + i);
+		}
+		array_free(s->constraints);
+	}
+
+	// free indicies
+	if(s->index != NULL) {
+		Index_Free(s->index);
+	}
+
+	if(s->fulltextIdx != NULL) {
+		Index_Free(s->fulltextIdx);
+	}
 
 	rm_free(s);
 }

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../algebraic_expression.h"
+#include "../../graph/graphcontext.h"
 
 #define CHILDREN(node) (node)->operation.children
 #define CHILD_AT(node, idx) CHILDREN(node)[idx]
