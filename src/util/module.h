@@ -4,10 +4,9 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
- /*
-  * This file contains the useful stuff when working from within a redis module.
-  * The reply mechanisms it has support RESP3 and RESP2.
- */
+ // this file contains the useful stuff when working from within a redis module
+ // the reply mechanisms it has support RESP3 and RESP2
+
 #pragma once
 
 #include <stdbool.h>
@@ -178,3 +177,4 @@ void ReplyRecorder_Cleanup
 (
     ReplyRecorder *recorder
 );
+

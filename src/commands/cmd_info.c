@@ -3,7 +3,8 @@
  * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
  * the Server Side Public License v1 (SSPLv1).
  */
- /* This file contains the implementation of the GRAPH.INFO command. */
+
+ // this file contains the implementation of the GRAPH.INFO command
 
 #include "RG.h"
 #include "util/arr.h"
@@ -50,7 +51,7 @@
 #define TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME "Total reporting queries count"
 #define INVALID_COUNT_PARAMETER_FOR_PREV_MESSAGE "\"PREV\": Invalid value for the <count> parameter."
 
-// A duplicate of what is set in config.c
+// a duplicate of what is set in config.c
 #define MAX_QUERIES_COUNT_DEFAULT 10000
 
 #define CHECKED_ADD_OR_RETURN(lhs, rhs, return_on_error) \
@@ -58,10 +59,10 @@
         return return_on_error; \
     }
 
-// Global array tracking all existing GraphContexts (defined in module.c)
+// global array tracking all existing GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 
-// Global info - across all the graphs available in all the shards.
+// global info - across all the graphs available in all the shards
 typedef struct GlobalInfo {
     millis_t max_query_wait_time;
     uint64_t total_waiting_queries_count;

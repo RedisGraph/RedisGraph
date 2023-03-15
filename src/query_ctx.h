@@ -18,18 +18,18 @@
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
-// Holds the execution type flags: certain traits of query regarding its'
-// execution.
+// holds the execution type flags: certain traits of query regarding its
+// execution
 typedef enum QueryExecutionTypeFlag {
-	// Indicates that this query is a read-only query.
+	// indicates that this query is a read-only query
 	QueryExecutionTypeFlag_READ = 0,
-	// Indicates that this query is a write query.
+	// indicates that this query is a write query
 	QueryExecutionTypeFlag_WRITE = 1 << 0,
-	// Whether or not we want to profile the query.
+	// whether or not we want to profile the query
 	QueryExecutionTypeFlag_PROFILE = 1 << 1,
 } QueryExecutionTypeFlag;
 
-// Holds the query execution status.
+// holds the query execution status
 typedef enum QueryExecutionStatus {
 	QueryExecutionStatus_SUCCESS = 0,
 	QueryExecutionStatus_FAILURE,

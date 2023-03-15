@@ -31,15 +31,6 @@
         } \
     } while (0);
 
-#define REQUIRE_ARG(arg_name) \
-    do { \
-        const bool check = arg_name; \
-        ASSERT(check && "#arg_name must be provided."); \
-        if (!check) { \
-            return; \
-        } \
-    } while (0);
-
 #define REQUIRE_TRUE(arg_name) \
     do { \
         const bool check = arg_name; \
@@ -105,16 +96,18 @@ static void _rwlock_cleanup
 static CircularBufferNRG finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
+// returns the total number of queries recorded
 uint64_t FinishedQueryCounters_GetTotalCount
 (
-    const FinishedQueryCounters counters
+	const FinishedQueryCounters *counters  // counters to sum up
 ) {
-    return counters.readonly_failed_count
-         + counters.readonly_succeeded_count
-         + counters.readonly_timedout_count
-         + counters.write_failed_count
-         + counters.write_succeeded_count
-         + counters.write_timedout_count;
+    return 
+		   counters->write_failed_count       +
+		   counters->write_timedout_count     +
+		   counters->readonly_failed_count    +
+		   counters->write_succeeded_count    +
+		   counters->readonly_timedout_count  +
+		   counters->readonly_succeeded_count ;
 }
 
 void FinishedQueryCounters_Add
@@ -247,86 +240,6 @@ static bool _unlock_rwlock(pthread_rwlock_t *lock) {
     REQUIRE_ARG_OR_RETURN(lock, false);
 
     return !pthread_rwlock_unlock(lock);
-}
-
-QueryInfo QueryInfo_New(void) {
-    QueryInfo query_info = {
-        .received_unix_timestamp_milliseconds = 0,
-        .wait_duration = 0,
-        .execution_duration = 0,
-        .report_duration = 0,
-        .context = NULL,
-        .stage_timer = {}
-    };
-    TIMER_RESTART(query_info.stage_timer);
-    return query_info;
-}
-
-void QueryInfo_SetQueryContext
-(
-    QueryInfo *query_info,
-    const struct QueryCtx *query_ctx
-) {
-    REQUIRE_ARG(query_info);
-
-    query_info->context = query_ctx;
-}
-
-const QueryCtx* QueryInfo_GetQueryContext(const QueryInfo *query_info) {
-    REQUIRE_ARG_OR_RETURN(query_info, NULL);
-    return query_info->context;
-}
-
-bool QueryInfo_IsValid(const QueryInfo *query_info) {
-    return QueryInfo_GetQueryContext(query_info);
-}
-
-uint64_t QueryInfo_GetReceivedTimestamp(const QueryInfo info) {
-    return info.received_unix_timestamp_milliseconds;
-}
-
-millis_t QueryInfo_GetTotalTimeSpent(const QueryInfo info) {
-    return info.wait_duration + info.execution_duration + info.report_duration;
-}
-
-millis_t QueryInfo_GetWaitingTime(const QueryInfo info) {
-    return info.wait_duration;
-}
-
-millis_t QueryInfo_GetExecutionTime(const QueryInfo info) {
-    return info.execution_duration;
-}
-
-millis_t QueryInfo_GetReportingTime(const QueryInfo info) {
-    return info.report_duration;
-}
-
-void QueryInfo_UpdateWaitingTime(QueryInfo *info) {
-    REQUIRE_ARG(info);
-    info->wait_duration = QueryInfo_GetCountedMilliseconds(info);
-}
-
-void QueryInfo_UpdateExecutionTime(QueryInfo *info) {
-    REQUIRE_ARG(info);
-    info->execution_duration = QueryInfo_GetCountedMilliseconds(info);
-}
-
-void QueryInfo_UpdateReportingTime(QueryInfo *info) {
-    REQUIRE_ARG(info);
-    info->report_duration = QueryInfo_GetCountedMilliseconds(info);
-}
-
-millis_t QueryInfo_GetCountedMilliseconds(QueryInfo *info) {
-    REQUIRE_ARG_OR_RETURN(info, 0);
-    return (millis_t)TIMER_GET_ELAPSED_MILLISECONDS(info->stage_timer);
-}
-
-millis_t QueryInfo_ResetStageTimer(QueryInfo *info) {
-    REQUIRE_ARG_OR_RETURN(info, 0);
-    const millis_t milliseconds_spent
-        = (millis_t)TIMER_GET_ELAPSED_MILLISECONDS(info->stage_timer);
-    TIMER_RESTART(info->stage_timer);
-    return milliseconds_spent;
 }
 
 QueryInfoStorage QueryInfoStorage_NewWithCapacity(const uint64_t capacity) {
@@ -584,15 +497,15 @@ static bool _Info_UnlockWaitingQueries(Info *info) {
     return _unlock_rwlock(&info->waiting_queries_rwlock);
 }
 
-bool Info_New(Info *info) {
-    REQUIRE_ARG_OR_RETURN(info, false);
-    // HACK: Compensate for the main thread.
+Info *Info_New(void) {
+	Info *info = rm_malloc(sizeof(Info));
+
+    // HACK: compensate for the main thread
     const uint64_t thread_count = ThreadPools_ThreadCount() + 1;
 
     info->waiting_queries = QueryInfoStorage_New();
-    info->working_queries_per_thread
-        = QueryInfoStorage_NewWithLength(thread_count);
-    _QueryInfoStorage_ResetAll(&info->working_queries_per_thread);
+    info->working_queries = QueryInfoStorage_NewWithLength(thread_count);
+    _QueryInfoStorage_ResetAll(&info->working_queries);
 
     _FinishedQueryCounters_Reset(&info->finished_query_counters);
 
@@ -610,7 +523,7 @@ bool Info_New(Info *info) {
 
     // REQUIRE_TRUE_OR_RETURN(Statistics_New(&info->statistics), false);
 
-    return true;
+    return info;
 }
 
 void Info_Reset(Info *info) {

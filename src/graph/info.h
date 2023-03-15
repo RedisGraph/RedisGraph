@@ -3,15 +3,15 @@
  * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
  * the Server Side Public License v1 (SSPLv1).
  */
-/*
- * This file contains all the necessary data structures for the "graph.info"
- * command to operate. In order to show the statistics, it is required to store
- * and accumulate the information about different queries, their stages and the
- * time those spend in these stages. To tackle multithreading issues, either
- * atomic variables are used, or read-write locks, or the knowledge of
- * the thread ids is used to directly navigate to a certain element in linear
- * time and in a lock-free manner.
-*/
+
+// this file contains all the necessary data structures for the "graph.info"
+// command to operate
+// in order to show the statistics, it is required to store
+// and accumulate the information about different queries, their stages and the
+// time those spend in these stages
+// to tackle multithreading issues, either atomic variables are used,
+// or read-write locks, or the knowledge of the thread ids is used to directly
+// navigate to a certain element in linear time and in a lock-free manner
 
 #pragma once
 
@@ -23,71 +23,52 @@
 #include "../util/num.h"
 #include "../util/simple_timer.h"
 
-typedef enum QueryExecutionTypeFlag QueryExecutionTypeFlag;
 typedef enum QueryExecutionStatus QueryExecutionStatus;
+typedef enum QueryExecutionTypeFlag QueryExecutionTypeFlag;
 
 typedef uint32_t millis_t;
 #define MILLIS_T_MAX UINT32_MAX
 typedef struct QueryCtx QueryCtx;
-// Duplicate typedef from the circular buffer.
+// duplicate typedef from the circular buffer
 typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data,
                                                   const void *item);
-
-// A stage a query may be in.
-typedef enum QueryStage {
-    QueryStage_WAITING = 0,
-    QueryStage_EXECUTING,
-    QueryStage_REPORTING,
-    QueryStage_FINISHED,
-} QueryStage;
-
-// Holds the necessary per-query statistics.
-typedef struct QueryInfo {
-    // The UNIX epoch timestamp in milliseconds indicating when the query was
-    // received by the module.
-    uint64_t received_unix_timestamp_milliseconds;
-    // The time it spent waiting.
-    millis_t wait_duration;
-    // The time spent on executing.
-    millis_t execution_duration;
-    // The time spent on reporting.
-    millis_t report_duration;
-    // The context of the query.
-    const QueryCtx *context;
-    // Current stage of the query.
-    QueryStage stage;
-    // A timer for counting the time spent in the stages (waiting, executing,
-    // reporting).
-    simple_timer_t stage_timer;
-} QueryInfo;
-
+// holds a successfull query info
 typedef struct FinishedQueryInfo {
-    uint64_t received_unix_timestamp_milliseconds;
-    millis_t total_wait_duration;
-    millis_t total_execution_duration;
-    millis_t total_report_duration;
-    char *query_string;
-    char *graph_name;
+    uint64_t received_ts;         // query received timestamp
+    millis_t wait_duration;       // waiting time
+    millis_t execution_duration;  // executing time
+    millis_t report_duration;     // reporting time
+    char *query_string;           // query string
+    char *graph_name;             // graph name
 } FinishedQueryInfo;
 
+// holds query statistics per graph
 typedef struct FinishedQueryCounters {
-    // The number of read-only queries succeeded.
-    atomic_uint_fast64_t readonly_succeeded_count;
-    // The number of write queries succeeded.
-    atomic_uint_fast64_t write_succeeded_count;
-    // The number of read-only queries failed but not timed out.
-    atomic_uint_fast64_t readonly_failed_count;
-    // The number of write queries failed but not timed out.
-    atomic_uint_fast64_t write_failed_count;
-    // The number of read-only queries timed out.
-    atomic_uint_fast64_t readonly_timedout_count;
-    // The number of write queries timed out.
-    atomic_uint_fast64_t write_timedout_count;
+    atomic_uint_fast64_t ro_succeeded_n;     // # read-only queries succeeded
+    atomic_uint_fast64_t write_succeeded_n;  // # write queries succeeded
+    atomic_uint_fast64_t ro_failed_n;        // # RO queries failed
+    atomic_uint_fast64_t write_failed_n;     // # write queries failed
+    atomic_uint_fast64_t ro_timedout_n;      // # RO queries timed out
+    atomic_uint_fast64_t write_timedout_n;   // # write queries timed out
 } FinishedQueryCounters;
 
-// Returns the total number of queries recorded.
-uint64_t FinishedQueryCounters_GetTotalCount(const FinishedQueryCounters);
-// Adds the counts from another counters object.
+// information about a graph
+typedef struct Info {
+    QueryInfoStorage waiting_queries;         // waiting queries
+    pthread_rwlock_t waiting_queries_rwlock;  // waiting_queries RW lock
+    QueryInfoStorage working_queries;         // executing and reporting queries
+    atomic_uint_fast64_t max_query_time;      // slowest query time
+    FinishedQueryCounters counters;           // counters with states
+    pthread_mutex_t mutex;                    // info lock
+} Info;
+
+// returns the total number of queries recorded
+uint64_t FinishedQueryCounters_GetTotalCount
+(
+	const FinishedQueryCounters *counters  // counters to sum up
+);
+
+// adds the counts from another counters object
 void FinishedQueryCounters_Add
 (
     FinishedQueryCounters *lhs,
@@ -96,38 +77,6 @@ void FinishedQueryCounters_Add
 
 FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info);
 void FinishedQueryInfo_Free(const FinishedQueryInfo query_info);
-
-// Creates a new, empty query info object.
-QueryInfo QueryInfo_New(void);
-// Assigns the query context to the query info.
-void QueryInfo_SetQueryContext(QueryInfo *, const QueryCtx *);
-// Returns the query context associated with the query info.
-const QueryCtx* QueryInfo_GetQueryContext(const QueryInfo *);
-// Returns true if the query info object is valid and can be worked with.
-bool QueryInfo_IsValid(const QueryInfo *);
-// Returns the date/time when the query was received by the module, in
-// milliseconds from UNIX epoch.
-uint64_t QueryInfo_GetReceivedTimestamp(const QueryInfo);
-// Returns the total time spent by a query waiting, executing and reporting.
-millis_t QueryInfo_GetTotalTimeSpent(const QueryInfo);
-// Returns the time the query spent waiting.
-millis_t QueryInfo_GetWaitingTime(const QueryInfo);
-// Returns the time the query spent executing.
-millis_t QueryInfo_GetExecutionTime(const QueryInfo);
-// Returns the time the query spent reporting.
-millis_t QueryInfo_GetReportingTime(const QueryInfo);
-// Reads the stage timer and updates the waiting time with it.
-void QueryInfo_UpdateWaitingTime(QueryInfo *info);
-// Reads the stage timer and updates the execution time with it.
-void QueryInfo_UpdateExecutionTime(QueryInfo *info);
-// Reads the stage timer and updates the reporting time with it.
-void QueryInfo_UpdateReportingTime(QueryInfo *info);
-// Returns the number of milliseconds the timer has counted. This function does
-// not reset the timer.
-millis_t QueryInfo_GetCountedMilliseconds(QueryInfo *);
-// Resets the stage timer and returns the milliseconds it had recorded before
-// having been reset.
-millis_t QueryInfo_ResetStageTimer(QueryInfo *);
 
 typedef struct QueryInfoStorage {
     QueryInfo *queries;
@@ -194,30 +143,8 @@ uint32_t QueryInfoIterator_Length(const QueryInfoIterator *);
 // Returns true if the iterator has no more elements to iterate over.
 bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *);
 
-// Information about a graph.
-typedef struct Info {
-    // Storage for query information for waiting queries.
-    QueryInfoStorage waiting_queries;
-    // Synchronisation primitive to use when doing anything with the
-    // waiting_queries collection, as it is supposed to be touched concurrently.
-    pthread_rwlock_t waiting_queries_rwlock;
-    // Storage for query information for executing and reporting queries.
-    QueryInfoStorage working_queries_per_thread;
-    // Maximum registered time a query was spent waiting, executing and
-    // reporting the results.
-    atomic_uint_fast64_t max_query_pipeline_time;
-    // Finished query counters with states.
-    FinishedQueryCounters finished_query_counters;
-
-    // A global lock for the object. Used as an inverse lock - allows parallel
-    // writers but just one reader. This is done that way as the parallel
-    // writes are guaranteed to happen lock-free or without race conditions,
-    // so the locking for writes isn't really required. But what is required is
-    // locking for reads, and to allow that, and rwlock is used inversely.
-    pthread_rwlock_t inverse_global_lock;
-} Info;
-
-// Create a new info structure. Returns true on successful creation.
+// create a new info structure
+// returns true on successful creation
 bool Info_New(Info *);
 // Reset an already existing info structure.
 void Info_Reset(Info *);
