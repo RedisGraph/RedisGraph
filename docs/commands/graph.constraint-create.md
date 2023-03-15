@@ -3,7 +3,7 @@ syntax: |
   GRAPH.CONSTRAINT CREATE key 
     MANDATORY|UNIQUE
     NODE label | RELATIONSHIP reltype
-    PROPERTIES prop-count prop [prop...]  
+    PROPERTIES propCount prop [prop...]  
 ---
 
 Creates a graph constraint.
