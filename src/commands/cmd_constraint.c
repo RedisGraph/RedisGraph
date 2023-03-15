@@ -409,7 +409,7 @@ int Graph_Constraint
 	for(uint8_t i = 0; i < prop_count; i++) {
 		props_cstr[i] = RedisModule_StringPtrLen(props[i], NULL);
 		if(str_MatchRegex(PROPERTY_NAME_PATTERN, props_cstr[i]) == false) {
-			RedisModule_ReplyWithErrorFormat(ctx, "Property name at position %i is invalid", i);
+			RedisModule_ReplyWithErrorFormat(ctx, "Property name %s is invalid", props_cstr[i]);
 			return REDISMODULE_ERR;
 		}
 	}

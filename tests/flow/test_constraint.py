@@ -301,7 +301,7 @@ class testConstraintNodes():
             self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "NODE", "label", "PROPERTIES", 2, 1, 2)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Property name at position 0 is invalid", str(e))
+            self.env.assertContains("Property name 1 is invalid", str(e))
 
         #-----------------------------------------------------------------------
         # invalid property name
@@ -310,7 +310,7 @@ class testConstraintNodes():
             self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "NODE", "label", "PROPERTIES", 2, 'a1', '2pb')
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Property name at position 1 is invalid", str(e))
+            self.env.assertContains("Property name 2pb is invalid", str(e))
 
         #-----------------------------------------------------------------------
         # invalid property count
