@@ -44,8 +44,14 @@ static Record ArgumentListConsume
 	ArgumentList *op = (ArgumentList *)opBase;
 
 	ASSERT(op->records != NULL);
-	// first value is NULL, thus terminates execution when popped
-	return array_pop(op->records);
+
+	if(array_len(op->records) > 0) {
+		return array_pop(op->records);
+	}
+
+	array_free(op->records);
+	op->records = NULL;
+	return NULL;
 }
 
 static OpResult ArgumentListReset
@@ -86,7 +92,7 @@ static void ArgumentListFree
 	// free remaining records
 	if(op->records != NULL) {
 		uint nrecords = array_len(op->records);
-		for(uint i = 1; i < nrecords; i++) {
+		for(uint i = 0; i < nrecords; i++) {
 			OpBase_DeleteRecord(op->records[i]);
 		}
 

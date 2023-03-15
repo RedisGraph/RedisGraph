@@ -68,7 +68,6 @@ static OpResult ForeachInit
 	// insert a NULL value to both arrays, so that execution terminates when it
 	// is consumed by the parent
 	array_append(op->records, NULL);
-	array_append(op->body_records, NULL);
 
     return OP_OK;
 }

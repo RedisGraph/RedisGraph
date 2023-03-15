@@ -14,7 +14,7 @@
 
 typedef struct {
 	OpBase op;        // OpBase
-	Record *records;  // internal Record list
+	Record *records;  // record list
 } ArgumentList;
 
 OpBase *NewArgumentListOp
