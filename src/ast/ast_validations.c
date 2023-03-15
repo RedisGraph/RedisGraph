@@ -1404,8 +1404,7 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 				  strlen(identifier), NULL, NULL);
 
 		// visit FOREACH array expression
-		const cypher_astnode_t *exp = cypher_ast_foreach_get_expression(n);
-		AST_Visitor_visit(exp, visitor);
+		AST_Visitor_visit(list_node, visitor);
 
 		// visit FOREACH loop body clauses
 		uint nclauses = cypher_ast_foreach_nclauses(n);
