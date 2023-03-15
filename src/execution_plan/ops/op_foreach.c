@@ -176,6 +176,9 @@ static OpResult ForeachReset
 
 	_freeInternals(op);
 
+	op->records = array_new(Record, 1);
+	array_append(op->records, NULL);
+
 	return OP_OK;
 }
 

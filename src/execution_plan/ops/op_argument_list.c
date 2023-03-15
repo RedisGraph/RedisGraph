@@ -19,6 +19,7 @@ OpBase *NewArgumentListOp
 ) {
 	ArgumentList *op = rm_malloc(sizeof(ArgumentList));
 	op->records = NULL;
+	op->rec_len = 0;
 
 	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ARGUMENT_LIST, "Argument List", NULL,
@@ -35,6 +36,7 @@ void ArgumentList_AddRecordList
 ) {
 	ASSERT(op->records == NULL && "insert into a populated ArgumentList");
 	op->records = records;
+	op->rec_len = array_len(op->records);
 }
 
 static Record ArgumentListConsume
@@ -45,10 +47,11 @@ static Record ArgumentListConsume
 
 	ASSERT(op->records != NULL);
 
-	if(array_len(op->records) > 0) {
+	if(op->rec_len-- > 0) {
 		return array_pop(op->records);
 	}
 
+	// depleted
 	array_free(op->records);
 	op->records = NULL;
 	return NULL;
@@ -62,14 +65,15 @@ static OpResult ArgumentListReset
 
 	// free remaining records
 	if(op->records != NULL) {
-		uint nrecords = array_len(op->records);
-		for(uint i = 0; i < nrecords; i++) {
+		for(uint i = 0; i < op->rec_len; i++) {
 			OpBase_DeleteRecord(op->records[i]);
 		}
 
 		array_free(op->records);
 		op->records = NULL;
 	}
+
+	op->rec_len = 0;
 
 	return OP_OK;
 }
@@ -91,8 +95,7 @@ static void ArgumentListFree
 
 	// free remaining records
 	if(op->records != NULL) {
-		uint nrecords = array_len(op->records);
-		for(uint i = 0; i < nrecords; i++) {
+		for(uint i = 0; i < op->rec_len; i++) {
 			OpBase_DeleteRecord(op->records[i]);
 		}
 

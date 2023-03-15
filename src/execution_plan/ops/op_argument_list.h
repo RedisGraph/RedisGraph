@@ -15,6 +15,7 @@
 typedef struct {
 	OpBase op;        // OpBase
 	Record *records;  // record list
+	uint rec_len;     // record list length
 } ArgumentList;
 
 OpBase *NewArgumentListOp
