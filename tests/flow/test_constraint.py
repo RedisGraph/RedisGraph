@@ -579,7 +579,7 @@ class testConstraintEdges():
             g.query("CREATE ()-[:Person]->()")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing property height", str(e))
 
         #-----------------------------------------------------------------------
         # create an edge that violates the unique constraint
@@ -609,7 +609,7 @@ class testConstraintEdges():
             g.query("MATCH ()-[e:Person]->() SET e.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing property height", str(e))
 
         #-----------------------------------------------------------------------
         # edge update that violates the unique constraint
@@ -639,7 +639,7 @@ class testConstraintEdges():
             g.query("MERGE ()-[e:Person {name: 'Andrew'}]->() ON MATCH SET e.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing property height", str(e))
 
         #-----------------------------------------------------------------------
         # edge merge-match that violates the unique constraint
@@ -669,7 +669,7 @@ class testConstraintEdges():
             g.query("MERGE ()-[e:Person {name: 'Dor', height: 187}]->() ON CREATE SET e.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing property height", str(e))
 
         #-----------------------------------------------------------------------
         # edge merge-create that violates the unique constraint
@@ -699,7 +699,7 @@ class testConstraintEdges():
             g.query("MERGE ()-[e:Person {name: 'Dor'}]->()")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing property height", str(e))
 
         #-----------------------------------------------------------------------
         # edge merge that violates the unique constraint
@@ -719,7 +719,7 @@ class testConstraintEdges():
             g.query("MERGE ()-[e:Person {v:12, name:'Mike', age:10}]->()")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: edge with relationship-type Person missing property height", str(e))
 
         # validate graph did not changed
         actual_result_set = self.g.query("MATCH ()-[e]->() RETURN e ORDER BY ID(e)").result_set
