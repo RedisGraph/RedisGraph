@@ -86,3 +86,10 @@
 #define likely(x)       (x)
 #define unlikely(x)     (x)
 #endif
+
+#define RedisModule_ReplyWithErrorFormat(ctx, fmt, ...) do { \
+	int size = snprintf(NULL, 0, fmt, ##__VA_ARGS__);        \
+	char *str = malloc(size + 1);                            \
+	sprintf(str, fmt, ##__VA_ARGS__);                        \
+	RedisModule_ReplyWithError(ctx, str);                    \
+} while(0)

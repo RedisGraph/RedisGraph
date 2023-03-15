@@ -66,7 +66,7 @@ class testConstraintNodes():
             g.query("CREATE (:Person)")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: node with label Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: node with label Person missing property height", str(e))
 
         #-----------------------------------------------------------------------
         # create a node that violates the unique constraint
@@ -96,7 +96,7 @@ class testConstraintNodes():
             g.query("MATCH (n:Person) SET n.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: node with label Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: node with label Person missing property height", str(e))
 
         #-----------------------------------------------------------------------
         # node update that violates the unique constraint
@@ -126,7 +126,7 @@ class testConstraintNodes():
             g.query("MERGE (n:Person {name: 'Andrew'}) ON MATCH SET n.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: node with label Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: node with label Person missing property height", str(e))
 
         #-----------------------------------------------------------------------
         # node merge-match that violates the unique constraint
@@ -156,7 +156,7 @@ class testConstraintNodes():
             g.query("MERGE (n:Person {name: 'Dor', height: 187}) ON CREATE SET n.height = NULL")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: node with label Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: node with label Person missing property height", str(e))
 
         #-----------------------------------------------------------------------
         # node merge-create that violates the unique constraint
@@ -186,7 +186,7 @@ class testConstraintNodes():
             g.query("MERGE (n:Person {name: 'Dor'})")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: node with label Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: node with label Person missing property height", str(e))
 
         #-----------------------------------------------------------------------
         # node merge that violates the unique constraint
@@ -206,7 +206,7 @@ class testConstraintNodes():
             g.query("MERGE (p:Person {v:12, name:'Mike', age:10})")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: node with label Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: node with label Person missing property height", str(e))
 
         #-----------------------------------------------------------------------
         # node label update which will conflict with mandatory constraint
@@ -225,7 +225,7 @@ class testConstraintNodes():
             g.query("MATCH (n:Architect) SET n:Person")
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("mandatory constraint violation: node with label Person missing attribute height", str(e))
+            self.env.assertContains("mandatory constraint violation: node with label Person missing property height", str(e))
 
         # add attributes to Architect which will conflict with both unique constraints
         g.query("MATCH (n:Architect) SET n.name = 'Mike', n.age = 10, n.height = 180")
@@ -301,16 +301,16 @@ class testConstraintNodes():
             self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "NODE", "label", "PROPERTIES", 2, 1, 2)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("At least one property name is invalid", str(e))
+            self.env.assertContains("Property name at position 0 is invalid: 1", str(e))
 
         #-----------------------------------------------------------------------
         # invalid property name
         #-----------------------------------------------------------------------
         try:
-            self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "NODE", "label", "PROPERTIES", 2, '1pb', '2pb')
+            self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "NODE", "label", "PROPERTIES", 2, 'a1', '2pb')
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("At least one property name is invalid", str(e))
+            self.env.assertContains("Property name at position 1 is invalid: 2pb", str(e))
 
         #-----------------------------------------------------------------------
         # invalid property count
@@ -797,7 +797,7 @@ class testConstraintEdges():
             create_unique_edge_constraint(self.g, "Person", "age", "height", "weight", "height", sync=True)
             self.env.assertTrue(False)
         except ResponseError as e:
-            self.env.assertContains("Properties cannot appear more than once", str(e))
+            self.env.assertContains("Properties cannot contain duplicates", str(e))
 
         #-----------------------------------------------------------------------
         # create constraint which already exists

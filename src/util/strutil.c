@@ -145,17 +145,16 @@ void str_ExtendBuffer
 }
 
 // Utility function to check if the string matches
-// the regex pattern between from and to indices.
+// the regex pattern.
 bool str_MatchRegex
 (
 	const char* regex,   // regex pattern to match with
-	const char* str,     // string to match
-	int from,	         // starting index
-	int to		         // ending index
+	const char* str      // string to match
 ) {
+	const int len = strlen(str);
 	regex_t *reg;
 	OnigErrorInfo einfo;
-	OnigRegion *region    = onig_region_new();
+	OnigRegion *region = onig_region_new();
 
 	bool match = true;
 
@@ -169,8 +168,8 @@ bool str_MatchRegex
 		return false;
 	}
 
-	rv = onig_search(reg, (const UChar*)str, (UChar* )(str + strlen(str)),
-					(const UChar* )str, (const UChar* )(str + strlen(str)),
+	rv = onig_search(reg, (const UChar*)str, (UChar* )(str + len),
+					(const UChar* )str, (const UChar* )(str + len),
 					region, ONIG_OPTION_NONE);
 	if (rv < ONIG_MISMATCH) {
 		ASSERT(rv >= ONIG_MISMATCH);
@@ -179,7 +178,7 @@ bool str_MatchRegex
 		return false;
 	}
 
-	if (rv == ONIG_MISMATCH || region->beg[0] != from || region->end[0] != to) {
+	if (rv == ONIG_MISMATCH || region->beg[0] != 0 || region->end[0] != len) {
 		match = false;
 	} 
 

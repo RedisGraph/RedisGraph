@@ -276,7 +276,7 @@ static bool _Constraint_Create
 
 	// duplicates found, fail operation
 	if(dups) {
-		error_msg = "Properties cannot appear more than once";
+		error_msg = "Properties cannot contain duplicates";
 		res = false;
 		goto cleanup;
 	}
@@ -369,6 +369,8 @@ cleanup:
 	return res;
 }
 
+#define PROPERTY_NAME_PATTERN "[a-zA-Z_][a-zA-Z0-9_$]*"
+
 // command handler for GRAPH.CONSTRAINT command
 // GRAPH.CONSTRAINT CREATE <key> UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
 // GRAPH.CONSTRAINT DROP <key> UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
@@ -406,8 +408,8 @@ int Graph_Constraint
 	const char *props_cstr[prop_count];
 	for(uint8_t i = 0; i < prop_count; i++) {
 		props_cstr[i] = RedisModule_StringPtrLen(props[i], NULL);
-		if(str_MatchRegex("[a-zA-Z_][a-zA-Z0-9_$]*", props_cstr[i], 0, strlen(props_cstr[i])) == false) {
-			RedisModule_ReplyWithError(ctx, "At least one property name is invalid");
+		if(str_MatchRegex(PROPERTY_NAME_PATTERN, props_cstr[i]) == false) {
+			RedisModule_ReplyWithErrorFormat(ctx, "Property name at position %i is invalid: %s", i, props_cstr[i]);
 			return REDISMODULE_ERR;
 		}
 	}

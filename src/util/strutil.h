@@ -47,11 +47,9 @@ void str_ExtendBuffer
 );
 
 // Utility function to check if the string matches
-// the regex pattern between from and to indices.
+// the regex pattern.
 bool str_MatchRegex
 (
 	const char* regex,   // regex pattern to match with
-	const char* str,     // string to match
-	int from,	         // starting index
-	int to		         // ending index
+	const char* str      // string to match
 );
