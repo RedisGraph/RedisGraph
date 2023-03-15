@@ -47,7 +47,8 @@ static Record ArgumentListConsume
 
 	ASSERT(op->records != NULL);
 
-	if(op->rec_len-- > 0) {
+	if(op->rec_len > 0) {
+		op->rec_len--;
 		return array_pop(op->records);
 	}
 
