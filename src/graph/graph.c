@@ -1159,7 +1159,7 @@ void Graph_DeleteNodes
 
 	// add entries to lbls delta minus
 	info = GrB_Matrix_eWiseAdd_Semiring(DM, M, NULL, GxB_ANY_PAIR_BOOL, DM,
-			lbls_mask, NULL);
+			lbls_mask, GrB_DESC_S);
 	ASSERT(info == GrB_SUCCESS);
 
 	// restore matrix sync policy
