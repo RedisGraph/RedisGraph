@@ -99,6 +99,10 @@ static int Constraint_Parse
 	//--------------------------------------------------------------------------
 
 	*label = RedisModule_StringPtrLen(*argv++, NULL);
+	if(str_MatchRegex(PROPERTY_NAME_PATTERN, *label) == false) {
+		RedisModule_ReplyWithErrorFormat(ctx, "Label name %s is invalid", *label);
+		return REDISMODULE_ERR;
+	}
 
 	//--------------------------------------------------------------------------
 	// extract properties

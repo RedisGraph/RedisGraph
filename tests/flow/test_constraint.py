@@ -295,6 +295,15 @@ class testConstraintNodes():
             self.env.assertContains("Invalid constraint entity type", str(e))
 
         #-----------------------------------------------------------------------
+        # invalid label name
+        #-----------------------------------------------------------------------
+        try:
+            self.con.execute_command("GRAPH.CONSTRAINT", "CREATE", GRAPH_ID, "MANDATORY", "NODE", "1ab", "PROPERTIES", 1, "New_Attr")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Label name 1ab is invalid", str(e))
+
+        #-----------------------------------------------------------------------
         # invalid property name
         #-----------------------------------------------------------------------
         try:
