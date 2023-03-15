@@ -121,7 +121,7 @@ static Record UnwindConsume
 	}
 
 	OpBase *child = op->op.children[0];
-	// did we managed to get new data?
+	// did we manage to get new data?
 pull:
 	if((r = OpBase_Consume(child))) {
 		// free current record

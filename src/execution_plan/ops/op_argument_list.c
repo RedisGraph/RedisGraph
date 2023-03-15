@@ -23,7 +23,7 @@ OpBase *NewArgumentListOp
 	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ARGUMENT_LIST, "Argument List", NULL,
 			ArgumentListConsume, ArgumentListReset, NULL, ArgumentListClone,
-			NULL, false, plan);
+			ArgumentListFree, false, plan);
 
 	return (OpBase *)op;
 }
@@ -86,7 +86,7 @@ static void ArgumentListFree
 	// free remaining records
 	if(op->records != NULL) {
 		uint nrecords = array_len(op->records);
-		for(uint i = 0; i < nrecords; i++) {
+		for(uint i = 1; i < nrecords; i++) {
 			OpBase_DeleteRecord(op->records[i]);
 		}
 
