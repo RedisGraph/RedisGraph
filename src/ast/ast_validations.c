@@ -1383,15 +1383,10 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 		// set the clause of the context
 		vctx->clause = CYPHER_AST_FOREACH;
 
-		// make sure that the list variable is bound, if it is an alias
+		// visit FOREACH array expression
 		const cypher_astnode_t *list_node =
 			cypher_ast_foreach_get_expression(n);
-		if(cypher_astnode_type(list_node) == CYPHER_AST_IDENTIFIER) {
-			const char *list_var_name =
-				cypher_ast_identifier_get_name(list_node);
-			_Validate_referred_identifier(vctx->defined_identifiers,
-										  list_var_name);
-		}
+		AST_Visitor_visit(list_node, visitor);
 
 		// introduce loop variable to bound vars
 		const cypher_astnode_t *identifier_node =
@@ -1402,9 +1397,6 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 
 		raxInsert(vctx->defined_identifiers, (unsigned char *) identifier,
 				  strlen(identifier), NULL, NULL);
-
-		// visit FOREACH array expression
-		AST_Visitor_visit(list_node, visitor);
 
 		// visit FOREACH loop body clauses
 		uint nclauses = cypher_ast_foreach_nclauses(n);
