@@ -78,38 +78,7 @@ void FinishedQueryCounters_Add
 FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info);
 void FinishedQueryInfo_Free(const FinishedQueryInfo query_info);
 
-typedef struct QueryInfoStorage {
-    QueryInfo *queries;
-} QueryInfoStorage;
-
-// Creates a new query info storage with the specified capacity.
-QueryInfoStorage QueryInfoStorage_NewWithCapacity(const uint64_t capacity);
-// Creates a new query info storage with default capacity.
-QueryInfoStorage QueryInfoStorage_New();
-// Clears the storage by removing all the queries stored.
-void QueryInfoStorage_Clear(QueryInfoStorage *);
-// Deallocates the storage.
-void QueryInfoStorage_Free(QueryInfoStorage *);
-// Returns the number of elements which are valid within the storage.
-uint32_t QueryInfoStorage_ValidCount(const QueryInfoStorage *);
-// Returns the current length of the storage (in elements).
-uint32_t QueryInfoStorage_Length(const QueryInfoStorage *);
-// Adds a query info object.
-void QueryInfoStorage_Add(QueryInfoStorage *, const QueryInfo);
-// Sets the capacity of the storage to the specified one. If there were more
-// elements than the specified capacity, those are removed (cut off).
-void QueryInfoStorage_SetCapacity(QueryInfoStorage *, const uint32_t);
-// Sets the value of an existing element within the array.
-bool QueryInfoStorage_Set(QueryInfoStorage *, const uint64_t, const QueryInfo);
-// Returns a pointer to an already existing value in the storage at provided
-// index.
-QueryInfo* QueryInfoStorage_Get(const QueryInfoStorage *, const uint64_t);
-// Resets the element value in the index.
-bool QueryInfoStorage_ResetElement(QueryInfoStorage *, const uint64_t);
-// Returns true if the element has successfully been removed.
-bool QueryInfoStorage_Remove(QueryInfoStorage *, const QueryInfo *);
-// Returns true if the element has successfully been removed.
-bool QueryInfoStorage_RemoveByContext(QueryInfoStorage *, const QueryCtx *);
+typedef QueryInfo* QueryInfoStorage;
 
 // An abstraction for iteration over QueryInfo objects.
 typedef struct QueryInfoIterator {
