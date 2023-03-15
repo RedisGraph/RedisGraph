@@ -8,6 +8,7 @@
 #include "op_argument_list.h"
 
 // forward declarations
+static void ArgumentListFree(OpBase *opBase);
 static Record ArgumentListConsume(OpBase *opBase);
 static OpResult ArgumentListReset(OpBase *opBase);
 static OpBase *ArgumentListClone(const ExecutionPlan *plan, const OpBase *opBase);
@@ -17,14 +18,13 @@ OpBase *NewArgumentListOp
 	const ExecutionPlan *plan
 ) {
 	ArgumentList *op = rm_malloc(sizeof(ArgumentList));
-	op->rec_len = 0;
-	op->rec_idx = 0;
 	op->records = NULL;
+	op->rec_len = 0;
 
 	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ARGUMENT_LIST, "Argument List", NULL,
 			ArgumentListConsume, ArgumentListReset, NULL, ArgumentListClone,
-			NULL, false, plan);
+			ArgumentListFree, false, plan);
 
 	return (OpBase *)op;
 }
@@ -35,9 +35,8 @@ void ArgumentList_AddRecordList
 	Record *records
 ) {
 	ASSERT(op->records == NULL && "insert into a populated ArgumentList");
-	op->rec_idx = 0;
 	op->records = records;
-	op->rec_len = array_len(records);
+	op->rec_len = array_len(op->records);
 }
 
 static Record ArgumentListConsume
@@ -48,12 +47,15 @@ static Record ArgumentListConsume
 
 	ASSERT(op->records != NULL);
 
-	if(op->rec_idx < op->rec_len) {
-		return op->records[op->rec_idx++];
+	if(op->rec_len > 0) {
+		op->rec_len--;
+		return array_pop(op->records);
 	}
 
-	// depleted!
-    return NULL;
+	// depleted
+	array_free(op->records);
+	op->records = NULL;
+	return NULL;
 }
 
 static OpResult ArgumentListReset
@@ -62,9 +64,17 @@ static OpResult ArgumentListReset
 ) {
 	ArgumentList *op = (ArgumentList *)opBase;
 
-	op->records = NULL;
+	// free remaining records
+	if(op->records != NULL) {
+		for(uint i = 0; i < op->rec_len; i++) {
+			OpBase_DeleteRecord(op->records[i]);
+		}
+
+		array_free(op->records);
+		op->records = NULL;
+	}
+
 	op->rec_len = 0;
-	op->rec_idx = 0;
 
 	return OP_OK;
 }
@@ -76,4 +86,21 @@ static inline OpBase *ArgumentListClone
 ) {
 	ASSERT(opBase->type == OPType_ARGUMENT_LIST);
 	return NewArgumentListOp(plan);
+}
+
+static void ArgumentListFree
+(
+	OpBase *opBase
+) {
+	ArgumentList *op = (ArgumentList *)opBase;
+
+	// free remaining records
+	if(op->records != NULL) {
+		for(uint i = 0; i < op->rec_len; i++) {
+			OpBase_DeleteRecord(op->records[i]);
+		}
+
+		array_free(op->records);
+		op->records = NULL;
+	}
 }
