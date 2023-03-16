@@ -141,6 +141,13 @@ void RdbLoadEdges_v10(RedisModuleIO *rdb, GraphContext *gc, uint64_t edge_count)
 				gc->decoding_context->multi_edge[relation], edgeId, srcId,
 				destId, relation, &e);
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
+
+		// index edge
+		Schema *s = GraphContext_GetSchemaByID(gc, relation, SCHEMA_EDGE);
+		ASSERT(s != NULL);
+
+		if(s->index) Index_IndexEdge(s->index, &e);
+		if(s->fulltextIdx) Index_IndexEdge(s->fulltextIdx, &e);
 	}
 }
 

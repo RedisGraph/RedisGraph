@@ -51,7 +51,7 @@ static bool Constraint_EnforceUniqueEntity
 
 	Index   idx     = _c->idx;
 	bool    holds   = false;  // return value none-optimistic
-	RSIndex *rs_idx = Index_RSIndex(idx);
+	RSIndex *rs_idx = Index_ActiveRSIndex(idx);
 
 	//--------------------------------------------------------------------------
 	// construct a RediSearch query locating entity

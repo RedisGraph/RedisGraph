@@ -224,10 +224,10 @@ void Index_Populate
 	Index idx,
 	Graph *g
 ) {
-	ASSERT(g        != NULL);
-	ASSERT(idx      != NULL);
-	ASSERT(Index_RSIndex(idx) != NULL);
+	ASSERT(g != NULL);
+	ASSERT(idx != NULL);
 	ASSERT(!Index_Enabled(idx));  // index should have pending changes
+	ASSERT(Index_PendingRSIndex(idx) != NULL);
 
 	//--------------------------------------------------------------------------
 	// populate index
@@ -239,7 +239,11 @@ void Index_Populate
 		_Index_PopulateEdgeIndex(idx, g);
 	}
 
+	Graph_AcquireWriteLock(g);
+
 	// task been handled, try to enable index
 	Index_Enable(idx);
+
+	Graph_ReleaseLock(g);
 }
 

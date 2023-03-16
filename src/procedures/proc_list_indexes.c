@@ -234,12 +234,17 @@ static bool _EmitIndex
 	if(ctx->yield_info) {
 		RSIdxInfo info = { .version = RS_INFO_CURRENT_VERSION };
 
-		RediSearch_IndexInfo(Index_RSIndex(idx), &info);
+		RSIndex *rsIdx = Index_ActiveRSIndex(idx);
+		if(rsIdx == NULL) {
+			rsIdx = Index_PendingRSIndex(idx);
+		}
+
+		RediSearch_IndexInfo(rsIdx, &info);
 		SIValue map = SI_Map(23);
 
-		Map_Add(&map, SI_ConstStringVal("gcPolicy"),  SI_LongVal(info.gcPolicy));
-		Map_Add(&map, SI_ConstStringVal("score"),     SI_DoubleVal(info.score));
-		Map_Add(&map, SI_ConstStringVal("lang"),      SI_ConstStringVal(info.lang));
+		Map_Add(&map, SI_ConstStringVal("gcPolicy"), SI_LongVal(info.gcPolicy));
+		Map_Add(&map, SI_ConstStringVal("score"),    SI_DoubleVal(info.score));
+		Map_Add(&map, SI_ConstStringVal("lang"),     SI_ConstStringVal(info.lang));
 
 		SIValue fields = SIArray_New(info.numFields);
 		for (uint i = 0; i < info.numFields; i++) {

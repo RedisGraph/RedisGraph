@@ -546,8 +546,8 @@ bool GraphContext_AddExactMatchIndex
 	ASSERT(fields_count > 0);
 
 	// retrieve the schema for this label
-	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
 	bool      index_changed = false;
+	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
 	ResultSet *result_set   = should_reply ? QueryCtx_GetResultSet() : NULL;
 
 	if(s == NULL) {

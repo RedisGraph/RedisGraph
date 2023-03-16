@@ -166,8 +166,14 @@ RSResultsIterator *Index_Query
 	char **err          // [optional] report back error
 );
 
-// returns internal RediSearch index
-RSIndex *Index_RSIndex
+// returns active internal RediSearch index
+RSIndex *Index_ActiveRSIndex
+(
+	const Index idx
+);
+
+// returns pending internal RediSearch index
+RSIndex *Index_PendingRSIndex
 (
 	const Index idx
 );

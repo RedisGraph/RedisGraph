@@ -55,7 +55,7 @@ static void _RdbLoadFullTextIndex
 		ASSERT(idx != NULL);
 		Index_SetLanguage(idx, language);
 		Index_SetStopwords(idx, stopwords);
-		Index_ConstructStructure(idx);
+		Index_Disable(idx);
 	}
 	
 	// free language
@@ -90,7 +90,7 @@ static void _RdbLoadExactMatchIndex
 
 	// construct index structure
 	if(!already_loaded) {
-		Index_ConstructStructure(idx);
+		Index_Disable(idx);
 	}
 }
 

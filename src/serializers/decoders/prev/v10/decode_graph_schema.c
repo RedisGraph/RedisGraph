@@ -42,10 +42,10 @@ static Schema *_RdbLoadSchema
 	if(s) {
 		// no entities are expected to be in the graph in this point in time
 		if(s->index) {
-			Index_ConstructStructure(s->index);
+			Index_Disable(s->index);
 		}
 		if(s->fulltextIdx) {
-			Index_ConstructStructure(s->fulltextIdx);
+			Index_Disable(s->fulltextIdx);
 		}
 	}
 

@@ -173,6 +173,7 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
+		uint rel_count   = Graph_RelationTypeCount(g);
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
 		// index the nodes
@@ -183,6 +184,17 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
 
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
+			if(s->index) {
+				Index_Populate(s->index, g);
+			}
+			if(s->fulltextIdx) {
+				Index_Populate(s->fulltextIdx, g);
+			}
+		}
+
+		// enable all edge indices
+		for(uint i = 0; i < rel_count; i++) {
+			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
 			if(s->index) {
 				Index_Populate(s->index, g);
 			}
