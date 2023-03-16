@@ -737,9 +737,8 @@ S1	| a | 1 | 0 |
 
 implementation of the Levenshtein distance algorithm
 using Wagner–Fischer algorithm
-Wagner–Fischer algorithm is not comutative when insertion and deletion have different cost as you can
-see from the example above.
-This is why in that case there is a need to execute it twice. */
+Wagner–Fischer algorithm is comutative iff insertion and deletion have the same weights
+as you can see from the example above. */
 static double levenshtein_distance(
 	const char *_S1,
 	const char *_S2,
@@ -772,9 +771,12 @@ static double levenshtein_distance(
 		distance_array[0] = upper_left + deletionWeight;
 
 		for(int j = 1; j <= len2; j++) {
-			double substitutionCost = (S2[j-1] == S1[i - 1]) ? 0 : substitutionWeight;
-			double min = fmin(fmin(distance_array[j] + deletionWeight /* deletion from S1 */,
-			distance_array[j-1] + insertionWeight) /* insertion to S1 */, upper_left + substitutionCost);
+			double substitutionCost = (S2[j-1] == S1[i-1]) ? 0 : substitutionWeight;
+			double min = fmin(
+				fmin(distance_array[j] + deletionWeight,    /* deletion from S1 */
+					distance_array[j-1] + insertionWeight), /* insertion to S1 */
+					upper_left + substitutionCost           /* substitution */
+				);
 			upper_left = distance_array[j];
 			distance_array[j] = min;
 		}
@@ -787,12 +789,198 @@ static double levenshtein_distance(
 	return res;
 }
 
+
+// implementation of the Damerau Levenshtein distance algorithm
+// (Optimal string alignment distance)
+// the algorithm is comutative iff insertion and deletion have same weights
+static double damerau_levenshtein_distance_osa (
+	const char *_S1,
+	const char *_S2,
+	size_t _len1,
+	size_t _len2,
+	double insertionWeight,
+	double deletionWeight,
+	double substitutionWeight,
+	double transpositionWeight
+) {
+
+	int r,c;
+	size_t len1, len2;
+	int32_t *S1, *S2;
+	S1 = str_toInt32(_S1, _len1, &len1);
+	S2 = str_toInt32(_S2, _len2, &len2);
+
+	// dynamically allocate the array since it might be large
+	double **distance_array = rm_malloc(3 * sizeof(double *));
+	for(r = 0; r < 3; r++) {
+		distance_array[r] = rm_malloc((len2 + 1) * sizeof(double));
+	}
+
+	// initialize the first item in the matrix
+	distance_array[0][0] = 0;
+
+	// initialize the first row
+	for(c = 1; c <= len2; c++) {
+		distance_array[0][c] = distance_array[0][c-1] + insertionWeight;
+	}
+
+	// build the matrix - always keep the 3 last rows calculated in the matrix
+	int prev_row = 0;
+	for(int i = 1, r = 1; i <= len1; i++, prev_row = r, r = i%3) {
+		// initialize the first element in the row
+		distance_array[r][0] = distance_array[prev_row][0] + deletionWeight;
+
+		// calculate the rest of the row
+		for(int j = 1; j <= len2; j++) {
+			double substitutionCost = (S2[j-1] == S1[i-1]) ? 0 : substitutionWeight;
+			double min = fmin(
+				fmin(distance_array[prev_row][j] + deletionWeight,      /* deletion from S1 */
+					distance_array[r][j-1] + insertionWeight),          /* insertion to S1 */
+					distance_array[prev_row][j-1] + substitutionCost    /* substitution */
+				);
+			if(i > 1 && j > 1 && S1[i-1] == S2[j-2] && S1[i-2] == S2[j-1]) {
+				min = fmin(
+					min,
+					distance_array[(i-2)%3][j-2] + transpositionWeight  /* transposition */
+					);
+			}
+			distance_array[r][j] = min;
+		}
+	}
+
+	double res = distance_array[prev_row][len2];
+	for(r = 0; r < 3; r++) {
+		rm_free(distance_array[r]);
+	}
+	rm_free(distance_array);
+	rm_free(S1);
+	rm_free(S2);
+	return res;
+}
+
+// implementation of the Damerau Levenshtein distance algorithm
+// the algorithm is comutative iff insertion and deletion have same weights
+// see good (but partially wrong) explanation here: https://www.lemoda.net/text-fuzzy/damerau-levenshtein/
+// and here: https://en.wikipedia.org/wiki/Levenshtein_distance
+static double damerau_levenshtein_distance (
+	const char *_S1,
+	const char *_S2,
+	size_t _len1,
+	size_t _len2,
+	double insertionWeight,
+	double deletionWeight,
+	double substitutionWeight,
+	double transpositionWeight
+) {
+
+	int r,c;
+	size_t len1, len2;
+	int32_t *S1, *S2;
+	S1 = str_toInt32(_S1, _len1, &len1);
+	S2 = str_toInt32(_S2, _len2, &len2);
+
+	// dynamically allocate the array since it might be large
+	double **distance_array = rm_malloc((len1 + 2) * sizeof(double *));
+	for(r = 0; r < len1 + 2; r++) {
+		distance_array[r] = rm_malloc((len2 + 2) * sizeof(double));
+	}
+
+	// dynamically allocate the array since it might be large
+	// last_match_row[i] stores the last row in distance_array that holds the character S2[i]
+	// initialize last_match_row to point to the 2nd row
+	// so the previous one points to the infinity row
+	int *last_match_row = rm_malloc((len2+2) * sizeof(int));
+	for(r = 0; r < len2 + 2; r++) {
+		last_match_row[r] = 1;
+	}
+
+	// initialize the first two items in
+	// the first 2 rows
+	distance_array[0][0] = INFINITY;
+	distance_array[0][1] = INFINITY;
+	distance_array[1][0] = INFINITY;
+	distance_array[1][1] = 0;
+
+	// initialize the first two rows
+	for(c = 2; c < len2 + 2; c++) {
+		distance_array[0][c] = INFINITY;
+		distance_array[1][c] = distance_array[1][c-1] + insertionWeight;
+	}
+
+	// build the matrix - always keep the 3 last rows calculated in the matrix
+	for(int r = 2; r < len1+2; r++) {
+		// initialize the 1st element in the row
+		distance_array[r][0] = INFINITY;
+		// initialize the 2nd element in the row
+		distance_array[r][1] = distance_array[r-1][1] + deletionWeight;
+
+		// stores the last match position in the current row
+		// initialy points to the 2nd column so the the previous
+		// is the infinity column
+		int last_match_col = 1;
+
+		// calculate the rest of the row
+		for(int c = 2; c < len2 + 2; c++) {
+			double substitutionCost;
+			bool is_match = S2[c-2] == S1[r-2];
+
+			// save last_match_col before it might be updated
+			int _last_match_col = last_match_col;
+			if (is_match) {
+				substitutionCost = 0;
+				last_match_col = c;
+			} else {
+				substitutionCost = substitutionWeight;
+			}
+			double min = fmin(fmin(fmin
+				(
+					distance_array[r - 1][c] + deletionWeight,  /* deletion from S1 */
+					distance_array[r][c-1] + insertionWeight    /* insertion to S1 */
+				),
+					distance_array[r-1][c-1] + substitutionCost  /* substitution */
+				),
+					/* transposition */
+					/* the upper left of the closest uper left position we can transpose with
+					   (cost before transposition) */
+					distance_array[last_match_row[c] - 1][_last_match_col - 1] +
+					/* Proved in From Damerau, Fred J. (March 1964),
+					   "A technique for computer detection and correction of spelling errors"
+					   And the fact that we assert that: 2Wt >= Wi + Wd there can only be
+					   deletions xor insertions between the tranposed characters.
+					   Thus, we need to consider only two symmetric ways of modifying a substring more than once:
+					   (1) transpose letters and insert an arbitrary number of characters between them, or
+					   (2) delete a sequence of characters and transpose letters that become adjacent after deletion.
+					*/
+					(r - last_match_row[c] - 1)*deletionWeight +
+					(c - _last_match_col - 1)*insertionWeight +
+					transpositionWeight
+				);
+			distance_array[r][c] = min;
+
+			if(is_match) {
+				last_match_row[c] = r;
+			}
+		}
+	}
+
+	double res = distance_array[len1 + 1][len2 + 1];
+	for(r = 0; r < len1 + 2; r++) {
+		rm_free(distance_array[r]);
+	}
+	rm_free(distance_array);
+	rm_free(last_match_row);
+	rm_free(S1);
+	rm_free(S2);
+	return res;
+}
+
 static bool lev_distance_parse_params
 (
 	const struct Pair *distFuncParams,
 	double *insertionWeight,
 	double *deletionWeight,
-	double *substitutionWeight
+	double *substitutionWeight,
+	double *transpositionWeight
 ) {
 	if(distFuncParams != NULL) {
 		for(int i = 0; i < array_len((void *)distFuncParams); i++) {
@@ -808,12 +996,15 @@ static bool lev_distance_parse_params
 				return false;
 			}
 
-			if(strcmp(k.stringval, "InsertionWeight") == 0) {
+			if(strcasecmp(k.stringval, "InsertionWeight") == 0) {
 				*insertionWeight = v.doubleval;
-			} else if(strcmp(k.stringval, "DeletionWeight") == 0) {
+			} else if(strcasecmp(k.stringval, "DeletionWeight") == 0) {
 				*deletionWeight = v.doubleval;
-			} else if(strcmp(k.stringval, "SubstitutionWeight") == 0) {
+			} else if(strcasecmp(k.stringval, "SubstitutionWeight") == 0) {
 				*substitutionWeight = v.doubleval;
+			} else if(transpositionWeight && 
+				strcasecmp(k.stringval, "TranspositionWeight") == 0) {
+				*transpositionWeight = v.doubleval;
 			} else {
 				ErrorCtx_RaiseRuntimeException
 				("ArgumentError: map argument to string.distance() has an invalid key");
@@ -821,9 +1012,23 @@ static bool lev_distance_parse_params
 			}
 		}
 
-		if(*insertionWeight < 0.0 || *deletionWeight < 0.0 || *substitutionWeight < 0.0) {
+		if(*insertionWeight < 0.0 ||
+			*deletionWeight < 0.0 ||
+			*substitutionWeight < 0.0 ||
+			(transpositionWeight && *transpositionWeight < 0.0))
+		{
 			ErrorCtx_RaiseRuntimeException
 			("ArgumentError: string.distance(), weight has a negative weight");
+			return false;
+		}
+
+		if(isnan(*insertionWeight) ||
+			isnan(*deletionWeight) ||
+			isnan(*substitutionWeight) ||
+			(transpositionWeight && isnan(*transpositionWeight)))
+		{
+			ErrorCtx_RaiseRuntimeException
+			("ArgumentError: string.distance(), weight has a nan value");
 			return false;
 		}
 	}
@@ -974,7 +1179,7 @@ static bool jaro_winkler_parse_params(const struct Pair *distFuncParams, double 
 				return false;
 			}
 
-			if(strcmp(k.stringval, "ScaleFactor") == 0) {
+			if(strcasecmp(k.stringval, "ScaleFactor") == 0) {
 				*scaleFactor = v.doubleval;
 
 				if(unlikely(*scaleFactor < 0.0 || *scaleFactor > 0.25)) {
@@ -982,12 +1187,24 @@ static bool jaro_winkler_parse_params(const struct Pair *distFuncParams, double 
 					("ArgumentError: string.distance(), scaleFactor value is out of bounds");
 					return false;
 				}
-			} else if(strcmp(k.stringval, "threshold") == 0) {
+
+				if(unlikely(isnan(*scaleFactor))) {
+					ErrorCtx_RaiseRuntimeException
+					("ArgumentError: string.distance(), scaleFactor value is nan");
+					return false;
+				}
+			} else if(strcasecmp(k.stringval, "threshold") == 0) {
 				*threshold = v.doubleval;
 
 				if(unlikely(*threshold < 0.0 || *threshold > 1.0)) {
 					ErrorCtx_RaiseRuntimeException
 					("ArgumentError: string.distance(), threshold value is out of bounds");
+					return false;
+				}
+
+				if(unlikely(isnan(*threshold))) {
+					ErrorCtx_RaiseRuntimeException
+					("ArgumentError: string.distance(), threshold value is nan");
 					return false;
 				}
 			} else {
@@ -1073,7 +1290,7 @@ SIValue AR_DISTANCE_STR(SIValue *argv, int argc, void *private_data) {
 
 	double res;
 
-	if (strcmp(distFunc, "Lev") == 0) {
+	if (strcasecmp(distFunc, "Lev") == 0) {
 		double insertionWeight = 1;
 		double deletionWeight = 1;
 		double substitutionWeight = 1;
@@ -1082,7 +1299,8 @@ SIValue AR_DISTANCE_STR(SIValue *argv, int argc, void *private_data) {
 			distFuncParams,
 			&insertionWeight,
 			&deletionWeight,
-			&substitutionWeight)
+			&substitutionWeight,
+			NULL)
 		) {
 			return SI_NullVal();
 		}
@@ -1096,12 +1314,72 @@ SIValue AR_DISTANCE_STR(SIValue *argv, int argc, void *private_data) {
 			deletionWeight,
 			substitutionWeight
 		);
-	} else if (strcmp(distFunc, "Ham") == 0) {
+	} else if (strcasecmp(distFunc, "OSA") == 0) {
+		double insertionWeight = 1;
+		double deletionWeight = 1;
+		double substitutionWeight = 1;
+		double transpositionWeight = 1;
+
+		if(!lev_distance_parse_params(
+			distFuncParams,
+			&insertionWeight,
+			&deletionWeight,
+			&substitutionWeight,
+			&transpositionWeight)
+		) {
+			return SI_NullVal();
+		}
+
+		res = damerau_levenshtein_distance_osa(
+			S1,
+			S2,
+			len1,
+			len2,
+			insertionWeight,
+			deletionWeight,
+			substitutionWeight,
+			transpositionWeight
+		);
+	} else if (strcasecmp(distFunc, "DamLev") == 0) {
+		double insertionWeight = 1;
+		double deletionWeight = 1;
+		double substitutionWeight = 1;
+		double transpositionWeight = 1;
+
+		if(!lev_distance_parse_params(
+			distFuncParams,
+			&insertionWeight,
+			&deletionWeight,
+			&substitutionWeight,
+			&transpositionWeight)
+		) {
+			return SI_NullVal();
+		}
+
+		if(2*transpositionWeight < insertionWeight + deletionWeight) {
+			ErrorCtx_RaiseRuntimeException
+			("ArgumentError: map argument to string.distance() has an "
+			"invalid key: 2*TranspositionWeight needs to be greater or "
+			"equal InsertionWeight + DeletionWeight");
+			return SI_NullVal();
+		}
+
+		res = damerau_levenshtein_distance(
+			S1,
+			S2,
+			len1,
+			len2,
+			insertionWeight,
+			deletionWeight,
+			substitutionWeight,
+			transpositionWeight
+		);
+	} else if (strcasecmp(distFunc, "Ham") == 0) {
 		res = hamming_distance(S1, S2, len1, len2);
-	} else if (strcmp(distFunc, "Jaro") == 0) {
+	} else if (strcasecmp(distFunc, "Jaro") == 0) {
 		// Jaro distance is 1 - Jaro similarity
 		res = 1.0 - jaro_similarity(S1, S2, len1, len2);
-	} else if (strcmp(distFunc, "JaroW") == 0) {
+	} else if (strcasecmp(distFunc, "JaroW") == 0) {
 		double scaleFactor = 0.1;
 		double threshold = 0.7;
 		if(!jaro_winkler_parse_params(

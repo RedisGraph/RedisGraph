@@ -2735,6 +2735,36 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         assert actual_result.result_set[0][0] == expected_result
 
+    def dlevOSA_test(
+        self,
+        str1,
+        str2,
+        expected_result,
+        InsertionWeight=1.0,
+        DeletionWeight=1.0,
+        SubstitutionWeight=1.0,
+        TranspositionWeight=1.0
+    ):
+        query = """RETURN string.distance('%s', '%s', 'OSA', {InsertionWeight: %f, DeletionWeight: %f, SubstitutionWeight: %f, TranspositionWeight: %f})""" \
+            % (str1, str2, InsertionWeight, DeletionWeight, SubstitutionWeight, TranspositionWeight)
+        actual_result = graph.query(query)
+        assert actual_result.result_set[0][0] == expected_result
+
+    def dlev_test(
+        self,
+        str1,
+        str2,
+        expected_result,
+        InsertionWeight=1.0,
+        DeletionWeight=1.0,
+        SubstitutionWeight=1.0,
+        TranspositionWeight=1.0
+    ):
+        query = """RETURN string.distance('%s', '%s', 'DamLev', {InsertionWeight: %f, DeletionWeight: %f, SubstitutionWeight: %f, TranspositionWeight: %f})""" \
+            % (str1, str2, InsertionWeight, DeletionWeight, SubstitutionWeight, TranspositionWeight)
+        actual_result = graph.query(query)
+        assert actual_result.result_set[0][0] == expected_result
+
     def jaro_test(
         self,
         str1,
@@ -2849,9 +2879,53 @@ class testFunctionCallsFlow(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("ArgumentError: string.distance(), weight has a negative weight", str(e))
 
+        # Test with invalid distFuncParams
+        try:
+            query = """RETURN string.distance('ab', 'ab', 'Lev', {TranspositionWeight : 1.0})"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: map argument to string.distance() has an invalid key", str(e))
+
+
+        # Test with invalid distFuncParams
+        try:
+            query = """RETURN string.distance('ab', 'ab', 'OSA', {TranspositionWeight : -1.0})"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: string.distance(), weight has a negative weight", str(e))
+
+        # Test with invalid distFuncParams
+        try:
+            query = """RETURN string.distance('ab', 'ab', 'DamLev', {TranspositionWeight : -1.0})"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: string.distance(), weight has a negative weight", str(e))
+
+        # Test with invalid distFuncParams
+        try:
+            query = """RETURN string.distance('ab', 'ab', 'DamLev',
+            {TranspositionWeight : 1.0, InsertionWeight : 2.0, DeletionWeight : 2.0, SubstitutionWeight : 1.0})"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("""ArgumentError: map argument to string.distance() has an invalid key: \
+2*TranspositionWeight needs to be greater or equal InsertionWeight + DeletionWeight""", str(e))
+
+      # Test with invalid distFuncParams
+        try:
+            query = """RETURN string.distance('ab', 'ab', 'Lev', {InsertionWeight : 0.0/0.0})"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: string.distance(), weight has a nan value", str(e))
+
         ### Test valid inputs ###
 
         ### Test Lev distance ###
+
 
         # Test with default weights
         self.lev_test('ab', 'ab', 0.0)
@@ -2908,6 +2982,80 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.lev_test('a😉', '😉', 1.0)
         self.lev_test('aa😉', 'a😉', 1.0)
         self.lev_test('aa😉c丁丁', 'a😉c', 3.0)
+
+        self.dlevOSA_test("NawKtYu", "", 7.0)
+        self.dlevOSA_test("", "NawKtYu", 7.0)
+        self.dlevOSA_test("NawKtYu", "NawKtYu", 0.0)
+        self.dlevOSA_test("NawKtYu", "tKNwYua", 6.0)
+        self.dlevOSA_test("Jdc", "dJc", 1.0)
+        self.dlevOSA_test("sUzSOwx", "zsSxUwO", 6.0)
+        self.dlevOSA_test("zsSxUwO", "sUzSOwx", 6.0)
+        self.dlevOSA_test("", "abcde", 5.0)
+        self.dlevOSA_test("abcde", "", 5.0)
+        self.dlevOSA_test("abcde", "abcde", 0.0)
+        self.dlevOSA_test("ab", "aa", 1.0)
+        self.dlevOSA_test("ab", "ba", 2.0, 1.5, 1.5, 1.5, 2.0)
+        self.dlevOSA_test("ab", "aaa", 2.0)
+        self.dlevOSA_test("bbb", "a", 3.0)
+        self.dlevOSA_test("ca", "abc", 3.0)
+        self.dlevOSA_test("ca", "abc", 3.0, TranspositionWeight=2.0)
+        self.dlevOSA_test("a cat", "an abct", 4.0)
+        self.dlevOSA_test("dixon", "dicksonx", 4.0)
+        self.dlevOSA_test("jellyfish", "smellyfish", 2.0)
+        self.dlevOSA_test("こにんち", "こんにちは", 2.0)
+        self.dlevOSA_test("🙂😄🙂😄", "😄🙂😄🙂", 2.0)
+        self.dlevOSA_test("a", "b", 1.0, 100, 100, 1, 100)
+        self.dlevOSA_test("ab", "ba", 200.0, 100, 100, 100, 200)
+        self.dlevOSA_test("ab", "ba", 200.0, 100, 100, 100, 200)
+        self.dlevOSA_test("a", "aa", 1.0, 1, 100, 100, 100)
+        self.dlevOSA_test("aa", "a", 1.0, 100, 1, 100, 100)
+        self.dlevOSA_test('😉', '😉', 0.0)
+        self.dlevOSA_test('a😉', '😉', 1.0)
+        self.dlevOSA_test('aa😉', 'a😉', 1.0)
+        self.dlevOSA_test('aa😉c丁丁', 'a😉c', 3.0)
+
+        self.dlevOSA_test('CA', 'ABC', 3.0)
+        self.dlev_test('CA', 'ABC', 2.0)
+        self.dlev_test('CDA', 'ABC', 3.0)
+        self.dlev_test('CBA', 'ABC', 2.0) # 2 additions
+
+        # 'CBA' -> 'BA' -> 'AB' -> 'ABC' --> 1del + 1trans + 1ins
+        self.dlev_test('CBA', 'ABC', 12.0, 7.0, 1.0, 15.0, 4.0)
+
+        # 'BMA' -> 'AMB' -> 'AB' -> 'ABC' --> 1trans + 1del + 1ins
+        self.dlev_test('BMA', 'ABC', 12.0, 7.0, 1.0, 20.0, 4.0)
+
+        # 'BMMA' -> 'AMMB' -> 'AB' -> 'AVB' -> 'AVBC' --> 2del + 1trans + 2ins
+        self.dlev_test('BMMA', 'AVBC', 20.0, 7.0, 1.0, 99.0, 4.0)
+
+        # 'BMMA' -> 'AMMB' -> 'AB' -> 'AMVB' -> 'AMVBC' --> 2del + 1trans + 3ins
+        self.dlev_test('BMMA', 'AMVBC', 27.0, 7.0, 1.0, 99.0, 4.0)
+        self.dlev_test('😉MMA', 'AMV😉C', 27.0, 7.0, 1.0, 99.0, 4.0)
+
+        # 'BMMAA' -> 'AMMBA' -> 'ABA' -> 'AMVBA' -> 'AMVBC' --> 3del + 1trans + 3ins
+        self.dlev_test('BMMAA', 'AMVBC', 28.0, 7.0, 1.0, 99.0, 4.0)
+
+        # 'BMMA' -> 'AMMB' -> 'AB' -> 'AMVB' -> 'AMVBCB' --> 2del + 1trans + 4ins
+        self.dlev_test('BMMA', 'AMVBCB', 34.0, 7.0, 1.0, 99.0, 4.0)
+
+        # 'BBMMA' -> 'ABMMB' -> 'AB' -> 'AMVB' -> 'AMVBC' --> 3del + 1trans + 3ins
+        self.dlev_test('BBMMA', 'AMVBC', 28.0, 7.0, 1.0, 99.0, 4.0)
+
+        self.dlev_test('NawKtYu', '', 7.0)
+        self.dlev_test('', 'NawKtYu', 7.0)
+        self.dlev_test('NawKtYu', 'NawKtYu', 0.0)
+        self.dlev_test('NawKtYu', 'tKNwYua', 6.0)
+        self.dlev_test("Jdc", "dJc", 1.0)
+        self.dlev_test("sUzSOwx", "zsSxUwO", 5.0)
+        self.dlev_test("eOqoHAta", "tAeaqHoO", 7.0)
+        self.dlev_test("glSbo", "lgSbo", 1.0)
+        self.dlev_test("NJtQKcJE", "cJEtQKJN", 4.0)
+        self.dlev_test("GitIEVs", "EGItVis", 5.0)
+        self.dlev_test("MiWK", "WKiM", 4.0)
+        self.dlev_test('a', 'b', 1.0, 100.0, 100.0, 1.0, 100.0)
+        self.dlev_test('ab', 'ba', 200.0, 100.0, 100.0, 100.0, 200.0)
+        self.dlev_test('aa', 'a', 1.0, 100.0, 1.0, 100.0, 100.0)
+        self.dlev_test('a', 'aa', 1.0, 1.0, 100.0, 100.0, 100.0)
 
         ## Test Hamming distance ##
         expected_result = [0.0]
