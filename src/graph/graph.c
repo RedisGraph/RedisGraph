@@ -1094,6 +1094,7 @@ void Graph_DeleteNodes
 	//--------------------------------------------------------------------------
 
 	GrB_Index j;            // iterated entry col idx
+	GrB_Scalar s;           // empty scalar
 	GrB_Matrix M;           // delta M
 	GrB_Matrix DP;          // delta plus
 	GrB_Matrix DM;          // delta minus
@@ -1105,6 +1106,9 @@ void Graph_DeleteNodes
 
 	// get labels matrix
 	RG_Matrix lbls = Graph_GetNodeLabelMatrix(g);
+
+	// create empty scalar
+	GrB_Scalar_new(&s, GrB_BOOL);
 
 	// create lbls mask
 	info = RG_Matrix_nrows(&nrows, lbls);
@@ -1155,9 +1159,6 @@ void Graph_DeleteNodes
 
 	// clear entries from lbls delta plus
 	//info = GrB_transpose(DP, lbls_mask, NULL, DP, GrB_DESC_SCT0);
-
-	GrB_Scalar s;
-	GrB_Scalar_new(&s, GrB_BOOL);
 
 	info = GrB_Matrix_assign_Scalar(DP, lbls_mask, NULL, s, GrB_ALL, nrows, GrB_ALL, nrows, GrB_DESC_S);
 	ASSERT(info == GrB_SUCCESS);
