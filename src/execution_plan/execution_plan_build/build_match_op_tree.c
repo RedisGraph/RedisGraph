@@ -48,6 +48,17 @@ static void _ExecutionPlan_ProcessQueryGraph
 		OpBase *root = NULL; // the root of the traversal chain will be added to the ExecutionPlan
 		OpBase *tail = NULL;
 
+		if(edge_count == 0) {
+			// if there are no edges in the component, we only need a node scan
+			// if no labels are introduced, and the var is bound, don't build
+			// a traversal
+			QGNode *n = cc->nodes[0];
+			if(raxFind(bound_vars, (unsigned char *)n->alias, strlen(n->alias))
+					!= raxNotFound && QGNode_LabelCount(n) == 0) {
+				continue;
+			}
+		}
+
 		AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc);
 		uint expCount = array_len(exps);
 
