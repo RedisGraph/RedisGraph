@@ -50,15 +50,18 @@ static bool Constraint_EnforceMandatory
 			// entity violates constraint
 			if(err_msg != NULL) {
 				// compose error message
+				int res;
+				UNUSED(res);
+
 				GraphContext *gc = QueryCtx_GetGraphCtx();
 				SchemaType st = (_c->et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
 				Schema *s = GraphContext_GetSchemaByID(gc, _c->schema_id, st);
 
 				if(Constraint_GetEntityType(c) == GETYPE_NODE) {
-					asprintf(err_msg, _node_violation_err_msg, Schema_GetName(s),
+					res = asprintf(err_msg, _node_violation_err_msg, Schema_GetName(s),
 							_c->attr_names[i]);
 				} else {
-					asprintf(err_msg, _edge_violation_err_msg, Schema_GetName(s),
+					res = asprintf(err_msg, _edge_violation_err_msg, Schema_GetName(s),
 							_c->attr_names[i]);
 				}
 			}

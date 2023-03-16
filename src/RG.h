@@ -89,7 +89,10 @@
 
 #define RedisModule_ReplyWithErrorFormat(ctx, fmt, ...) do { \
 	char *str;                                               \
-	asprintf(&str, fmt, ##__VA_ARGS__);                      \
+	int res;                                                 \
+	UNUSED(res);                                             \
+	res = asprintf(&str, fmt, ##__VA_ARGS__);                \
 	RedisModule_ReplyWithError(ctx, str);                    \
 	free(str);                                               \
 } while(0)
+
