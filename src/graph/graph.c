@@ -1154,18 +1154,41 @@ void Graph_DeleteNodes
 	DM = RG_MATRIX_DELTA_MINUS(lbls);
 
 	// clear entries from lbls delta plus
-	info = GrB_transpose(DP, lbls_mask, NULL, DP, GrB_DESC_SCT0);
+	//info = GrB_transpose(DP, lbls_mask, NULL, DP, GrB_DESC_SCT0);
+
+	GrB_Scalar s;
+	GrB_Scalar_new(&s, GrB_BOOL);
+
+	info = GrB_Matrix_assign_Scalar(DP, lbls_mask, NULL, s, GrB_ALL, nrows, GrB_ALL, nrows, GrB_DESC_S);
 	ASSERT(info == GrB_SUCCESS);
 
+	// turn on burble
+    //info = GxB_set (GxB_BURBLE, true);
+	//ASSERT(info == GrB_SUCCESS);
+
+	//double tic[2], t ;
+    //simple_tic (tic) ;          // start the timer
+
 	// add entries to lbls delta minus
-	info = GrB_Matrix_eWiseAdd_Semiring(DM, M, NULL, GxB_ANY_PAIR_BOOL, DM,
-			lbls_mask, GrB_DESC_S);
+	//info = GrB_Matrix_eWiseAdd_Semiring(DM, M, NULL, GxB_ANY_PAIR_BOOL, DM,
+	//		lbls_mask, GrB_DESC_S);
+	//ASSERT(info == GrB_SUCCESS);
+
+	//info = GrB_Matrix_assign(DM, lbls_mask, NULL, M, GrB_ALL, nrows, GrB_ALL, nrows, GrB_DESC_S);
+	//ASSERT(info == GrB_SUCCESS);
+
+	info = GrB_Matrix_assign(DM, M, NULL, lbls_mask, GrB_ALL, nrows, GrB_ALL, nrows, GrB_DESC_S);
 	ASSERT(info == GrB_SUCCESS);
+
+	//t = simple_toc (tic) ;      // t is time for work A, in seconds
+	//printf("GrB_Matrix_eWiseAdd_Semiring took: %fms\n", t * 1000);
+	//printf("GrB_Matrix_assign took: %fms\n", t * 1000);
 
 	// restore matrix sync policy
 	Graph_SetMatrixPolicy(g, policy);
 
 	// clean up
+	GrB_free(&s);
 	GrB_free(&lbls_mask);
 }
 
