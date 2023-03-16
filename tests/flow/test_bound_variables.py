@@ -3,6 +3,7 @@ from common import *
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 redis_graph = None
+GRAPH_ID = "G"
 
 
 class testBoundVariables(FlowTestsBase):
@@ -10,7 +11,7 @@ class testBoundVariables(FlowTestsBase):
         self.env = Env(decodeResponses=True)
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(redis_con, "G")
+        redis_graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -94,3 +95,20 @@ class testBoundVariables(FlowTestsBase):
         # Verify results.
         expected_result = [[0], [1], [2]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test06_override_bound_with_label(self):
+        """Tests that we override a bound alias with a new scan if it has a
+        label"""
+
+        # clear the db
+        self.env.flush()
+        redis_graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create one node with label `N`
+        res = redis_graph.query("CREATE (:N)")
+        self.env.assertEquals(res.nodes_created, 1)
+
+        res = redis_graph.query("MATCH(n:N) WITH n MATCH (n:X) RETURN n")
+
+        # make sure no nodes were returned
+        self.env.assertEquals(len(res.result_set), 0)
