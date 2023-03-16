@@ -12,7 +12,7 @@ Creates a graph constraint.
 
 ## Introduction to constraints
 
-A constraint is a rule enforced on graph entities or relationships, used to guarantee a certain structure of the data.
+A constraint is a rule enforced on graph nodes or relationships, used to guarantee a certain structure of the data.
 
 RedisGraph supports two types of constraints:
 
@@ -46,7 +46,7 @@ But trying to create a third node with `first_name` Frank and `last_name` Costan
 
 - A unique constraint requires the existence of an exact-match index prior to its creation. For example, trying to create a unique constraint governing attributes: `first_name` and `last_name` of nodes with label `Person` without having an exact-match index over `Person`'s `first_name` and `last_name` attributes will fail.
    
-- A unique constraint is enforced for a given node/edge only if all the constrainted properties are set (non-null).
+- A unique constraint is enforced for a given node or edge only if all the constrainted properties are defined (non-null).
 - Unique constraints are not enforced for array-valued properties.
 - Trying to delete an index that supports a constraint will fail.
    
@@ -93,8 +93,8 @@ is a list of `propCount` property names.
 
 <note><b>Notes:</b>
 
-- Constraints are created asynchronously. The constraint creation command will reply with `PENDING` and the newly created constraint is enforced gradually on all relevant entities.
-  During its creation phase, a constraint's status is `UNDER CONSTRUCTION`. If all governed entities confirm to the constraint - its status is updated to `OPERATIONAL`, otherwise, if a conflict has been detected, the constraint status is updated to `FAILED` and the constraint is not enforced. The caller may try to resolve the conflict and recreate the constraint. To retrieve the status of all constraints - use the `db.constraints()` procedure.
+- Constraints are created asynchronously. The constraint creation command will reply with `PENDING` and the newly created constraint is enforced gradually on all relevant nodes or relationships.
+  During its creation phase, a constraint's status is `UNDER CONSTRUCTION`. When all governed nodes or relationships confirm to the constraint - its status is updated to `OPERATIONAL`, otherwise, if a conflict is detected, the constraint status is updated to `FAILED` and the constraint is not enforced. The caller may try to resolve the conflict and recreate the constraint. To retrieve the status of all constraints - use the `db.constraints()` procedure.
 - A constraint creation command may fail synchronously due to the following reasons:
   1. Syntax error
   2. Constraint already exists
