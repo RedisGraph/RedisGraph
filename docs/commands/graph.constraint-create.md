@@ -113,6 +113,8 @@ is a list of `propCount` property names.
 
 ## Examples
 
+### Creating a unique constraint for a node label
+
 To create a unique constraint for all nodes with label `Person` enforcing uniqueness on the combination of values of attributes `first_name` and `last_name`, issue the following commands:
 
 ```
@@ -124,7 +126,11 @@ redis> GRAPH.CONSTRAINT CREATE g UNIQUE NODE Person PROPERTIES 2 first_name last
 PENDING
 ```
 
-Similarly, to create a mandatory constraint for all edges with relationship-type `Visited`, enforcing the existence of a `date` attribute, issue the following command:
+Since RedisGraph 2.12 indexes are constructed asynchronously. The constraint construction will start once the index is fully constructed.
+
+### Creating a mandatory constraint for a relationship type
+
+To create a mandatory constraint for all edges with relationship-type `Visited`, enforcing the existence of a `date` attribute, issue the following command:
 
 ```
 redis> GRAPH.CONSTRAINT CREATE g MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
