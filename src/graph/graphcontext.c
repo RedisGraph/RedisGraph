@@ -322,16 +322,16 @@ Schema *GraphContext_AddSchema
 	const char *label,
 	SchemaType t
 ) {
-	int label_id;
+	int id;
 	Schema *schema;
 
 	if(t == SCHEMA_NODE) {
-		label_id = Graph_AddLabel(gc->g);
-		schema = Schema_New(SCHEMA_NODE, label_id, label);
+		id = Graph_AddLabel(gc->g);
+		schema = Schema_New(SCHEMA_NODE, id, label);
 		array_append(gc->node_schemas, schema);
 	} else {
-		label_id = Graph_AddRelationType(gc->g);
-		schema = Schema_New(SCHEMA_EDGE, label_id, label);
+		id = Graph_AddRelationType(gc->g);
+		schema = Schema_New(SCHEMA_EDGE, id, label);
 		array_append(gc->relation_schemas, schema);
 	}
 

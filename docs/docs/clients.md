@@ -9,48 +9,50 @@ description: >
 
 ## Currently available Libraries
 
-| Project                                                  | Language   | License      | Author                                      | Stars                                                             |
-| -------------------------------------------------------- | ---------- | ------------ | ------------------------------------------- | ----------------------------------------------------------------- |
-| [Jedis][Jedis-url]                                       | Java       | MIT          | [Redis][Jedis-author]                       | [![Jedis-stars]][Jedis-url]                                       |
-| [redis-modules-java][redis-modules-java-url]              | Java       | Apache 2.0 | [dengliming][redis-modules-java-author]      | [![redis-modules-java-stars]][redis-modules-java-url]           |
-| [redisgraph-py][redisgraph-py-url]                       | Python     | BSD          | [Redis][redisgraph-py-author]               | [![redisgraph-py-stars]][redisgraph-py-url]                       |
-| [JRedisGraph][JRedisGraph-url]                           | Java       | BSD          | [Redis][JRedisGraph-author]                 | [![JRedisGraph-stars]][JRedisGraph-url]                           |
-| [redisgraph-rb][redisgraph-rb-url]                       | Ruby       | BSD          | [Redis][redisgraph-rb-author]               | [![redisgraph-rb-stars]][redisgraph-rb-url]                       |
-| [redisgraph-go][redisgraph-go-url]                       | Go         | BSD          | [Redis][redisgraph-go-author]               | [![redisgraph-go-stars]][redisgraph-go-url]                       |
-| [rueidis][rueidis-url]                                   | Go         | Apache 2.0   | [Rueian][rueidis-author]                    | [![rueidis-stars]][rueidis-url]                                   |
-| [node-redis][node-redis-url]                             | JavaScript | MIT          | [Redis][node-redis-author]                  | [![node-redis-stars]][node-redis-url]                             |
-| [ioredisgraph][ioredisgraph-url]                         | JavaScript | ISC          | [Jonah][ioredisgraph-author]                | [![ioredisgraph-stars]][ioredisgraph-url]                         |
-| [@hydre/rgraph][rgraph-url]                              | JavaScript | MIT          | [Sceat][rgraph-author]                      | [![rgraph-stars]][rgraph-url]                                     |
-| [redis-modules-sdk][redis-modules-sdk-url]               | TypeScript | BSD-3-Clause | [Dani Tseitlin][redis-modules-sdk-author]   | [![redis-modules-sdk-stars]][redis-modules-sdk-url]               |
-| [php-redis-graph][php-redis-graph-url]                   | PHP        | MIT          | [KJDev][php-redis-graph-author]             | [![php-redis-graph-stars]][php-redis-graph-url]                   |
-| [redislabs-redisgraph-php][redislabs-redisgraph-php-url] | PHP        | MIT          | [mkorkmaz][redislabs-redisgraph-php-author] | [![redislabs-redisgraph-php-stars]][redislabs-redisgraph-php-url] |
-| [redisgraph_php][redisgraph_php-url]                     | PHP        | MIT          | [jpbourbon][redisgraph_php-author]          | [![redisgraph_php-stars]][redisgraph_php-url]                     |
-| [redisgraph-ex][redisgraph-ex-url]                       | Elixir     | MIT          | [crflynn][redisgraph-ex-author]             | [![redisgraph-ex-stars]][redisgraph-ex-url]                       |
-| [redisgraph-rs][redisgraph-rs-url]                       | Rust       | MIT          | [malte-v][redisgraph-rs-author]             | [![redisgraph-rs-stars]][redisgraph-rs-url]                       |
-| [redis_graph][redis_graph-url]                           | Rust       | BSD          | [tompro][redis_graph-author]                | [![redis_graph-stars]][redis_graph-url]     
-| [rustis][rustis-url]                                     | Rust       | MIT          | [Dahomey Technologies][rustis-author]       | [![rustis-stars]][rustis-url]    |
-| [NRedisGraph][NRedisGraph-url]                           | C#         | BSD          | [tombatron][NRedisGraph-author]             | [![NRedisGraph-stars]][NRedisGraph-url]                           |
-| [RedisGraphDotNet.Client][RedisGraphDotNet.Client-url]   | C#         | BSD          | [Sgawrys][RedisGraphDotNet.Client-author]   | [![RedisGraphDotNet.Client-stars]][RedisGraphDotNet.Client-url]   |
-| [RedisGraph.jl][RedisGraph.jl-url]                       | Julia      | MIT          | [xyxel][RedisGraph.jl-author]               | [![RedisGraph.jl-stars]][RedisGraph.jl-url]                       |
+| Project                                                   | Language   | License | Author                                      | Stars                                                             | Package | 
+| --------------------------------------------------------- | ---------- | ------- | ------------------------------------------- | ----------------------------------------------------------------- | ------- | 
+| [jedis][jedis-url] | Java | MIT | [Redis][redis-url] | ![Stars][jedis-stars] | [Maven][jedis-package]||
+| [redis-py][redis-py-url] | Python | MIT | [Redis][redis-url] | ![Stars][redis-py-stars] | [pypi][redis-py-package]||
+| [node-redis][node-redis-url] | Node.JS | MIT | [Redis][redis-url] | ![Stars][node-redis-stars] | [npm][node-redis-package]||
+| [nredisstack][nredisstack-url] | .NET | MIT | [Redis][redis-url] | ![Stars][nredisstack-stars] | [nuget][nredisstack-package]||
+| [redisgraph-rb][redisgraph-rb-url]                        | Ruby       | BSD     | [Redis][redisgraph-rb-author]          | [![redisgraph-rb-stars]][redisgraph-rb-url]                       | [GitHub][redisgraph-rb-url] ||
+| [redisgraph-go][redisgraph-go-url]                        | Go         | BSD     | [Redis][redisgraph-go-author]          | [![redisgraph-go-stars]][redisgraph-go-url]                       | [GitHub][redisgraph-go-url]||
+| [rueidis][rueidis-url]                                    | Go         | Apache 2.0 | [Rueian][rueidis-author]          | [![rueidis-stars]][rueidis-url]                       | [GitHub][rueidis-url] ||
+| [ioredisgraph][ioredisgraph-url]                          | JavaScript | ISC     | [Jonah][ioredisgraph-author]                | [![ioredisgraph-stars]][ioredisgraph-url]                         | [GitHub][ioredisgraph-url] ||
+| [@hydre/rgraph][rgraph-url]                               | JavaScript | MIT     | [Sceat][rgraph-author]                      | [![rgraph-stars]][rgraph-url]                                     | [GitHub][rgraph-url] ||
+| [php-redis-graph][php-redis-graph-url]                    | PHP        | MIT     | [KJDev][php-redis-graph-author]             | [![php-redis-graph-stars]][php-redis-graph-url]                   | [GitHub][php-redis-graph-url] ||
+| [redisgraph_php][redisgraph_php-url]                      | PHP        | MIT     | [jpbourbon][redisgraph_php-author]          | [![redisgraph_php-stars]][redisgraph_php-url]                     | [GitHub][redisgraph_php-url] ||
+| [redisgraph-ex][redisgraph-ex-url]                        | Elixir     | MIT     | [crflynn][redisgraph-ex-author]             | [![redisgraph-ex-stars]][redisgraph-ex-url]                       | [GitHub][redisgraph-ex-url] ||
+| [redisgraph-rs][redisgraph-rs-url]                        | Rust       | MIT     | [malte-v][redisgraph-rs-author]             | [![redisgraph-rs-stars]][redisgraph-rs-url]                       | [GitHub][redisgraph-rs-url] ||
+| [redis_graph][redis_graph-url]                            | Rust       | BSD     | [tompro][redis_graph-author]                | [![redis_graph-stars]][redis_graph-url]                           | [GitHub][redis_graph-url] ||
+| [rustis][rustis-url]                                     | Rust       | MIT          | [Dahomey Technologies][rustis-author]       | [![rustis-stars]][rustis-url]    | [Crate](https://crates.io/crates/rustis) |
+| [NRedisGraph][NRedisGraph-url]                            | C#         | BSD     | [tombatron][NRedisGraph-author]             | [![NRedisGraph-stars]][NRedisGraph-url]                           | [GitHub][NRedisGraph-url] ||
+| [RedisGraph.jl][RedisGraph.jl-url]                        | Julia      | MIT     | [xyxel][RedisGraph.jl-author]               | [![RedisGraph.jl-stars]][RedisGraph.jl-url]                       | [GitHub][RedisGraph.jl-url] ||
+
+[redis-url]: https://redis.com
+
+[redis-py-url]: https://github.com/redis/redis-py
+[redis-py-stars]: https://img.shields.io/github/stars/redis/redis-py.svg?style=social&amp;label=Star&amp;maxAge=2592000
+[redis-py-package]: https://pypi.python.org/pypi/redis
+
+[jedis-url]: https://github.com/redis/jedis
+[jedis-stars]: https://img.shields.io/github/stars/redis/jedis.svg?style=social&amp;label=Star&amp;maxAge=2592000
+[Jedis-package]: https://search.maven.org/artifact/redis.clients/jedis
+
+[nredisstack-url]: https://github.com/redis/nredisstack
+[nredisstack-stars]: https://img.shields.io/github/stars/redis/nredisstack.svg?style=social&amp;label=Star&amp;maxAge=2592000
+[nredisstack-package]: https://www.nuget.org/packages/nredisstack/
+
+[node-redis-url]: https://github.com/redis/node-redis
+[node-redis-stars]: https://img.shields.io/github/stars/redis/node-redis.svg?style=social&amp;label=Star&amp;maxAge=2592000
+[node-redis-package]: https://www.npmjs.com/package/redis
 
 
-[Jedis-author]: https://redis.com
-[Jedis-url]: https://github.com/redis/jedis
-[Jedis-stars]: https://img.shields.io/github/stars/redis/jedis.svg?style=social&amp;label=Star&amp;maxAge=2592000
-
-[redisgraph-py-author]: https://redis.com
-[redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
-[redisgraph-py-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph-py.svg?style=social&amp;label=Star&amp;maxAge=2592000
-
-[JRedisGraph-author]: https://redis.com
-[JRedisGraph-url]: https://github.com/RedisGraph/JRedisGraph
-[JRedisGraph-stars]: https://img.shields.io/github/stars/RedisGraph/JRedisGraph.svg?style=social&amp;label=Star&amp;maxAge=2592000
-
-[redisgraph-rb-author]: https://redis.com
+[redisgraph-rb-author]: https://redislabs.com
 [redisgraph-rb-url]: https://github.com/RedisGraph/redisgraph-rb
 [redisgraph-rb-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph-rb.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
-[redisgraph-go-author]: https://redis.com
+[redisgraph-go-author]: https://redislabs.com
 [redisgraph-go-url]: https://github.com/RedisGraph/redisgraph-go
 [redisgraph-go-stars]: https://img.shields.io/github/stars/RedisGraph/redisgraph-go.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
@@ -58,17 +60,10 @@ description: >
 [rueidis-author]: https://github.com/rueian
 [rueidis-stars]: https://img.shields.io/github/stars/rueian/rueidis.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
-[node-redis-author]: https://github.com/redis
-[node-redis-url]: https://github.com/redis/node-redis
-[node-redis-stars]: https://img.shields.io/github/stars/redis/node-redis.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [rgraph-author]: https://github.com/Sceat
 [rgraph-url]: https://github.com/HydreIO/rgraph
 [rgraph-stars]: https://img.shields.io/github/stars/HydreIO/rgraph.svg?style=social&amp;label=Star&amp;maxAge=2592000
-
-[redis-modules-sdk-author]: https://github.com/danitseitlin
-[redis-modules-sdk-url]: https://github.com/danitseitlin/redis-modules-sdk
-[redis-modules-sdk-stars]: https://img.shields.io/github/stars/danitseitlin/redis-modules-sdk.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
 [ioredisgraph-author]: https://github.com/Jonahss
 [ioredisgraph-url]: https://github.com/Jonahss/ioredisgraph
@@ -110,13 +105,10 @@ description: >
 [RedisGraph.jl-url]: https://github.com/xyxel/RedisGraph.jl
 [RedisGraph.jl-stars]: https://img.shields.io/github/stars/xyxel/RedisGraph.jl.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
-[redis-modules-java-author]: https://github.com/dengliming
-[redis-modules-java-url]: https://github.com/dengliming/redis-modules-java
-[redis-modules-java-stars]: https://img.shields.io/github/stars/dengliming/redis-modules-java.svg?style=social&amp;label=Star&amp;maxAge=2592000
-
 [rustis-url]: https://github.com/dahomey-technologies/rustis
 [rustis-author]: https://github.com/dahomey-technologies
 [rustis-stars]: https://img.shields.io/github/stars/dahomey-technologies/rustis.svg?style=social&amp;label=Star&amp;maxAge=2592000
+
 
 ## Implementing a client
 
