@@ -31,6 +31,9 @@ class testReplication(FlowTestsBase):
         # commands are registered as write commands
         replica_con.config_set("slave-read-only", "no")
 
+        # the WAIT command forces master slave sync to complete
+        source_con.execute_command("WAIT", "1", "0")
+
         # perform CRUD operations
 
         #-----------------------------------------------------------------------
