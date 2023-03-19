@@ -130,14 +130,21 @@ static OpResult SortInit(OpBase *opBase) {
 		op->buffer = array_new(Record, 32);
 	}
 
+	op->first = true;
+
 	return OP_OK;
 }
 
 static Record SortConsume(OpBase *opBase) {
 	OpSort *op = (OpSort *)opBase;
-	Record r = _handoff(op);
-	if(r) return r;
 
+	if(!op->first) {
+		return _handoff(op);
+	}
+	// make sure consume will not be called on children again, as their depleted
+	op->first = false;
+
+	Record r;
 	// if we're here, we don't have any records to return
 	// try to get records
 	OpBase *child = op->op.children[0];
