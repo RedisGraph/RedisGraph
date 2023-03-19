@@ -1259,7 +1259,7 @@ static VISITOR_STRATEGY _Validate_call_subquery
 			cypher_ast_call_subquery_get_clause(n, i);
 		AST_Visitor_visit(clause, visitor);
 		if(ErrorCtx_EncounteredError()) {
-			free(in_env);
+			raxFree(in_env);
 			return VISITOR_BREAK;
 		}
 	}
@@ -1295,6 +1295,7 @@ static VISITOR_STRATEGY _Validate_call_subquery
 			if(!raxTryInsert(vctx->defined_identifiers,
 				(unsigned char *)var_name, strlen(var_name), NULL, NULL)) {
 					ErrorCtx_SetError("Variable `%s` already declared in outer scope", var_name);
+					raxFree(in_env);
 					return VISITOR_BREAK;
 			}
 		}
