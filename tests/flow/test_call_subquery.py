@@ -296,7 +296,8 @@ class testCallSubqueryFlow():
     def test10_foreach(self):
         """Test that FOREACH works properly when used inside a subquery"""
 
-        # the graph has two nodes, with `name` 'Raz' and `v` 4 and 5
+        # the graph has two nodes with label `N`, with `name` 'Raz' and `v` 4
+        # and 5
 
         res = graph.query(
             """
@@ -309,6 +310,12 @@ class testCallSubqueryFlow():
             }
             RETURN n ORDER BY n.v ASC
             """
+            # TODO: The following doesn't work since Sort calls Consume on child
+            # after received NULL from him, and Foreach assumes it won't be
+            # entered again!
+                # Either change Foreach to be able to return NULL, or change
+                # Sort (I think Sort)
+            # RETURN n ORDER BY n.v ASC
         )
 
         # assert the correctness of the results

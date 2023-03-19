@@ -29,9 +29,9 @@ OpBase *NewCallSubqueryOp
 	op->first         = true;
 	op->records       = NULL;
     op->argument      = NULL;
+	op->argument_list = NULL;
 	op->is_eager      = is_eager;
     op->is_returning  = is_returning;
-	op->argument_list = NULL;
 
     // set the consume function according to eagerness of the op
     Record (*consumeFunc)(OpBase *opBase) = is_eager ? CallSubqueryConsumeEager :
@@ -81,7 +81,8 @@ static OpResult CallSubqueryInit
 
 // passes a record to the parent op.
 // if the subquery is non-returning (unit), all the records have already been
-// consumed from the body, so that we only need to pop the records
+// consumed from the body (child depleted), so that we only need to return the
+// received records.
 // the returning subquery case: TBD
 static Record _handoff_eager(OpCallSubquery *op) {
     ASSERT(op->records != NULL);

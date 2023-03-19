@@ -349,7 +349,7 @@ static void _buildCallSubqueryPlan
 
 	// characterize whether the query is eager or not
 	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_DELETE,
-					OPType_MERGE, OPType_SORT};
+					  OPType_FOREACH, OPType_MERGE, OPType_SORT};
 	bool is_eager =
 	  ExecutionPlan_LocateOpMatchingType(embedded_plan->root, types, 4) != NULL;
 	// characterize whether the query is returning or not
@@ -422,17 +422,16 @@ static void _buildCallSubqueryPlan
 		// modify the first projection (imports) to contain the transformation `n`-->`_n`
 		OpBase *import_proj = deepest;
 
-		// add the internal names of the outer-scope aliases to the record-mapping
+		// add the internal names of the outer-scope aliases to the outer-scope record-mapping
 		for(uint i = 0; i < mapping_size; i++) {
 			// skip the original name
 			i++;
 
-			OpBase_AliasModifier(import_proj, names[i-1], names[i]);
+			OpBase_AliasModifier(plan->root, names[i-1], names[i]);
 		}
 
 		// modify to the intermidiate project_exps
 		ProjectAddProjections(import_proj, intermediate_proj_exps);
-
 
 		// find 'first' Project op in the embedded execution-plan (return)
 		OpBase *returning_proj = ExecutionPlan_LocateOp(embedded_plan->root,
@@ -467,22 +466,20 @@ static void _buildCallSubqueryPlan
 
 		// collect all the intermediate Project ops (from the child of the
 		// return projection)
-		ExecutionPlan_LocateOps(intermediate_projections,
-			returning_proj->children[0], OPType_PROJECT);
+		if(returning_proj->childCount > 0) {
+			ExecutionPlan_LocateOps(intermediate_projections,
+				returning_proj->children[0], OPType_PROJECT);
 
-		// the 'last' projection is the importing projection, pop it
-		array_pop(intermediate_projections);
+			// the 'last' projection is the importing projection, pop it
+			array_pop(intermediate_projections);
 
-		// modify projected expressions of the intermediate projections if exist
-		for(uint i = 0; i < array_len(intermediate_projections); i++) {
-			ProjectAddProjections(intermediate_projections[i],
-				intermediate_proj_exps);
-					// TODO: Add support for UNIONs
+			// modify projected expressions of the intermediate projections if exist
+			for(uint i = 0; i < array_len(intermediate_projections); i++) {
+				ProjectAddProjections(intermediate_projections[i],
+					intermediate_proj_exps);
+						// TODO: Add support for UNIONs
+			}
 		}
-
-
-
-
 
 		// bind the RETURN projection (last one) to the outer plan ('plan')
 			// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
