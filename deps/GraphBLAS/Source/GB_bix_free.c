@@ -12,7 +12,6 @@
 
 #include "GB_Pending.h"
 
-GB_PUBLIC
 void GB_bix_free                // free A->b, A->i, and A->x of a matrix
 (
     GrB_Matrix A                // matrix with content to free

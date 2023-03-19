@@ -925,6 +925,10 @@ void mexFunction
     OK (GxB_Desc_set (desc, GxB_IMPORT, GxB_SECURE_IMPORT)) ;
     OK (GxB_Descriptor_fprint (desc, "desc with secure import", 3, NULL)) ;
 
+    OK (GxB_Desc_set_INT32 (desc, GxB_IMPORT, GxB_DEFAULT)) ;
+    OK (GxB_Desc_set_INT32 (desc, GxB_IMPORT, GxB_SECURE_IMPORT)) ;
+    OK (GxB_Descriptor_fprint (desc, "desc with secure import", 3, NULL)) ;
+
     int method = -999 ;
     OK (GxB_Desc_get (desc, GxB_IMPORT, &method)) ;
     CHECK (method == GxB_SECURE_IMPORT) ;
@@ -932,6 +936,10 @@ void mexFunction
     OK (GxB_Desc_set (desc, GxB_COMPRESSION, GxB_COMPRESSION_LZ4HC + 4)) ;
     OK (GxB_Desc_get (desc, GxB_COMPRESSION, &method)) ;
     CHECK (method == GxB_COMPRESSION_LZ4HC + 4)
+
+    OK (GxB_Desc_set_INT32 (desc, GxB_COMPRESSION, GxB_COMPRESSION_LZ4HC + 5)) ;
+    OK (GxB_Desc_get_INT32 (desc, GxB_COMPRESSION, &method)) ;
+    CHECK (method == GxB_COMPRESSION_LZ4HC + 5)
 
     OK (GxB_Descriptor_fprint (desc, "desc with secure & lz4hc+4", 3, NULL)) ;
     OK (GrB_Descriptor_free_ (&desc)) ;
@@ -953,28 +961,66 @@ void mexFunction
     OK (GxB_Matrix_Option_set (A, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE)) ;
     OK (GrB_Matrix_exportHint (&fmt, A)) ;
     CHECK (fmt == GrB_COO_FORMAT) ;
+
     OK (GxB_Matrix_Option_set (A, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
     OK (GrB_Matrix_exportHint (&fmt, A)) ;
     CHECK (fmt == GrB_CSR_FORMAT) ;
+
+    OK (GxB_Matrix_Option_set_INT32 (A, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE)) ;
+    OK (GrB_Matrix_exportHint (&fmt, A)) ;
+    CHECK (fmt == GrB_COO_FORMAT) ;
+
+    OK (GxB_Matrix_Option_set_INT32 (A, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
+    OK (GrB_Matrix_exportHint (&fmt, A)) ;
+    CHECK (fmt == GrB_CSR_FORMAT) ;
+
     OK (GxB_Matrix_Option_set (A, GxB_SPARSITY_CONTROL, GxB_BITMAP)) ;
     OK (GrB_Matrix_exportHint (&fmt, A)) ;
     CHECK (fmt == GrB_CSR_FORMAT) ;
+
     OK (GxB_Matrix_Option_set (A, GxB_SPARSITY_CONTROL, GxB_FULL)) ;
     OK (GrB_Matrix_exportHint (&fmt, A)) ;
     CHECK (fmt == GrB_CSR_FORMAT) ;
-//  CHECK (fmt == GrB_DENSE_ROW_FORMAT) ;
+
+    OK (GxB_Matrix_Option_set_INT32 (A, GxB_SPARSITY_CONTROL, GxB_BITMAP)) ;
+    OK (GrB_Matrix_exportHint (&fmt, A)) ;
+    CHECK (fmt == GrB_CSR_FORMAT) ;
+
+    OK (GxB_Matrix_Option_set_INT32 (A, GxB_SPARSITY_CONTROL, GxB_FULL)) ;
+    OK (GrB_Matrix_exportHint (&fmt, A)) ;
+    CHECK (fmt == GrB_CSR_FORMAT) ;
 
     OK (GxB_Matrix_Option_set (A, GxB_FORMAT, GxB_BY_COL)) ;
+
     OK (GxB_Matrix_Option_set (A, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE)) ;
     OK (GrB_Matrix_exportHint (&fmt, A)) ;
     CHECK (fmt == GrB_COO_FORMAT) ;
+
     OK (GxB_Matrix_Option_set (A, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
     OK (GrB_Matrix_exportHint (&fmt, A)) ;
     CHECK (fmt == GrB_CSC_FORMAT) ;
+
+    OK (GxB_Matrix_Option_set_INT32 (A, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE)) ;
+    OK (GrB_Matrix_exportHint (&fmt, A)) ;
+    CHECK (fmt == GrB_COO_FORMAT) ;
+
+    OK (GxB_Matrix_Option_set_INT32 (A, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
+    OK (GrB_Matrix_exportHint (&fmt, A)) ;
+    CHECK (fmt == GrB_CSC_FORMAT) ;
+
     OK (GxB_Matrix_Option_set (A, GxB_SPARSITY_CONTROL, GxB_BITMAP)) ;
     OK (GrB_Matrix_exportHint (&fmt, A)) ;
     CHECK (fmt == GrB_CSC_FORMAT) ;
+
     OK (GxB_Matrix_Option_set (A, GxB_SPARSITY_CONTROL, GxB_FULL)) ;
+    OK (GrB_Matrix_exportHint (&fmt, A)) ;
+    CHECK (fmt == GrB_CSC_FORMAT) ;
+
+    OK (GxB_Matrix_Option_set_INT32 (A, GxB_SPARSITY_CONTROL, GxB_BITMAP)) ;
+    OK (GrB_Matrix_exportHint (&fmt, A)) ;
+    CHECK (fmt == GrB_CSC_FORMAT) ;
+
+    OK (GxB_Matrix_Option_set_INT32 (A, GxB_SPARSITY_CONTROL, GxB_FULL)) ;
     OK (GrB_Matrix_exportHint (&fmt, A)) ;
     CHECK (fmt == GrB_CSC_FORMAT) ;
 

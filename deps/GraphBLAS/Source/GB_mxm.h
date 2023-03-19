@@ -50,7 +50,6 @@ GrB_Info GB_AxB_dot                 // dot product (multiple methods)
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 (
     GrB_Matrix C,                   // output, static header (if not in-place)
@@ -114,7 +113,6 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     GB_Type_code *zcode             // type code for z output
 ) ;
 
-GB_PUBLIC
 GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
 (
     GrB_Matrix C,                   // output matrix, static header
@@ -137,7 +135,6 @@ bool GB_is_diagonal             // true if A is diagonal
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
 (
     GrB_Matrix C,                   // output matrix, static header

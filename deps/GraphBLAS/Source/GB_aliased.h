@@ -15,7 +15,6 @@
 // more restrictive.
 
 // GB_aliased also checks the content of A and B
-GB_PUBLIC
 bool GB_aliased             // determine if A and B are aliased
 (
     GrB_Matrix A,           // input A matrix
@@ -23,7 +22,6 @@ bool GB_aliased             // determine if A and B are aliased
 ) ;
 
 // matrices returned to the user are never shallow; internal matrices may be
-GB_PUBLIC
 bool GB_is_shallow              // true if any component of A is shallow
 (
     GrB_Matrix A                // matrix to query

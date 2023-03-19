@@ -4,7 +4,7 @@ SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 
-VERSION 7.3.0, Oct 14, 2022
+VERSION 7.4.3, Jan 20, 2023
 
 SuiteSparse:GraphBLAS is a complete implementation of the GraphBLAS standard,
 which defines a set of sparse matrix operations on an extended algebra of
@@ -53,7 +53,7 @@ To remove all compiled files:
 
 To compile and run the demos:
 
-    make demo
+    make demos
 
 See the GraphBLAS/ subfolder for the Octave/MATLAB interface, which contains a
 README.md file with further details.

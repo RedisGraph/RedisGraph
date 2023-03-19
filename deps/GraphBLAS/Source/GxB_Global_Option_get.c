@@ -7,7 +7,348 @@
 
 //------------------------------------------------------------------------------
 
+// GxB_Global_Option_get is a single va_arg-based method for any global option,
+// of any type.  The following functions are alternative methods that do not
+// use va_arg (useful for compilers and interfaces that do not support va_arg):
+//
+//  GxB_Global_Option_get_INT32         int32_t scalars or arrays
+//  GxB_Global_Option_get_FP64          double scalars or arrays
+//  GxB_Global_Option_get_INT64         int64_t scalars or arrays
+//  GxB_Global_Option_get_CHAR          strings
+//  GxB_Global_Option_get_FUNCTION      function pointers (as void **)
+
 #include "GB.h"
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_get_INT32: get global options (int32_t scalars or arrays)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Global_Option_get_INT32    // gets the current global option
+(
+    GxB_Option_Field field,         // option to query
+    int32_t *value                  // return value of the global option
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Global_Option_get_INT32 (field, &value)") ;
+    GB_RETURN_IF_NULL (value) ;
+
+    //--------------------------------------------------------------------------
+    // get the option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_GLOBAL_NTHREADS :      // same as GxB_NTHREADS
+
+            (*value) = (int32_t) GB_Global_nthreads_max_get ( ) ;
+            break ;
+
+        case GxB_API_VERSION : 
+
+            value [0] = GxB_SPEC_MAJOR ; 
+            value [1] = GxB_SPEC_MINOR ;
+            value [2] = GxB_SPEC_SUB ;
+            break ;
+
+        case GxB_LIBRARY_VERSION : 
+
+            value [0] = GxB_IMPLEMENTATION_MAJOR ;
+            value [1] = GxB_IMPLEMENTATION_MINOR ;
+            value [2] = GxB_IMPLEMENTATION_SUB ;
+            break ;
+
+        case GxB_COMPILER_VERSION : 
+
+            value [0] = GB_COMPILER_MAJOR ; 
+            value [1] = GB_COMPILER_MINOR ;
+            value [2] = GB_COMPILER_SUB ;
+            break ;
+
+        case GxB_MODE : 
+
+            (*value) = (int32_t) GB_Global_mode_get ( )  ;
+            break ;
+
+        case GxB_FORMAT : 
+
+            (*value) = (int32_t) (GB_Global_is_csc_get ( )) ?
+                    GxB_BY_COL : GxB_BY_ROW ;
+            break ;
+
+        case GxB_GLOBAL_GPU_CONTROL :       // same as GxB_GPU_CONTROL
+
+            (*value) = (int32_t) GB_Global_gpu_control_get ( ) ;
+            break ;
+
+        case GxB_BURBLE : 
+
+            (*value) = (int32_t) GB_Global_burble_get ( ) ;
+            break ;
+
+        case GxB_LIBRARY_OPENMP : 
+
+            #ifdef _OPENMP
+            (*value) = (int32_t) true ;
+            #else
+            (*value) = (int32_t) false ;
+            #endif
+            break ;
+
+        case GxB_PRINT_1BASED : 
+
+            (*value) = (int32_t) GB_Global_print_one_based_get ( ) ;
+            break ;
+
+        default :
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    #pragma omp flush
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_get_FP64: get global options (double scalars or arrays)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Global_Option_get_FP64     // gets the current global option
+(
+    GxB_Option_Field field,         // option to query
+    double *value                   // return value of the global option
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Global_Option_get_FP64 (field, &value)") ;
+    GB_RETURN_IF_NULL (value) ;
+
+    //--------------------------------------------------------------------------
+    // get the option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_HYPER_SWITCH : 
+
+            (*value) = (double) GB_Global_hyper_switch_get ( ) ;
+            break ;
+
+        case GxB_BITMAP_SWITCH : 
+
+            for (int k = 0 ; k < GxB_NBITMAP_SWITCH ; k++)
+            {
+                value [k] = (double) GB_Global_bitmap_switch_get (k) ; 
+            }
+            break ;
+
+        case GxB_GLOBAL_CHUNK :         // same as GxB_CHUNK
+
+            (*value) = GB_Global_chunk_get ( ) ;
+            break ;
+
+        case GxB_GLOBAL_GPU_CHUNK :         // same as GxB_GPU_CHUNK
+
+            (*value) = GB_Global_gpu_chunk_get ( ) ;
+            break ;
+
+        default :
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    #pragma omp flush
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_get_INT64: get global options (int64_t scalars or arrays)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Global_Option_get_INT64    // gets the current global option
+(
+    GxB_Option_Field field,         // option to query
+    int64_t *value                  // return value of the global option
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Global_Option_get_INT64 (field, &value)") ;
+    GB_RETURN_IF_NULL (value) ;
+
+    //--------------------------------------------------------------------------
+    // get the option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_MEMORY_POOL : 
+
+            for (int k = 0 ; k < 64 ; k++)
+            { 
+                value [k] = GB_Global_free_pool_limit_get (k) ;
+            }
+            break ;
+
+        default :
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    #pragma omp flush
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_get_CHAR: get global options (const char strings)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Global_Option_get_CHAR     // gets the current global option
+(
+    GxB_Option_Field field,         // option to query
+    char **value                    // return value of the global option
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Global_Option_get_CHAR (field, &value)") ;
+    GB_RETURN_IF_NULL (value) ;
+
+    //--------------------------------------------------------------------------
+    // get the option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_LIBRARY_NAME : 
+
+            (*value) = GxB_IMPLEMENTATION_NAME ;
+            break ;
+
+        case GxB_LIBRARY_DATE : 
+
+            (*value) = GxB_IMPLEMENTATION_DATE ;
+            break ;
+
+        case GxB_LIBRARY_ABOUT : 
+
+            (*value) = GxB_IMPLEMENTATION_ABOUT ;
+            break ;
+
+        case GxB_LIBRARY_LICENSE : 
+
+            (*value) = GxB_IMPLEMENTATION_LICENSE ;
+            break ;
+
+        case GxB_LIBRARY_COMPILE_DATE : 
+
+            (*value) = __DATE__ ;
+            break ;
+
+        case GxB_LIBRARY_COMPILE_TIME : 
+
+            (*value) = __TIME__ ;
+            break ;
+
+        case GxB_LIBRARY_URL : 
+
+            (*value) = "http://faculty.cse.tamu.edu/davis/GraphBLAS" ;
+            break ;
+
+        case GxB_API_DATE : 
+
+            (*value) = GxB_SPEC_DATE ;
+            break ;
+
+        case GxB_API_ABOUT : 
+
+            (*value) = GxB_SPEC_ABOUT ;
+            break ;
+
+        case GxB_API_URL : 
+
+            (*value) = "http://graphblas.org" ;
+            break ;
+
+        case GxB_COMPILER_NAME : 
+
+            (*value) = GB_COMPILER_NAME ;
+            break ;
+
+        default :
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    #pragma omp flush
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_get_FUNCTION: get global options (function pointers)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Global_Option_get_FUNCTION // gets the current global option
+(
+    GxB_Option_Field field,         // option to query
+    void **value                    // return value of the global option
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Global_Option_get_FUNCTION (field, &value)") ;
+    GB_RETURN_IF_NULL (value) ;
+
+    //--------------------------------------------------------------------------
+    // get the option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_PRINTF : 
+
+            (*value) = (void *) GB_Global_printf_get ( ) ;
+            break ;
+
+        case GxB_FLUSH : 
+
+            (*value) = (void *) GB_Global_flush_get ( ) ;
+            break ;
+
+        default :
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    #pragma omp flush
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_get: based on va_arg
+//------------------------------------------------------------------------------
 
 GrB_Info GxB_Global_Option_get      // gets the current global option
 (
@@ -216,6 +557,21 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
                 va_end (ap) ;
                 GB_RETURN_IF_NULL (compile_time) ;
                 (*compile_time) = __TIME__ ;
+            }
+            break ;
+
+        case GxB_LIBRARY_OPENMP : 
+
+            {
+                va_start (ap, field) ;
+                bool *have_openmp = va_arg (ap, bool *) ;
+                va_end (ap) ;
+                GB_RETURN_IF_NULL (have_openmp) ;
+                #ifdef _OPENMP
+                (*have_openmp) = true ;
+                #else
+                (*have_openmp) = false ;
+                #endif
             }
             break ;
 

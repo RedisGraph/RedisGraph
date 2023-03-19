@@ -18,10 +18,9 @@
 
 default: library
 
-# This version info must match ../CMakeLists.txt 
 VER1 = 7
-VER2 = 3
-VER3 = 0
+VER2 = 4
+VER3 = 3
 
 # pick your compiler:
   CC = gcc
@@ -142,7 +141,7 @@ DOBJ = $(DSRC2:.c=.o)
 DEMO_PRG = $(notdir $(wildcard ../Demo/Program/*_demo.c))
 DEMO = $(DEMO_PRG:.c=)
 
-demo: $(DEMO)
+demos: $(DEMO)
 	./altdemo
 
 clean:

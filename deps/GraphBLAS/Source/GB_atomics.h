@@ -380,19 +380,17 @@
 // Type punning is used to extend these signed integer types to unsigned
 // integers of the same number of bytes, and to float and double.
 
+//------------------------------------------------------------------------------
+// GB_PUN: type punning
+//------------------------------------------------------------------------------
+
+// With type punning, a value is treated as a different type, but with no
+// typecasting.  The address of the variable is first typecasted to a (type *)
+// pointer, and then the pointer is dereferenced.
+
+#define GB_PUN(type,value) (*((type *) (&(value))))
+
 #if GB_COMPILER_MSC
-
-    //--------------------------------------------------------------------------
-    // GB_PUN: type punning
-    //--------------------------------------------------------------------------
-
-    // With type punning, a value is treated as a different type, but with no
-    // typecasting.  The address of the variable is first typecasted to a (type
-    // *) pointer, and then the pointer is dereferenced.  Type punning is only
-    // needed to extend the atomic compare/exchange functions for Microsoft
-    // Visual Studio.
-
-    #define GB_PUN(type,value) (*((type *) (&(value))))
 
     //--------------------------------------------------------------------------
     // compare/exchange for MS Visual Studio
@@ -436,10 +434,19 @@
     // compare/exchange for gcc, icc, and clang on x86 and Power8/9
     //--------------------------------------------------------------------------
 
+    #include <stdatomic.h>
+
+#if 0
+
     // the compare/exchange function is generic for any type
     #define GB_ATOMIC_COMPARE_EXCHANGE_X(target, expected, desired)     \
-        __atomic_compare_exchange (target, &expected, &desired,         \
-            true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)                   \
+        atomic_compare_exchange_weak (target, &expected, desired)
+
+    // the compare/exchange function is generic for any type
+//  #define GB_ATOMIC_COMPARE_EXCHANGE_X(target, expected, desired)     \
+//      __atomic_compare_exchange (target, &expected, &desired,         \
+//          true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)                   \
+
 
     // bool, int8_t, and uint8_t
     #define GB_ATOMIC_COMPARE_EXCHANGE_8(target, expected, desired)     \
@@ -457,8 +464,33 @@
     #define GB_ATOMIC_COMPARE_EXCHANGE_64(target, expected, desired)    \
             GB_ATOMIC_COMPARE_EXCHANGE_X (target, expected, desired)
 
+#else
+
+    // bool, int8_t, and uint8_t
+    #define GB_ATOMIC_COMPARE_EXCHANGE_8(target, expected, desired)     \
+        atomic_compare_exchange_weak                                    \
+            ((volatile _Atomic uint8_t  *) (target),                    \
+            (uint8_t  *) (&(expected)), GB_PUN (uint8_t , desired)) 
+
+    // int16_t and uint16_t
+    #define GB_ATOMIC_COMPARE_EXCHANGE_16(target, expected, desired)    \
+        atomic_compare_exchange_weak                                    \
+            ((volatile _Atomic uint16_t *) (target),                    \
+            (uint16_t *) (&(expected)), GB_PUN (uint16_t, desired)) 
+
+    // float, int32_t, and uint32_t
+    #define GB_ATOMIC_COMPARE_EXCHANGE_32(target, expected, desired)    \
+        atomic_compare_exchange_weak                                    \
+            ((volatile _Atomic uint32_t *) (target),                    \
+            (uint32_t *) (&(expected)), GB_PUN (uint32_t, desired)) 
+
+    // double, int64_t, and uint64_t
+    #define GB_ATOMIC_COMPARE_EXCHANGE_64(target, expected, desired)    \
+        atomic_compare_exchange_weak                                    \
+            ((volatile _Atomic uint64_t *) (target),                    \
+            (uint64_t *) (&(expected)), GB_PUN (uint64_t, desired)) 
 
 #endif
-
+#endif
 #endif
 

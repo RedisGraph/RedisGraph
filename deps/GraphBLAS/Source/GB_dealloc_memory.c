@@ -15,7 +15,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 void GB_dealloc_memory      // free memory, return to free_pool or free it
 (
     // input/output
@@ -27,6 +26,8 @@ void GB_dealloc_memory      // free memory, return to free_pool or free it
 
     if (p != NULL && (*p) != NULL)
     {
+
+#if 0
         bool returned_to_free_pool = false ;
 
         if (GB_IS_POWER_OF_TWO (size_allocated))
@@ -61,6 +62,22 @@ void GB_dealloc_memory      // free memory, return to free_pool or free it
         #endif
 
         (*p) = NULL ;
+#else
+
+//      GB_free_memory (p, size_allocated) ;
+
+        ASSERT (size_allocated == GB_Global_memtable_size (*p)) ;
+        #ifdef GB_MEMDUMP
+        printf ("\nhard free %p %ld\n", *p, size_allocated) ;
+        #endif
+        GB_Global_free_function (*p) ;
+        #ifdef GB_MEMDUMP
+        GB_Global_free_pool_dump (2) ; GB_Global_memtable_dump ( ) ;
+        #endif
+        (*p) = NULL ;
+
+#endif
+
     }
 }
 

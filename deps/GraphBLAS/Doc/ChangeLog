@@ -1,4 +1,63 @@
-Version 7.3.0, Oct 11, 2022
+Version 7.4.3, Jan 20, 2023
+
+    * debug: turned on in GrB_Matrix_removeElement by mistake.
+
+Version 7.4.2, Jan 17, 2023
+
+    * minor change to build system: for SuiteSparse v7.0.0
+    * deprecation notice:  in GraphBLAS v8.0.0, the ability to set the
+        # of threads, and chunk size, in the descriptor will be removed.
+        It still appears in v7.x, but will be replaced by a Context object
+        in v8.0.0.
+
+Version 7.4.1, Jan 9, 2023
+
+    * global free pool: disabled.  Benefit for single-thread user applications
+        was modest, and it causes too much contention in a critical section
+        when the user application is multi-threaded.
+    * GrB_mxm: revised task creation heuristics for sparse-times-sparse for
+        better performance.  "chunk" and "very_costly" had been tuned in v7.3.x
+        for sparse-times-dense but this slowed down sparse-times-sparse.  The
+        new heuristic keeps the chunk & very_costly parameters for
+        sparse-times-dense but restores the prior values for
+        sparse-times-sparse from v7.2.0 (Aug 8, 2022).  See
+        Source/GB_AxB_saxpy3_slice_balanced.c.
+
+Version 7.4.0, Dec 23, 2022
+
+    * added non-va_arg methods: va_arg-based GxB_get/set methods are ANSI C11
+        but cause issues for cffi in Python.  As a temporary workaround, new
+        methods have been added that do not use va_arg.  The existing
+        GxB_get/set methods are not changed.  The new methods are not in the
+        user guide, since all of the GxB_get/set methods will be superceded
+        with GrB_get/set in the v2.1 C API.  At that point, all GxB_get/set
+        methods will become historical (kept, not deprecated, but removed from
+        the user guide).
+
+Version 7.3.3, Dec 9, 2022
+
+    * minor change to build system
+    * stdatomic.h: using #include <stdatomic.h> and atomic_compare_exchange_weak
+        instead of GCC/clang/icx __atomic_* variants.
+        Added -latomic if required.
+    * chunk factor for C=A*B (saxpy3 method): revised for non-builtin-semirings
+
+Version 7.3.2, Nov 12, 2022
+
+    * cmake_modules: minor revision to build system, to sync 
+        with SuiteSparse v6.0.0
+    * Added option -DNOPENMP=1 to disable OpenMP parallelism
+
+Version 7.3.1, Oct 21, 2022
+
+    * workaround for Microsoft Visual Studio bug :  MSC 19.2x (in vs2019)
+        encounters a compiler bug when compiling the FIRST_FC32 and SECOND_FC32
+        binary operators.  This version adds a flag that disables those
+        methods.  The operators still work, they are just handled by the
+        slower generic methods. Thanks to Erik Welch, H. Vetinari, and others
+        in the conda-forge community for tracking this down.
+
+Version 7.3.0, Oct 14, 2022
 
     * GrB_Matrix: changes to the internal data structure
         * minor internal changes: A->nvals for sparse/hypersparse

@@ -16,7 +16,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 GrB_Info GB_bix_alloc       // allocate A->b, A->i, and A->x space in a matrix
 (
     GrB_Matrix A,           // matrix to allocate space for

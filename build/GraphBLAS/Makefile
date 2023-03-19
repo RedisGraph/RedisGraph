@@ -34,7 +34,7 @@ TARGET=$(BINDIR)/libgraphblas.a
 include $(MK)/defs
 
 define CMAKE_DEFS +=
-	BUILD_GRB_STATIC_LIBRARY=1
+	NSTATIC=0
 	BUILD_TESTING=off
 	CMAKE_POSITION_INDEPENDENT_CODE=on
 endef

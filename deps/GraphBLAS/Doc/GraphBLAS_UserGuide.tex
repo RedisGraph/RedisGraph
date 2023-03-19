@@ -2017,7 +2017,7 @@ provided by Microsoft Visual Studio for computing $\sin^{-1}(x)$ and
 $\sinh^{-1}(x)$ when $x$ is complex do not compute the correct result.  Thus,
 the unary operators \verb'GxB_ASIN_FC32', \verb'GxB_ASIN_FC64'
 \verb'GxB_ASINH_FC32', and \verb'GxB_ASINH_FC64' do not work properly if the MS
-Visual Studio compiler is used.  These functions work properly if the gcc, icc,
+Visual Studio compiler is used.  These functions work properly if the gcc, icx, icc,
 or clang compilers are used on Linux or MacOS.
 
 Integer division by zero normally terminates an application, but this is
@@ -3717,8 +3717,9 @@ With a \verb'mode' of \verb'GrB_MATERIALIZE',
 all pending computations are finished, and different user threads may
 simultaneously call GraphBLAS operations that use the scalar \verb's' as an
 input parameter.
+See Section~\ref{omp_parallelism}
+if GraphBLAS is compiled without OpenMP.
 
-\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Scalar\_dup:} copy a scalar}
 %-------------------------------------------------------------------------------
@@ -4030,6 +4031,8 @@ With a \verb'mode' of \verb'GrB_MATERIALIZE',
 all pending computations are finished, and different user threads may
 simultaneously call GraphBLAS operations that use the vector \verb'w' as an
 input parameter.
+See Section~\ref{omp_parallelism}
+if GraphBLAS is compiled without OpenMP.
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -4623,8 +4626,11 @@ With a \verb'mode' of \verb'GrB_MATERIALIZE',
 all pending computations are finished, and different user threads may
 simultaneously call GraphBLAS operations that use the matrix \verb'C' as an
 input parameter.
+See Section~\ref{omp_parallelism}
+if GraphBLAS is compiled without OpenMP.
 
 %-------------------------------------------------------------------------------
+\newpage
 \subsubsection{{\sf GrB\_Matrix\_dup:}          copy a matrix}
 %-------------------------------------------------------------------------------
 \label{matrix_dup}
@@ -4663,7 +4669,6 @@ Then \verb'C' and \verb'A' are two different matrices that currently have the
 same set of values, but they do not depend on each other.  Modifying one has
 no effect on the other.
 
-\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Matrix\_clear:}        clear a matrix of all entries}
 %-------------------------------------------------------------------------------
@@ -4685,7 +4690,7 @@ empty, just as if it were created fresh with \verb'GrB_Matrix_new'.  Analogous
 with \verb'A (:,:) = 0' in MATLAB.  The type and dimensions of \verb'A' do not
 change.  Any pending updates to the matrix are discarded.
 
-% \newpage
+\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Matrix\_nrows:}        return the number of rows of a matrix}
 %-------------------------------------------------------------------------------
@@ -4869,7 +4874,7 @@ do.  In particular, the MATLAB \verb'sparse' function only provides one option
 for assembling duplicates (summation), and it can only build double, double
 complex, and logical sparse matrices.
 
-\newpage
+% \newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GxB\_Matrix\_build\_Scalar:} build a matrix from a set of tuples}
 %-------------------------------------------------------------------------------
@@ -4898,6 +4903,7 @@ returned by \verb'GrB_Vector_nvals' after the matrix is constructed).  All
 entries in the sparsity pattern of \verb'C' are identical, and equal to the
 input scalar value.
 
+\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Matrix\_setElement:}   add an entry to a matrix}
 %-------------------------------------------------------------------------------
@@ -5157,7 +5163,7 @@ GrB_Info GxB_Matrix_reshape     // reshape a GrB_Matrix in place
     bool by_col,                // true if reshape by column, false if by row
     GrB_Index nrows_new,        // new number of rows of C
     GrB_Index ncols_new,        // new number of columns of C
-    const GrB_Descriptor desc   // to control # of threads used
+    const GrB_Descriptor desc
 ) ;
 \end{verbatim} } \end{mdframed}
 
@@ -5211,7 +5217,7 @@ GrB_Info GxB_Matrix_reshapeDup // reshape a GrB_Matrix into another GrB_Matrix
     bool by_col,                // true if reshape by column, false if by row
     GrB_Index nrows_new,        // number of rows of C
     GrB_Index ncols_new,        // number of columns of C
-    const GrB_Descriptor desc   // to control # of threads used
+    const GrB_Descriptor desc
 ) ;
 \end{verbatim} } \end{mdframed}
 
@@ -5595,7 +5601,6 @@ GrB_Info GxB_Vector_serialize       // serialize a GrB_Vector to a blob
     // input:
     GrB_Vector u,                   // vector to serialize
     const GrB_Descriptor desc       // descriptor to select compression method
-                                    // and to control # of threads used
 ) ;
 \end{verbatim}
 } \end{mdframed}
@@ -5650,7 +5655,7 @@ GrB_Info GxB_Vector_deserialize     // deserialize blob into a GrB_Vector
     GrB_Type type,      // type of the vector w.  See GxB_Matrix_deserialize.
     const void *blob,       // the blob
     GrB_Index blob_size,    // size of the blob
-    const GrB_Descriptor desc       // to control # of threads used
+    const GrB_Descriptor desc
 ) ;
 \end{verbatim}
 } \end{mdframed}
@@ -5742,7 +5747,6 @@ GrB_Info GxB_Matrix_serialize       // serialize a GrB_Matrix to a blob
     // input:
     GrB_Matrix A,                   // matrix to serialize
     const GrB_Descriptor desc       // descriptor to select compression method
-                                    // and to control # of threads used
 ) ;
 \end{verbatim}
 } \end{mdframed}
@@ -5811,7 +5815,7 @@ GrB_Info GxB_Matrix_deserialize     // deserialize blob into a GrB_Matrix
                         // type of C.
     const void *blob,       // the blob
     GrB_Index blob_size,    // size of the blob
-    const GrB_Descriptor desc       // to control # of threads used
+    const GrB_Descriptor desc
 ) ;
 \end{verbatim}
 } \end{mdframed}
@@ -7592,7 +7596,7 @@ by two \verb'enum' types, \verb'GrB_Desc_Field' and \verb'GrB_Desc_Value':
 \begin{mdframed}[userdefinedwidth=6in]
 {\footnotesize
 \begin{verbatim}
-#define GxB_NTHREADS 5  // for both GrB_Desc_field and GxB_Option_field
+#define GxB_NTHREADS 5  // for GxB_Option_field
 #define GxB_CHUNK 7
 typedef enum
 {
@@ -7600,8 +7604,6 @@ typedef enum
     GrB_MASK = 1,   // descriptor for the mask input of a method
     GrB_INP0 = 2,   // descriptor for the first input of a method
     GrB_INP1 = 3,   // descriptor for the second input of a method
-    GxB_DESCRIPTOR_NTHREADS = GxB_NTHREADS,   // number of threads to use
-    GxB_DESCRIPTOR_CHUNK = GxB_CHUNK,   // chunk size for small problems
     GxB_AxB_METHOD = 1000, // descriptor for selecting C=A*B algorithm
     GxB_SORT = 35   // control sort in GrB_mxm
     GxB_COMPRESSION = 36,   // select compression for serialize
@@ -7769,17 +7771,12 @@ GrB_Desc_Value ;
 
     \end{itemize}
 
-\item \verb'GxB_NTHREADS' controls how many threads a method uses.
-    By default (if set to zero, or \verb'GxB_DEFAULT'), all available threads
-    are used.  The maximum available threads is controlled by the global
-    setting, which is \verb'omp_get_max_threads ( )' by default.  If set to
-    some positive integer \verb'nthreads' less than this maximum, at most
-    \verb'nthreads' threads will be used.  See Section~\ref{omp_parallelism}
-    for details.
+\item \verb'GxB_NTHREADS' controls how many threads a method uses, via
+    the descriptor, but is deprecated.
+    It will be removed from the descriptor entirely in v8.0.0.
 
-\item \verb'GxB_CHUNK' is a \verb'double' value that controls how many threads
-    a method uses for small problems.  See Section~\ref{omp_parallelism} for
-    details.
+\item \verb'GxB_CHUNK' is deprecated as used in the descriptor.
+    It will be removed from the descriptor entirely in v8.0.0.
 
 \item \verb'GxB_SORT' provides a hint to \verb'GrB_mxm', \verb'GrB_mxv',
     \verb'GrB_vxm', and \verb'GrB_reduce' (to vector).  These methods can leave
@@ -7888,7 +7885,7 @@ GrB_Info GrB_Descriptor_set     // set a parameter in a descriptor
 \verb'GrB_Descriptor_set' sets a descriptor field (\verb'GrB_OUTP',
 \verb'GrB_MASK', \verb'GrB_INP0', \verb'GrB_INP1', or \verb'GxB_AxB_METHOD') to
 a particular value.  Use \verb'GxB_Dec_set' to set the value of
-\verb'GxB_NTHREADS', \verb'GxB_CHUNK', and \verb'GxB_SORT'.
+\verb'GxB_SORT'.
 If an error occurs, \verb'GrB_error(&err,desc)' returns details about the error.
 
 \vspace{0.2in}
@@ -8039,16 +8036,6 @@ Built-in descriptors are listed in the table below.  A dash in the table
 indicates the default.  These descriptors may not be modified or freed.
 Attempts to modify them result in an error (\verb'GrB_INVALID_VALUE'); attempts
 to free them are silently ignored. 
-
-% \verb'GrB_NULL' is the default descriptor, with all settings at their defaults:
-% \verb'OUTP': do not replace the output,
-% \verb'MASK': mask is valued and not complemented,
-% \verb'INP0': first input not transposed, and
-% \verb'INP1': second input not transposed.
-% For these pre-defined descriptors, the
-% \verb'GxB_NTHREADS',
-% \verb'GxB_CHUNK', and
-% \verb'GxB_SORT' settings are at their default values.
 
 \vspace{0.2in}
 \noindent
@@ -8388,10 +8375,6 @@ field                       & value         & description \\
 \verb'GrB_MASK'     & \verb'GrB_Desc_Value' & mask option \\
 \verb'GrB_INP0'     & \verb'GrB_Desc_Value' & transpose input 0 \\
 \verb'GrB_INP1'     & \verb'GrB_Desc_Value' & transpose input 1 \\
-\verb'GxB_DESCRIPTOR_NTHREADS'  & \verb'int' & number of threads to use \\
-\verb'GxB_NTHREADS'             & \verb'int' & number of threads to use \\
-\verb'GxB_DESCRIPTOR_CHUNK'     & \verb'double' & chunk size \\
-\verb'GxB_CHUNK'                & \verb'double' & chunk size \\
 \verb'GxB_AxB_METHOD'           & \verb'int' & method for matrix multiply \\
 \verb'GxB_SORT'                 & \verb'int' & lazy vs aggressive sort \\
 \verb'GxB_COMPRESSION'          & \verb'int' & compression for serialization \\
@@ -8433,6 +8416,7 @@ field                       & value         & description \\
 \verb'GxB_LIBRARY_LICENSE'      & \verb'char *' & license \\
 \verb'GxB_LIBRARY_COMPILE_DATE' & \verb'char *' & date of compilation \\
 \verb'GxB_LIBRARY_COMPILE_TIME' & \verb'char *' & time of compilation \\
+\verb'GxB_LIBRARY_OPENMP'       & \verb'bool'   & true if compiled with OpenMP\\
 \verb'GxB_LIBRARY_URL'          & \verb'char *' & url of library \\
 \verb'GxB_API_VERSION'          & \verb'int [3]' & C API version \\
 \verb'GxB_API_DATE'             & \verb'char *' & C API date \\
@@ -8488,10 +8472,6 @@ field                       & value         & description \\
 \verb'GrB_MASK'     & \verb'GrB_Desc_Value' & mask option \\
 \verb'GrB_INP0'     & \verb'GrB_Desc_Value' & transpose input 0 \\
 \verb'GrB_INP1'     & \verb'GrB_Desc_Value' & transpose input 1 \\
-\verb'GxB_DESCRIPTOR_NTHREADS'  & \verb'int' & number of threads to use \\
-\verb'GxB_NTHREADS'             & \verb'int' & number of threads to use \\
-\verb'GxB_DESCRIPTOR_CHUNK'     & \verb'double' & chunk size \\
-\verb'GxB_CHUNK'                & \verb'double' & chunk size \\
 \verb'GxB_AxB_METHOD'           & \verb'int' & method for matrix multiply \\
 \verb'GxB_SORT'                 & \verb'int' & lazy vs aggressive sort \\
 \verb'GxB_COMPRESSION'          & \verb'int' & compression for serialization \\
@@ -8537,19 +8517,9 @@ GraphBLAS operations will use these settings.  Note the typecast,
     GxB_set (GxB_NTHREADS, nthreads_max) ;
     GxB_set (GxB_CHUNK, (double) 20000) ; \end{verbatim} }
 
-\item Per operation:  Most GraphBLAS operations take a \verb'GrB_Descriptor'
-input, and this can be modified to set the number of threads and chunk
-size for the operation that uses this descriptor.  Note that \verb'chunk'
-is a \verb'double'.
-
-    {\footnotesize
-    \begin{verbatim}
-    GrB_Descriptor desc ;
-    GrB_Descriptor_new (&desc)
-    int nthreads_max = 40 ;
-    GxB_set (desc, GxB_NTHREADS, nthreads_max) ;
-    double chunk = 20000 ;
-    GxB_set (desc, GxB_CHUNK, chunk) ; \end{verbatim} }
+\item Per operation:   Setting the number of threads and the chunk 
+size in the descriptor is deprecated.
+It will be removed entirely in v8.0.0 from the descriptor.
 
 \end{itemize}
 
@@ -8561,15 +8531,29 @@ If either parameter is set to \verb'GxB_DEFAULT', then default values are used.
 The default for \verb'nthreads_max' is the return value from
 \verb'omp_get_max_threads', and the default chunk size is currently 65,536.
 
-If a descriptor value for either parameter is left at its default, or set to
-\verb'GxB_DEFAULT', then the global setting is used.  This global setting may
-have been modified from its default, and this modified value will be used.
-
 For example, suppose \verb'omp_get_max_threads' reports 8 threads.  If \newline
 \verb'GxB_set (GxB_NTHREADS, 4)' is used, then the global setting is four
-threads, not eight.  If a descriptor is used but its \verb'GxB_NTHREADS' is not
-set, or set to \verb'GxB_DEFAULT', then any operation that uses this descriptor
-will use 4 threads.
+threads, not eight.
+
+GraphBLAS may be compiled without OpenMP, by setting \verb'-DNOPENMP=1'.
+The library will be thread-safe, with one exception.  \verb'GrB_wait' is
+intended to provide thread-safety by flushing the cache of one user thread
+so the object can be safely read by another thread.  This is accomplished
+with \verb'pragma omp flush', but if OpenMP is not available, this does
+nothing.  If OpenMP is not available or \verb'-DNOPEMP=1' is used, then
+user applications need to ensure their own thread safety when one user thread
+computes a result that is then read by another thread.
+
+You can query GraphBLAS at run time to ask if it was compiled with OpenMP:
+
+\begin{verbatim}
+    bool have_openmp ;
+    GxB_get (GxB_LIBRARY_OPENMP, &have_openmp) ;
+    if (!have_openmp) printf ("GraphBLAS not compiled with OpenMP\n") :
+\end{verbatim}
+
+Compiling GraphBLAS without OpenMP is not recommended for installation in a
+package manager (Linux, conda-forge, spack, brew, vcpkg, etc).
 
 %-------------------------------------------------------------------------------
 \subsection{Storing a matrix by row or by column}
@@ -8816,6 +8800,7 @@ typedef enum
     GxB_LIBRARY_LICENSE = 13,       // license of the library (char *)
     GxB_LIBRARY_COMPILE_DATE = 14,  // date library was compiled (char *)
     GxB_LIBRARY_COMPILE_TIME = 15,  // time library was compiled (char *)
+    GxB_LIBRARY_OPENMP = 25,        // library compiled with OpenMP
     GxB_API_VERSION = 16,           // API version (3 int's)
     GxB_API_DATE = 17,              // date of the API (char *)
     GxB_API_ABOUT = 18,             // about the API (char *)
@@ -9117,8 +9102,8 @@ GrB_Info GxB_set                // set a parameter in a descriptor
 
 This usage is similar to \verb'GrB_Descriptor_set', just with a name that is
 consistent with the other usages of this generic function.  Unlike
-\verb'GrB_Descriptor_set', the \verb'field' may also be \verb'GxB_NTHREADS',
-\verb'GxB_CHUNK', \verb'GxB_SORT', \verb'GxB_COMPRESSION', or
+\verb'GrB_Descriptor_set', the \verb'field' may also be
+\verb'GxB_SORT', \verb'GxB_COMPRESSION', or
 \verb'GxB_IMPORT'.  Refer to Sections~\ref{descriptor_set}~and~\ref{desc_set}
 for details.  If an error occurs, \verb'GrB_error(&err,desc)' returns details
 about the error.
@@ -9166,6 +9151,7 @@ This usage of \verb'GxB_get' retrieves the value of a global option.  The
         \verb'GxB_LIBRARY_LICENSE'      & license for the library \\
         \verb'GxB_LIBRARY_COMPILE_DATE' & date of compilation \\
         \verb'GxB_LIBRARY_COMPILE_TIME' & time of compilation \\
+        \verb'GxB_LIBRARY_OPENMP'       & library compiled with OpenMP\\
         \verb'GxB_LIBRARY_URL'          & URL of the library \\
         \hline
         \verb'GxB_API_VERSION'  & GraphBLAS C API Specification Version \\
@@ -9304,8 +9290,6 @@ GrB_Info GxB_get                // get a parameter from a descriptor
 This usage is the same as \verb'GxB_Desc_get'.  The \verb'field' parameter can
 be \verb'GrB_OUTP', \verb'GrB_MASK', \verb'GrB_INP0', \verb'GrB_INP1',
 \verb'GxB_AxB_METHOD',
-\verb'GxB_NTHREADS',
-\verb'GxB_CHUNK',
 \verb'GxB_SORT',
 \verb'GxB_COMPRESSION', or
 \verb'GxB_IMPORT'.
@@ -9363,6 +9347,7 @@ To get global options that can be queried but not modified:
     GxB_get (GxB_LIBRARY_LICENSE,      char **) ;
     GxB_get (GxB_LIBRARY_COMPILE_DATE, char **) ;
     GxB_get (GxB_LIBRARY_COMPILE_TIME, char **) ;
+    GxB_get (GxB_LIBRARY_OPENMP,       bool *) ;
     GxB_get (GxB_LIBRARY_URL,          char **) ;
     GxB_get (GxB_API_VERSION,          int *) ;
     GxB_get (GxB_API_DATE,             char **) ;
@@ -9428,10 +9413,6 @@ To set/get a descriptor field:
     GxB_set (GrB_Descriptor d, GxB_AxB_METHOD, GxB_AxB_SAXPY) ;
     GxB_set (GrB_Descriptor d, GxB_AxB_METHOD, GxB_AxB_DOT) ;
     GxB_get (GrB_Descriptor d, GrB_AxB_METHOD, GrB_Desc_Value *v) ;
-    GxB_set (GrB_Descriptor d, GxB_NTHREADS, int nthreads) ;
-    GxB_get (GrB_Descriptor d, GxB_NTHREADS, int *nthreads) ;
-    GxB_set (GrB_Descriptor d, GxB_CHUNK, double chunk) ;
-    GxB_get (GrB_Descriptor d, GxB_CHUNK, double *chunk) ;
     GxB_set (GrB_Descriptor d, GxB_SORT, sort) ;
     GxB_get (GrB_Descriptor d, GxB_SORT, int *sort) ;
     GxB_set (GrB_Descriptor d, GxB_COMPRESSION, GxB_FAST_IMPORT) ;
@@ -14791,7 +14772,10 @@ thread.
 
 GraphBLAS can also be combined with user applications that rely on MPI, the
 Intel TBB threading library, POSIX pthreads, Microsoft Windows threads, or any
-other threading library.  In all cases, GraphBLAS will be thread safe.
+other threading library.  If GraphBLAS itself is compiled with OpenMP,
+it will be thread safe when combined with other libraries.
+See Section~\ref{omp_parallelism} for thread-safety issues that can occur
+if GraphBLAS is compiled without OpenMP.
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -14840,7 +14824,7 @@ To use a non-default compiler with 4 threads:
 
     {\small
     \begin{verbatim}
-    make CC=icx CXX=icpx JOBS=4 \end{verbatim} }
+    make CC=icx JOBS=4 \end{verbatim} }
 
 GraphBLAS v6.1.3 and later use the \verb'cpu_features' package by Google to
 determine if the target architecture supports AVX2 and/or AVX512F (on Intel
@@ -14869,7 +14853,7 @@ AVX2 but not AVX512F, and use 40 threads to compile:
     make CMAKE_OPTIONS='-DGBNCPUFEAT=1 -DGBAVX2=1' JOBS=40 \end{verbatim} }
 
 After compiling the library, you can compile the demos with
-\verb'make all' and then \verb'make demo' while in the top-level
+\verb'make all' and then \verb'make demos' while in the top-level
 GraphBLAS folder.
 
 If \verb'cmake' or \verb'make' fail, it might be that your default compiler
@@ -14902,7 +14886,7 @@ to use 32 parallel jobs and the \verb'gcc' compiler, do the following:
 If you do not have \verb'cmake', refer to Section~\ref{altmake}.
 
 %----------------------------------------
-\subsection{More details on the Mac}
+\subsection{More details on the Mac (Intel-based)}
 %----------------------------------------
 
 SuiteSparse:GraphBLAS requires OpenMP for its internal parallelism, but
@@ -14913,7 +14897,7 @@ in the top-level \verb'GraphBLAS' folder.  OpenMP will be found automatically:
 
     {\small
     \begin{verbatim}
-    make CC=icc CXX=icpc \end{verbatim} }
+    make CC=icx \end{verbatim} }
 
 The following instructions work on MacOS Big Sur (v11.3)
 and MacOS Monterey (12.1), using
@@ -14988,6 +14972,53 @@ Finally, you can run the tests to see if your installation works:
     gbtest \end{verbatim} }
 
 %----------------------------------------
+\subsection{More details for MATLAB on the Mac (Apple Silicon based)}
+%----------------------------------------
+
+MATLAB on the Apple-Silicon-based Mac (M1, M2) is not yet a native ARM64
+application (as of R2022b).
+
+For MATLAB on the M1 Mac, you must compile the x86 version of
+\verb'libgraphblas_matlab.so'.  This requires the x86 version of \verb'brew'.
+First, install it in \verb'/usr/local/bin/brew' with these 2 commands (the 2nd
+as a single line).
+
+\begin{verbatim}
+arch -x86_64 zsh
+arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com
+    /Homebrew/install/master/install.sh)"
+\end{verbatim}
+
+If you install the default arm64 \verb'brew', it is located in
+\verb'/opt/homebrew/bin/brew'.  I created these two aliases in my \verb'.zshrc'
+file:
+
+\begin{verbatim}
+alias brew_arm='arch -arm64 /opt/homebrew/bin/brew'
+alias brew_x86='arch -x86_64 /usr/local/bin/brew'
+\end{verbatim}
+
+Next, use \verb'brew_86' to install \verb'gcc-12' and \verb'libomp'.
+
+\begin{verbatim}
+brew_x86 install gcc
+brew_x86 install libomp
+\end{verbatim}
+
+In the \verb'GraphBLAS/GraphBLAS' folder, do the following to compile
+\verb'libgraphblas_matlab.so':
+
+\begin{verbatim}
+make CC=/usr/local/bin/gcc-12 CXX=/usr/local/bin/g++-12 JOBS=8
+sudo make install
+\end{verbatim}
+
+Ignore the \verb'"-arch option ignored"' warnings.
+
+You can now start MATLAB and install the MATLAB interface with
+\verb'gbmake' as described in the previous section.
+
+%----------------------------------------
 \subsection{On the ARM64 architecture}
 %----------------------------------------
 
@@ -15024,17 +15055,20 @@ types are limited to 128 bytes in size.  This can be changed by editing
 SuiteSparse:GraphBLAS.
 
 \item AVX acceleration is not enabled.
+
+\item The ninja code generator does not work with MS Visual Studio to
+build GraphBLAS, because of a limitation in cmake.
 \end{itemize}
 
 If you use a recent \verb'gcc' or \verb'icx' compiler on Windows other than the
 Microsoft Compiler (\verb'cl'), these limitations can be avoided.
 
-The following instructions apply to Windows 10, CMake 3.16, and
+The following instructions apply to Windows 10, CMake 3.19, and
 Visual Studio 2019, but may work for earlier versions.
 
 \begin{enumerate}
 
-\item Install CMake 3.16 or later, if not already installed.
+\item Install CMake 3.19 or later, if not already installed.
     See \url{https://cmake.org/} for details.
 
 \item Install Microsoft Visual Studio, if not already installed.
@@ -15454,6 +15488,72 @@ GraphBLAS folder.
 %-------------------------------------------------------------------------------
 
 \begin{itemize}
+
+\item Version 7.4.3, Jan 20, 2023
+
+    \begin{itemize}
+    \item debug: turned on in \verb'GrB_Matrix_removeElement' by mistake.
+    \end{itemize}
+
+\item Version 7.4.2 (Jan 17, 2023)
+
+    \begin{itemize}
+    \item minor change to build system: for SuiteSparse v7.0.0.
+    \item deprecation notice:  in GraphBLAS v8.0.0, the ability to set the
+        number of threads, and chunk size, in the descriptor will be removed.
+        It still appears in v7.x, but will be replaced by a Context object
+        in v8.0.0.
+    \end{itemize}
+
+\item Version 7.4.1 (Dec 29, 2022)
+
+    \begin{itemize}
+    \item global free pool: disabled.  Benefit for single-thread user
+        applications was modest, and it causes too much contention in a
+        critical section when the user application is multi-threaded.
+    \item \verb'GrB_mxm': revised task creation heuristics for
+        sparse-times-sparse for better performance.
+    \end{itemize}
+
+\item Version 7.4.0 (Dec 23, 2022)
+
+    \begin{itemize}
+    \item add non-\verb'va_arg' methods: \verb'va_arg'-based \verb'GxB_get/set'
+        methods are ANSI C11 but cause issues for cffi in Python.  As a
+        temporary workaround, new methods have been added that do not use
+        \verb'va_arg'.  The existing \verb'GxB_get/set' methods are not
+        changed.  The new methods are not in the user guide, since all of the
+        \verb'GxB_get/set' methods will be superceded with \verb'GrB_get/set'
+        in the v2.1 C API.  At that point, all \verb'GxB_get/set' methods will
+        become historical (kept, not deprecated, but removed from the user
+        guide).
+    \end{itemize}
+
+\item Version 7.3.3 (Dec 9, 2022)
+
+    \begin{itemize}
+    \item \verb'stdatomic.h': using \verb'#include <stdatomic.h>' and
+        \verb'atomic_compare_exchange_weak'
+        instead of GCC/clang/icx \verb'__atomic_*' variants.
+        Added \verb'-latomic' if required.
+    \item chunk factor for C=A*B (saxpy3 method):
+        revised for non-builtin-semirings
+    \end{itemize}
+
+\item Version 7.3.2 (Nov 12, 2022)
+
+    \begin{packed_itemize}
+    \item \verb'cmake_modules': minor revision to build system, to sync 
+        with SuiteSparse v6.0.0
+    \item Added option \verb'-DNOPENMP=1' to disable OpenMP parallelism.
+    \end{packed_itemize}
+
+\item Version 7.3.1 (Oct 21, 2022)
+
+    \begin{packed_itemize}
+    \item workaround for a bug in the Microsoft Visual Studio Compiler,
+        MSC 19.2x (in vs2019).
+    \end{packed_itemize}
 
 \item Version 7.3.0 (Oct 14, 2022)
 
@@ -16121,6 +16221,9 @@ collaboration and for the support of Intel.
 I would like to thank Joe Eaton and Corey Nolet for their collaboration on the
 CUDA kernels (still in progress), and for the support of NVIDIA.
 
+I would like to thank Pat Quillen for his
+collaboration and for the support of MathWorks.
+
 I would like to thank John Eaton for his collaboration on the integration
 with Octave 7.
 
@@ -16143,6 +16246,10 @@ in Debian Linux.
 I would like to thank G{\'{a}}bor Sz{\'{a}}rnyas for porting the \verb'@GrB'
 interface to Octave 7 on Apple Silicon.
 
+I would like to thank Markus M\"{u}tzel
+for his help in porting the updates
+to GraphBLAS v7.4.1 and SuiteSparse v7.0.0 to Windows.
+
 I would like to thank Roi Lipman, Redis (\url{https://redislabs.com}), for
 our many discussions on GraphBLAS and for enabling its use in RedisGraph
 (\url{https://redislabs.com/redis-enterprise/technology/redisgraph/}), a graph
@@ -16152,7 +16259,7 @@ database module for Redis.  Based on SuiteSparse:GraphBLAS, RedisGraph is up
 \url{https://redislabs.com/blog/new-redisgraph-1-0-achieves-600x-faster-performance-graph-databases/}}).
 
 SuiteSparse:GraphBLAS was developed with support from
-NVIDIA, Intel, MIT Lincoln Lab, Redis, IBM,
+NVIDIA, Intel, MIT Lincoln Lab, MathWorks, Redis, IBM,
 the National Science Foundation (1514406, 1835499), and Julia Computing.
 
 %-------------------------------------------------------------------------------

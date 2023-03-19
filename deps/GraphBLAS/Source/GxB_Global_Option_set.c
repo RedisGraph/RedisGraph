@@ -7,7 +7,266 @@
 
 //------------------------------------------------------------------------------
 
+// GxB_Global_Option_set is a single va_arg-based method for any global option,
+// of any type.  The following functions are alternative methods that do not
+// use va_arg (useful for compilers and interfaces that do not support va_arg):
+//
+//  GxB_Global_Option_set_INT32         int32_t scalars
+//  GxB_Global_Option_set_FP64          double scalars
+//  GxB_Global_Option_set_FP64_ARRAY    double arrays
+//  GxB_Global_Option_set_INT64_ARRAY   int64_t arrays
+//  GxB_Global_Option_set_FUNCTION      function pointers (as void *)
+
 #include "GB.h"
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_set_INT32: set a global option (int32_t)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Global_Option_set_INT32      // set a global default option
+(
+    GxB_Option_Field field,         // option to change
+    int32_t value                   // value to change it to
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Global_Option_set_INT32 (field, value)") ;
+
+    //--------------------------------------------------------------------------
+    // set the global option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_FORMAT : 
+
+            if (! (value == GxB_BY_ROW || value == GxB_BY_COL))
+            { 
+                return (GrB_INVALID_VALUE) ;
+            }
+            GB_Global_is_csc_set (value != (int) GxB_BY_ROW) ; 
+            break ;
+
+        case GxB_GLOBAL_NTHREADS :      // same as GxB_NTHREADS
+
+            // if < 1, then treat it as if nthreads_max = 1
+            value = GB_IMAX (1, value) ;
+            GB_Global_nthreads_max_set (value) ;
+            break ;
+
+        case GxB_BURBLE : 
+
+            GB_Global_burble_set ((bool) value) ;
+            break ;
+
+        case GxB_PRINT_1BASED : 
+
+            GB_Global_print_one_based_set ((bool) value) ;
+            break ;
+
+        case GxB_GLOBAL_GPU_CONTROL :       // same as GxB_GPU_CONTROL
+
+            GB_Global_gpu_control_set ((GrB_Desc_Value) value) ;
+            break ;
+
+        default : 
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_set_FP64: set a global option (double)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Global_Option_set_FP64      // set a global default option
+(
+    GxB_Option_Field field,         // option to change
+    double value                    // value to change it to
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Global_Option_set_FP64 (field, value)") ;
+
+    //--------------------------------------------------------------------------
+    // set the global option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_HYPER_SWITCH : 
+
+            GB_Global_hyper_switch_set ((float) value) ;
+            break ;
+
+        case GxB_GLOBAL_CHUNK :         // same as GxB_CHUNK
+
+            GB_Global_chunk_set (value) ;
+            break ;
+
+        case GxB_GLOBAL_GPU_CHUNK :         // same as GxB_GPU_CHUNK
+
+            GB_Global_gpu_chunk_set (value) ;
+            break ;
+
+        default : 
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_set_FP64_ARRAY: set a global option (double array)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Global_Option_set_FP64_ARRAY      // set a global default option
+(
+    GxB_Option_Field field,         // option to change
+    double *value                   // value to change it to
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Global_Option_set_FP64_ARRAY (field, value)") ;
+
+    //--------------------------------------------------------------------------
+    // set the global option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_BITMAP_SWITCH : 
+
+            if (value == NULL)
+            { 
+                // set all switches to their default
+                GB_Global_bitmap_switch_default ( ) ;
+            }
+            else
+            {
+                for (int k = 0 ; k < GxB_NBITMAP_SWITCH ; k++)
+                { 
+                    GB_Global_bitmap_switch_set (k, (float) (value [k])) ;
+                }
+            }
+            break ;
+
+        default : 
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_set_INT64_ARRAY: set a global option (int64_t array)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Global_Option_set_INT64_ARRAY      // set a global default option
+(
+    GxB_Option_Field field,         // option to change
+    int64_t *value                  // value to change it to
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Global_Option_set_INT64_ARRAY (field, value)") ;
+
+    //--------------------------------------------------------------------------
+    // set the global option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_MEMORY_POOL : 
+
+            if (value == NULL)
+            { 
+                // set all limits to their default
+                GB_Global_free_pool_init (false) ;
+            }
+            else
+            {
+                GB_Global_free_pool_limit_set (value) ;
+            }
+            break ;
+
+        default : 
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_set_FUNCTION: set a global option (function pointer)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Global_Option_set_FUNCTION      // set a global default option
+(
+    GxB_Option_Field field,         // option to change
+    void *value                     // value to change it to
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Global_Option_set_FUNCTION (field, value)") ;
+
+    //--------------------------------------------------------------------------
+    // set the global option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_PRINTF : 
+
+            GB_Global_printf_set ((GB_printf_function_t) value) ;
+            break ;
+
+        case GxB_FLUSH : 
+
+            GB_Global_flush_set ((GB_flush_function_t) value) ;
+            break ;
+
+        default : 
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Global_Option_set: based on va_arg
+//------------------------------------------------------------------------------
 
 GrB_Info GxB_Global_Option_set      // set a global default option
 (
@@ -124,10 +383,7 @@ GrB_Info GxB_Global_Option_set      // set a global default option
                 }
                 else
                 {
-                    for (int k = 3 ; k < 64 ; k++)
-                    { 
-                        GB_Global_free_pool_limit_set (k, free_pool_limit [k]) ;
-                    }
+                    GB_Global_free_pool_limit_set (free_pool_limit) ;
                 }
             }
             break ;

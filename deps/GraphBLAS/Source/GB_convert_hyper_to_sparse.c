@@ -21,7 +21,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
 (
     GrB_Matrix A,           // matrix to convert to non-hypersparse
