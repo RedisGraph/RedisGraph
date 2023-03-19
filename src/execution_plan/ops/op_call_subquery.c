@@ -83,9 +83,9 @@ static OpResult CallSubqueryInit
 // if the subquery is non-returning (unit), all the records have already been
 // consumed from the body (child depleted), so that we only need to return the
 // received records.
-// the returning subquery case: TBD
+// if the subquery is returning, return a the record received from the body
 static Record _handoff_eager(OpCallSubquery *op) {
-    ASSERT(op->records != NULL);
+    ASSERT(op->is_returning || op->records != NULL);
 
     if(!op->is_returning) {
         // if there is a record to return from the input records, return it
@@ -96,8 +96,7 @@ static Record _handoff_eager(OpCallSubquery *op) {
     // returning subquery
     else {
         // get a record from the body, and pass it on (start from a clone of it, optimize later)
-        Record consumed = OpBase_Consume(op->body);
-        return consumed == NULL ? consumed : OpBase_DeepCloneRecord(consumed);
+        return OpBase_Consume(op->body);
     }
 }
 
@@ -133,13 +132,20 @@ static Record CallSubqueryConsumeEager
         array_append(op->records, r);
     }
 
-    // plant a clone of the list of records in the ArgumentList op
-    // this needs to be a clone because if the subquery is a unit subquery,
-    // we want to return the records we got in the first place, with no change
-    ArgumentList_AddRecordList(op->argument_list, op->records);
+    if(op->is_returning) {
+        // we can pass op->records (rather than a clone), since we later return
+        // the consumed records from the body
+        ArgumentList_AddRecordList(op->argument_list, op->records);
+        // responsibility for the records is passed to the argumentList op
+        op->records = NULL;
+    } else {
+        // pass a clone of op->records to arglist, since we need to later return
+        // the received records
+        Record *records_clone;
+        array_clone_with_cb(records_clone, op->records, OpBase_DeepCloneRecord);
+        ArgumentList_AddRecordList(op->argument_list, records_clone);
 
-    // if the subquery is non-returning, consume and free all records from body
-    if(!op->is_returning) {
+        // consume and free all records from body
         while((r = OpBase_Consume(op->body))) {
             OpBase_DeleteRecord(r);
         }
@@ -177,9 +183,11 @@ static Record _consume_and_return
     return clone;
 }
 
-// tries to consume a record from body. if successful, return the merged\unmerged
-// record with the input record (op->r) according to op->is_returning.
-// if unsuccessful, returns NULL
+// tries to consume a record from the body. if successful, return the
+// merged\unmerged record with the input record (op->r) according to whether the
+// sq is returning\unit.
+// Depletes child if unit (body records not needed).
+// if unsuccessful (child depleted), returns NULL
 static Record _handoff(OpCallSubquery *op) {
     ASSERT(op->r != NULL);
 
@@ -234,13 +242,20 @@ static Record CallSubqueryConsume
     return _handoff(op);
 }
 
-// // free CallSubquery internal data structures
-// static void _freeInternals
-// (
-// 	OpCallSubquery *op  // operation to free
-// ) {
-//     // TBD
-// }
+// free CallSubquery internal data structures
+static void _freeInternals
+(
+	OpCallSubquery *op  // operation to free
+) {
+    if(op->records != NULL) {
+        uint n_records = array_len(op->records);
+        for(uint i = 0; i < n_records; i++) {
+            OpBase_DeleteRecord(op->records[i]);
+        }
+        array_free(op->records);
+        op->records = NULL;
+    }
+}
 
 static OpResult CallSubqueryReset
 (
@@ -248,18 +263,7 @@ static OpResult CallSubqueryReset
 ) {
     OpCallSubquery *op = (OpCallSubquery *)opBase;
 
-    // non-eager case (RO)
-    if(op->r) {
-        OpBase_DeleteRecord(op->r);
-        op->r = NULL;
-    }
-
-    // eager case
-    else if(op->records && (op->records) > 0) {
-	    op->first = true;
-        array_free_cb(op->records, OpBase_DeleteRecord);
-        op->records = NULL;
-    }
+    _freeInternals(op);
 
 	return OP_OK;
 }
@@ -281,5 +285,5 @@ static void CallSubqueryFree
 ) {
 	OpCallSubquery *_op = (OpCallSubquery *) op;
 
-	// TBD
+	_freeInternals(_op);
 }
