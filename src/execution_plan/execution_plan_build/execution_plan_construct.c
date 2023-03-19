@@ -300,8 +300,8 @@ static void _buildCallSubqueryPlan
 	subquery_ast->parse_result = NULL;
 	subquery_ast->ref_count = ref_count;
 	subquery_ast->params_parse_result = NULL;
+	subquery_ast->referenced_entities = NULL;
 	subquery_ast->anot_ctx_collection = orig_ast->anot_ctx_collection;
-	subquery_ast->referenced_entities = raxClone(orig_ast->referenced_entities);
 
 	// build the query, to be the root of the temporary AST
 	uint clause_count = cypher_astnode_nchildren(clause);
