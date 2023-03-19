@@ -30,7 +30,7 @@ typedef enum {
 	ENTITY_ID = 1,                       // print id only
 	ENTITY_LABELS_OR_RELATIONS = 1 << 1, // print label or relationship type
 	ENTITY_PROPERTIES = 1 << 2           // print properties
-} GraphEntityStringFromat;
+} GraphEntityStringFormat;
 
 typedef enum GraphEntityType {
 	GETYPE_UNKNOWN,
@@ -66,7 +66,8 @@ SIValue *GraphEntity_GetProperty
 bool GraphEntity_SetProperty
 (
 	const GraphEntity *e,
-	Attribute_ID attr_id,SIValue value
+	Attribute_ID attr_id,
+	SIValue value
 );
 
 // returns an SIArray of all keys in graph entity properties
@@ -75,7 +76,7 @@ SIValue GraphEntity_Keys
 	const GraphEntity *e
 );
 
-// returns an SIArray of all keys and values in graph entity properties. 
+// returns an SIArray of all keys and values in graph entity properties.
 // Keys at even positions, Values at odd position of the array
 SIValue GraphEntity_Properties
 (
@@ -90,7 +91,7 @@ void GraphEntity_ToString
 	char **buffer,
 	size_t *bufferLen,
 	size_t *bytesWritten,
-	GraphEntityStringFromat format,
+	GraphEntityStringFormat format,
 	GraphEntityType entityType
 );
 

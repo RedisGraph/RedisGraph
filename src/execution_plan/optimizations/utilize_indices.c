@@ -322,8 +322,8 @@ void reduce_scan_op
 		// unknown label
 		if(label_id == GRAPH_UNKNOWN_LABEL) continue;
 
-		idx = GraphContext_GetIndexByID(gc, label_id, NULL, IDX_EXACT_MATCH,
-				SCHEMA_NODE);
+		idx = GraphContext_GetIndexByID(gc, label_id, NULL, 0, IDX_EXACT_MATCH,
+				GETYPE_NODE);
 
 		// no index for current label
 		if(idx == NULL || !Index_Enabled(idx)) continue;
@@ -427,7 +427,8 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 
 	const char *label = QGEdge_Relation(e, 0);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Index idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH, SCHEMA_EDGE);
+	Index idx = GraphContext_GetIndex(gc, label, NULL, 0, IDX_EXACT_MATCH,
+			SCHEMA_EDGE);
 	if(idx == NULL) return;
 
 	// get all applicable filter for index

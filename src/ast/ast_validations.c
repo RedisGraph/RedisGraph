@@ -10,6 +10,7 @@
 #include "astnode.h"
 #include "../errors.h"
 #include "ast_shared.h"
+#include "../util/arr.h"
 #include "ast_visitor.h"
 #include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
@@ -1527,6 +1528,11 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 		// set the clause of the context
 		vctx->clause = CYPHER_AST_FOREACH;
 
+		// visit FOREACH array expression
+		const cypher_astnode_t *list_node =
+			cypher_ast_foreach_get_expression(n);
+		AST_Visitor_visit(list_node, visitor);
+
 		// introduce loop variable to bound vars
 		const cypher_astnode_t *identifier_node =
 			cypher_ast_foreach_get_identifier(n);
@@ -1536,10 +1542,6 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 
 		raxInsert(vctx->defined_identifiers, (unsigned char *) identifier,
 				  strlen(identifier), NULL, NULL);
-
-		// visit FOREACH array expression
-		const cypher_astnode_t *exp = cypher_ast_foreach_get_expression(n);
-		AST_Visitor_visit(exp, visitor);
 
 		// visit FOREACH loop body clauses
 		uint nclauses = cypher_ast_foreach_nclauses(n);

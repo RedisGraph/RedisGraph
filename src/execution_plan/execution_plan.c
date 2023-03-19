@@ -543,7 +543,7 @@ static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
 		child_plan = _ExecutionPlan_FreeOpTree(op->children[i]);
 		// In most cases all children will share the same plan, but if they don't
 		// (for an operation like UNION) then free the now-obsolete previous child plan.
-		if(prev_child_plan != child_plan) {
+		if(prev_child_plan != child_plan && prev_child_plan != current_plan) {
 			_ExecutionPlan_FreeInternals(prev_child_plan);
 			prev_child_plan = child_plan;
 		}

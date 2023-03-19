@@ -9,18 +9,26 @@
 #include "../errors.h"
 #include "../util/rmalloc.h"
 
-// migrate the entry at the given index in the source Record at the same index in the destination
-// the source retains access to but not ownership of the entry if it is a heap allocation
+// migrate the entry at the given index in the source Record to the same index
+// in the destination. Ownership is transferred according to transfer_ownership
 static void _RecordPropagateEntry
 (
 	Record dest,
 	Record src,
-	uint idx
+	uint idx,
+	bool transfer_ownership
 ) {
-	Entry e = src->entries[idx];
-	dest->entries[idx] = e;
-	// if the entry is a scalar, make sure both Records don't believe they own the allocation
-	if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&src->entries[idx].value.s);
+	// copy the entry
+	dest->entries[idx] = src->entries[idx];
+
+	// ownership is determined according to transfer_ownership
+	if(src->entries[idx].type == REC_TYPE_SCALAR) {
+		if(transfer_ownership) {
+			SIValue_MakeVolatile(&src->entries[idx].value.s);
+		} else {
+			SIValue_MakeVolatile(&dest->entries[idx].value.s);
+		}
+	}
 }
 
 // this function is currently unused
@@ -125,7 +133,7 @@ void Record_Merge
 		RecordEntryType b_type = b->entries[i].type;
 
 		if(a_type == REC_TYPE_UNKNOWN && b_type != REC_TYPE_UNKNOWN) {
-			_RecordPropagateEntry(a, b, i);
+			_RecordPropagateEntry(a, b, i, true);
 		}
 	}
 }
@@ -164,15 +172,18 @@ void Record_Merge_Into
 	}
 }
 
+// merge entries from `from` into `to`, transfer ownership if transfer_ownership
+// is on
 void Record_TransferEntries
 (
-	Record *to,
-	Record from
+	Record *to,              // destination record
+	Record from,             // src record
+	bool transfer_ownership  // transfer ownership of the record to dest or not
 ) {
 	uint len = Record_length(from);
 	for(uint i = 0; i < len; i++) {
 		if(from->entries[i].type != REC_TYPE_UNKNOWN) {
-			_RecordPropagateEntry(*to, from, i);
+			_RecordPropagateEntry(*to, from, i, transfer_ownership);
 		}
 	}
 }

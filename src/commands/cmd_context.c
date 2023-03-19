@@ -30,7 +30,7 @@ CommandCtx *CommandCtx_New
 	long long timeout,
 	bool timeout_rw
 ) {
-	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
+	CommandCtx *context         = rm_malloc(sizeof(CommandCtx));
 	context->bc                 = bc;
 	context->ctx                = ctx;
 	context->query              = NULL;
