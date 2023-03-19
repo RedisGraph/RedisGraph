@@ -35,6 +35,7 @@ include $(MK)/defs
 
 define CMAKE_DEFS +=
 	NSTATIC=0
+  NFORTRAN=1
 	BUILD_TESTING=off
 	CMAKE_POSITION_INDEPENDENT_CODE=on
 endef
