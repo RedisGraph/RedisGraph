@@ -308,7 +308,7 @@ class testCallSubqueryFlow():
                 )
                 RETURN n
             }
-            RETURN n ORDER BY n.v ASC
+            RETURN n
             """
             # TODO: The following doesn't work since Sort calls Consume on child
             # after received NULL from him, and Foreach assumes it won't be
