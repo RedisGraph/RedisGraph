@@ -1178,7 +1178,6 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	}
 
 	// create a query astnode with the body of the subquery as its body
-	// build the query, to be the root of the temporary AST
 	uint nclauses = cypher_ast_call_subquery_nclauses(n);
 	cypher_astnode_t *clauses[nclauses];
 	// Explicitly collect all child nodes from the clause.
@@ -1223,7 +1222,7 @@ static VISITOR_STRATEGY _Validate_call_subquery
 
 	// validate that the with imports (if exist) are simple, i.e., 'WITH a'
 	const cypher_astnode_t *with = cypher_ast_call_subquery_get_clause(n, 0);
-	if(cypher_astnode_type(with) == CYPHER_AST_WITH) {
+	if(imports_exist) {
 		for(uint i = 0; i < cypher_ast_with_nprojections(with); i++) {
 			const cypher_astnode_t *curr_proj =
 				cypher_ast_with_get_projection(with, i);
@@ -1265,19 +1264,17 @@ static VISITOR_STRATEGY _Validate_call_subquery
 		}
 	}
 
-	// if the subquery is a returning one, pass the current context. if the
-	// subquery is unit (no closing RETURN clause), pass the context as it was
-	// without traversing the clauses of the subquery.
+	// free the temporary environment
+	raxFree(vctx->defined_identifiers);
+	vctx->defined_identifiers = in_env;
+
 	const cypher_astnode_t *last_clause = cypher_ast_call_subquery_get_clause(n,
 										nclauses-1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
 
-	// if the subquery is not a returning subquery, we don't want it to affect
-	// the global context
-	raxFree(vctx->defined_identifiers);
-	vctx->defined_identifiers = in_env;
 	if(is_returning) {
 		// merge projected aliases from in_env into vctx->defined_identifiers
+		// make sure no returned aliases are bound
 
 		const cypher_astnode_t *return_clause
 			= cypher_ast_call_subquery_get_clause(n, nclauses-1);
@@ -1294,8 +1291,12 @@ static VISITOR_STRATEGY _Validate_call_subquery
 					cypher_ast_projection_get_expression(proj);
 				var_name = cypher_ast_identifier_get_name(exp);
 			}
-			raxInsert(vctx->defined_identifiers, (unsigned char *)var_name, strlen(var_name),
-				NULL, NULL);
+
+			if(!raxTryInsert(vctx->defined_identifiers,
+				(unsigned char *)var_name, strlen(var_name), NULL, NULL)) {
+					ErrorCtx_SetError("Variable `%s` already declared in outer scope", var_name);
+					return VISITOR_BREAK;
+			}
 		}
 	}
 

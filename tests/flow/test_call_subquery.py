@@ -94,6 +94,10 @@ class testCallSubqueryFlow():
                 """
         self.expect_error(query, "x not defined")
 
+        # outer scope variables (bound) should not be returnable from the sq
+        query = "MATCH (n:N) CALL {RETURN 1 AS n} RETURN n"
+        self.expect_error(query, "Variable `n` already declared in outer scope")
+
     def test02_simple_scan_return(self):
         """Test a simple scan and return subquery"""
 
@@ -310,11 +314,8 @@ class testCallSubqueryFlow():
             }
             RETURN n
             """
-            # TODO: The following doesn't work since Sort calls Consume on child
-            # after received NULL from him, and Foreach assumes it won't be
-            # entered again!
-                # Either change Foreach to be able to return NULL, or change
-                # Sort (I think Sort)
+            # TODO: Change RETURN line to the below line once PR fixing SORT is
+            # merged
             # RETURN n ORDER BY n.v ASC
         )
 
