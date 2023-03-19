@@ -148,6 +148,35 @@ static Record CallSubqueryConsumeEager
     return _handoff_eager(op);
 }
 
+static Record _consume_and_return
+(
+    OpCallSubquery *op
+) {
+    Record consumed;
+    consumed = OpBase_Consume(op->body);
+    if(consumed == NULL) {
+        OpBase_DeleteRecord(op->r);
+        op->r = NULL;
+        if(op->lhs && (op->r = OpBase_Consume(op->lhs)) != NULL) {
+            // plant a clone of the record consumed at the Argument op
+            Argument_AddRecord(op->argument, OpBase_DeepCloneRecord(op->r));
+        } else {
+            // lhs depleted --> CALL {} depleted as well
+            return NULL;
+        }
+        // goto return_cycle;
+        return _consume_and_return(op);
+    }
+
+    Record clone = OpBase_DeepCloneRecord(op->r);
+    // Merge consumed record into a clone of the received record.
+    // Note: Must use this instead of `Record_Merge()` in cases where the
+    // last op isn't a projection (e.g., Sort due to an ORDER BY etc.)
+    Record_Merge_Into(clone, consumed);
+    OpBase_DeleteRecord(consumed);
+    return clone;
+}
+
 // tries to consume a record from body. if successful, return the merged\unmerged
 // record with the input record (op->r) according to op->is_returning.
 // if unsuccessful, returns NULL
@@ -156,33 +185,11 @@ static Record _handoff(OpCallSubquery *op) {
 
     // if returning subquery: consume --> merge --> return merged.
     // if unit subquery: consume until depleted, and return the current record
-
-    Record consumed;
     if(op->is_returning) {
-return_cycle:
-        consumed = OpBase_Consume(op->body);
-        if(consumed == NULL) {
-            OpBase_DeleteRecord(op->r);
-            op->r = NULL;
-            if(op->lhs && (op->r = OpBase_Consume(op->lhs)) != NULL) {
-                // plant a clone of the record consumed at the Argument op
-                Argument_AddRecord(op->argument, OpBase_DeepCloneRecord(op->r));
-            } else {
-                // lhs depleted --> CALL {} depleted as well
-                return NULL;
-            }
-            goto return_cycle;
-        }
-
-        Record clone = OpBase_DeepCloneRecord(op->r);
-        // Merge consumed record into a clone of the received record.
-        // Note: Must use this instead of `Record_Merge()` in cases where the
-        // last op isn't a projection (e.g., Sort due to an ORDER BY etc.)
-        Record_Merge_Into(clone, consumed);
-        OpBase_DeleteRecord(consumed);
-        return clone;
+        return _consume_and_return(op);
     }
 
+    Record consumed;
     // unit subquery
     // drain the body, deleting (freeing) the records
     while((consumed = OpBase_Consume(op->body))) {
