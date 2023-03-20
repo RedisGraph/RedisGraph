@@ -121,7 +121,7 @@ SIValue *Proc_FulltextQueryNodeStep
 	// NULL is returned if iterator id depleted
 	size_t len = 0;
 	NodeID *id = (NodeID *)RediSearch_ResultsIteratorNext(pdata->iter,
-			Index_ActiveRSIndex(pdata->idx), &len);
+			Index_RSIndex(pdata->idx), &len);
 
 	// depleted
 	if(!id) return NULL;

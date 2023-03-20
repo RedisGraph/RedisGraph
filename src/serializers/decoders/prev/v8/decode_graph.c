@@ -184,8 +184,9 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
 
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			if(s->index) {
-				Index_Populate(s->index, g);
+			if(PENDING_EXACTMATCH_IDX(s)) {
+				Index_Populate(PENDING_EXACTMATCH_IDX(s), g);
+				Schema_ActivateIndex(s);
 			}
 			if(s->fulltextIdx) {
 				Index_Populate(s->fulltextIdx, g);
@@ -195,8 +196,9 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 		// enable all edge indices
 		for(uint i = 0; i < rel_count; i++) {
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
-			if(s->index) {
-				Index_Populate(s->index, g);
+			if(PENDING_EXACTMATCH_IDX(s)) {
+				Index_Populate(PENDING_EXACTMATCH_IDX(s), g);
+				Schema_ActivateIndex(s);
 			}
 			if(s->fulltextIdx) {
 				Index_Populate(s->fulltextIdx, g);

@@ -12,6 +12,9 @@
 #include "../constraint/constraint.h"
 #include "../graph/entities/graph_entity.h"
 
+#define ACTIVE_EXACTMATCH_IDX(s)  s->exactmatchIdx[0]
+#define PENDING_EXACTMATCH_IDX(s) s->exactmatchIdx[1]
+
 typedef enum {
 	SCHEMA_NODE,
 	SCHEMA_EDGE,
@@ -21,12 +24,12 @@ typedef enum {
 // similar to a relational table structure, our schemas are a collection
 // of attributes we've encountered overtime as entities were created or updated
 typedef struct {
-	int id;                  // schema id
-	char *name;              // schema name
-	SchemaType type;         // schema type (node/edge)
-	Index index;             // exact match index
-	Index fulltextIdx;       // full-text index
-	Constraint *constraints; // constraints array
+	int id;                     // schema id
+	char *name;                 // schema name
+	SchemaType type;            // schema type (node/edge)
+	Index fulltextIdx;          // full-text index
+	Index exactmatchIdx[2];     // active/pending exact-match index
+	Constraint *constraints;    // constraints array
 } Schema;
 
 // creates a new schema
@@ -37,11 +40,17 @@ Schema *Schema_New
 	const char *name
 );
 
-/* Return the given schema's name. */
-const char *Schema_GetName(const Schema *s);
+// return the given schema's name
+const char *Schema_GetName
+(
+	const Schema *s
+);
 
-/* Return the given schema's ID. */
-int Schema_GetID(const Schema *s);
+// return the given schema's ID
+int Schema_GetID
+(
+	const Schema *s
+);
 
 const char *Schema_GetName
 (
@@ -66,6 +75,18 @@ unsigned short Schema_IndexCount
 	const Schema *s
 );
 
+// retrieves all indicies from schema
+// active exact-match index
+// pending exact-match index
+// active fulltext index
+// pending fulltext index
+// returns number of indicies set
+unsigned short Schema_GetIndicies
+(
+	const Schema *s,
+	Index indicies[3]
+);
+
 // get index from schema
 // returns NULL if index wasn't found
 Index Schema_GetIndex
@@ -80,10 +101,10 @@ Index Schema_GetIndex
 // attribute must already exists and not associated with an index
 int Schema_AddIndex
 (
-	Index *idx,         // [input/output] index to create
-	Schema *s,          // schema holding the index
-	IndexField *field,  // field to index
-	IndexType type       // type of entities to index
+	Index *idx,           // [input/output] index to create
+	Schema *s,            // schema holding the index
+	IndexField *fields,   // field to index
+	IndexType type        // type of entities to index
 );
 
 // removes index
@@ -92,6 +113,14 @@ int Schema_RemoveIndex
 	Schema *s,
 	const char *field,
 	IndexType type
+);
+
+// activate pending exact-match index
+// asserts that pending exact-match index is enabled
+// drops current active exact-exact index if exists
+void Schema_ActivateIndex
+(
+	Schema *s  // schema to activate index on
 );
 
 // introduce node to schema indicies

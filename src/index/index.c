@@ -25,8 +25,7 @@ struct _Index {
 	char **stopwords;              // stopwords
 	GraphEntityType entity_type;   // entity type (node/edge) indexed
 	IndexType type;                // index type exact-match / fulltext
-	RSIndex *active_idx;           // RediSearch index
-	RSIndex *pending_idx;          // new pending RediSearch index
+	RSIndex *rsIdx;                // RediSearch index
 	uint _Atomic pending_changes;  // number of pending changes
 };
 
@@ -96,16 +95,6 @@ static void _Index_ConstructExactMatchStructure
 	RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 }
 
-// get one of the internal RediSearch indicies
-// prefer the pending index
-static RSIndex * _Index_GetInternalRSIndex
-(
-	const Index idx
-) {
-	ASSERT(idx->active_idx != NULL || idx->pending_idx != NULL);
-	return (idx->pending_idx != NULL) ? idx->pending_idx : idx->active_idx;
-}
-
 // responsible for creating the index structure only!
 // e.g. fields, stopwords, language
 void Index_ConstructStructure
@@ -113,7 +102,7 @@ void Index_ConstructStructure
 	Index idx
 ) {
 	ASSERT(idx != NULL);
-	ASSERT(idx->pending_idx == NULL);
+	ASSERT(idx->rsIdx == NULL);
 
 	RSIndex *rsIdx = NULL;
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
@@ -142,9 +131,9 @@ void Index_ConstructStructure
 		_Index_ConstructExactMatchStructure(idx, rsIdx);
 	}
 
-	// set pending index
-	ASSERT(idx->pending_idx == NULL);
-	idx->pending_idx = rsIdx;
+	// set RediSearch index
+	ASSERT(idx->rsIdx == NULL);
+	idx->rsIdx = rsIdx;
 }
 
 RSDoc *Index_IndexGraphEntity
@@ -299,16 +288,49 @@ Index Index_New
 
 	idx->type            = type;
 	idx->label           = rm_strdup(label);
+	idx->rsIdx           = NULL;
 	idx->fields          = array_new(IndexField, 1);
 	idx->label_id        = label_id;
 	idx->language        = NULL;
 	idx->stopwords       = NULL;
-	idx->active_idx      = NULL;
 	idx->entity_type     = entity_type;
-	idx->pending_idx     = NULL;
 	idx->pending_changes = ATOMIC_VAR_INIT(0);
 
 	return idx;
+}
+
+// clone index
+Index Index_Clone
+(
+	const Index idx  // index to clone
+) {
+	ASSERT(idx != NULL);
+
+	//--------------------------------------------------------------------------
+	// clone index
+	//--------------------------------------------------------------------------
+
+	Index clone = rm_malloc(sizeof(_Index));
+
+	clone = memcpy(clone, idx, sizeof(_Index));
+
+	clone->label = rm_strdup(idx->label);
+	clone->pending_changes = ATOMIC_VAR_INIT(0);
+
+	//--------------------------------------------------------------------------
+	// clone index fields
+	//--------------------------------------------------------------------------
+
+	int n = array_len(idx->fields);
+	clone->fields = array_new(IndexField, 1);
+	for(int i = 0; i < n; i++) {
+		IndexField _f;
+		IndexField *f = idx->fields + i;
+		IndexField_New(&_f, f->id, f->name, f->weight, f->nostem, f->phonetic);
+		array_append(clone->fields, _f);
+	}
+
+	return clone;
 }
 
 // returns number of pending changes
@@ -331,10 +353,9 @@ void Index_Disable
 
 	idx->pending_changes++;
 
-	// drop pending index if exists
-	if(idx->pending_idx != NULL) {
-		RediSearch_DropIndex(idx->pending_idx);
-		idx->pending_idx = NULL;
+	// drop index if exists
+	if(idx->rsIdx != NULL) {
+		RediSearch_DropIndex(idx->rsIdx);
 	}
 
 	// construct index structure
@@ -348,23 +369,10 @@ void Index_Enable
 	Index idx
 ) {
 	ASSERT(idx != NULL);
-	ASSERT(idx->pending_idx != NULL);
+	ASSERT(idx->rsIdx != NULL);
 	ASSERT(idx->pending_changes > 0);
 
 	idx->pending_changes--;
-	
-	// in there are no pending changes
-	// set pending index is the active index
-	if(idx->pending_changes == 0) {
-		// set pending index as the active index
-		if(idx->active_idx != NULL) {
-			RediSearch_DropIndex(idx->active_idx);
-		}
-
-		// swap pending index with active index
-		idx->active_idx = idx->pending_idx;
-		idx->pending_idx = NULL;
-	}
 }
 
 // adds field to index
@@ -383,20 +391,15 @@ void Index_AddField
 // removes fields from index
 void Index_RemoveField
 (
-	Index idx,
-	const char *field
+	Index idx,            // index modified
+	Attribute_ID attr_id  // field to remove
 ) {
-	ASSERT(idx   != NULL);
-	ASSERT(field != NULL);
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
-	ASSERT(attribute_id != ATTRIBUTE_ID_NONE);
+	ASSERT(idx != NULL);
 
 	uint fields_count = array_len(idx->fields);
 	for(uint i = 0; i < fields_count; i++) {
 		IndexField *field = idx->fields + i;
-		if(field->id == attribute_id) {
+		if(field->id == attr_id) {
 			// free field
 			IndexField_Free(field);
 			array_del_fast(idx->fields, i);
@@ -417,27 +420,7 @@ RSResultsIterator *Index_Query
 	ASSERT(idx   != NULL);
 	ASSERT(query != NULL);
 
-	return RediSearch_IterateQuery(idx->active_idx, query, strlen(query), err);
-}
-
-// returns active internal RediSearch index
-RSIndex *Index_ActiveRSIndex
-(
-	const Index idx
-) {
-	ASSERT(idx != NULL);
-
-	return idx->active_idx;
-}
-
-// returns pending internal RediSearch index
-RSIndex *Index_PendingRSIndex
-(
-	const Index idx
-) {
-	ASSERT(idx != NULL);
-
-	return idx->pending_idx;
+	return RediSearch_IterateQuery(idx->rsIdx, query, strlen(query), err);
 }
 
 // returns index type
@@ -498,6 +481,16 @@ bool Index_ContainsAttribute
 	return false;
 }
 
+// returns indexed label
+const char *Index_GetLabel
+(
+	const Index idx  // index to query
+) {
+	ASSERT(idx != NULL);
+
+	return idx->label;
+}
+
 int Index_GetLabelID
 (
 	const Index idx
@@ -513,7 +506,7 @@ const char *Index_GetLanguage
 ) {
 	ASSERT(idx != NULL);
 
-	RSIndex *_idx = _Index_GetInternalRSIndex(idx);
+	RSIndex *_idx = Index_RSIndex(idx);
 	ASSERT(_idx != NULL);
 
 	return RediSearch_IndexGetLanguage(_idx);
@@ -526,7 +519,7 @@ char **Index_GetStopwords
 ) {
 	ASSERT(idx != NULL);
 
-	RSIndex *_idx = _Index_GetInternalRSIndex(idx);
+	RSIndex *_idx = Index_RSIndex(idx);
 	ASSERT(_idx != NULL);
 
 	if(idx->type == IDX_FULLTEXT) {
@@ -572,6 +565,16 @@ bool Index_Enabled
 	return idx->pending_changes == 0;
 }
 
+// returns RediSearch index
+RSIndex *Index_RSIndex
+(
+	const Index idx  // index to get internal RediSearch index from
+) {
+	ASSERT(idx != NULL);
+	
+	return idx->rsIdx;
+}
+
 // free index
 void Index_Free
 (
@@ -579,12 +582,8 @@ void Index_Free
 ) {
 	ASSERT(idx != NULL);
 
-	if(idx->active_idx) {
-		RediSearch_DropIndex(idx->active_idx);
-	}
-
-	if(idx->pending_idx) {
-		RediSearch_DropIndex(idx->pending_idx);
+	if(idx->rsIdx) {
+		RediSearch_DropIndex(idx->rsIdx);
 	}
 
 	if(idx->language) {

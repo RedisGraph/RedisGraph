@@ -572,7 +572,7 @@ bool GraphContext_AddExactMatchIndex
 
 	// disable index if it was created
 	// we don't call Index_Disable within Schema_AddIndex as multiple
-	// field additions are still considered as a "single" modification
+	// field additions are still considered a "single" modification
 	// of the index
 	if(index_changed) {
 		Index_Disable(*idx);

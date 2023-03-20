@@ -98,36 +98,27 @@ static bool _index_operation_delete
 
 	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr);
 
-	//--------------------------------------------------------------------------
-	// make sure index exists
-	//--------------------------------------------------------------------------
+	// try deleting a NODE EXACT-MATCH index
+	int res = INDEX_FAIL;
 
-	// try locating a NODE EXACT-MATCH index
 	s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s != NULL) {
-		*idx = Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH);
-	}
+		// lock
+		QueryCtx_LockForCommit();
 
-	// try locating a EDGE EXACT-MATCH index
-	if(*idx == NULL) {
-		schema_type = SCHEMA_EDGE;
-		s = GraphContext_GetSchema(gc, label, schema_type);
-		if(s != NULL) {
-			*idx = Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH);
+		// try deleting an exact match node index
+		res = GraphContext_DeleteIndex(gc, SCHEMA_NODE, label, attr, IDX_EXACT_MATCH);
+		if(res != INDEX_OK) {
+			// try deleting an exact match edge index
+			res = GraphContext_DeleteIndex(gc, SCHEMA_EDGE, label, attr, IDX_EXACT_MATCH);
 		}
 	}
 
 	// no matching index
-	if(*idx == NULL) {
+	if(res != INDEX_OK) {
 		ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.",
 				label, attr);
-		return false;
 	}
-
-	QueryCtx_LockForCommit();
-
-	int res = GraphContext_DeleteIndex(gc, schema_type, label, attr,
-			IDX_EXACT_MATCH);
 
 	return res == INDEX_OK;
 }
@@ -195,10 +186,8 @@ static void _index_operation_create
 	QueryCtx_LockForCommit();
 
 	// add fields to index
-	GraphContext_AddExactMatchIndex(idx, gc, schema_type,
-			label, fields, nprops, true);
-
-	return;
+	GraphContext_AddExactMatchIndex(idx, gc, schema_type, label, fields, nprops,
+			true);
 }
 
 // handle index/constraint operation
@@ -220,15 +209,7 @@ static void _index_operation
 			}
 			break;
 		case EXECUTION_TYPE_INDEX_DROP:
-			if(_index_operation_delete(gc, ast, &idx)) {
-				// if idx field count > 0 reindex
-				// otherwise drop
-				if(Index_FieldsCount(idx) > 0) {
-					Indexer_PopulateIndex(gc, idx);
-				} else {
-					Indexer_DropIndex(idx);
-				}
-			}
+			_index_operation_delete(gc, ast, &idx);
 			break;
 		default:
 			ErrorCtx_SetError("ERR Encountered unknown query execution type.");

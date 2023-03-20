@@ -19,14 +19,13 @@ void Index_IndexNode
 	Index idx,
 	const Node *n
 ) {
-	ASSERT(idx  !=  NULL);
 	ASSERT(n    !=  NULL);
+	ASSERT(idx  !=  NULL);
 
 	EntityID key             = ENTITY_GET_ID(n);
 	RSDoc    *doc            = NULL;
+	RSIndex  *rsIdx          = Index_RSIndex(idx);
 	size_t   key_len         = sizeof(EntityID);
-	RSIndex  *active_Idx     = Index_ActiveRSIndex(idx);
-	RSIndex  *pending_Idx    = Index_PendingRSIndex(idx);
 	uint     doc_field_count = 0;
 
 	// create RediSearch document representing node
@@ -41,22 +40,8 @@ void Index_IndexNode
 		return;
 	}
 
-	// add document to active RediSearch index if present
-	if(active_Idx != NULL) {
-		RediSearch_SpecAddDocument(active_Idx, doc);
-		doc = NULL;
-	}
-
-	// add document to pending RediSearch index if present
-	if(pending_Idx != NULL) {
-		// recreate document if used by active index
-		if(doc == NULL) {
-			// TODO: RediSearch API clone DOC
-			doc = Index_IndexGraphEntity(idx, (const GraphEntity *)n,
-					(const void *)&key, key_len, &doc_field_count);
-		}
-		RediSearch_SpecAddDocument(pending_Idx, doc);
-	}
+	// add document to RediSearch index
+	RediSearch_SpecAddDocument(rsIdx, doc);
 }
 
 void Index_RemoveNode
@@ -67,15 +52,9 @@ void Index_RemoveNode
 	ASSERT(n   != NULL);
 	ASSERT(idx != NULL);
 
-	EntityID id           = ENTITY_GET_ID(n);
-	RSIndex  *active_Idx  = Index_ActiveRSIndex(idx);
-	RSIndex  *pending_Idx = Index_PendingRSIndex(idx);
+	EntityID id     = ENTITY_GET_ID(n);
+	RSIndex  *rsIdx = Index_RSIndex(idx);
 
-	if(active_Idx != NULL) {
-		RediSearch_DeleteDocument(active_Idx, &id, sizeof(EntityID));
-	}
-	if(pending_Idx != NULL) {
-		RediSearch_DeleteDocument(pending_Idx, &id, sizeof(EntityID));
-	}
+	RediSearch_DeleteDocument(rsIdx, &id, sizeof(EntityID));
 }
 

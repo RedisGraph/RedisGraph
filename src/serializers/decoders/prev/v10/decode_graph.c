@@ -206,9 +206,10 @@ GraphContext *RdbLoadGraphContext_v10(RedisModuleIO *rdb) {
 
 			Index idx;
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			idx = Schema_GetIndex(s, NULL, 0, IDX_EXACT_MATCH);
+			idx = PENDING_EXACTMATCH_IDX(s);
 			if(idx != NULL) {
 				Index_Enable(idx);
+				Schema_ActivateIndex(s);
 			}
 
 			idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);
@@ -221,9 +222,10 @@ GraphContext *RdbLoadGraphContext_v10(RedisModuleIO *rdb) {
 		for(uint i = 0; i < rel_count; i++) {
 			Index idx;
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
-			idx = Schema_GetIndex(s, NULL, 0, IDX_EXACT_MATCH);
+			idx = PENDING_EXACTMATCH_IDX(s);
 			if(idx != NULL) {
 				Index_Enable(idx);
+				Schema_ActivateIndex(s);
 			}
 
 			idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);

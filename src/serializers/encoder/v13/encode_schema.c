@@ -202,11 +202,16 @@ static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	// Number of indices.
 	RedisModule_SaveUnsigned(rdb, Schema_IndexCount(s));
 
-	// Exact match indices.
-	_RdbSaveIndexData(rdb, s->type, s->index);
+	// Exact match index, prefer pending over active
+	Index idx = PENDING_EXACTMATCH_IDX(s)
+		? PENDING_EXACTMATCH_IDX(s)
+		: ACTIVE_EXACTMATCH_IDX(s);
+
+	_RdbSaveIndexData(rdb, s->type, idx);
 
 	// Fulltext indices.
-	_RdbSaveIndexData(rdb, s->type, s->fulltextIdx);
+	idx = s->fulltextIdx;
+	_RdbSaveIndexData(rdb, s->type, idx);
 
 	// Constraints.
 	_RdbSaveConstraintsData(rdb, s->constraints);

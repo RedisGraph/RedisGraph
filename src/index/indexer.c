@@ -26,6 +26,7 @@ typedef struct {
 
 // index population context
 typedef struct {
+	Schema *s;         // schema containing the index
 	Index idx;         // index to populate
 	GraphContext *gc;  // graph holding entities to index
 } IndexPopulateCtx;
@@ -67,6 +68,7 @@ static void *_index_populate
 			{
 				IndexPopulateCtx *pdata = (IndexPopulateCtx*)ctx.pdata;
 				Index_Populate(pdata->idx, pdata->gc->g);
+
 				// decrease graph reference count
 				GraphContext_DecreaseRefCount(pdata->gc);
 				rm_free(pdata);
@@ -269,15 +271,18 @@ cleanup:
 void Indexer_PopulateIndex
 (
 	GraphContext *gc, // graph to operate on
+	Schema *s,        // schema containing the idx
 	Index idx         // index to populate
 ) {
 	ASSERT(gc      != NULL);
+	ASSERT(s       != NULL);
 	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
 	ASSERT(Index_Enabled(idx) == false);
 
 	// create work item
 	IndexPopulateCtx *ctx = rm_malloc(sizeof(IndexPopulateCtx));
+	ctx->s   = s;
 	ctx->gc  = gc;
 	ctx->idx = idx;
 

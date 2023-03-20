@@ -41,9 +41,10 @@ static Schema *_RdbLoadSchema
 
 	if(s) {
 		// no entities are expected to be in the graph in this point in time
-		if(s->index) {
-			Index_Disable(s->index);
+		if(PENDING_EXACTMATCH_IDX(s)) {
+			Index_Disable(PENDING_EXACTMATCH_IDX(s));
 		}
+
 		if(s->fulltextIdx) {
 			Index_Disable(s->fulltextIdx);
 		}

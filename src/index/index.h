@@ -76,6 +76,12 @@ Index Index_New
 	GraphEntityType entity_type  // entity type been indexed
 );
 
+// clone index
+Index Index_Clone
+(
+	const Index idx  // index to clone
+);
+
 // returns number of pending changes
 int Index_PendingChanges
 (
@@ -102,6 +108,12 @@ bool Index_Enabled
 	const Index idx  // index to get state of
 );
 
+// returns RediSearch index
+RSIndex *Index_RSIndex
+(
+	const Index idx  // index to get internal RediSearch index from
+);
+
 // responsible for creating the index structure only!
 // e.g. fields, stopwords, language
 void Index_ConstructStructure
@@ -126,8 +138,8 @@ void Index_AddField
 // removes field from index
 void Index_RemoveField
 (
-	Index idx,         // index modified
-	const char *field  // field to remove
+	Index idx,            // index modified
+	Attribute_ID attr_id  // field to remove
 );
 
 // index node
@@ -166,18 +178,6 @@ RSResultsIterator *Index_Query
 	char **err          // [optional] report back error
 );
 
-// returns active internal RediSearch index
-RSIndex *Index_ActiveRSIndex
-(
-	const Index idx
-);
-
-// returns pending internal RediSearch index
-RSIndex *Index_PendingRSIndex
-(
-	const Index idx
-);
-
 // returns index type
 IndexType Index_Type
 (
@@ -207,6 +207,12 @@ bool Index_ContainsAttribute
 (
 	const Index idx,           // index to query
 	Attribute_ID attribute_id  // attribute id to search
+);
+
+// returns indexed label
+const char *Index_GetLabel
+(
+	const Index idx  // index to query
 );
 
 // returns indexed label ID
