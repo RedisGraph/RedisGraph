@@ -564,6 +564,10 @@ bool GraphContext_AddExactMatchIndex
 		if(Schema_AddIndex(idx, s, &idx_field, IDX_EXACT_MATCH) == INDEX_OK) {
 			index_changed = true;
 			if(should_reply) {
+				if(index_changed) {
+					ResultSet_AddReplyString(result_set, "PENDING");
+				}
+
 				// update result-set
 				ResultSet_IndexCreated(result_set, INDEX_OK);
 			}
