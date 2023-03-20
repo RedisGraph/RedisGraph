@@ -24,8 +24,7 @@ static Record _handoff(OpUpdate *op) {
 	/* TODO: popping a record out of op->records
 	 * will reverse the order in which records
 	 * are passed down the execution plan. */
-	if(op->records && array_len(op->records) > 0) return array_pop(op->records);
-	return NULL;
+	return array_pop(op->records);
 }
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
@@ -58,6 +57,9 @@ static OpResult UpdateInit(OpBase *opBase) {
 
 	op->stats         =  QueryCtx_GetResultSetStatistics();
 	op->records       =  array_new(Record, 64);
+	// initialize records array with NULL value, which will terminate execution
+	// of the operation upon depletion
+	array_append(op->records, NULL);
 	op->node_updates  =  array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
 	op->edge_updates  =  array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
 
@@ -179,7 +181,7 @@ static void UpdateFree(OpBase *ctx) {
 
 	if(op->records) {
 		uint records_count = array_len(op->records);
-		for(uint i = 0; i < records_count; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 1; i < records_count; i++) OpBase_DeleteRecord(op->records[i]);
 		array_free(op->records);
 		op->records = NULL;
 	}
