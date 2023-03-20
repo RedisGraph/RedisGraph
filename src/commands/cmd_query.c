@@ -131,8 +131,6 @@ static void _index_operation_create
 	ASSERT(gc  != NULL);
 	ASSERT(ctx != NULL);
 	ASSERT(ast != NULL);
-	ASSERT(idx != NULL);
-	ASSERT(*idx == NULL);
 
 	uint nprops            = 0;            // number of fields indexed
 	const char *label      = NULL;         // label being indexed

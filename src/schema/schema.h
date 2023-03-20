@@ -14,6 +14,8 @@
 
 #define ACTIVE_EXACTMATCH_IDX(s)  s->exactmatchIdx[0]
 #define PENDING_EXACTMATCH_IDX(s) s->exactmatchIdx[1]
+#define ACTIVE_FULLTEXT_IDX(s)  s->fulltextIdx[0]
+#define PENDING_FULLTEXT_IDX(s) s->fulltextIdx[1]
 
 typedef enum {
 	SCHEMA_NODE,
@@ -27,7 +29,7 @@ typedef struct {
 	int id;                     // schema id
 	char *name;                 // schema name
 	SchemaType type;            // schema type (node/edge)
-	Index fulltextIdx;          // full-text index
+	Index fulltextIdx[2];       // full-text index
 	Index exactmatchIdx[2];     // active/pending exact-match index
 	Constraint *constraints;    // constraints array
 } Schema;
@@ -84,7 +86,7 @@ unsigned short Schema_IndexCount
 unsigned short Schema_GetIndicies
 (
 	const Schema *s,
-	Index indicies[3]
+	Index indicies[4]
 );
 
 // get index from schema
@@ -120,7 +122,8 @@ int Schema_RemoveIndex
 // drops current active exact-exact index if exists
 void Schema_ActivateIndex
 (
-	Schema *s  // schema to activate index on
+	Schema *s,   // schema to activate index on
+	IndexType t  // type of index to activate
 );
 
 // introduce node to schema indicies

@@ -40,8 +40,8 @@ static Schema *_RdbLoadSchema
 		Index_Disable(PENDING_EXACTMATCH_IDX(s));
 	}
 
-	if(s->fulltextIdx) {
-		Index_Disable(s->fulltextIdx);
+	if(PENDING_FULLTEXT_IDX(s) != NULL) {
+		Index_Disable(PENDING_FULLTEXT_IDX(s));
 	}
 
 	return s;

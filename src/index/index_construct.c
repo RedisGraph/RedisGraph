@@ -227,7 +227,6 @@ void Index_Populate
 	ASSERT(g != NULL);
 	ASSERT(idx != NULL);
 	ASSERT(!Index_Enabled(idx));  // index should have pending changes
-	ASSERT(Index_PendingRSIndex(idx) != NULL);
 
 	//--------------------------------------------------------------------------
 	// populate index

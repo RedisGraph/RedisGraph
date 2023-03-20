@@ -207,15 +207,16 @@ GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 
 			Index idx;
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			idx = Schema_GetIndex(s, NULL, 0, IDX_EXACT_MATCH);
-			if(PENDING_EXACTMATCH_IDX(s)) {
-				Index_Populate(idx, g);
-				Schema_ActivateIndex(s);
-			}
-
-			idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);
+			idx = PENDING_EXACTMATCH_IDX(s);
 			if(idx != NULL) {
 				Index_Populate(idx, g);
+				Schema_ActivateIndex(s, Index_Type(idx));
+			}
+
+			idx = PENDING_FULLTEXT_IDX(s);
+			if(idx != NULL) {
+				Index_Populate(idx, g);
+				Schema_ActivateIndex(s, Index_Type(idx));
 			}
 		}
 
@@ -223,15 +224,10 @@ GraphContext *RdbLoadGraphContext_v9(RedisModuleIO *rdb) {
 		for(uint i = 0; i < rel_count; i++) {
 			Index idx;
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
-			idx = Schema_GetIndex(s, NULL, 0, IDX_EXACT_MATCH);
-			if(PENDING_EXACTMATCH_IDX(s)) {
-				Index_Populate(PENDING_EXACTMATCH_IDX(s), g);
-				Schema_ActivateIndex(s);
-			}
-
-			idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);
+			idx = PENDING_EXACTMATCH_IDX(s);
 			if(idx != NULL) {
 				Index_Populate(idx, g);
+				Schema_ActivateIndex(s, Index_Type(idx));
 			}
 		}
 

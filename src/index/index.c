@@ -314,6 +314,7 @@ Index Index_Clone
 
 	clone = memcpy(clone, idx, sizeof(_Index));
 
+	clone->rsIdx = NULL;
 	clone->label = rm_strdup(idx->label);
 	clone->pending_changes = ATOMIC_VAR_INIT(0);
 

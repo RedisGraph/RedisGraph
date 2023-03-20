@@ -183,25 +183,28 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			RG_Matrix_nvals(&nvals, L);
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
 
+			Index idx = NULL;
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			if(PENDING_EXACTMATCH_IDX(s)) {
-				Index_Populate(PENDING_EXACTMATCH_IDX(s), g);
-				Schema_ActivateIndex(s);
+			idx = PENDING_EXACTMATCH_IDX(s);
+			if(idx != NULL) {
+				Index_Populate(idx, g);
+				Schema_ActivateIndex(s, Index_Type(idx));
 			}
-			if(s->fulltextIdx) {
-				Index_Populate(s->fulltextIdx, g);
+
+			idx = PENDING_FULLTEXT_IDX(s);
+			if(idx != NULL) {
+				Index_Populate(idx, g);
+				Schema_ActivateIndex(s, Index_Type(idx));
 			}
 		}
 
 		// enable all edge indices
 		for(uint i = 0; i < rel_count; i++) {
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
-			if(PENDING_EXACTMATCH_IDX(s)) {
-				Index_Populate(PENDING_EXACTMATCH_IDX(s), g);
-				Schema_ActivateIndex(s);
-			}
-			if(s->fulltextIdx) {
-				Index_Populate(s->fulltextIdx, g);
+			Index idx = PENDING_EXACTMATCH_IDX(s);
+			if(idx != NULL) {
+				Index_Populate(idx, g);
+				Schema_ActivateIndex(s, Index_Type(idx));
 			}
 		}
 

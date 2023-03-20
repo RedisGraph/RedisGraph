@@ -210,7 +210,9 @@ static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	_RdbSaveIndexData(rdb, s->type, idx);
 
 	// Fulltext indices.
-	idx = s->fulltextIdx;
+	idx = PENDING_FULLTEXT_IDX(s)
+		? PENDING_FULLTEXT_IDX(s)
+		: ACTIVE_FULLTEXT_IDX(s);
 	_RdbSaveIndexData(rdb, s->type, idx);
 
 	// Constraints.

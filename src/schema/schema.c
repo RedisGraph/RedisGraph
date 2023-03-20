@@ -13,6 +13,143 @@
 #include "../graph/graphcontext.h"
 #include "../constraint/constraint.h"
 
+// add an exact match index to schema
+static int Schema_AddExactMatchIndex
+(
+	Index *idx,        // [input/output] index to create
+	Schema *s,         // schema holding the index
+	IndexField *field  // field to index
+) {
+	ASSERT(s != NULL);
+	ASSERT(idx != NULL);
+	ASSERT(field != NULL);
+
+	// see if index already exists
+	Index _idx = NULL;
+	GraphEntityType et = (s->type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
+
+	//--------------------------------------------------------------------------
+	// determine which index to populate
+	//--------------------------------------------------------------------------
+
+	// if pending-index exists, reuse it
+	// if active-index exists, clone it and use clone
+	// otherwise (first index) create a new index
+	Index active  = ACTIVE_EXACTMATCH_IDX(s);
+	Index pending = PENDING_EXACTMATCH_IDX(s);
+	_idx = pending;
+	if(pending == NULL) {
+		if(active != NULL) {
+			_idx = Index_Clone(active);
+		} else {
+			_idx = Index_New(s->name, s->id, IDX_EXACT_MATCH, et);
+		}
+	}
+	PENDING_EXACTMATCH_IDX(s) = _idx;
+
+	// make sure attribute isn't already indexed
+	if(Index_ContainsAttribute(_idx, field->id)) {
+		// field already indexed, quick return
+		IndexField_Free(field);
+		return INDEX_FAIL;
+	}
+
+	Index_AddField(_idx, field);
+
+	*idx = _idx;
+	return INDEX_OK;
+}
+
+// add a full-text index to schema
+static int Schema_AddFullTextIndex
+(
+	Index *idx,        // [input/output] index to create
+	Schema *s,         // schema holding the index
+	IndexField *field  // field to index
+) {
+	ASSERT(s != NULL);
+	ASSERT(idx != NULL);
+	ASSERT(field != NULL);
+
+	// see if index already exists
+	Index _idx = NULL;
+
+	//--------------------------------------------------------------------------
+	// determine which index to populate
+	//--------------------------------------------------------------------------
+
+	// if pending-index exists, reuse it
+	// if active-index exists, clone it and use clone
+	// otherwise (first index) create a new index
+	Index active  = ACTIVE_FULLTEXT_IDX(s);
+	Index pending = PENDING_FULLTEXT_IDX(s);
+	_idx = pending;
+	if(pending == NULL) {
+		if(active != NULL) {
+			_idx = Index_Clone(active);
+		} else {
+			_idx = Index_New(s->name, s->id, IDX_FULLTEXT, GETYPE_NODE);
+		}
+	}
+	PENDING_FULLTEXT_IDX(s) = _idx;
+
+	// make sure attribute isn't already indexed
+	if(Index_ContainsAttribute(_idx, field->id)) {
+		// field already indexed, quick return
+		IndexField_Free(field);
+		return INDEX_FAIL;
+	}
+
+	Index_AddField(_idx, field);
+
+	*idx = _idx;
+	return INDEX_OK;
+}
+
+static void Schema_ActivateExactMatchIndex
+(
+	Schema *s   // schema to activate index on
+) {
+	ASSERT(PENDING_EXACTMATCH_IDX(s) != NULL);
+	Index active  = ACTIVE_EXACTMATCH_IDX(s);
+	Index pending = PENDING_EXACTMATCH_IDX(s);
+	// make sure pending index is enabled
+	ASSERT(Index_Enabled(pending) == true);
+
+	// drop active if exists
+	if(active != NULL) {
+		Index_Free(active);
+	}
+
+	// set pending index as active
+	ACTIVE_EXACTMATCH_IDX(s) = pending;
+
+	// clear pending index
+	PENDING_EXACTMATCH_IDX(s) = NULL;
+}
+
+static void Schema_ActivateFullTextIdx
+(
+	Schema *s   // schema to activate index on
+) {
+	ASSERT(PENDING_FULLTEXT_IDX(s) != NULL);
+	Index active  = ACTIVE_FULLTEXT_IDX(s);
+	Index pending = PENDING_FULLTEXT_IDX(s);
+	// make sure pending index is enabled
+	ASSERT(Index_Enabled(pending) == true);
+
+	// drop active if exists
+	if(active != NULL) {
+		Index_Free(active);
+	}
+
+	// set pending index as active
+	ACTIVE_FULLTEXT_IDX(s) = pending;
+
+	// clear pending index
+	PENDING_FULLTEXT_IDX(s) = NULL;
+}
+
 Schema *Schema_New
 (
 	SchemaType type,
@@ -71,7 +208,8 @@ bool Schema_HasIndices
 ) {
 	ASSERT(s != NULL);
 
-	return (s->fulltextIdx           ||
+	return (ACTIVE_FULLTEXT_IDX(s)   ||
+			PENDING_FULLTEXT_IDX(s)  ||
 			ACTIVE_EXACTMATCH_IDX(s) ||
 			PENDING_EXACTMATCH_IDX(s));
 }
@@ -83,7 +221,7 @@ unsigned short Schema_IndexCount
 	ASSERT(s != NULL);
 	unsigned short n = 0;
 
-	if(s->fulltextIdx) n += 1;
+	if(ACTIVE_FULLTEXT_IDX(s) || PENDING_FULLTEXT_IDX(s)) n += 1;
 	if(ACTIVE_EXACTMATCH_IDX(s) || PENDING_EXACTMATCH_IDX(s)) n += 1;
 
 	return n;
@@ -98,7 +236,7 @@ unsigned short Schema_IndexCount
 unsigned short Schema_GetIndicies
 (
 	const Schema *s,
-	Index indicies[3]
+	Index indicies[4]
 ) {
 	int i = 0;
 
@@ -110,8 +248,12 @@ unsigned short Schema_GetIndicies
 		indicies[i++] = PENDING_EXACTMATCH_IDX(s);
 	}
 
-	if(s->fulltextIdx != NULL) {
-		indicies[i++] = s->fulltextIdx;
+	if(ACTIVE_FULLTEXT_IDX(s) != NULL) {
+		indicies[i++] = ACTIVE_FULLTEXT_IDX(s);
+	}
+
+	if(PENDING_FULLTEXT_IDX(s) != NULL) {
+		indicies[i++] = PENDING_FULLTEXT_IDX(s);
 	}
 
 	return i;
@@ -138,11 +280,11 @@ Index Schema_GetIndex
 		// consider specified index
 		idx_count   = 1;
 		indicies[0] = (type == IDX_FULLTEXT) ?
-			s->fulltextIdx : ACTIVE_EXACTMATCH_IDX(s);
+			ACTIVE_FULLTEXT_IDX(s) : ACTIVE_EXACTMATCH_IDX(s);
 	} else  {
 		// consider both exact-match and fulltext indicies
 		idx_count   = 2;
-		indicies[0] = s->fulltextIdx;
+		indicies[0] = ACTIVE_FULLTEXT_IDX(s);
 		indicies[1] = ACTIVE_EXACTMATCH_IDX(s);
 	}
 
@@ -189,46 +331,15 @@ int Schema_AddIndex
 	ASSERT(idx != NULL);
 	ASSERT(field != NULL);
 
-	// see if index already exists
-	Index _idx = NULL;
-	GraphEntityType et = (s->type == SCHEMA_NODE) ? GETYPE_NODE : GETYPE_EDGE;
+	int res;
 
-	//--------------------------------------------------------------------------
-	// determine which index to populate
-	//--------------------------------------------------------------------------
-
-	// if pending-index exists, reuse it
-	// if active-index exists, clone it and use clone
-	// otherwise (first index) create a new index
-	if(type == IDX_EXACT_MATCH) {
-		Index active  = ACTIVE_EXACTMATCH_IDX(s);
-		Index pending = PENDING_EXACTMATCH_IDX(s);
-		_idx = pending;
-		if(pending == NULL) {
-			if(active != NULL) {
-				_idx = Index_Clone(active);
-			} else {
-				_idx = Index_New(s->name, s->id, type, et);
-			}
-		}
-		PENDING_EXACTMATCH_IDX(s) = _idx;
+	if(type == IDX_FULLTEXT) {
+		res = Schema_AddFullTextIndex(idx, s, field);
 	} else {
-		ASSERT(s->fulltextIdx == NULL);
-		_idx = Index_New(s->name, s->id, type, et);
-		s->fulltextIdx = _idx;
+		res = Schema_AddExactMatchIndex(idx, s, field);
 	}
 
-	// make sure attribute isn't already indexed
-	if(Index_ContainsAttribute(_idx, field->id)) {
-		// field already indexed, quick return
-		IndexField_Free(field);
-		return INDEX_FAIL;
-	}
-
-	Index_AddField(_idx, field);
-
-	*idx = _idx;
-	return INDEX_OK;
+	return res;
 }
 
 static int _Schema_RemoveExactMatchIndex
@@ -289,7 +400,7 @@ static int _Schema_RemoveExactMatchIndex
 	// index will be freed by the indexer thread
 	if(Index_FieldsCount(idx) == 0) {
 		if(active != NULL) {
-			Indexer_DropIndex(active);
+			Index_Free(active);
 			ACTIVE_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
 		}
 
@@ -313,14 +424,17 @@ static int _Schema_RemoveFullTextIndex
 	Index idx = NULL;
 	int   res = INDEX_FAIL;
 
-	if(s->fulltextIdx != NULL) {
-		idx = s->fulltextIdx;
-		Index_Disable(idx);
+	Index active  = ACTIVE_FULLTEXT_IDX(s);
+	Index pending = PENDING_FULLTEXT_IDX(s);
 
-		Indexer_DropIndex(idx);
-		s->fulltextIdx = NULL;
+	if(active != NULL) {
+		Index_Free(active);
+		ACTIVE_FULLTEXT_IDX(s) = NULL;  // disconnect index from schema
+	}
 
-		res = INDEX_OK;
+	if(pending != NULL) {
+		Indexer_DropIndex(pending);
+		PENDING_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
 	}
 
 	return res;
@@ -349,27 +463,16 @@ int Schema_RemoveIndex
 // drops current active exact-exact index if exists
 void Schema_ActivateIndex
 (
-	Schema *s  // schema to activate index on
+	Schema *s,   // schema to activate index on
+	IndexType t  // type of index to activate
 ) {
 	ASSERT(s != NULL);
-	ASSERT(PENDING_EXACTMATCH_IDX(s) != NULL);
 
-	Index active  = ACTIVE_EXACTMATCH_IDX(s);
-	Index pending = PENDING_EXACTMATCH_IDX(s);
-
-	// make sure pending index is enabled
-	ASSERT(Index_Enabled(pending) == true);
-
-	// drop active if exists
-	if(active != NULL) {
-		Index_Free(active);
+	if(t == IDX_EXACT_MATCH) {
+		Schema_ActivateExactMatchIndex(s);
+	} else {
+		Schema_ActivateFullTextIdx(s);
 	}
-
-	// set pending index as active
-	ACTIVE_EXACTMATCH_IDX(s) = pending;
-
-	// clear pending index
-	PENDING_EXACTMATCH_IDX(s) = NULL;
 }
 
 // index node under all schema indices
@@ -389,7 +492,10 @@ void Schema_AddNodeToIndices
 	idx = PENDING_EXACTMATCH_IDX(s);
 	if(idx) Index_IndexNode(idx, n);
 
-	idx = s->fulltextIdx;
+	idx = ACTIVE_FULLTEXT_IDX(s);
+	if(idx) Index_IndexNode(idx, n);
+
+	idx = PENDING_FULLTEXT_IDX(s);
 	if(idx) Index_IndexNode(idx, n);
 }
 
@@ -408,9 +514,6 @@ void Schema_AddEdgeToIndices
 	if(idx) Index_IndexEdge(idx, e);
 
 	idx = PENDING_EXACTMATCH_IDX(s);
-	if(idx) Index_IndexEdge(idx, e);
-
-	idx = s->fulltextIdx;
 	if(idx) Index_IndexEdge(idx, e);
 }
 
@@ -431,7 +534,10 @@ void Schema_RemoveNodeFromIndices
 	idx = PENDING_EXACTMATCH_IDX(s);
 	if(idx) Index_RemoveNode(idx, n);
 
-	idx = s->fulltextIdx;
+	idx = ACTIVE_FULLTEXT_IDX(s);
+	if(idx) Index_RemoveNode(idx, n);
+
+	idx = PENDING_FULLTEXT_IDX(s);
 	if(idx) Index_RemoveNode(idx, n);
 }
 
@@ -450,9 +556,6 @@ void Schema_RemoveEdgeFromIndices
 	if(idx) Index_RemoveEdge(idx, e);
 
 	idx = PENDING_EXACTMATCH_IDX(s);
-	if(idx) Index_RemoveEdge(idx, e);
-
-	idx = s->fulltextIdx;
 	if(idx) Index_RemoveEdge(idx, e);
 }
 
@@ -627,8 +730,12 @@ void Schema_Free
 	}
 
 	// free indicies
-	if(s->fulltextIdx != NULL) {
-		Index_Free(s->fulltextIdx);
+	if(PENDING_FULLTEXT_IDX(s) != NULL) {
+		Index_Free(PENDING_FULLTEXT_IDX(s));
+	}
+
+	if(ACTIVE_FULLTEXT_IDX(s) != NULL) {
+		Index_Free(ACTIVE_FULLTEXT_IDX(s));
 	}
 
 	if(PENDING_EXACTMATCH_IDX(s)) {

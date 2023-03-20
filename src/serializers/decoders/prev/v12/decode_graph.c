@@ -224,12 +224,13 @@ GraphContext *RdbLoadGraphContext_v12
 			idx = PENDING_EXACTMATCH_IDX(s);
 			if(idx != NULL) {
 				Index_Enable(idx);
-				Schema_ActivateIndex(s);
+				Schema_ActivateIndex(s, Index_Type(idx));
 			}
 
-			idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);
+			idx = PENDING_FULLTEXT_IDX(s);
 			if(idx != NULL) {
 				Index_Enable(idx);
+				Schema_ActivateIndex(s, Index_Type(idx));
 			}
 		}
 
@@ -240,12 +241,7 @@ GraphContext *RdbLoadGraphContext_v12
 			idx = PENDING_EXACTMATCH_IDX(s);
 			if(idx != NULL) {
 				Index_Enable(idx);
-				Schema_ActivateIndex(s);
-			}
-
-			idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);
-			if(idx != NULL) {
-				Index_Enable(idx);
+				Schema_ActivateIndex(s, Index_Type(idx));
 			}
 		}
 
