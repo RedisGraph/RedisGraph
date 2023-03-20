@@ -348,8 +348,9 @@ static void _buildCallSubqueryPlan
 	}
 
 	// characterize whether the query is eager or not
-	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_DELETE,
-					  OPType_FOREACH, OPType_MERGE, OPType_SORT};
+	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_FOREACH,
+					  OPType_MERGE, OPType_SORT, OPType_AGGREGATE};
+
 	bool is_eager =
 	  ExecutionPlan_LocateOpMatchingType(embedded_plan->root, types, 4) != NULL;
 	// characterize whether the query is returning or not
