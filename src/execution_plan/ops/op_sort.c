@@ -93,6 +93,7 @@ OpBase *NewSortOp
 	op->exps       = exps;
 	op->heap       = NULL;
 	op->skip       = 0;
+	op->first      = true;
 	op->limit      = UNLIMITED;
 	op->buffer     = NULL;
 	op->record_idx = 0;
@@ -129,8 +130,6 @@ static OpResult SortInit(OpBase *opBase) {
 		// if all records are being sorted, use quicksort
 		op->buffer = array_new(Record, 32);
 	}
-
-	op->first = true;
 
 	return OP_OK;
 }
