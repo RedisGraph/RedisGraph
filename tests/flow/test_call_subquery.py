@@ -98,6 +98,18 @@ class testCallSubqueryFlow():
         query = "MATCH (n:N) CALL {RETURN 1 AS n} RETURN n"
         self.expect_error(query, "Variable `n` already declared in outer scope")
 
+        # test that a reading query after an updating subquery requires a
+        # separating WITH
+        query = "CALL {CREATE (:N)} MATCH (n:N) RETURN n"
+        self.expect_error(query,
+            "A WITH clause is required to introduce MATCH after an updating clause.")
+
+        # same as the above, but with a subquery with more clauses
+        query = "CALL {MATCH (m:M) CREATE (n:N) RETURN n} MATCH (n2:N) RETURN n2"
+        self.expect_error(query,
+            "A WITH clause is required to introduce MATCH after an updating clause.")
+
+
     def test02_simple_scan_return(self):
         """Test a simple scan and return subquery"""
 

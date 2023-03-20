@@ -37,6 +37,7 @@ static visit validations_mapping[114];
 static AST_Validation _ValidateQuerySequence(const AST *ast);
 static AST_Validation _ValidateClauseOrder(const AST *ast);
 static AST_Validation _ValidateUnion_Clauses(const AST *ast);
+static bool _is_updating_subquery(const cypher_astnode_t *sq);
 
 // validate that allShortestPaths is in a supported place
 static bool _ValidateAllShortestPaths
@@ -1304,6 +1305,37 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	return VISITOR_CONTINUE;
 }
 
+// returns true if the clause is an updating clause, false otherwise
+static bool _is_updating_clause
+(
+	const cypher_astnode_t *clause  // clause
+) {
+	cypher_astnode_type_t type = cypher_astnode_type(clause);
+
+	return type == CYPHER_AST_CREATE             ||
+		   type == CYPHER_AST_MERGE              ||
+		   type == CYPHER_AST_DELETE             ||
+		   type == CYPHER_AST_SET                ||
+		   type == CYPHER_AST_REMOVE             ||
+		   type == CYPHER_AST_FOREACH            ||
+		   type == CYPHER_AST_CALL_SUBQUERY && _is_updating_subquery(clause);
+}
+
+// returns true if the subquery sq contains updating clauses, false otherwise
+static bool _is_updating_subquery
+(
+	const cypher_astnode_t *sq  // the subquery to check
+) {
+	// traverse the clauses of the sq, return true if one is updating
+	uint nclauses = cypher_ast_call_subquery_nclauses(sq);
+	for(uint i = 0; i < nclauses; i++) {
+		if(_is_updating_clause(cypher_ast_call_subquery_get_clause(sq, i))) {
+			return true;
+		}
+	}
+	return false;
+}
+
 // validate a WITH clause
 static VISITOR_STRATEGY _Validate_WITH_Clause
 (
@@ -1778,12 +1810,7 @@ static AST_Validation _ValidateClauseOrder
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 		encountered_updating_clause = (encountered_updating_clause   ||
-									  (type == CYPHER_AST_CREATE     ||
-									   type == CYPHER_AST_MERGE      ||
-									   type == CYPHER_AST_DELETE     ||
-									   type == CYPHER_AST_SET        ||
-									   type == CYPHER_AST_REMOVE     ||
-									   type == CYPHER_AST_FOREACH));
+									   _is_updating_clause(clause));
 		if(encountered_updating_clause && (type == CYPHER_AST_MATCH  ||
 										   type == CYPHER_AST_UNWIND ||
 										   type == CYPHER_AST_CALL)) {
