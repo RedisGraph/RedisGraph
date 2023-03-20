@@ -400,13 +400,13 @@ static int _Schema_RemoveExactMatchIndex
 	// index will be freed by the indexer thread
 	if(Index_FieldsCount(idx) == 0) {
 		if(active != NULL) {
-			Index_Free(active);
 			ACTIVE_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
+			Indexer_DropIndex(active, gc);
 		}
 
 		if(pending != NULL) {
-			Indexer_DropIndex(pending, gc);
 			PENDING_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
+			Indexer_DropIndex(pending, gc);
 		}
 	} else {
 		Indexer_PopulateIndex(gc, s, idx);
@@ -426,20 +426,21 @@ static int _Schema_RemoveFullTextIndex
 	Index active  = ACTIVE_FULLTEXT_IDX(s);
 	Index pending = PENDING_FULLTEXT_IDX(s);
 
+	ACTIVE_FULLTEXT_IDX(s)    = NULL;  // disconnect index from schema
+	PENDING_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
+
 	if(pending == NULL && active == NULL) {
 		return INDEX_FAIL;
 	}
 
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+
 	if(active != NULL) {
-		Index_Free(active);
-		ACTIVE_FULLTEXT_IDX(s) = NULL;  // disconnect index from schema
+		Indexer_DropIndex(active, gc);
 	}
 
 	if(pending != NULL) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Index_Disable(pending);
 		Indexer_DropIndex(pending, gc);
-		PENDING_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
 	}
 
 	return INDEX_OK;

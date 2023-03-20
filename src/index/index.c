@@ -311,14 +311,13 @@ Index Index_Clone
 	//--------------------------------------------------------------------------
 
 	Index clone = rm_malloc(sizeof(_Index));
-
-	clone = memcpy(clone, idx, sizeof(_Index));
+	memcpy(clone, idx, sizeof(_Index));
 
 	clone->rsIdx = NULL;
 	clone->label = rm_strdup(idx->label);
 	clone->pending_changes = ATOMIC_VAR_INIT(0);
 	
-	if(clone->stopwords) {
+	if(clone->stopwords != NULL) {
 		array_clone_with_cb(clone->stopwords, idx->stopwords, rm_strdup);
 	}
 
@@ -361,6 +360,7 @@ void Index_Disable
 	// drop index if exists
 	if(idx->rsIdx != NULL) {
 		RediSearch_DropIndex(idx->rsIdx);
+		idx->rsIdx = NULL;
 	}
 
 	// construct index structure

@@ -12,10 +12,10 @@
 #include "../constraint/constraint.h"
 #include "../graph/entities/graph_entity.h"
 
+#define ACTIVE_FULLTEXT_IDX(s)    s->fulltextIdx[0]
+#define PENDING_FULLTEXT_IDX(s)   s->fulltextIdx[1]
 #define ACTIVE_EXACTMATCH_IDX(s)  s->exactmatchIdx[0]
 #define PENDING_EXACTMATCH_IDX(s) s->exactmatchIdx[1]
-#define ACTIVE_FULLTEXT_IDX(s)  s->fulltextIdx[0]
-#define PENDING_FULLTEXT_IDX(s) s->fulltextIdx[1]
 
 typedef enum {
 	SCHEMA_NODE,

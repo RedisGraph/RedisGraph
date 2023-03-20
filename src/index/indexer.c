@@ -64,7 +64,7 @@ static Indexer *indexer = NULL;
 
 // populate index
 // this function executes on the indexer's worker thread
-static void *_index_populate
+static void *_indexer_run
 (
 	void *arg
 ) {
@@ -79,13 +79,18 @@ static void *_index_populate
 			case INDEXER_IDX_POPULATE:
 			{
 				IndexPopulateCtx *pdata = (IndexPopulateCtx*)ctx.pdata;
-				Index_Populate(pdata->idx, pdata->gc->g);
+				Index idx = pdata->idx;
+				GraphContext *gc = pdata->gc;
+
+				Index_Populate(idx, pdata->gc->g);
 
 				RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
 				RedisModule_ThreadSafeContextLock(ctx);
 				Graph_AcquireWriteLock(pdata->gc->g);
 
-				Schema_ActivateIndex(pdata->s, Index_Type(pdata->idx));
+				if(Index_Enabled(idx)) {
+					Schema_ActivateIndex(pdata->s, Index_Type(idx));
+				}
 
 				Graph_ReleaseLock(pdata->gc->g);
 				RedisModule_ThreadSafeContextUnlock(ctx);
@@ -93,12 +98,15 @@ static void *_index_populate
 
 				// decrease graph reference count
 				GraphContext_DecreaseRefCount(pdata->gc);
+
+				// free task private data
 				rm_free(pdata);
 				break;
 			}
 			case INDEXER_IDX_DROP:
 			{
-				IndexPopulateCtx *pdata = (IndexPopulateCtx *)ctx.pdata;
+				IndexDropCtx *pdata = (IndexDropCtx*)ctx.pdata;
+
 				rm_ctx = RedisModule_GetThreadSafeContext(NULL);
 				RedisModule_ThreadSafeContextLock(rm_ctx);
 
@@ -108,6 +116,9 @@ static void *_index_populate
 
 				// decrease graph reference count
 				GraphContext_DecreaseRefCount(pdata->gc);
+
+				// free task private data
+				rm_free(pdata);
 				break;
 			}
 			case INDEXER_CONSTRAINT_ENFORCE:
@@ -130,7 +141,6 @@ static void *_index_populate
 
 				// free task private data
 				rm_free(pdata);
-
 				break;
 			}
 			case INDEXER_CONSTRAINT_DROP:
@@ -140,6 +150,9 @@ static void *_index_populate
 
 				// decrease graph reference count
 				GraphContext_DecreaseRefCount(pdata->gc);
+
+				// free task private data
+				rm_free(pdata);
 				break;
 			}
 			default:
@@ -258,7 +271,7 @@ bool Indexer_Init(void) {
 		goto cleanup;
 	}
 
-	t_res = pthread_create(&indexer->t, &attr, _index_populate, NULL);
+	t_res = pthread_create(&indexer->t, &attr, _indexer_run, NULL);
 	if(t_res != 0) {
 		goto cleanup;	
 	}
@@ -334,7 +347,6 @@ void Indexer_DropIndex
 ) {
 	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
-	ASSERT(Index_Enabled(idx) == false);
 
 	// create work item
 	IndexDropCtx *ctx = rm_malloc(sizeof(IndexDropCtx));
