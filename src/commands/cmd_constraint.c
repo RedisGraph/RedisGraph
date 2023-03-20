@@ -214,7 +214,7 @@ static bool _Constraint_Drop
 
 	// TODO: consider disallowing droping a pending constraint
 	// asynchronously delete constraint
-	Indexer_DropConstraint(c);
+	Indexer_DropConstraint(c, gc);
 
 cleanup:
 	if(res == false) {

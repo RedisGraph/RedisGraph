@@ -36,7 +36,8 @@ void Indexer_PopulateIndex
 // eventually the indexer working thread will pick it up and drop the index
 void Indexer_DropIndex
 (
-	Index idx  // index to drop
+	Index idx,        // index to drop
+	GraphContext *gc  // graph context
 );
 
 // TODO: Indexer should be incorparated into our scheduler
@@ -54,6 +55,7 @@ void Indexer_EnforceConstraint
 // eventually the indexer working thread will pick it up and drop the constraint
 void Indexer_DropConstraint
 (
-	Constraint c  // constraint to drop
+	Constraint c,     // constraint to drop
+	GraphContext *gc  // graph context
 );
 

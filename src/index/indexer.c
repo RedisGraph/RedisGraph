@@ -31,11 +31,23 @@ typedef struct {
 	GraphContext *gc;  // graph holding entities to index
 } IndexPopulateCtx;
 
+// index drop context
+typedef struct {
+	Index idx;         // index to populate
+	GraphContext *gc;  // graph holding entities to index
+} IndexDropCtx;
+
 // constraint enforce context
 typedef struct {
 	GraphContext *gc;  // graph object
 	Constraint c;      // constraint to enforce
 } ConstraintEnforceCtx;
+
+// constraint drop context
+typedef struct {
+	GraphContext *gc;  // graph object
+	Constraint c;      // constraint to enforce
+} ConstraintDropCtx;
 
 typedef struct {
 	pthread_t t;         // worker thread handel
@@ -86,13 +98,16 @@ static void *_index_populate
 			}
 			case INDEXER_IDX_DROP:
 			{
-				Index idx = (Index)ctx.pdata;
+				IndexPopulateCtx *pdata = (IndexPopulateCtx *)ctx.pdata;
 				rm_ctx = RedisModule_GetThreadSafeContext(NULL);
 				RedisModule_ThreadSafeContextLock(rm_ctx);
 
-				Index_Free(idx);
+				Index_Free(pdata->idx);
 
 				RedisModule_ThreadSafeContextUnlock(rm_ctx);
+
+				// decrease graph reference count
+				GraphContext_DecreaseRefCount(pdata->gc);
 				break;
 			}
 			case INDEXER_CONSTRAINT_ENFORCE:
@@ -120,8 +135,11 @@ static void *_index_populate
 			}
 			case INDEXER_CONSTRAINT_DROP:
 			{
-				Constraint c = (Constraint)ctx.pdata;
-				Constraint_Free(&c);
+				ConstraintDropCtx *pdata = (ConstraintDropCtx *)ctx.pdata;
+				Constraint_Free(&pdata->c);
+
+				// decrease graph reference count
+				GraphContext_DecreaseRefCount(pdata->gc);
 				break;
 			}
 			default:
@@ -311,14 +329,26 @@ void Indexer_PopulateIndex
 // eventually the indexer working thread will pick it up and drop the index
 void Indexer_DropIndex
 (
-	Index idx  // index to drop
+	Index idx,        // index to drop
+	GraphContext *gc  // graph context
 ) {
 	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
 	ASSERT(Index_Enabled(idx) == false);
 
+	// create work item
+	IndexDropCtx *ctx = rm_malloc(sizeof(IndexDropCtx));
+	ctx->gc  = gc;
+	ctx->idx = idx;
+
+	// increase graph reference count
+	// count will be reduced once this task is perfomed
+	// this is done to handle the case where a graph has pending index
+	// population tasks and it is being asked to be deleted
+	GraphContext_IncreaseRefCount(gc);
+
 	// place task into queue
-	_indexer_AddTask(INDEXER_IDX_DROP, idx);
+	_indexer_AddTask(INDEXER_IDX_DROP, ctx);
 }
 
 // enforces constraint
@@ -350,12 +380,23 @@ void Indexer_EnforceConstraint
 // eventually the indexer working thread will pick it up and drop the constraint
 void Indexer_DropConstraint
 (
-	Constraint c  // constraint to drop
+	Constraint c,     // constraint to drop
+	GraphContext *gc  // graph context
 ) {
 	ASSERT(c       != NULL);
 	ASSERT(indexer != NULL);
 
+	ConstraintDropCtx *ctx = rm_malloc(sizeof(ConstraintDropCtx));
+	ctx->c  = c;
+	ctx->gc = gc;
+
+	// increase graph reference count
+	// count will be reduced once this task is perfomed
+	// this is done to handle the case where a graph has pending index
+	// population tasks and it is being asked to be deleted
+	GraphContext_IncreaseRefCount(gc);
+
 	// place task into queue
-	_indexer_AddTask(INDEXER_CONSTRAINT_DROP, c);
+	_indexer_AddTask(INDEXER_CONSTRAINT_DROP, ctx);
 }
 

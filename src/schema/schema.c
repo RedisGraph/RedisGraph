@@ -405,7 +405,7 @@ static int _Schema_RemoveExactMatchIndex
 		}
 
 		if(pending != NULL) {
-			Indexer_DropIndex(pending);
+			Indexer_DropIndex(pending, gc);
 			PENDING_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
 		}
 	} else {
@@ -436,7 +436,9 @@ static int _Schema_RemoveFullTextIndex
 	}
 
 	if(pending != NULL) {
-		Indexer_DropIndex(pending);
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		Index_Disable(pending);
+		Indexer_DropIndex(pending, gc);
 		PENDING_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
 	}
 
