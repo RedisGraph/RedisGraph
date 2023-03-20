@@ -110,8 +110,8 @@ unsigned short Schema_GetIndicies
 		indicies[i++] = PENDING_EXACTMATCH_IDX(s);
 	}
 
-	if(s->fulltext != NULL) {
-		indicies[i++] = s->fulltext;
+	if(s->fulltextIdx != NULL) {
+		indicies[i++] = s->fulltextIdx;
 	}
 
 	return i;
@@ -214,7 +214,8 @@ int Schema_AddIndex
 		PENDING_EXACTMATCH_IDX(s) = _idx;
 	} else {
 		ASSERT(s->fulltextIdx == NULL);
-		_idx = s->fulltextIdx;
+		_idx = Index_New(s->name, s->id, type, et);
+		s->fulltextIdx = _idx;
 	}
 
 	// make sure attribute isn't already indexed
@@ -297,7 +298,7 @@ static int _Schema_RemoveExactMatchIndex
 			PENDING_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
 		}
 	} else {
-		Indexer_PopulateIndex(gc, idx);
+		Indexer_PopulateIndex(gc, s, idx);
 	}
 
 	return INDEX_OK;
@@ -366,6 +367,9 @@ void Schema_ActivateIndex
 
 	// set pending index as active
 	ACTIVE_EXACTMATCH_IDX(s) = pending;
+
+	// clear pending index
+	PENDING_EXACTMATCH_IDX(s) = NULL;
 }
 
 // index node under all schema indices

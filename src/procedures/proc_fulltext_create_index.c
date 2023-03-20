@@ -274,7 +274,8 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 
 	// build index
 	if(res) {
-		Indexer_PopulateIndex(gc, idx);
+		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+		Indexer_PopulateIndex(gc, s, idx);
 	}
 
 	return PROCEDURE_OK;

@@ -82,10 +82,8 @@ static void abort_and_check_timeout
 static bool _index_operation_delete
 (
 	GraphContext *gc,
-	AST *ast,
-	Index *idx
+	AST *ast
 ) {
-	*idx = NULL;
 	Schema *s = NULL;
 	SchemaType schema_type = SCHEMA_NODE;
 	const cypher_astnode_t *index_op = ast->root;
@@ -128,8 +126,7 @@ static void _index_operation_create
 (
 	RedisModuleCtx *ctx,
 	GraphContext *gc,
-	AST *ast,
-	Index *idx
+	AST *ast
 ) {
 	ASSERT(gc  != NULL);
 	ASSERT(ctx != NULL);
@@ -185,9 +182,13 @@ static void _index_operation_create
 	// lock
 	QueryCtx_LockForCommit();
 
+	Index idx;
 	// add fields to index
-	GraphContext_AddExactMatchIndex(idx, gc, schema_type, label, fields, nprops,
-			true);
+	if(GraphContext_AddExactMatchIndex(&idx, gc, schema_type, label, fields, nprops,
+			true)) {
+		Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+		Indexer_PopulateIndex(gc, s, idx);
+	}
 }
 
 // handle index/constraint operation
@@ -199,17 +200,12 @@ static void _index_operation
 	AST *ast,
 	ExecutionType exec_type
 ) {
-	Index idx = NULL;
-
 	switch(exec_type) {
 		case EXECUTION_TYPE_INDEX_CREATE:
-			_index_operation_create(ctx, gc, ast, &idx);
-			if(idx) {
-				Indexer_PopulateIndex(gc, idx);
-			}
+			_index_operation_create(ctx, gc, ast);
 			break;
 		case EXECUTION_TYPE_INDEX_DROP:
-			_index_operation_delete(gc, ast, &idx);
+			_index_operation_delete(gc, ast);
 			break;
 		default:
 			ErrorCtx_SetError("ERR Encountered unknown query execution type.");

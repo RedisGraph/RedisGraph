@@ -69,6 +69,17 @@ static void *_index_populate
 				IndexPopulateCtx *pdata = (IndexPopulateCtx*)ctx.pdata;
 				Index_Populate(pdata->idx, pdata->gc->g);
 
+				if(Index_Type(pdata->idx) == IDX_EXACT_MATCH) {
+					RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
+					RedisModule_ThreadSafeContextLock(ctx);
+					Graph_AcquireWriteLock(pdata->gc->g);
+
+					Schema_ActivateIndex(pdata->s);
+
+					Graph_ReleaseLock(pdata->gc->g);
+					RedisModule_ThreadSafeContextUnlock(ctx);
+				}
+
 				// decrease graph reference count
 				GraphContext_DecreaseRefCount(pdata->gc);
 				rm_free(pdata);

@@ -141,7 +141,7 @@ ProcedureResult Proc_IndexesInvoke
 	// collect indices from edge schemas
 	n = GraphContext_SchemaCount(gc, SCHEMA_EDGE);
 	for(unsigned short i = 0; i < n; i++) {
-		s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
+		s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
 		idx_count = Schema_GetIndicies(s, indicies);
 		for(uint j = 0; j < idx_count; j++) {
 			array_append(pdata->indices, indicies[j]);
