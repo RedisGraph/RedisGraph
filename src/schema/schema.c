@@ -422,10 +422,13 @@ static int _Schema_RemoveFullTextIndex
 	ASSERT(s != NULL);
 
 	Index idx = NULL;
-	int   res = INDEX_FAIL;
 
 	Index active  = ACTIVE_FULLTEXT_IDX(s);
 	Index pending = PENDING_FULLTEXT_IDX(s);
+
+	if(pending == NULL && active == NULL) {
+		return INDEX_FAIL;
+	}
 
 	if(active != NULL) {
 		Index_Free(active);
@@ -437,7 +440,7 @@ static int _Schema_RemoveFullTextIndex
 		PENDING_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
 	}
 
-	return res;
+	return INDEX_OK;
 }
 
 int Schema_RemoveIndex

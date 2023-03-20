@@ -317,6 +317,10 @@ Index Index_Clone
 	clone->rsIdx = NULL;
 	clone->label = rm_strdup(idx->label);
 	clone->pending_changes = ATOMIC_VAR_INIT(0);
+	
+	if(clone->stopwords) {
+		array_clone_with_cb(clone->stopwords, idx->stopwords, rm_strdup);
+	}
 
 	//--------------------------------------------------------------------------
 	// clone index fields
