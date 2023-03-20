@@ -4,7 +4,6 @@ parameters:
   run_default_flow:
     default: true
     type: boolean
-
   run_benchmark_flow_label:
     default: false
     type: boolean
@@ -67,7 +66,7 @@ commands:
             if [[ $(uname -s) == Darwin ]]; then rm -f /usr/local/bin/python3; fi
             ./deps/readies/bin/getpy3
       - run:
-          name: Setup automation (2)
+          name: Setup automation (part 2)
           shell: /bin/bash -l -eo pipefail
           command: |
             export HOMEBREW_NO_AUTO_UPDATE=1
@@ -227,6 +226,12 @@ commands:
             make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
       - save-tests-logs
       - early-return-for-forked-pull-requests
+      - run:
+          name: Upload artifacts to S3
+          command: |
+            if [[ -n $CIRCLE_BRANCH ]]; then
+                make upload-artifacts OSNICK=<<parameters.platform>> SHOW=1 VERBOSE=1
+            fi
       - run:
           name: Publish container
           shell: /bin/bash -l -eo pipefail
@@ -475,7 +480,7 @@ jobs:
           platform: <<parameters.platform>>
           official: "0"
 
-  build-macos:
+  build-macos-x64:
     macos:
       xcode: 12.5.1
     resource_class: macos.x86.medium.gen2
@@ -487,6 +492,32 @@ jobs:
       - early-returns
       - build-steps
       - test-steps
+      - run:
+          name: Upload artifacts to S3
+          command: |
+            if [[ -n $CIRCLE_BRANCH && "<<parameters.upload>>" == "yes" ]]; then
+                make upload-artifacts SHOW=1 VERBOSE=1
+            fi
+      - persist-artifacts
+
+  build-macos-m1:
+    macos:
+      xcode: 14.2.0
+    resource_class: macos.m1.large.gen1
+    parameters:
+      upload:
+        type: string
+        default: "yes"
+    steps:
+      - early-returns
+      - build-steps
+      - test-steps
+      - run:
+          name: Persist artifacts?
+          command: |
+            if [[ "<<parameters.upload>>" != "yes" ]]; then
+              circleci step halt
+            fi
       - run:
           name: Upload artifacts to S3
           command: |
@@ -688,9 +719,13 @@ workflows:
           matrix:
             parameters:
               platform: [jammy, focal, bionic]
-      - build-macos:
-          context: common
+      - build-macos-x64:
           <<: *on-integ-and-version-tags
+          context: common
+      - build-macos-m1:
+          context: common
+          #@@<<: *on-integ-and-version-tags
+          <<: *always
       - coverage:
           <<: *always
       - sanitize:
@@ -707,7 +742,8 @@ workflows:
           requires:
             - build-platforms
             - build-arm-platforms
-            - build-macos
+            - build-macos-x64
+            - build-macos-m1
       - upload-artifacts:
           name: upload-release-artifacts
           context: common
@@ -715,7 +751,8 @@ workflows:
           requires:
             - build-platforms
             - build-arm-platforms
-            - build-macos
+            - build-macos-x64
+            - build-macos-m1
       - release-automation:
           <<: *on-version-tags
           context: common
