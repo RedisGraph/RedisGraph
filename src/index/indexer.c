@@ -315,8 +315,8 @@ void Indexer_PopulateIndex
 	Schema *s,        // schema containing the idx
 	Index idx         // index to populate
 ) {
-	ASSERT(gc      != NULL);
 	ASSERT(s       != NULL);
+	ASSERT(gc      != NULL);
 	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
 	ASSERT(Index_Enabled(idx) == false);

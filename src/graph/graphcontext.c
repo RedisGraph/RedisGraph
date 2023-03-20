@@ -595,7 +595,6 @@ bool GraphContext_AddFullTextIndex
 (
 	Index *idx,             // [input/output] index created
 	GraphContext *gc,        // graph context
-	SchemaType schema_type,  // type of entities to index nodes/edges
 	const char *label,       // label of indexed entities
 	const char **fields,     // fields to index
 	uint fields_count,       // number of fields to index
@@ -614,10 +613,10 @@ bool GraphContext_AddFullTextIndex
 	// retrieve the schema for this label
 	ResultSet *result_set   = QueryCtx_GetResultSet();
 	bool      index_changed = false;
-	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
+	Schema    *s            = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 
 	if(s == NULL) {
-		s = GraphContext_AddSchema(gc, label, schema_type);
+		s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
 	}
 
 	for(uint i = 0; i < fields_count; i++) {

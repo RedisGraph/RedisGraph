@@ -426,8 +426,8 @@ static int _Schema_RemoveFullTextIndex
 	Index active  = ACTIVE_FULLTEXT_IDX(s);
 	Index pending = PENDING_FULLTEXT_IDX(s);
 
-	ACTIVE_FULLTEXT_IDX(s)    = NULL;  // disconnect index from schema
-	PENDING_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
+	ACTIVE_FULLTEXT_IDX(s)  = NULL;  // disconnect index from schema
+	PENDING_FULLTEXT_IDX(s) = NULL;  // disconnect index from schema
 
 	if(pending == NULL && active == NULL) {
 		return INDEX_FAIL;

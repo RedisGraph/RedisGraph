@@ -269,8 +269,8 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke
 		}
 	}
 
-	res = GraphContext_AddFullTextIndex(&idx, gc, SCHEMA_NODE, label, _fields,
-			fields_count, weights, nostems, phonetics, stopwords, language);
+	res = GraphContext_AddFullTextIndex(&idx, gc, label, _fields, fields_count,
+			weights, nostems, phonetics, stopwords, language);
 
 	// build index
 	if(res) {
