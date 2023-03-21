@@ -18,15 +18,16 @@
 
 // opaque structure representing a constraint
 typedef struct _Constraint {
-	uint8_t n_attr;                // number of fields
-	ConstraintType t;              // constraint type
-	EnforcementCB enforce;         // enforcement function
-	int schema_id;                 // enforced label/relationship-type
-	Attribute_ID *attrs;           // enforced attributes
-	const char **attr_names;       // enforced attribute names
-	ConstraintStatus status;       // constraint status
-	uint _Atomic pending_changes;  // number of pending changes
-	GraphEntityType et;            // entity type
+	uint8_t n_attr;                         // number of fields
+	ConstraintType t;                       // constraint type
+	Constraint_EnforcementCB enforce;       // enforcement function
+	Constraint_SetPrivateDataCB set_pdata;  // set private data
+	int schema_id;                          // enforced label/relationship-type
+	Attribute_ID *attrs;                    // enforced attributes
+	const char **attr_names;                // enforced attribute names
+	ConstraintStatus status;                // constraint status
+	uint _Atomic pending_changes;           // number of pending changes
+	GraphEntityType et;                     // entity type
 } _Constraint;
 
 // Extern functions
@@ -69,10 +70,10 @@ Constraint Constraint_New
 	Constraint c = NULL;
 
 	if(t == CT_UNIQUE) {
-		// a unique constraints requires an index
-		// try to get supporting index
-		Index idx = GraphContext_GetIndexByID((GraphContext*) gc, schema_id,
-				fields, n_fields, IDX_EXACT_MATCH, et);
+		// a unique constraints requires an index, try to get supporting index
+		SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+		Schema *s = GraphContext_GetSchemaByID((GraphContext*)gc, schema_id, st);
+		Index idx = Schema_GetIndex(s, fields, n_fields, IDX_EXACT_MATCH, true);
 
 		// supporting index is missing, can't create constraint
 		if(idx == NULL) {
@@ -149,6 +150,21 @@ void Constraint_SetStatus
 
 	// assuming under lock
     c->status = status;
+}
+
+// sets constraint private data
+// if c->pdata == prev then c->pdata = pdata
+void Constraint_SetPrivateData
+(
+	Constraint c,  // constraint to update
+	void *prev,    // previous private data
+	void *pdata    // new private data
+) {
+	ASSERT(c != NULL);
+
+	if(c->set_pdata != NULL) {
+		c->set_pdata(c, prev, pdata);
+	}
 }
 
 // returns a shallow copy of constraint attributes

@@ -33,10 +33,10 @@ static void _DeleteEntities
 (
 	OpDelete *op
 ) {
-	uint node_deleted          = 0;
-	uint edge_deleted          = 0;
-	uint node_count            = array_len(op->deleted_nodes);
-	uint edge_count            = array_len(op->deleted_edges);
+	uint node_count   = array_len(op->deleted_nodes);
+	uint edge_count   = array_len(op->deleted_edges);
+	uint node_deleted = 0;
+	uint edge_deleted = 0;
 
 	// nothing to delete, quickly return
 	if((node_count + edge_count) == 0) return;
@@ -72,8 +72,8 @@ static void _DeleteEntities
 				&op->deleted_edges);
 	}
 
-	node_count =  array_len(distinct_nodes);
-	edge_count =  array_len(op->deleted_edges);
+	node_count = array_len(distinct_nodes);
+	edge_count = array_len(op->deleted_edges);
 
 	// remove edge duplicates
 	Edge *edges = op->deleted_edges;

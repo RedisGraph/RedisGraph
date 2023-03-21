@@ -326,10 +326,9 @@ void reduce_scan_op
 				GETYPE_NODE);
 
 		// no index for current label
-		if(idx == NULL || !Index_Enabled(idx)) continue;
+		if(idx == NULL) continue;
 
-		// get all applicable filter for index
-		RSIndex *cur_idx = Index_RSIndex(idx);
+		ASSERT(Index_Enabled(idx));
 
 		// TODO switch to reusable array
 		OpFilter **cur_filters = _applicableFilters((OpBase *)scan, scan->n.alias, idx);
@@ -343,6 +342,9 @@ void reduce_scan_op
 			array_free(cur_filters);
 			continue;
 		}
+
+		// get all applicable filter for index
+		RSIndex *cur_idx = Index_RSIndex(idx);
 
 		nnz = Graph_LabeledNodeCount(g, label_id);
 		if(min_nnz > nnz) {
@@ -432,13 +434,13 @@ void reduce_cond_op(ExecutionPlan *plan, OpCondTraverse *cond) {
 	if(idx == NULL) return;
 
 	// get all applicable filter for index
-	RSIndex *rs_idx = Index_RSIndex(idx);
 	OpFilter **filters = _applicableFilters((OpBase *)cond, edge, idx);
 
 	// no filters, return
 	uint filters_count = array_len(filters);
 	if(filters_count == 0) goto cleanup;
 
+	RSIndex *rs_idx = Index_RSIndex(idx);
 	FT_FilterNode *root = _Concat_Filters(filters);
 	OpBase *indexOp = NewEdgeIndexScanOp(cond->op.plan, cond->graph, e, rs_idx,
 			root);
