@@ -125,8 +125,8 @@ void RdbLoadNodes_v13
 			Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 			ASSERT(s != NULL);
 
-			if(s->index) Index_IndexNode(s->index, &n);
-			if(s->fulltextIdx) Index_IndexNode(s->fulltextIdx, &n);
+			if(PENDING_FULLTEXT_IDX(s)) Index_IndexNode(PENDING_FULLTEXT_IDX(s), &n);
+			if(PENDING_EXACTMATCH_IDX(s)) Index_IndexNode(PENDING_EXACTMATCH_IDX(s), &n);
 		}
 	}
 }
@@ -177,8 +177,7 @@ void RdbLoadEdges_v13
 		Schema *s = GraphContext_GetSchemaByID(gc, relation, SCHEMA_EDGE);
 		ASSERT(s != NULL);
 
-		if(s->index) Index_IndexEdge(s->index, &e);
-		if(s->fulltextIdx) Index_IndexEdge(s->fulltextIdx, &e);
+		if(PENDING_EXACTMATCH_IDX(s)) Index_IndexEdge(PENDING_EXACTMATCH_IDX(s), &e);
 	}
 }
 
