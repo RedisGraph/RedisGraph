@@ -27,10 +27,6 @@ typedef struct {
 	ResultSetFormatterType format;  // result set format; compact/verbose/nop
 	ResultSetFormatter *formatter;  // result set data formatter
 	SIAllocation cells_allocation;  // encountered values allocation
-	struct {
-		bool reply_simple_string;	// reply with simple string
-		const char *reply_string;	// simple string to reply with
-	};
 } ResultSet;
 
 // map each column to a record index
@@ -60,13 +56,6 @@ int ResultSet_AddRecord
 (
 	ResultSet *set,  // resultset to extend
 	Record r         // record containing projected data
-);
-
-// add string to be replied
-void ResultSet_AddReplyString
-(
-	ResultSet *set,  // resultset to update
-	const char *str  // index creation status code
 );
 
 // update resultset index creation statistics

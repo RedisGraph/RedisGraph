@@ -73,7 +73,6 @@ ResultSet *NewResultSet
 	set->column_count        =  0;
 	set->cells_allocation    =  M_NONE;
 	set->columns_record_map  =  NULL;
-	set->reply_simple_string =  false;
 
 	// init resultset statistics
 	ResultSetStat_init(&set->stats);
@@ -157,18 +156,6 @@ int ResultSet_AddRecord
 	return RESULTSET_OK;
 }
 
-// add string to be replied
-void ResultSet_AddReplyString
-(
-	ResultSet *set,  // resultset to update
-	const char *str  // index creation status code
-) {
-	ASSERT(set != NULL);
-
-	set->reply_simple_string = true;
-	set->reply_string = str;
-}
-
 // update resultset index creation statistics
 void ResultSet_IndexCreated
 (
@@ -247,13 +234,6 @@ void ResultSet_Reply
 	// if so, emit it as the only response
 	if(ErrorCtx_EncounteredError()) {
 		ErrorCtx_EmitException();
-		return;
-	}
-
-	// if we only need a simple string to reply with,
-	// do so and return
-	if(set->reply_simple_string) {
-		RedisModule_ReplyWithSimpleString(set->ctx, set->reply_string);
 		return;
 	}
 
