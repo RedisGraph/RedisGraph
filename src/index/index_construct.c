@@ -240,7 +240,7 @@ void Index_Populate
 
 	Graph_AcquireWriteLock(g);
 
-	// task been handled, try to enable index
+	// index populated, try to enable
 	Index_Enable(idx);
 
 	Graph_ReleaseLock(g);

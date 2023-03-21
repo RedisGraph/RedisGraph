@@ -45,7 +45,7 @@ static int Schema_AddExactMatchIndex
 			_idx = Index_New(s->name, s->id, IDX_EXACT_MATCH, et);
 		}
 	}
-	PENDING_EXACTMATCH_IDX(s) = _idx;
+	PENDING_EXACTMATCH_IDX(s) = _idx;  // set pending exact-match index
 
 	// make sure attribute isn't already indexed
 	if(Index_ContainsAttribute(_idx, field->id)) {
@@ -91,7 +91,7 @@ static int Schema_AddFullTextIndex
 			_idx = Index_New(s->name, s->id, IDX_FULLTEXT, GETYPE_NODE);
 		}
 	}
-	PENDING_FULLTEXT_IDX(s) = _idx;
+	PENDING_FULLTEXT_IDX(s) = _idx;  // set pending full-text index
 
 	// make sure attribute isn't already indexed
 	if(Index_ContainsAttribute(_idx, field->id)) {
@@ -103,6 +103,120 @@ static int Schema_AddFullTextIndex
 	Index_AddField(_idx, field);
 
 	*idx = _idx;
+	return INDEX_OK;
+}
+
+static int _Schema_RemoveExactMatchIndex
+(
+	Schema *s,
+	const char *field
+) {
+	ASSERT(s != NULL);
+	ASSERT(field != NULL);
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+
+	// convert attribute name to attribute ID
+	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, field);
+	if(attr_id == ATTRIBUTE_ID_NONE) {
+		return INDEX_FAIL;
+	}
+
+	// try to get index
+	// if a pending index exists use it otherwise use the active index
+	Index active  = ACTIVE_EXACTMATCH_IDX(s);
+	Index pending = PENDING_EXACTMATCH_IDX(s);
+	Index idx     = pending;
+
+	// both pending and active indicies do not exists
+	if(pending == NULL) {
+		if(active == NULL) {
+			return INDEX_FAIL;
+		}
+		// use active
+		idx = Index_Clone(active);
+		PENDING_EXACTMATCH_IDX(s) = idx;
+	}
+
+	// index doesn't containts attribute
+	if(Index_ContainsAttribute(idx, attr_id) == false) {
+		return INDEX_FAIL;
+	}
+
+	//--------------------------------------------------------------------------
+	// make sure index doesn't supports any constraints
+	//--------------------------------------------------------------------------
+
+	uint n = array_len(s->constraints);
+	for(uint i = 0; i < n; i++) {
+		Constraint c = s->constraints[i];
+		if(Constraint_GetStatus(c) != CT_FAILED &&
+		   Constraint_GetType(c) == CT_UNIQUE   &&
+		   Constraint_ContainsAttribute(c, attr_id)) {
+			ErrorCtx_SetError("Index supports constraint");
+			return INDEX_FAIL;
+		}
+	}
+
+	Index_RemoveField(idx, attr_id);
+
+	// if index field count dropped to 0 remove index from schema
+	// index will be freed by the indexer thread
+	if(Index_FieldsCount(idx) == 0) {
+		if(active != NULL) {
+			ACTIVE_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
+			Indexer_DropIndex(active, gc);
+		}
+
+		if(pending != NULL) {
+			PENDING_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
+			Indexer_DropIndex(pending, gc);
+		}
+	} else {
+		Indexer_PopulateIndex(gc, s, idx);
+	}
+
+	return INDEX_OK;
+}
+
+static int _Schema_RemoveFullTextIndex
+(
+	Schema *s
+) {
+	// removing a fulltext index is performed in one go
+	// the entire index is dropped, even if it contains multiple fields
+	// unlike an exact-match index where individual fields can be removed
+	ASSERT(s != NULL);
+
+	Index idx     = NULL;
+	Index active  = ACTIVE_FULLTEXT_IDX(s);
+	Index pending = PENDING_FULLTEXT_IDX(s);
+
+	// both active and pending do not exists, nothing to drop
+	if(pending == NULL && active == NULL) {
+		return INDEX_FAIL;
+	}
+
+	// disconnect both active and pending indicies from schema
+	ACTIVE_FULLTEXT_IDX(s)  = NULL;
+	PENDING_FULLTEXT_IDX(s) = NULL;
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+
+	//--------------------------------------------------------------------------
+	// disable and async drop
+	//--------------------------------------------------------------------------
+
+	if(active != NULL) {
+		Index_Disable(active);
+		Indexer_DropIndex(active, gc);
+	}
+
+	if(pending != NULL) {
+		Index_Disable(pending);
+		Indexer_DropIndex(pending, gc);
+	}
+
 	return INDEX_OK;
 }
 
@@ -334,112 +448,6 @@ int Schema_AddIndex
 	}
 
 	return res;
-}
-
-static int _Schema_RemoveExactMatchIndex
-(
-	Schema *s,
-	const char *field
-) {
-	ASSERT(s != NULL);
-	ASSERT(field != NULL);
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-
-	// convert attribute name to attribute ID
-	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, field);
-	if(attr_id == ATTRIBUTE_ID_NONE) {
-		return INDEX_FAIL;
-	}
-
-	// try to get index
-	// if a pending index exists use it otherwise use the active index
-	Index active  = ACTIVE_EXACTMATCH_IDX(s);
-	Index pending = PENDING_EXACTMATCH_IDX(s);
-	Index idx     = pending;
-
-	// both pending and active indicies do not exists
-	if(pending == NULL) {
-		if(active == NULL) {
-			return INDEX_FAIL;
-		}
-		// use active
-		idx = Index_Clone(active);
-		PENDING_EXACTMATCH_IDX(s) = idx;
-	}
-
-	// index doesn't containts attribute
-	if(Index_ContainsAttribute(idx, attr_id) == false) {
-		return INDEX_FAIL;
-	}
-
-	//--------------------------------------------------------------------------
-	// make sure index doesn't supports any constraints
-	//--------------------------------------------------------------------------
-
-	uint n = array_len(s->constraints);
-	for(uint i = 0; i < n; i++) {
-		Constraint c = s->constraints[i];
-		if(Constraint_GetStatus(c) != CT_FAILED &&
-		   Constraint_GetType(c) == CT_UNIQUE   &&
-		   Constraint_ContainsAttribute(c, attr_id)) {
-			ErrorCtx_SetError("Index supports constraint");
-			return INDEX_FAIL;
-		}
-	}
-
-	Index_RemoveField(idx, attr_id);
-
-	// if index field count dropped to 0 remove index from schema
-	// index will be freed by the indexer thread
-	if(Index_FieldsCount(idx) == 0) {
-		if(active != NULL) {
-			ACTIVE_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
-			Indexer_DropIndex(active, gc);
-		}
-
-		if(pending != NULL) {
-			PENDING_EXACTMATCH_IDX(s) = NULL;  // disconnect index from schema
-			Indexer_DropIndex(pending, gc);
-		}
-	} else {
-		Indexer_PopulateIndex(gc, s, idx);
-	}
-
-	return INDEX_OK;
-}
-
-static int _Schema_RemoveFullTextIndex
-(
-	Schema *s
-) {
-	ASSERT(s != NULL);
-
-	Index idx = NULL;
-
-	Index active  = ACTIVE_FULLTEXT_IDX(s);
-	Index pending = PENDING_FULLTEXT_IDX(s);
-
-	ACTIVE_FULLTEXT_IDX(s)  = NULL;  // disconnect index from schema
-	PENDING_FULLTEXT_IDX(s) = NULL;  // disconnect index from schema
-
-	if(pending == NULL && active == NULL) {
-		return INDEX_FAIL;
-	}
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-
-	if(active != NULL) {
-		Index_Disable(active);
-		Indexer_DropIndex(active, gc);
-	}
-
-	if(pending != NULL) {
-		Index_Disable(pending);
-		Indexer_DropIndex(pending, gc);
-	}
-
-	return INDEX_OK;
 }
 
 int Schema_RemoveIndex

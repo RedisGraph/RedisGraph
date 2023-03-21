@@ -305,6 +305,7 @@ Index Index_Clone
 	const Index idx  // index to clone
 ) {
 	ASSERT(idx != NULL);
+	ASSERT(Index_Enabled(idx));
 
 	//--------------------------------------------------------------------------
 	// clone index
@@ -313,8 +314,8 @@ Index Index_Clone
 	Index clone = rm_malloc(sizeof(_Index));
 	memcpy(clone, idx, sizeof(_Index));
 
-	clone->rsIdx = NULL;
-	clone->label = rm_strdup(idx->label);
+	clone->rsIdx           = NULL;
+	clone->label           = rm_strdup(idx->label);
 	clone->pending_changes = ATOMIC_VAR_INIT(0);
 	
 	if(clone->stopwords != NULL) {

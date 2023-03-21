@@ -62,13 +62,99 @@ static void _indexer_PopTask(IndexerTask *task);
 
 static Indexer *indexer = NULL;
 
+// index populate task handler
+static void _indexer_idx_populate
+(
+	IndexPopulateCtx *ctx
+) {
+	Index idx = ctx->idx;
+	GraphContext *gc = ctx->gc;
+
+	// populate index
+	Index_Populate(idx, ctx->gc->g);
+
+	// we're required to hold both GIL and write lock
+	// as Schema_ActivateIndex might drop an index
+	RedisModuleCtx *rm_ctx = RedisModule_GetThreadSafeContext(NULL);
+	RedisModule_ThreadSafeContextLock(rm_ctx);
+	Graph_AcquireWriteLock(ctx->gc->g);
+
+	if(Index_Enabled(idx)) {
+		Schema_ActivateIndex(ctx->s, idx);
+	}
+
+	// release locks
+	Graph_ReleaseLock(ctx->gc->g);
+	RedisModule_ThreadSafeContextUnlock(rm_ctx);
+	RedisModule_FreeThreadSafeContext(rm_ctx);
+
+	// decrease graph reference count
+	GraphContext_DecreaseRefCount(ctx->gc);
+
+	rm_free(ctx);
+}
+
+// index drop task handler
+static void _indexer_idx_drop
+(
+	IndexDropCtx *ctx
+) {
+	RedisModuleCtx *rm_ctx = RedisModule_GetThreadSafeContext(NULL);
+	RedisModule_ThreadSafeContextLock(rm_ctx);
+
+	Index_Free(ctx->idx);
+
+	RedisModule_ThreadSafeContextUnlock(rm_ctx);
+
+	// decrease graph reference count
+	GraphContext_DecreaseRefCount(ctx->gc);
+
+	rm_free(ctx);
+}
+
+// constraint enforce task handler
+static void _indexer_enforce_constraint
+(
+	ConstraintEnforceCtx *ctx
+) {
+	Constraint c = ctx->c;
+	GraphContext *gc = ctx->gc;
+	Graph *g = GraphContext_GetGraph(gc);
+
+	if(Constraint_GetEntityType(c) == GETYPE_NODE) {
+		Constraint_EnforceNodes(c, g);
+	} else {
+		Constraint_EnforceEdges(c, g);
+	}
+
+	// decrease number of pending changes
+	Constraint_DecPendingChanges(c);
+
+	// decrease graph reference count
+	GraphContext_DecreaseRefCount(gc);
+
+	rm_free(ctx);
+}
+
+// constraint drop task handler
+static void _indexer_drop_constraint
+(
+	ConstraintDropCtx *ctx
+) {
+	Constraint_Free(&ctx->c);
+
+	// decrease graph reference count
+	GraphContext_DecreaseRefCount(ctx->gc);
+
+	rm_free(ctx);
+}
+
 // populate index
 // this function executes on the indexer's worker thread
 static void *_indexer_run
 (
 	void *arg
 ) {
-	RedisModuleCtx *rm_ctx;
 	while(true) {
 		// pop an item from queue
 		// if queue is empty thread will be put to sleep
@@ -79,80 +165,25 @@ static void *_indexer_run
 			case INDEXER_IDX_POPULATE:
 			{
 				IndexPopulateCtx *pdata = (IndexPopulateCtx*)ctx.pdata;
-				Index idx = pdata->idx;
-				GraphContext *gc = pdata->gc;
-
-				Index_Populate(idx, pdata->gc->g);
-
-				RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
-				RedisModule_ThreadSafeContextLock(ctx);
-				Graph_AcquireWriteLock(pdata->gc->g);
-
-				if(Index_Enabled(idx)) {
-					Schema_ActivateIndex(pdata->s, idx);
-				}
-
-				Graph_ReleaseLock(pdata->gc->g);
-				RedisModule_ThreadSafeContextUnlock(ctx);
-				RedisModule_FreeThreadSafeContext(ctx);
-
-				// decrease graph reference count
-				GraphContext_DecreaseRefCount(pdata->gc);
-
-				// free task private data
-				rm_free(pdata);
+				_indexer_idx_populate(pdata);
 				break;
 			}
 			case INDEXER_IDX_DROP:
 			{
 				IndexDropCtx *pdata = (IndexDropCtx*)ctx.pdata;
-
-				rm_ctx = RedisModule_GetThreadSafeContext(NULL);
-				RedisModule_ThreadSafeContextLock(rm_ctx);
-
-				Index_Free(pdata->idx);
-
-				RedisModule_ThreadSafeContextUnlock(rm_ctx);
-
-				// decrease graph reference count
-				GraphContext_DecreaseRefCount(pdata->gc);
-
-				// free task private data
-				rm_free(pdata);
+				_indexer_idx_drop(pdata);
 				break;
 			}
 			case INDEXER_CONSTRAINT_ENFORCE:
 			{
 				ConstraintEnforceCtx *pdata = (ConstraintEnforceCtx*)ctx.pdata;
-				Constraint c = pdata->c;
-				GraphContext *gc = pdata->gc;
-				Graph *g = GraphContext_GetGraph(gc);
-				if(Constraint_GetEntityType(c) == GETYPE_NODE) {
-					Constraint_EnforceNodes(c, g);
-				} else {
-					Constraint_EnforceEdges(c, g);
-				}
-
-				// decrease number of pending changes
-				Constraint_DecPendingChanges(c);
-
-				// decrease graph reference count
-				GraphContext_DecreaseRefCount(gc);
-
-				// free task private data
-				rm_free(pdata);
+				_indexer_enforce_constraint(pdata);
 				break;
 			}
 			case INDEXER_CONSTRAINT_DROP:
 			{
-				ConstraintDropCtx *pdata = (ConstraintDropCtx *)ctx.pdata;
-				Constraint_Free(&pdata->c);
-
-				// decrease graph reference count
-				GraphContext_DecreaseRefCount(pdata->gc);
-
-				// free task private data
-				rm_free(pdata);
+				ConstraintDropCtx *pdata = (ConstraintDropCtx*)ctx.pdata;
+				_indexer_drop_constraint(pdata);
 				break;
 			}
 			default:
