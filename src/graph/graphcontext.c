@@ -505,7 +505,7 @@ Index GraphContext_GetIndexByID
 		return NULL;
 	}
 
-	return Schema_GetIndex(s, attrs, n, idx_type);
+	return Schema_GetIndex(s, attrs, n, idx_type, false);
 }
 
 // attempt to retrieve an index on the given label and attribute
@@ -525,7 +525,7 @@ Index GraphContext_GetIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) return NULL;
 
-	return Schema_GetIndex(s, attrs, n, type);
+	return Schema_GetIndex(s, attrs, n, type, false);
 }
 
 // create an exact match index for the given label and attribute
@@ -546,8 +546,8 @@ bool GraphContext_AddExactMatchIndex
 	ASSERT(fields_count > 0);
 
 	// retrieve the schema for this label
-	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
 	bool      index_changed = false;
+	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
 	ResultSet *result_set   = should_reply ? QueryCtx_GetResultSet() : NULL;
 
 	if(s == NULL) {
@@ -572,7 +572,7 @@ bool GraphContext_AddExactMatchIndex
 
 	// disable index if it was created
 	// we don't call Index_Disable within Schema_AddIndex as multiple
-	// field additions are still considered as a "single" modification
+	// field additions are still considered a "single" modification
 	// of the index
 	if(index_changed) {
 		Index_Disable(*idx);
@@ -591,7 +591,6 @@ bool GraphContext_AddFullTextIndex
 (
 	Index *idx,             // [input/output] index created
 	GraphContext *gc,        // graph context
-	SchemaType schema_type,  // type of entities to index nodes/edges
 	const char *label,       // label of indexed entities
 	const char **fields,     // fields to index
 	uint fields_count,       // number of fields to index
@@ -610,10 +609,10 @@ bool GraphContext_AddFullTextIndex
 	// retrieve the schema for this label
 	ResultSet *result_set   = QueryCtx_GetResultSet();
 	bool      index_changed = false;
-	Schema    *s            = GraphContext_GetSchema(gc, label, schema_type);
+	Schema    *s            = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 
 	if(s == NULL) {
-		s = GraphContext_AddSchema(gc, label, schema_type);
+		s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
 	}
 
 	for(uint i = 0; i < fields_count; i++) {

@@ -65,7 +65,6 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 	}
 }
 
-
 void RdbLoadNodes_v8(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count) {
 	/* Node Format:
 	 *      ID

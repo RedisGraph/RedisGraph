@@ -82,10 +82,8 @@ static void abort_and_check_timeout
 static bool _index_operation_delete
 (
 	GraphContext *gc,
-	AST *ast,
-	Index *idx
+	AST *ast
 ) {
-	*idx = NULL;
 	Schema *s = NULL;
 	SchemaType schema_type = SCHEMA_NODE;
 	const cypher_astnode_t *index_op = ast->root;
@@ -98,38 +96,33 @@ static bool _index_operation_delete
 
 	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr);
 
-	//--------------------------------------------------------------------------
-	// make sure index exists
-	//--------------------------------------------------------------------------
+	// try deleting a NODE EXACT-MATCH index
 
-	// try locating a NODE EXACT-MATCH index
-	s = GraphContext_GetSchema(gc, label, schema_type);
+	// lock
+	QueryCtx_LockForCommit();
+
+	s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s != NULL) {
-		*idx = Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH);
+		if(Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH, true) != NULL) {
+			// try deleting an exact match node index
+			return GraphContext_DeleteIndex(gc, SCHEMA_NODE, label, attr, IDX_EXACT_MATCH);
+		}
 	}
 
-	// try locating a EDGE EXACT-MATCH index
-	if(*idx == NULL) {
-		schema_type = SCHEMA_EDGE;
-		s = GraphContext_GetSchema(gc, label, schema_type);
-		if(s != NULL) {
-			*idx = Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH);
+	// try removing from an edge schema
+	s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
+	if(s != NULL) {
+		if(Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH, true) != NULL) {
+			// try deleting an exact match edge index
+			return GraphContext_DeleteIndex(gc, SCHEMA_EDGE, label, attr, IDX_EXACT_MATCH);
 		}
 	}
 
 	// no matching index
-	if(*idx == NULL) {
-		ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.",
-				label, attr);
-		return false;
-	}
+	ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.",
+			label, attr);
 
-	QueryCtx_LockForCommit();
-
-	int res = GraphContext_DeleteIndex(gc, schema_type, label, attr,
-			IDX_EXACT_MATCH);
-
-	return res == INDEX_OK;
+	return false;
 }
 
 // create index structure
@@ -137,14 +130,11 @@ static void _index_operation_create
 (
 	RedisModuleCtx *ctx,
 	GraphContext *gc,
-	AST *ast,
-	Index *idx
+	AST *ast
 ) {
 	ASSERT(gc  != NULL);
 	ASSERT(ctx != NULL);
 	ASSERT(ast != NULL);
-	ASSERT(idx != NULL);
-	ASSERT(*idx == NULL);
 
 	uint nprops            = 0;            // number of fields indexed
 	const char *label      = NULL;         // label being indexed
@@ -194,11 +184,13 @@ static void _index_operation_create
 	// lock
 	QueryCtx_LockForCommit();
 
+	Index idx;
 	// add fields to index
-	GraphContext_AddExactMatchIndex(idx, gc, schema_type,
-			label, fields, nprops, true);
-
-	return;
+	if(GraphContext_AddExactMatchIndex(&idx, gc, schema_type, label, fields,
+				nprops, true)) {
+		Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+		Indexer_PopulateIndex(gc, s, idx);
+	}
 }
 
 // handle index/constraint operation
@@ -210,25 +202,12 @@ static void _index_operation
 	AST *ast,
 	ExecutionType exec_type
 ) {
-	Index idx = NULL;
-
 	switch(exec_type) {
 		case EXECUTION_TYPE_INDEX_CREATE:
-			_index_operation_create(ctx, gc, ast, &idx);
-			if(idx) {
-				Indexer_PopulateIndex(gc, idx);
-			}
+			_index_operation_create(ctx, gc, ast);
 			break;
 		case EXECUTION_TYPE_INDEX_DROP:
-			if(_index_operation_delete(gc, ast, &idx)) {
-				// if idx field count > 0 reindex
-				// otherwise drop
-				if(Index_FieldsCount(idx) > 0) {
-					Indexer_PopulateIndex(gc, idx);
-				} else {
-					Indexer_DropIndex(idx);
-				}
-			}
+			_index_operation_delete(gc, ast);
 			break;
 		default:
 			ErrorCtx_SetError("ERR Encountered unknown query execution type.");
