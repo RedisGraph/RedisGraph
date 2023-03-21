@@ -1,5 +1,6 @@
-git+https://github.com/redis/redis-py.git@a246f40#egg=redis
-redisgraph-bulk-loader~=0.10.2
+# git+https://github.com/redis/redis-py.git@a246f40#egg=redis
+# redisgraph-bulk-loader~=0.10.2
+git+https://github.com/RedisGraph/redisgraph-bulk-loader.git@rafi-redispy4.5-1
 
 click
 behave~=1.2
