@@ -326,7 +326,9 @@ void reduce_scan_op
 				GETYPE_NODE);
 
 		// no index for current label
-		if(idx == NULL || !Index_Enabled(idx)) continue;
+		if(idx == NULL) continue;
+
+		ASSERT(Index_Enabled(idx));
 
 		// TODO switch to reusable array
 		OpFilter **cur_filters = _applicableFilters((OpBase *)scan, scan->n.alias, idx);

@@ -102,6 +102,8 @@ static void _indexer_idx_drop
 	RedisModuleCtx *rm_ctx = RedisModule_GetThreadSafeContext(NULL);
 	RedisModule_ThreadSafeContextLock(rm_ctx);
 
+	// expecting index pending_changes count to be either 0 or 1
+	// TODO: not sure how to validate statement above
 	Index_Free(ctx->idx);
 
 	RedisModule_ThreadSafeContextUnlock(rm_ctx);

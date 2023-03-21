@@ -134,8 +134,9 @@ static int _Schema_RemoveExactMatchIndex
 			return INDEX_FAIL;
 		}
 		// use active
-		idx = Index_Clone(active);
-		PENDING_EXACTMATCH_IDX(s) = idx;
+		pending = Index_Clone(active);
+		PENDING_EXACTMATCH_IDX(s) = pending;
+		idx = pending;
 	}
 
 	// index doesn't containts attribute
@@ -505,16 +506,16 @@ void Schema_AddNodeToIndices
 	Index idx = NULL;
 
 	idx = ACTIVE_EXACTMATCH_IDX(s);
-	if(idx) Index_IndexNode(idx, n);
+	if(idx != NULL) Index_IndexNode(idx, n);
 
 	idx = PENDING_EXACTMATCH_IDX(s);
-	if(idx) Index_IndexNode(idx, n);
+	if(idx != NULL) Index_IndexNode(idx, n);
 
 	idx = ACTIVE_FULLTEXT_IDX(s);
-	if(idx) Index_IndexNode(idx, n);
+	if(idx != NULL) Index_IndexNode(idx, n);
 
 	idx = PENDING_FULLTEXT_IDX(s);
-	if(idx) Index_IndexNode(idx, n);
+	if(idx != NULL) Index_IndexNode(idx, n);
 }
 
 // index edge under all schema indices
@@ -547,16 +548,16 @@ void Schema_RemoveNodeFromIndices
 	Index idx = NULL;
 
 	idx = ACTIVE_EXACTMATCH_IDX(s);
-	if(idx) Index_RemoveNode(idx, n);
+	if(idx != NULL) Index_RemoveNode(idx, n);
 
 	idx = PENDING_EXACTMATCH_IDX(s);
-	if(idx) Index_RemoveNode(idx, n);
+	if(idx != NULL) Index_RemoveNode(idx, n);
 
 	idx = ACTIVE_FULLTEXT_IDX(s);
-	if(idx) Index_RemoveNode(idx, n);
+	if(idx != NULL) Index_RemoveNode(idx, n);
 
 	idx = PENDING_FULLTEXT_IDX(s);
-	if(idx) Index_RemoveNode(idx, n);
+	if(idx != NULL) Index_RemoveNode(idx, n);
 }
 
 // remove edge from schema indicies
@@ -571,10 +572,10 @@ void Schema_RemoveEdgeFromIndices
 	Index idx = NULL;
 
 	idx = ACTIVE_EXACTMATCH_IDX(s);
-	if(idx) Index_RemoveEdge(idx, e);
+	if(idx != NULL) Index_RemoveEdge(idx, e);
 
 	idx = PENDING_EXACTMATCH_IDX(s);
-	if(idx) Index_RemoveEdge(idx, e);
+	if(idx != NULL) Index_RemoveEdge(idx, e);
 }
 
 //------------------------------------------------------------------------------
