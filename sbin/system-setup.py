@@ -67,7 +67,7 @@ class RedisGraphSetup(paella.Setup):
     def common_last(self):
         self.run(f"{READIES}/bin/getaws")
         self.install("astyle", _try=True) # fails for centos7
-        self.run(f"{self.python} {READIES}/bin/getcmake --usr"), sudo=self.os != 'macos')
+        self.run(f"{self.python} {READIES}/bin/getcmake --usr", sudo=self.os != 'macos')
         if self.dist != "arch":
             self.install("lcov")
         else:
