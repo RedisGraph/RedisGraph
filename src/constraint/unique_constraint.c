@@ -15,16 +15,17 @@
 
 // opaque structure representing a constraint
 struct _UniqueConstraint {
-	uint8_t n_attr;                // number of fields
-	ConstraintType t;              // constraint type
-	EnforcementCB enforce;         // enforcement function
-	int schema_id;                 // enforced schema ID
-	Attribute_ID *attrs;           // enforced attributes
-	const char **attr_names;       // enforced attribute names
-	ConstraintStatus status;       // constraint status
-	uint _Atomic pending_changes;  // number of pending changes
-	GraphEntityType et;            // entity type
-	Index idx;                     // supporting index
+	uint8_t n_attr;                         // number of fields
+	ConstraintType t;                       // constraint type
+	Constraint_EnforcementCB enforce;       // enforcement function
+	Constraint_SetPrivateDataCB set_pdata;  // set private data
+	int schema_id;                          // enforced schema ID
+	Attribute_ID *attrs;                    // enforced attributes
+	const char **attr_names;                // enforced attribute names
+	ConstraintStatus status;                // constraint status
+	uint _Atomic pending_changes;           // number of pending changes
+	GraphEntityType et;                     // entity type
+	Index idx;                              // supporting index
 };
 
 typedef struct _UniqueConstraint* UniqueConstraint;
@@ -35,9 +36,28 @@ static const char *_node_violation_err_msg =
 static const char *_edge_violation_err_msg =
 	"unique constraint violation, on edge of relationship-type %s";
 
+// sets constraint private data
+// if c->pdata == prev then c->pdata = pdata
+static void _SetPrivateData
+(
+	Constraint c,  // constraint to update
+	void *prev,    // previous private data
+	void *pdata    // new private data
+) {
+	ASSERT(c != NULL);
+	ASSERT(pdata != NULL);
+
+	UniqueConstraint _c = (UniqueConstraint)c;
+
+	// update index only if 'prev' == current idx
+	if(_c->idx == prev) {
+		_c->idx = (Index)pdata;
+	}
+}
+
 // enforces unique constraint on given entity
 // returns true if entity confirms with constraint false otherwise
-static bool Constraint_EnforceUniqueEntity
+static bool _EnforceUniqueEntity
 (
 	const Constraint c,    // constraint to enforce
 	const GraphEntity *e,  // enforced entity
@@ -185,7 +205,8 @@ Constraint Constraint_UniqueNew
 	c->idx             = idx;
 	c->n_attr          = n_fields;
 	c->status          = CT_PENDING;
-	c->enforce         = Constraint_EnforceUniqueEntity;
+	c->enforce         = _EnforceUniqueEntity;
+	c->set_pdata       = _SetPrivateData;
 	c->schema_id       = schema_id;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 

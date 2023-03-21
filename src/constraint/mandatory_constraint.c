@@ -17,7 +17,8 @@
 struct _MandatoryConstraint {
 	uint8_t n_attr;                // number of fields
 	ConstraintType t;              // constraint type
-	EnforcementCB enforce;         // enforcement function
+	Constraint_EnforcementCB enforce;       // enforcement function
+	Constraint_SetPrivateDataCB set_pdata;  // set private data
 	int schema_id;                 // enforced schema ID
     Attribute_ID *attrs;           // enforced attributes
 	const char **attr_names;       // enforced attribute names
@@ -97,6 +98,7 @@ Constraint Constraint_MandatoryNew
 	c->status          = CT_PENDING;
 	c->n_attr          = n_fields;
 	c->enforce         = Constraint_EnforceMandatory;
+	c->set_pdata       = NULL;
 	c->schema_id       = schema_id;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 
