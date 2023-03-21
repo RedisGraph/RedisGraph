@@ -98,17 +98,22 @@ class testCallSubqueryFlow():
         query = "MATCH (n:N) CALL {RETURN 1 AS n} RETURN n"
         self.expect_error(query, "Variable `n` already declared in outer scope")
 
-        # test that a reading query after an updating subquery requires a
-        # separating WITH
-        query = "CALL {CREATE (:N)} MATCH (n:N) RETURN n"
+        # a CALL {} after an updating clause requires a separating WITH
+        query = "CREATE (n:N) CALL {RETURN 1} RETURN 1"
         self.expect_error(query,
-            "A WITH clause is required to introduce MATCH after an updating clause.")
+            "A WITH clause is required to introduce CALL SUBQUERY after an \
+updating clause.")
 
-        # same as the above, but with a subquery with more clauses
+        # reading query after an updating subquery requires a separating WITH
         query = "CALL {MATCH (m:M) CREATE (n:N) RETURN n} MATCH (n2:N) RETURN n2"
         self.expect_error(query,
             "A WITH clause is required to introduce MATCH after an updating clause.")
 
+        # a query can not be terminated by a returning subquery
+        query = "MATCH (n:N) CALL {WITH n CREATE (m:M {n: n.v}) RETURN m}"
+        self.expect_error(query, "A query cannot conclude with a returning subquery \
+(must be a RETURN clause, an update clause, a procedure call or a non-returning\
+ subquery)")
 
     def test02_simple_scan_return(self):
         """Test a simple scan and return subquery"""

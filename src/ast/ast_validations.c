@@ -1706,7 +1706,7 @@ static VISITOR_STRATEGY _Validate_index_creation
 }
 
 // A query must end in a RETURN clause, a procedure, or an updating clause
-// (CREATE, MERGE, DELETE, SET, REMOVE or FOREACH)
+// (CREATE, MERGE, DELETE, SET, REMOVE, FOREACH or CALL {})
 static AST_Validation _ValidateQueryTermination
 (
 	const AST *ast  // ast
@@ -1738,19 +1738,34 @@ static AST_Validation _ValidateQueryTermination
 
 	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
 	cypher_astnode_type_t type = cypher_astnode_type(last_clause);
-	if(type != CYPHER_AST_RETURN   &&
-	   type != CYPHER_AST_CREATE   &&
-	   type != CYPHER_AST_MERGE    &&
-	   type != CYPHER_AST_DELETE   &&
-	   type != CYPHER_AST_SET      &&
-	   type != CYPHER_AST_CALL     &&
-	   type != CYPHER_AST_REMOVE   &&
+	if(type != CYPHER_AST_RETURN         &&
+	   type != CYPHER_AST_CREATE         &&
+	   type != CYPHER_AST_MERGE          &&
+	   type != CYPHER_AST_DELETE         &&
+	   type != CYPHER_AST_SET            &&
+	   type != CYPHER_AST_CALL           &&
+	   type != CYPHER_AST_CALL_SUBQUERY  &&
+	   type != CYPHER_AST_REMOVE         &&
 	   type != CYPHER_AST_FOREACH
 	  ) {
-		ErrorCtx_SetError("Query cannot conclude with %s (must be RETURN or an update clause)",
-						  cypher_astnode_typestr(type));
+			ErrorCtx_SetError("Query cannot conclude with %s (must be a RETURN\
+clause, an update clause, a procedure call or a non-returning subquery)",
+						cypher_astnode_typestr(type));
 		return AST_INVALID;
 	}
+
+	// if the last clause is CALL {}, it must be non-returning
+	if(type == CYPHER_AST_CALL_SUBQUERY &&
+		cypher_astnode_type(
+			cypher_ast_call_subquery_get_clause(last_clause,
+				cypher_ast_call_subquery_nclauses(last_clause)-1)) ==
+				CYPHER_AST_RETURN) {
+		ErrorCtx_SetError("A query cannot conclude with a returning subquery \
+(must be a RETURN clause, an update clause, a procedure call or a non-returning\
+ subquery)");
+		return AST_INVALID;
+	}
+
 	return AST_VALID;
 }
 
@@ -1809,15 +1824,16 @@ static AST_Validation _ValidateClauseOrder
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
-		encountered_updating_clause = (encountered_updating_clause   ||
-									   _is_updating_clause(clause));
-		if(encountered_updating_clause && (type == CYPHER_AST_MATCH  ||
-										   type == CYPHER_AST_UNWIND ||
-										   type == CYPHER_AST_CALL)) {
+		if(encountered_updating_clause && (type == CYPHER_AST_MATCH          ||
+										   type == CYPHER_AST_UNWIND         ||
+										   type == CYPHER_AST_CALL           ||
+										   type == CYPHER_AST_CALL_SUBQUERY)) {
 			ErrorCtx_SetError("A WITH clause is required to introduce %s after an updating clause.",
 							  cypher_astnode_typestr(type));
 			return AST_INVALID;
 		}
+		encountered_updating_clause = (encountered_updating_clause   ||
+									   _is_updating_clause(clause));
 
 		if(type == CYPHER_AST_MATCH) {
 			// Check whether this match is optional.

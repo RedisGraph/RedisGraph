@@ -80,7 +80,7 @@ static OpResult CallSubqueryInit
 }
 
 // passes a record to the parent op.
-// if the subquery is non-returning (unit), all the records have already been
+// if the subquery is non-returning, all the records have already been
 // consumed from the body (child depleted), so that we only need to return the
 // received records.
 // if the subquery is returning, return a the record received from the body
@@ -185,21 +185,20 @@ static Record _consume_and_return
 
 // tries to consume a record from the body. if successful, return the
 // merged\unmerged record with the input record (op->r) according to whether the
-// sq is returning\unit.
-// Depletes child if unit (body records not needed).
+// sq is returning\non-returning.
+// Depletes child if non-returning (body records not needed).
 // if unsuccessful (child depleted), returns NULL
 static Record _handoff(OpCallSubquery *op) {
     ASSERT(op->r != NULL);
 
-    // if returning subquery: consume --> merge --> return merged.
-    // if unit subquery: consume until depleted, and return the current record
+    // returning subquery: consume --> merge --> return merged.
     if(op->is_returning) {
         return _consume_and_return(op);
     }
 
     Record consumed;
-    // unit subquery
-    // drain the body, deleting (freeing) the records
+    // non-returning subquery: drain the body, deleting (freeing) the records
+    // return current record
     while((consumed = OpBase_Consume(op->body))) {
         OpBase_DeleteRecord(consumed);
     }
