@@ -110,11 +110,8 @@ static void Schema_ActivateExactMatchIndex
 (
 	Schema *s   // schema to activate index on
 ) {
-	ASSERT(PENDING_EXACTMATCH_IDX(s) != NULL);
 	Index active  = ACTIVE_EXACTMATCH_IDX(s);
 	Index pending = PENDING_EXACTMATCH_IDX(s);
-	// make sure pending index is enabled
-	ASSERT(Index_Enabled(pending) == true);
 
 	// drop active if exists
 	if(active != NULL) {
@@ -132,11 +129,8 @@ static void Schema_ActivateFullTextIdx
 (
 	Schema *s   // schema to activate index on
 ) {
-	ASSERT(PENDING_FULLTEXT_IDX(s) != NULL);
 	Index active  = ACTIVE_FULLTEXT_IDX(s);
 	Index pending = PENDING_FULLTEXT_IDX(s);
-	// make sure pending index is enabled
-	ASSERT(Index_Enabled(pending) == true);
 
 	// drop active if exists
 	if(active != NULL) {
@@ -436,10 +430,12 @@ static int _Schema_RemoveFullTextIndex
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	if(active != NULL) {
+		Index_Disable(active);
 		Indexer_DropIndex(active, gc);
 	}
 
 	if(pending != NULL) {
+		Index_Disable(pending);
 		Indexer_DropIndex(pending, gc);
 	}
 
@@ -469,12 +465,20 @@ int Schema_RemoveIndex
 // drops current active exact-exact index if exists
 void Schema_ActivateIndex
 (
-	Schema *s,   // schema to activate index on
-	IndexType t  // type of index to activate
+	Schema *s,  // schema to activate index on
+	Index idx   // index to activate
 ) {
 	ASSERT(s != NULL);
+	// make sure pending index is enabled
+	ASSERT(Index_Enabled(idx) == true);
 
-	if(t == IDX_EXACT_MATCH) {
+	Index pending_full_text   = PENDING_FULLTEXT_IDX(s);
+	Index pending_exact_match = PENDING_EXACTMATCH_IDX(s);
+
+	// index to activate must be a pending index
+	ASSERT(idx == pending_exact_match || idx == pending_full_text);
+
+	if(idx == pending_exact_match) {
 		Schema_ActivateExactMatchIndex(s);
 	} else {
 		Schema_ActivateFullTextIdx(s);

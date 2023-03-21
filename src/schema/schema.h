@@ -123,7 +123,7 @@ int Schema_RemoveIndex
 void Schema_ActivateIndex
 (
 	Schema *s,   // schema to activate index on
-	IndexType t  // type of index to activate
+	Index idx   // index to activate
 );
 
 // introduce node to schema indicies

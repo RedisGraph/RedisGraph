@@ -188,13 +188,13 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			idx = PENDING_EXACTMATCH_IDX(s);
 			if(idx != NULL) {
 				Index_Populate(idx, g);
-				Schema_ActivateIndex(s, Index_Type(idx));
+				Schema_ActivateIndex(s, idx);
 			}
 
 			idx = PENDING_FULLTEXT_IDX(s);
 			if(idx != NULL) {
 				Index_Populate(idx, g);
-				Schema_ActivateIndex(s, Index_Type(idx));
+				Schema_ActivateIndex(s, idx);
 			}
 		}
 
@@ -204,7 +204,7 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			Index idx = PENDING_EXACTMATCH_IDX(s);
 			if(idx != NULL) {
 				Index_Populate(idx, g);
-				Schema_ActivateIndex(s, Index_Type(idx));
+				Schema_ActivateIndex(s, idx);
 			}
 		}
 

@@ -89,7 +89,7 @@ static void *_indexer_run
 				Graph_AcquireWriteLock(pdata->gc->g);
 
 				if(Index_Enabled(idx)) {
-					Schema_ActivateIndex(pdata->s, Index_Type(idx));
+					Schema_ActivateIndex(pdata->s, idx);
 				}
 
 				Graph_ReleaseLock(pdata->gc->g);
