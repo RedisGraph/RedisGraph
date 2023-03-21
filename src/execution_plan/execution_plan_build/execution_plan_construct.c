@@ -428,7 +428,7 @@ static void _buildCallSubqueryPlan
 			// skip the original name
 			i++;
 
-			OpBase_AliasModifier(plan->root, names[i-1], names[i]);
+			OpBase_AliasModifier(plan->root, names[i-1], names[i], false);
 		}
 
 		// modify to the intermidiate project_exps
