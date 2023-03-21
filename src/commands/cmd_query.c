@@ -112,7 +112,7 @@ static bool _index_operation_delete
 	// try removing from an edge schema
 	s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
 	if(s != NULL) {
-		if(Schema_GetIndex(s, &attr_id, 1, IDX_FULLTEXT, true) != NULL) {
+		if(Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH, true) != NULL) {
 			// try deleting an exact match edge index
 			return GraphContext_DeleteIndex(gc, SCHEMA_EDGE, label, attr, IDX_EXACT_MATCH);
 		}
