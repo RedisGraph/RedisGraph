@@ -402,7 +402,6 @@ Feature: WithOrderBy4 - Order by in combination with projection and aliasing
       | [:T2 {id: 1}] |
     And no side effects
 
-  @skip
   Scenario: [16] Handle constants and parameters inside an order by item which contains an aggregation expression
     Given an empty graph
     And parameters are:
@@ -419,7 +418,6 @@ Feature: WithOrderBy4 - Order by in combination with projection and aliasing
       | null   |
     And no side effects
 
-  @skip
   Scenario: [17] Handle projected variables inside an order by item which contains an aggregation expression
     Given an empty graph
     When executing query:
@@ -433,7 +431,6 @@ Feature: WithOrderBy4 - Order by in combination with projection and aliasing
       | age |
     And no side effects
 
-  @skip
   Scenario: [18]  Handle projected property accesses inside an order by item which contains an aggregation expression
     Given an empty graph
     When executing query:

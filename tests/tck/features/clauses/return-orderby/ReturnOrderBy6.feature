@@ -30,7 +30,6 @@
 
 Feature: ReturnOrderBy6 - Aggregation expressions in order by
 
-  @skip
   Scenario: [1] Handle constants and parameters inside an order by item which contains an aggregation expression
     Given an empty graph
     And parameters are:
@@ -46,7 +45,6 @@ Feature: ReturnOrderBy6 - Aggregation expressions in order by
       | null   |
     And no side effects
 
-  @skip
   Scenario: [2] Handle returned aliases inside an order by item which contains an aggregation expression
     Given an empty graph
     When executing query:
@@ -59,7 +57,6 @@ Feature: ReturnOrderBy6 - Aggregation expressions in order by
       | age | cnt |
     And no side effects
 
-  @skip
   Scenario: [3] Handle returned property accesses inside an order by item which contains an aggregation expression
     Given an empty graph
     When executing query:
