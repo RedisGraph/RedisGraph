@@ -37,6 +37,17 @@ static int Schema_AddExactMatchIndex
 	// otherwise (first index) create a new index
 	Index active  = ACTIVE_EXACTMATCH_IDX(s);
 	Index pending = PENDING_EXACTMATCH_IDX(s);
+	Index altered = (pending != NULL) ? pending : active;
+
+	if(altered != NULL) {
+		// make sure attribute isn't already indexed
+		if(Index_ContainsAttribute(altered, field->id)) {
+			// field already indexed, quick return
+			IndexField_Free(field);
+			return INDEX_FAIL;
+		}
+	}
+
 	_idx = pending;
 	if(pending == NULL) {
 		if(active != NULL) {
@@ -46,13 +57,6 @@ static int Schema_AddExactMatchIndex
 		}
 	}
 	PENDING_EXACTMATCH_IDX(s) = _idx;  // set pending exact-match index
-
-	// make sure attribute isn't already indexed
-	if(Index_ContainsAttribute(_idx, field->id)) {
-		// field already indexed, quick return
-		IndexField_Free(field);
-		return INDEX_FAIL;
-	}
 
 	Index_AddField(_idx, field);
 
@@ -83,6 +87,17 @@ static int Schema_AddFullTextIndex
 	// otherwise (first index) create a new index
 	Index active  = ACTIVE_FULLTEXT_IDX(s);
 	Index pending = PENDING_FULLTEXT_IDX(s);
+	Index altered = (pending != NULL) ? pending : active;
+
+	if(altered != NULL) {
+		// make sure attribute isn't already indexed
+		if(Index_ContainsAttribute(altered, field->id)) {
+			// field already indexed, quick return
+			IndexField_Free(field);
+			return INDEX_FAIL;
+		}
+	}
+
 	_idx = pending;
 	if(pending == NULL) {
 		if(active != NULL) {
@@ -92,13 +107,6 @@ static int Schema_AddFullTextIndex
 		}
 	}
 	PENDING_FULLTEXT_IDX(s) = _idx;  // set pending full-text index
-
-	// make sure attribute isn't already indexed
-	if(Index_ContainsAttribute(_idx, field->id)) {
-		// field already indexed, quick return
-		IndexField_Free(field);
-		return INDEX_FAIL;
-	}
 
 	Index_AddField(_idx, field);
 
@@ -389,26 +397,37 @@ Index Schema_GetIndex
 	const Schema *s,            // schema to get index from
 	const Attribute_ID *attrs,  // indexed attributes
 	uint n,                     // number of attributes
-	IndexType type              // type of index
+	IndexType type,             // type of index
+	bool include_pending        // take into considiration pending indicies
 ) {
 	// validations
 	ASSERT(s != NULL);
 	ASSERT((attrs == NULL && n == 0) || (attrs != NULL && n > 0));
 
 	Index idx         = NULL;  // index to return
-	uint  idx_count   = 0;     // number of indicies to consider
-	Index indicies[2] = {0};   // indicies to consider
+	uint  idx_count   = 1;     // number of indicies to consider
+	Index indicies[4] = {0};   // indicies to consider
 
 	if(type != IDX_ANY) {
 		// consider specified index
-		idx_count   = 1;
-		indicies[0] = (type == IDX_FULLTEXT) ?
-			ACTIVE_FULLTEXT_IDX(s) : ACTIVE_EXACTMATCH_IDX(s);
-	} else  {
-		// consider both exact-match and fulltext indicies
+		if(include_pending) idx_count = 2;
+		if(type == IDX_FULLTEXT) {
+			indicies[0] = ACTIVE_FULLTEXT_IDX(s);
+			if(include_pending) indicies[1] = PENDING_FULLTEXT_IDX(s);
+		} else {
+			indicies[0] = ACTIVE_EXACTMATCH_IDX(s);
+			if(include_pending) indicies[1] = PENDING_EXACTMATCH_IDX(s);
+		}
+	} else {
 		idx_count   = 2;
-		indicies[0] = ACTIVE_FULLTEXT_IDX(s);
-		indicies[1] = ACTIVE_EXACTMATCH_IDX(s);
+		indicies[0] = ACTIVE_EXACTMATCH_IDX(s);
+		indicies[1] = ACTIVE_FULLTEXT_IDX(s);
+		if(include_pending) {
+			// consider all indicies exact-match and fulltext indicies
+			idx_count   = 4;
+			indicies[2] = PENDING_EXACTMATCH_IDX(s);
+			indicies[3] = PENDING_FULLTEXT_IDX(s);
+		}
 	}
 
 	//--------------------------------------------------------------------------

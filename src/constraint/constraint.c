@@ -70,10 +70,10 @@ Constraint Constraint_New
 	Constraint c = NULL;
 
 	if(t == CT_UNIQUE) {
-		// a unique constraints requires an index
-		// try to get supporting index
-		Index idx = GraphContext_GetIndexByID((GraphContext*) gc, schema_id,
-				fields, n_fields, IDX_EXACT_MATCH, et);
+		// a unique constraints requires an index, try to get supporting index
+		SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+		Schema *s = GraphContext_GetSchemaByID((GraphContext*)gc, schema_id, st);
+		Index idx = Schema_GetIndex(s, fields, n_fields, IDX_EXACT_MATCH, true);
 
 		// supporting index is missing, can't create constraint
 		if(idx == NULL) {

@@ -505,7 +505,7 @@ Index GraphContext_GetIndexByID
 		return NULL;
 	}
 
-	return Schema_GetIndex(s, attrs, n, idx_type);
+	return Schema_GetIndex(s, attrs, n, idx_type, false);
 }
 
 // attempt to retrieve an index on the given label and attribute
@@ -525,7 +525,7 @@ Index GraphContext_GetIndex
 	Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s == NULL) return NULL;
 
-	return Schema_GetIndex(s, attrs, n, type);
+	return Schema_GetIndex(s, attrs, n, type, false);
 }
 
 // create an exact match index for the given label and attribute

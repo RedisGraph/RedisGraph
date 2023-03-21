@@ -96,7 +96,8 @@ Index Schema_GetIndex
 	const Schema *s,            // schema to get index from
 	const Attribute_ID *attrs,  // indexed attributes
 	uint n,                     // number of attributes
-	IndexType type              // type of index
+	IndexType type,             // type of index
+	bool include_pending        // take into considiration pending indicies
 );
 
 // assign a new index to attribute

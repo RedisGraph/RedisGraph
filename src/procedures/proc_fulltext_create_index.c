@@ -44,8 +44,9 @@ static ProcedureResult _validateIndexConfigMap
 
 	if(multi_config) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Schema *s = GraphContext_GetSchema(gc, label.stringval, SCHEMA_NODE);
-		if(s && Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT)) {
+		Index idx = GraphContext_GetIndex(gc, label.stringval, NULL, 0,
+				IDX_FULLTEXT, SCHEMA_NODE);
+		if(idx != NULL) {
 			ErrorCtx_SetError("Index already exists configuration can't be changed");
 			return PROCEDURE_ERR;
 		}
@@ -148,10 +149,10 @@ static ProcedureResult _validateFieldConfigMap
 		// make sure field doesn't exists in index, as reconfiguration
 		// isn't supported
 		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 		Attribute_ID fieldID = GraphContext_GetAttributeID(gc, field.stringval);
-		if(fieldID != ATTRIBUTE_ID_NONE && s &&
-				Schema_GetIndex(s, &fieldID, 1, IDX_FULLTEXT)) {
+		Index idx = GraphContext_GetIndex(gc, label, &fieldID, 1, IDX_FULLTEXT,
+				SCHEMA_NODE);
+		if(idx != NULL) {
 			ErrorCtx_SetError("Index already exists configuration can't be changed");
 			return PROCEDURE_ERR;
 		}

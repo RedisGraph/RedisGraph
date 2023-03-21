@@ -860,8 +860,6 @@ class testConstraintEdges():
         # test that a failing constraint can be recreated successfully once
         # all conflicts are resolved
 
-        #self.con.flushall()
-
         # create a Person edge without any attributes
         self.g.query("CREATE ()-[:Person]->()")
 
@@ -949,4 +947,3 @@ class testConstraintEdges():
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("unique constraint violation, on edge of relationship-type Artist", str(e))
-
