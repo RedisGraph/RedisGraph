@@ -99,17 +99,25 @@ static bool _index_operation_delete
 	// try deleting a NODE EXACT-MATCH index
 	int res = INDEX_FAIL;
 
-	s = GraphContext_GetSchema(gc, label, schema_type);
-	if(s != NULL) {
-		// lock
-		QueryCtx_LockForCommit();
+	// lock
+	QueryCtx_LockForCommit();
 
+	s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	if(s != NULL) {
 		// try deleting an exact match node index
 		res = GraphContext_DeleteIndex(gc, SCHEMA_NODE, label, attr, IDX_EXACT_MATCH);
-		if(res != INDEX_OK) {
-			// try deleting an exact match edge index
-			res = GraphContext_DeleteIndex(gc, SCHEMA_EDGE, label, attr, IDX_EXACT_MATCH);
-		}
+	}
+
+	// on successs quick return
+	if(res == INDEX_OK) {
+		return true;
+	}
+
+	// try removing from an edge schema
+	s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
+	if(s != NULL) {
+		// try deleting an exact match edge index
+		res = GraphContext_DeleteIndex(gc, SCHEMA_EDGE, label, attr, IDX_EXACT_MATCH);
 	}
 
 	// no matching index
