@@ -75,7 +75,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) return PROCEDURE_OK;
 
-	Index idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	Index idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);
 	if(!idx) return PROCEDURE_ERR; // TODO: this should cause an error to be emitted
 
 	ctx->privateData = rm_malloc(sizeof(QueryNodeContext));

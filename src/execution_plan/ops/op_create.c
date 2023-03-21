@@ -115,9 +115,7 @@ static void _CreateEdges(OpCreate *op, Record r, GraphContext *gc) {
 
 // Return mode, emit a populated Record.
 static Record _handoff(OpCreate *op) {
-	Record r = NULL;
-	if(array_len(op->records)) r = array_pop(op->records);
-	return r;
+	return array_pop(op->records);
 }
 
 static Record CreateConsume(OpBase *opBase) {
@@ -129,6 +127,9 @@ static Record CreateConsume(OpBase *opBase) {
 
 	// Consume mode.
 	op->records = array_new(Record, 32);
+	// initialize the records array with NULL, which will terminate execution
+	// upon depletion
+	array_append(op->records, NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	OpBase *child = NULL;
@@ -185,7 +186,7 @@ static void CreateFree(OpBase *ctx) {
 
 	if(op->records) {
 		uint rec_count = array_len(op->records);
-		for(uint i = 0; i < rec_count; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 1; i < rec_count; i++) OpBase_DeleteRecord(op->records[i]);
 		array_free(op->records);
 		op->records = NULL;
 	}

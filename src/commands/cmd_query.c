@@ -55,12 +55,15 @@ static GraphQueryCtx *GraphQueryCtx_New
 	return ctx;
 }
 
-void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
+static void inline GraphQueryCtx_Free
+(
+	GraphQueryCtx *ctx
+) {
 	ASSERT(ctx != NULL);
 	rm_free(ctx);
 }
 
-void static abort_and_check_timeout
+static void abort_and_check_timeout
 (
 	GraphQueryCtx *gq_ctx,
 	ExecutionPlan *plan
@@ -102,7 +105,7 @@ static bool _index_operation_delete
 	// try locating a NODE EXACT-MATCH index
 	s = GraphContext_GetSchema(gc, label, schema_type);
 	if(s != NULL) {
-		*idx = Schema_GetIndex(s, &attr_id, IDX_EXACT_MATCH);
+		*idx = Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH);
 	}
 
 	// try locating a EDGE EXACT-MATCH index
@@ -110,7 +113,7 @@ static bool _index_operation_delete
 		schema_type = SCHEMA_EDGE;
 		s = GraphContext_GetSchema(gc, label, schema_type);
 		if(s != NULL) {
-			*idx = Schema_GetIndex(s, &attr_id, IDX_EXACT_MATCH);
+			*idx = Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH);
 		}
 	}
 
@@ -130,7 +133,7 @@ static bool _index_operation_delete
 }
 
 // create index structure
-static bool _index_operation_create
+static void _index_operation_create
 (
 	RedisModuleCtx *ctx,
 	GraphContext *gc,
@@ -141,6 +144,7 @@ static bool _index_operation_create
 	ASSERT(ctx != NULL);
 	ASSERT(ast != NULL);
 	ASSERT(idx != NULL);
+	ASSERT(*idx == NULL);
 
 	uint nprops            = 0;            // number of fields indexed
 	const char *label      = NULL;         // label being indexed
@@ -191,14 +195,14 @@ static bool _index_operation_create
 	QueryCtx_LockForCommit();
 
 	// add fields to index
-	bool index_added = GraphContext_AddExactMatchIndex(idx, gc, schema_type,
-					label, fields, nprops);
+	GraphContext_AddExactMatchIndex(idx, gc, schema_type,
+			label, fields, nprops, true);
 
-	return index_added;
+	return;
 }
 
-// handle index operation
-// either index creation or index deletion
+// handle index/constraint operation
+// either index/constraint creation or index/constraint deletion
 static void _index_operation
 (
 	RedisModuleCtx *ctx,
@@ -210,7 +214,8 @@ static void _index_operation
 
 	switch(exec_type) {
 		case EXECUTION_TYPE_INDEX_CREATE:
-			if(_index_operation_create(ctx, gc, ast, &idx)) {
+			_index_operation_create(ctx, gc, ast, &idx);
+			if(idx) {
 				Indexer_PopulateIndex(gc, idx);
 			}
 			break;
@@ -251,9 +256,9 @@ inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 	return strcasecmp(CommandCtx_GetCommandName(ctx), "graph.RO_QUERY") == 0;
 }
 
-// _ExecuteQuery accepts a GraphQeuryCtx as an argument
+// _ExecuteQuery accepts a GraphQueryCtx as an argument
 // it may be called directly by a reader thread or the Redis main thread,
-// or dispatched as a worker thread job
+// or dispatched as a worker thread job when used for writing.
 static void _ExecuteQuery(void *args) {
 	ASSERT(args != NULL);
 
@@ -279,14 +284,16 @@ static void _ExecuteQuery(void *args) {
 	// instantiate the query ResultSet
 	bool compact = command_ctx->compact;
 	// replicated command don't need to return result
-	ResultSetFormatterType resultset_format = 
+	ResultSetFormatterType resultset_format =
 		profile || command_ctx->replicated_command
-		? FORMATTER_NOP 
-		: (compact) 
-			? FORMATTER_COMPACT 
+		? FORMATTER_NOP
+		: (compact)
+			? FORMATTER_COMPACT
 			: FORMATTER_VERBOSE;
 	ResultSet *result_set = NewResultSet(rm_ctx, resultset_format);
-	if(exec_ctx->cached) ResultSet_CachedExecution(result_set); // indicate a cached execution
+	if (exec_ctx->cached) {
+		ResultSet_CachedExecution(result_set); // indicate a cached execution
+	}
 
 	QueryCtx_SetResultSet(result_set);
 
@@ -338,12 +345,12 @@ static void _ExecuteQuery(void *args) {
 		// clear resultset statistics, avoiding commnad being replicated
 		ResultSet_Clear(result_set);
 	}
-	
+
 	// replicate command if graph was modified
 	if(ResultSetStat_IndicateModification(&result_set->stats)) {
 		QueryCtx_Replicate(query_ctx);
 	}
-	
+
 	QueryCtx_UnlockCommit();
 
 	if(!profile || ErrorCtx_EncounteredError()) {

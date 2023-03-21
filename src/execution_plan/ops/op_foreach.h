@@ -26,6 +26,7 @@ typedef struct {
     OpBase *body;                 // the first op in the embedded execution-plan
     Record *records;              // records aggregated by the operation
     OpBase *supplier;             // op from which records are pulled (optional)
+    Record *body_records;         // record list to be sent to the body
     ArgumentList *argument_list;  // argument operation (tap)
 
 } OpForeach;
