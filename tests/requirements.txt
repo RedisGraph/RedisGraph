@@ -5,5 +5,5 @@ click
 behave~=1.2
 pathos~=0.2.8
 
-RLTest~=0.5.12
+RLTest~=0.6.0
 ramp-packer~=2.5.2
