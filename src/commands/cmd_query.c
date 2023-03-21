@@ -97,36 +97,32 @@ static bool _index_operation_delete
 	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr);
 
 	// try deleting a NODE EXACT-MATCH index
-	int res = INDEX_FAIL;
 
 	// lock
 	QueryCtx_LockForCommit();
 
 	s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s != NULL) {
-		// try deleting an exact match node index
-		res = GraphContext_DeleteIndex(gc, SCHEMA_NODE, label, attr, IDX_EXACT_MATCH);
-	}
-
-	// on successs quick return
-	if(res == INDEX_OK) {
-		return true;
+		if(Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH, true) != NULL) {
+			// try deleting an exact match node index
+			return GraphContext_DeleteIndex(gc, SCHEMA_NODE, label, attr, IDX_EXACT_MATCH);
+		}
 	}
 
 	// try removing from an edge schema
 	s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
 	if(s != NULL) {
-		// try deleting an exact match edge index
-		res = GraphContext_DeleteIndex(gc, SCHEMA_EDGE, label, attr, IDX_EXACT_MATCH);
+		if(Schema_GetIndex(s, &attr_id, 1, IDX_FULLTEXT, true) != NULL) {
+			// try deleting an exact match edge index
+			return GraphContext_DeleteIndex(gc, SCHEMA_EDGE, label, attr, IDX_EXACT_MATCH);
+		}
 	}
 
 	// no matching index
-	if(res != INDEX_OK) {
-		ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.",
-				label, attr);
-	}
+	ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.",
+			label, attr);
 
-	return res == INDEX_OK;
+	return false;
 }
 
 // create index structure
