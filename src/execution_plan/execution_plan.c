@@ -512,10 +512,18 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 		array_free(plan->connected_components);
 	}
 
-	QueryGraph_Free(plan->query_graph);
-	if(plan->record_map) raxFree(plan->record_map);
-	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
-	if(plan->ast_segment) AST_Free(plan->ast_segment);
+	if(plan->query_graph) {
+		QueryGraph_Free(plan->query_graph);
+	}
+	if(plan->record_map != NULL) {
+		raxFree(plan->record_map);
+	}
+	if(plan->record_pool != NULL) {
+		ObjectPool_Free(plan->record_pool);
+	}
+	if(plan->ast_segment != NULL) {
+		AST_Free(plan->ast_segment);
+	}
 	rm_free(plan);
 }
 
@@ -530,7 +538,7 @@ static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
 		child_plan = _ExecutionPlan_FreeOpTree(op->children[i]);
 		// In most cases all children will share the same plan, but if they don't
 		// (for an operation like UNION) then free the now-obsolete previous child plan.
-		if(prev_child_plan != child_plan) {
+		if(prev_child_plan != child_plan && prev_child_plan != current_plan) {
 			_ExecutionPlan_FreeInternals(prev_child_plan);
 			prev_child_plan = child_plan;
 		}

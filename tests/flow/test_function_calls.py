@@ -1124,6 +1124,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN split('hello world', null)": [[None]],
             "RETURN split('hello world', ',')": [[["hello world"]]],
             "RETURN split('hello world', '')": [[['h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd']]],
+            "RETURN split('aa', 'a')": [[["", "", ""]]],
             "RETURN split('', ',')": [[[""]]],
             "RETURN split('', '')": [[[""]]],
             # test unicode charecters
