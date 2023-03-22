@@ -510,56 +510,95 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 			QueryGraph_Free(plan->connected_components[i]);
 		}
 		array_free(plan->connected_components);
+		plan->connected_components = NULL;
 	}
 
 	if(plan->query_graph) {
 		QueryGraph_Free(plan->query_graph);
+		plan->query_graph = NULL;
 	}
 	if(plan->record_map != NULL) {
 		raxFree(plan->record_map);
+		plan->record_map = NULL;
 	}
 	if(plan->record_pool != NULL) {
 		ObjectPool_Free(plan->record_pool);
+		plan->record_pool = NULL;
 	}
 	if(plan->ast_segment != NULL) {
 		AST_Free(plan->ast_segment);
+		plan->ast_segment = NULL;
 	}
 	rm_free(plan);
 }
 
 // Free an op tree and its associated ExecutionPlan segments.
-static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
-	if(op == NULL) return NULL;
-	ExecutionPlan *child_plan = NULL;
-	ExecutionPlan *prev_child_plan = NULL;
-	// Store a reference to the current plan.
-	ExecutionPlan *current_plan = (ExecutionPlan *)op->plan;
+static void _ExecutionPlan_FreeOpTree(OpBase *op) {
+	if(op == NULL) {
+		return;
+	}
+
 	for(uint i = 0; i < op->childCount; i ++) {
-		child_plan = _ExecutionPlan_FreeOpTree(op->children[i]);
-		// In most cases all children will share the same plan, but if they don't
-		// (for an operation like UNION) then free the now-obsolete previous child plan.
-		if(prev_child_plan != child_plan && prev_child_plan != current_plan) {
-			_ExecutionPlan_FreeInternals(prev_child_plan);
-			prev_child_plan = child_plan;
-		}
+		_ExecutionPlan_FreeOpTree(op->children[i]);
 	}
 
 	// Free this op.
 	OpBase_Free(op);
+}
 
-	// Free each ExecutionPlan segment once all ops associated with it have been freed.
-	if(current_plan != child_plan) _ExecutionPlan_FreeInternals(child_plan);
+static void _ExecutionPlan_AggregatePlansFromOps
+(
+	OpBase *opBase,          // operation to aggregate plans from
+	ExecutionPlan ***_plans  // plans array to append plans to
+) {
+	ASSERT(_plans != NULL);
+	ExecutionPlan **plans = *_plans;
 
-	return current_plan;
+	// do not aggregate the plan if it is the last one we aggregated
+	uint len = array_len(plans);
+
+	bool found = false;
+	for(uint i = 0; i < len; i++) {
+		if(plans[i] == opBase->plan) {
+			found = true;
+		}
+	}
+
+	// append the plan if it doesn't exist already
+	if(!found) {
+		array_append(plans, (ExecutionPlan *)opBase->plan);
+		*_plans = plans;
+	}
+
+	for(uint i = 0; i < opBase->childCount; i++) {
+		_ExecutionPlan_AggregatePlansFromOps(opBase->children[i], _plans);
+	}
 }
 
 void ExecutionPlan_Free(ExecutionPlan *plan) {
-	if(plan == NULL) return;
+	if(plan == NULL) {
+		return;
+	}
+	if(plan->root == NULL) {
+		_ExecutionPlan_FreeInternals(plan);
+		return;
+	}
 
-	// Free all ops and ExecutionPlan segments.
+	// traverse the execution-plan graph (DAG -> no endless cycles), while
+	// aggregating the different execution-plans
+	ExecutionPlan **plans = array_new(ExecutionPlan *, 1);
+	array_append(plans, plan);
+	_ExecutionPlan_AggregatePlansFromOps(plan->root, &plans);
+
+	// free the operations of the plans (all plans)
 	_ExecutionPlan_FreeOpTree(plan->root);
 
-	// Free the final ExecutionPlan segment.
-	_ExecutionPlan_FreeInternals(plan);
+	// Free the different op-trees
+	uint plan_count = array_len(plans);
+	for(uint i = 0; i < plan_count; i++) {
+		_ExecutionPlan_FreeInternals(plans[i]);
+	}
+
+	array_free(plans);
 }
 
