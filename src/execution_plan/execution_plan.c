@@ -17,6 +17,13 @@
 #include "execution_plan_build/execution_plan_construct.h"
 
 #include <setjmp.h>
+#if defined ( __MACH__ ) && defined ( __APPLE__ )
+#include <machine/endian.h>
+#define _htobe64 htonll
+#else
+#include <endian.h>
+#define _htobe64 htobe64
+#endif
 
 // Allocate a new ExecutionPlan segment.
 inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
@@ -548,30 +555,18 @@ static void _ExecutionPlan_FreeOpTree(OpBase *op) {
 
 static void _ExecutionPlan_AggregatePlansFromOps
 (
-	OpBase *opBase,          // operation to aggregate plans from
-	ExecutionPlan ***_plans  // plans array to append plans to
+	OpBase *opBase,     // operation to aggregate plans from
+	rax *plans          // plans map to insert to
 ) {
-	ASSERT(_plans != NULL);
-	ExecutionPlan **plans = *_plans;
+	ASSERT(plans != NULL);
 
-	// do not aggregate the plan if it is the last one we aggregated
-	uint len = array_len(plans);
-
-	bool found = false;
-	for(uint i = 0; i < len; i++) {
-		if(plans[i] == opBase->plan) {
-			found = true;
-		}
-	}
-
-	// append the plan if it doesn't exist already
-	if(!found) {
-		array_append(plans, (ExecutionPlan *)opBase->plan);
-		*_plans = plans;
-	}
+	// add the plan if it doesn't exist already
+	static_assert(sizeof(opBase->plan) == sizeof(uint64_t), "pointer size is not 64 bits");
+	const uint64_t plan_ptr_be = _htobe64((uint64_t)opBase->plan);
+	raxTryInsert(plans, (unsigned char *)&plan_ptr_be, sizeof(uint64_t), (void *)opBase->plan, NULL);
 
 	for(uint i = 0; i < opBase->childCount; i++) {
-		_ExecutionPlan_AggregatePlansFromOps(opBase->children[i], _plans);
+		_ExecutionPlan_AggregatePlansFromOps(opBase->children[i], plans);
 	}
 }
 
@@ -586,19 +581,24 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 
 	// traverse the execution-plan graph (DAG -> no endless cycles), while
 	// aggregating the different execution-plans
-	ExecutionPlan **plans = array_new(ExecutionPlan *, 1);
-	array_append(plans, plan);
-	_ExecutionPlan_AggregatePlansFromOps(plan->root, &plans);
+	rax *plans = raxNew();
+	const uint64_t plan_ptr_be = _htobe64((uint64_t)plan);
+	raxInsert(plans, (unsigned char *)&plan_ptr_be, sizeof(uint64_t), plan, NULL);
+	_ExecutionPlan_AggregatePlansFromOps(plan->root, plans);
 
 	// free the operations of the plans (all plans)
 	_ExecutionPlan_FreeOpTree(plan->root);
 
 	// Free the different op-trees
-	uint plan_count = array_len(plans);
-	for(uint i = 0; i < plan_count; i++) {
-		_ExecutionPlan_FreeInternals(plans[i]);
+	raxIterator it;
+	raxStart(&it, plans);
+	raxSeek(&it, "^", NULL, 0);
+
+	while(raxNext(&it)) {
+		_ExecutionPlan_FreeInternals(it.data);
 	}
 
-	array_free(plans);
+	raxStop(&it);
+	raxFree(plans);
 }
 
