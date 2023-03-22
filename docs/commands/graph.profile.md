@@ -7,7 +7,7 @@ Returns: `String representation of a query execution plan, with details on resul
 `GRAPH.PROFILE` is a parallel entrypoint to `GRAPH.QUERY`. It accepts and executes the same queries, but it will not emit results,
 instead returning the operation tree structure alongside the number of records produced and total runtime of each operation.
 
-It is important to note that this blends elements of [GRAPH.QUERY](#graphquery) and [GRAPH.EXPLAIN](#graphexplain).
+It is important to note that this blends elements of [GRAPH.QUERY](/commands/graph.query) and [GRAPH.EXPLAIN](/commands/graph.explain).
 It is not a dry run and will perform all graph modifications expected of the query, but will not output results produced by a `RETURN` clause or query statistics.
 
 ```sh

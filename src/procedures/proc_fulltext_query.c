@@ -72,19 +72,17 @@ ProcedureResult Proc_FulltextQueryNodeInvoke
 	const char *query = args[1].stringval;
 
 	// get full-text index from schema
-	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-	if(s == NULL) return PROCEDURE_OK;
-
-	Index idx = Schema_GetIndex(s, NULL, 0, IDX_FULLTEXT);
+	Index idx = GraphContext_GetIndex(gc, label, NULL, 0, IDX_FULLTEXT,
+			SCHEMA_NODE);
 	if(!idx) return PROCEDURE_ERR; // TODO: this should cause an error to be emitted
 
 	ctx->privateData = rm_malloc(sizeof(QueryNodeContext));
 	QueryNodeContext *pdata = ctx->privateData;
 
-	pdata->g       =  gc->g;
-	pdata->n       =  GE_NEW_NODE();
-	pdata->idx     =  idx;
-	pdata->output  =  array_new(SIValue,  2);
+	pdata->g      = gc->g;
+	pdata->n      = GE_NEW_NODE();
+	pdata->idx    = idx;
+	pdata->output = array_new(SIValue,  2);
 
 	_process_yield(pdata, yield);
 

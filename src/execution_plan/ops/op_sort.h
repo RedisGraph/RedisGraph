@@ -13,14 +13,15 @@
 
 typedef struct {
 	OpBase op;
-	uint *record_offsets;       // All Record offsets containing values to sort by.
-	heap_t *heap;               // Holds top n records.
-	Record *buffer;             // Holds all records.
-	uint skip;                  // Total number of records to skip
-	uint limit;                 // Total number of records to produce
-	int *directions;            // Array of sort directions(ascending / desending) for each item.
-	uint record_idx;            // index of current record to return
-	AR_ExpNode **exps;          // Projected expressons.
+	Record *buffer;        // Holds all records.
+	heap_t *heap;          // Holds top n records.
+	bool first;            // first visit to consume func
+	uint skip;             // Total number of records to skip
+	uint record_idx;       // index of current record to return
+	uint limit;            // Total number of records to produce
+	uint *record_offsets;  // All Record offsets containing values to sort by.
+	int *directions;       // Array of sort directions(ascending / desending) for each item.
+	AR_ExpNode **exps;     // Projected expressons.
 } OpSort;
 
 /* Creates a new Sort operation */

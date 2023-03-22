@@ -5,6 +5,7 @@
  */
 
 #include "execution_plan_construct.h"
+#include "../../ast/enrichment/annotate_projected_named_paths.h"
 #include "execution_plan_modify.h"
 #include "../execution_plan.h"
 #include "../../RG.h"
@@ -201,21 +202,39 @@ static void _buildForeachOp
 	//		unwind
 	//			argument list
 
-	OpBase *foreach = NewForeachOp(plan);
-	AST    *ast     = plan->ast_segment;
+	//--------------------------------------------------------------------------
+	// Create embedded execution plan for the body of the Foreach clause
+	//--------------------------------------------------------------------------
+	// construct AST from Foreach body
+	uint nclauses = cypher_ast_foreach_nclauses(clause);
+	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, nclauses);
+	for(uint i = 0; i < nclauses; i++) {
+		cypher_astnode_t *inner_clause =
+			(cypher_astnode_t *)cypher_ast_foreach_get_clause(clause, i);
+		array_append(clauses, inner_clause);
+	}
 
-	ExecutionPlan_UpdateRoot(plan, foreach);
+	struct cypher_input_range range = {0};
+	cypher_astnode_t *new_root = cypher_ast_query(
+		NULL, 0, clauses, nclauses, clauses, nclauses, range
+	);
 
-	// make an execution-plan mocking the current one, in which the embedded
-	// execution-plan of the Foreach clauses will be built
+	uint *ref_count = rm_malloc(sizeof(uint));
+	*ref_count = 1;
+
+	AST *body_ast = rm_malloc(sizeof(AST));
+	body_ast->root = new_root;
+	body_ast->free_root = true;
+	body_ast->parse_result = NULL;
+	body_ast->ref_count = ref_count;
+	body_ast->params_parse_result = NULL;
+	body_ast->anot_ctx_collection = plan->ast_segment->anot_ctx_collection;
+	body_ast->referenced_entities =
+		raxClone(plan->ast_segment->referenced_entities);
+
 	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
-	// use a clone record-map, to not pollute the main one (different scope)
-	embedded_plan->record_map           = raxClone(plan->record_map);
-	embedded_plan->ast_segment          = plan->ast_segment;
-	// use a clone QueryGraph, to not pollute the main one (different scope)
-	embedded_plan->query_graph          = QueryGraph_Clone(plan->query_graph);
-	embedded_plan->record_pool          = plan->record_pool;
-	embedded_plan->connected_components = plan->connected_components;
+	embedded_plan->ast_segment = body_ast;
+	embedded_plan->record_map = raxClone(plan->record_map);
 
 	//--------------------------------------------------------------------------
 	// build Unwind op
@@ -227,41 +246,38 @@ static void _buildForeachOp
 	exp->resolved_name = cypher_ast_identifier_get_name(
 		cypher_ast_foreach_get_identifier(clause));
 	OpBase *unwind = NewUnwindOp(embedded_plan, exp);
-	// set the unwind op as the current root of the embedded plan
-	ExecutionPlan_UpdateRoot(embedded_plan, unwind);
 
 	//--------------------------------------------------------------------------
 	// build ArgumentList op
 	//--------------------------------------------------------------------------
 
 	OpBase *argument_list = NewArgumentListOp(embedded_plan);
+	// TODO: After refactoring the execution-plan freeing mechanism, bind the
+	// ArgumentList op to the outer-scope plan (plan), and change the condition
+	// for Unwind's 'free_rec' field to be whether the child plan is different
+	// from the plan the Unwind is binded to.
+
 	// add the op as a child of the unwind operation
 	ExecutionPlan_AddOp(unwind, argument_list);
 
-	//--------------------------------------------------------------------------
-	// build FOREACH loop body operation(s)
-	//--------------------------------------------------------------------------
+	// update the root of the (currently empty) embedded plan
+	ExecutionPlan_UpdateRoot(embedded_plan, unwind);
 
-	// build the operations corresponding to the embedded clauses in foreach
-	uint clause_count = cypher_ast_foreach_nclauses(clause);
-	for(uint i = 0; i < clause_count; i++) {
-		const cypher_astnode_t *sub_clause = cypher_ast_foreach_get_clause(clause, i);
-		ExecutionPlanSegment_ConvertClause(gc, ast, embedded_plan, sub_clause);
-	}
+	// build the execution-plan of the body of the clause
+	AST *orig_ast = QueryCtx_GetAST();
+	QueryCtx_SetAST(body_ast);
+	ExecutionPlan_PopulateExecutionPlan(embedded_plan);
+	QueryCtx_SetAST(orig_ast);
 
-	// bind the operations of the new plan to the old plan, without merging qgs
-	ExecutionPlan_BindPlanToOps(plan, embedded_plan->root, false);
+	// free the artificial body array (not its components)
+	array_free(clauses);
 
-	// connect foreach op to its child operation
+	// create the Foreach op, and update (outer) plan root
+	OpBase *foreach = NewForeachOp(plan);
+	ExecutionPlan_UpdateRoot(plan, foreach);
+
+	// connect the embedded plan to the Foreach op
 	ExecutionPlan_AddOp(foreach, embedded_plan->root);
-
-	// free the temporary plan after disconnecting the shared components with
-	// the main plan
-	embedded_plan->root                 = NULL;
-	embedded_plan->ast_segment          = NULL;
-	embedded_plan->record_pool          = NULL;
-	embedded_plan->connected_components = NULL;
-	ExecutionPlan_Free(embedded_plan);
 }
 
 void ExecutionPlanSegment_ConvertClause
@@ -300,4 +316,3 @@ void ExecutionPlanSegment_ConvertClause
 		assert(false && "unhandeled clause");
 	}
 }
-
