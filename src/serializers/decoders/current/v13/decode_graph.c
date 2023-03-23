@@ -87,7 +87,10 @@ static GraphContext *_DecodeHeader
 
 	// if it is the first key of this graph,
 	// allocate all the data structures, with the appropriate dimensions
-	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
+	bool first_vkey =
+		GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0;
+
+	if(first_vkey == true) {
 		_InitGraphDataStructure(gc->g, node_count, edge_count,
 			deleted_node_count, deleted_edge_count, label_count, relation_count);
 
@@ -103,7 +106,7 @@ static GraphContext *_DecodeHeader
 	}
 
 	// decode graph schemas
-	RdbLoadGraphSchema_v13(rdb, gc);
+	RdbLoadGraphSchema_v13(rdb, gc, !first_vkey);
 
 	return gc;
 }
@@ -212,13 +215,40 @@ GraphContext *RdbLoadGraphContext_v13
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
+		uint rel_count   = Graph_RelationTypeCount(g);
 		uint label_count = Graph_LabelTypeCount(g);
-		// update the node statistics
+
+		// update the node statistics, enable node indices
 		for(uint i = 0; i < label_count; i++) {
 			GrB_Index nvals;
 			RG_Matrix L = Graph_GetLabelMatrix(g, i);
 			RG_Matrix_nvals(&nvals, L);
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
+
+			Index idx;
+			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
+			idx = PENDING_EXACTMATCH_IDX(s);
+			if(idx != NULL) {
+				Index_Enable(idx);
+				Schema_ActivateIndex(s, idx);
+			}
+
+			idx = PENDING_FULLTEXT_IDX(s);
+			if(idx != NULL) {
+				Index_Enable(idx);
+				Schema_ActivateIndex(s, idx);
+			}
+		}
+
+		// enable all edge indices
+		for(uint i = 0; i < rel_count; i++) {
+			Index idx;
+			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
+			idx = PENDING_EXACTMATCH_IDX(s);
+			if(idx != NULL) {
+				Index_Enable(idx);
+				Schema_ActivateIndex(s, idx);
+			}
 		}
 
 		// make sure graph doesn't contains may pending changes

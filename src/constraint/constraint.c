@@ -18,15 +18,16 @@
 
 // opaque structure representing a constraint
 typedef struct _Constraint {
-	uint8_t n_attr;                // number of fields
-	ConstraintType t;              // constraint type
-	EnforcementCB enforce;         // enforcement function
-	int schema_id;                 // enforced label/relationship-type
-	Attribute_ID *attrs;           // enforced attributes
-	const char **attr_names;       // enforced attribute names
-	ConstraintStatus status;       // constraint status
-	uint _Atomic pending_changes;  // number of pending changes
-	GraphEntityType et;            // entity type
+	uint8_t n_attr;                         // number of fields
+	ConstraintType t;                       // constraint type
+	Constraint_EnforcementCB enforce;       // enforcement function
+	Constraint_SetPrivateDataCB set_pdata;  // set private data
+	int schema_id;                          // enforced label/relationship-type
+	Attribute_ID *attrs;                    // enforced attributes
+	const char **attr_names;                // enforced attribute names
+	ConstraintStatus status;                // constraint status
+	uint _Atomic pending_changes;           // number of pending changes
+	GraphEntityType et;                     // entity type
 } _Constraint;
 
 // Extern functions
@@ -69,10 +70,10 @@ Constraint Constraint_New
 	Constraint c = NULL;
 
 	if(t == CT_UNIQUE) {
-		// a unique constraints requires an index
-		// try to get supporting index
-		Index idx = GraphContext_GetIndexByID((GraphContext*) gc, schema_id,
-				fields, n_fields, IDX_EXACT_MATCH, et);
+		// a unique constraints requires an index, try to get supporting index
+		SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+		Schema *s = GraphContext_GetSchemaByID((GraphContext*)gc, schema_id, st);
+		Index idx = Schema_GetIndex(s, fields, n_fields, IDX_EXACT_MATCH, true);
 
 		// supporting index is missing, can't create constraint
 		if(idx == NULL) {
@@ -149,6 +150,21 @@ void Constraint_SetStatus
 
 	// assuming under lock
     c->status = status;
+}
+
+// sets constraint private data
+// if c->pdata == prev then c->pdata = pdata
+void Constraint_SetPrivateData
+(
+	Constraint c,  // constraint to update
+	void *prev,    // previous private data
+	void *pdata    // new private data
+) {
+	ASSERT(c != NULL);
+
+	if(c->set_pdata != NULL) {
+		c->set_pdata(c, prev, pdata);
+	}
 }
 
 // returns a shallow copy of constraint attributes
@@ -354,8 +370,6 @@ void Constraint_EnforceEdges
 	GrB_Info info;
 	RG_MatrixTupleIter it = {0};
 
-	// TODO: change to RelationID
-	LabelID   r            = c->schema_id;  // edge relationship type ID
 	bool      holds        = true;          // constraint holds
 	EntityID  src_id       = 0;             // current processed row idx
 	EntityID  dest_id      = 0;             // current processed column idx
@@ -363,6 +377,7 @@ void Constraint_EnforceEdges
 	EntityID  prev_src_id  = 0;             // last processed row idx
 	EntityID  prev_dest_id = 0;             // last processed column idx
 	int       enforced     = 0;             // # entities enforced in batch
+	int       schema_id    = c->schema_id;  // edge relationship type ID
 	int       batch_size   = 1000;          // max number of entities to enforce
 
 	while(holds) {
@@ -383,16 +398,14 @@ void Constraint_EnforceEdges
 		prev_dest_id = dest_id;
 
 		// fetch relation matrix
-		const RG_Matrix m = Graph_GetRelationMatrix(g, r, false);
+		const RG_Matrix m = Graph_GetRelationMatrix(g, schema_id, false);
 		ASSERT(m != NULL);
 
 		//----------------------------------------------------------------------
 		// resume scanning from previous row/col indices
 		//----------------------------------------------------------------------
 
-		info = RG_MatrixTupleIter_attach(&it, m);
-		ASSERT(info == GrB_SUCCESS);
-		info = RG_MatrixTupleIter_iterate_range(&it, src_id, UINT64_MAX);
+		info = RG_MatrixTupleIter_AttachRange(&it, m, src_id, UINT64_MAX);
 		ASSERT(info == GrB_SUCCESS);
 
 		// skip previously enforced edges
@@ -414,7 +427,7 @@ void Constraint_EnforceEdges
 			Edge e;
 			e.srcNodeID  = src_id;
 			e.destNodeID = dest_id;
-			e.relationID = r;
+			e.relationID = schema_id;
 
 			if(SINGLE_EDGE(edge_id)) {
 				Graph_GetEdge(g, edge_id, &e);

@@ -31,6 +31,9 @@ class testReplication(FlowTestsBase):
         # commands are registered as write commands
         replica_con.config_set("slave-read-only", "no")
 
+        # the WAIT command forces master slave sync to complete
+        source_con.execute_command("WAIT", "1", "0")
+
         # perform CRUD operations
 
         #-----------------------------------------------------------------------
@@ -79,7 +82,7 @@ class testReplication(FlowTestsBase):
         # add a unique constraint which is destined to fail
         origin.query("CREATE (:Actor {age: 10, name: 'jerry'}), (:Actor {age: 10, name: 'jerry'})")
         create_unique_node_constraint(origin, "Actor", "age", sync=True)
-        c = get_constraint(origin, "unique", "LABEL", "Actor", "age")
+        c = get_constraint(origin, "UNIQUE", "LABEL", "Actor", "age")
         self.env.assertEquals(c.status, "FAILED")
 
         # update entity
