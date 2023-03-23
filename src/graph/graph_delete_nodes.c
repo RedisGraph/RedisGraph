@@ -36,6 +36,7 @@ void Graph_DeleteNodes
 	// assumption, nodes are detached
 	// there are no incoming nor outgoing edges leading to / from nodes
 	ASSERT(g != NULL);
+	ASSERT(count > 0);
 	ASSERT(nodes != NULL);
 
 	// set matrix sync policy to NOP

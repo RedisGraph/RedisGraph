@@ -106,22 +106,30 @@ static void _DeleteEntities
 
 	edge_count = array_len(distinct_edges);
 
-	// lock everything
-	QueryCtx_LockForCommit(); {
-		// NOTE: delete edges before nodes
-		// required as a deleted node must be detached
+	if((node_count + edge_count) > 0) {
+		// lock everything
+		QueryCtx_LockForCommit();
+		{
+			// NOTE: delete edges before nodes
+			// required as a deleted node must be detached
 
-		// delete edges
-		edge_deleted += DeleteEdges(gc, distinct_edges);
+			// delete edges
+			if(edge_count > 0) {
+				DeleteEdges(gc, distinct_edges, edge_count);
+				edge_deleted = edge_count;
+			}
 
-		// delete nodes
-		DeleteNodes(gc, distinct_nodes, node_count);
-		node_deleted = node_count;
+			// delete nodes
+			if(node_count > 0) {
+				DeleteNodes(gc, distinct_nodes, node_count);
+				node_deleted = node_count;
+			}
 
-		// stats must be updated under lock due to for replication
-		if(op->stats != NULL) {
-			op->stats->nodes_deleted         += node_deleted;
-			op->stats->relationships_deleted += edge_deleted;
+			// stats must be updated under lock due to for replication
+			if(op->stats != NULL) {
+				op->stats->nodes_deleted         += node_deleted;
+				op->stats->relationships_deleted += edge_deleted;
+			}
 		}
 	}
 

@@ -1046,12 +1046,14 @@ uint Graph_GetNodeLabels
 }
 
 // removes edges from Graph and updates graph relevant matrices
-int Graph_DeleteEdges
+void Graph_DeleteEdges
 (
 	Graph *g,
-	Edge *edges
+	Edge *edges,
+	uint64_t count
 ) {
 	ASSERT(g != NULL);
+	ASSERT(count > 0);
 	ASSERT(edges != NULL);
 
 	uint64_t    x;
@@ -1063,7 +1065,6 @@ int Graph_DeleteEdges
 	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 
-	uint count = array_len(edges);
 	for (uint i = 0; i < count; i++) {
 		Edge       *e         =  edges + i;
 		int         r         =  Edge_GetRelationID(e);
@@ -1112,8 +1113,6 @@ int Graph_DeleteEdges
 	}
 
 	Graph_SetMatrixPolicy(g, policy);
-
-	return count;
 }
 
 inline bool Graph_EntityIsDeleted

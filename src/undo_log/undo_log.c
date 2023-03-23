@@ -233,7 +233,7 @@ static void _UndoLog_Rollback_Create_Edge
 		_index_delete_edge(ctx, e);
 	}
 
-	Graph_DeleteEdges(ctx->gc->g, edges);
+	Graph_DeleteEdges(ctx->gc->g, edges, edge_count);
 	rm_free(edges);
 }
 
