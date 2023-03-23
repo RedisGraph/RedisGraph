@@ -335,7 +335,6 @@ Feature: WithOrderBy4 - Order by in combination with projection and aliasing
       | 1   | 13  |
     And no side effects
 
-  @skip
   Scenario: [13] Fail on sorting by a non-projected aggregation on a variable
     Given an empty graph
     And having executed:
@@ -357,7 +356,6 @@ Feature: WithOrderBy4 - Order by in combination with projection and aliasing
       """
     Then a SyntaxError should be raised at compile time: AmbiguousAggregationExpression
 
-  @skip
   Scenario: [14] Fail on sorting by a non-projected aggregation on an expression
     Given an empty graph
     And having executed:
