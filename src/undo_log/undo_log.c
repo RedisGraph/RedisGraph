@@ -401,12 +401,12 @@ void UndoLog_DeleteEdge
 
 	op.type                      = UNDO_DELETE_EDGE;
 	op.delete_edge_op.id         = edge->id;
-	op.delete_edge_op.relationID = edge->relationID;
 	op.delete_edge_op.srcNodeID  = edge->srcNodeID;
 	op.delete_edge_op.destNodeID = edge->destNodeID;
+	op.delete_edge_op.relationID = edge->relationID;
 
 	// take ownership over edge's attribute-set
-	op.delete_edge_op.set = AttributeSet_Clone(*edge->attributes);
+	op.delete_edge_op.set = *edge->attributes;
 	*edge->attributes = NULL;
 
 	_UndoLog_AddOperation(log, &op);

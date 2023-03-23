@@ -76,8 +76,13 @@ static void _CreateNodes(OpCreate *op, Record r, GraphContext *gc) {
 	}
 }
 
-// Prepare to create all edges for the current Record.
-static void _CreateEdges(OpCreate *op, Record r, GraphContext *gc) {
+// prepare to create all edges for the current Record
+static void _CreateEdges
+(
+	OpCreate *op,
+	Record r,
+	GraphContext *gc
+) {
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);
 	for(uint i = 0; i < edges_to_create_count; i++) {
 		// get specified edge to create
@@ -86,9 +91,11 @@ static void _CreateEdges(OpCreate *op, Record r, GraphContext *gc) {
 		// retrieve source and dest nodes
 		Node *src_node = Record_GetNode(r, e->src_idx);
 		Node *dest_node = Record_GetNode(r, e->dest_idx);
-		// verify that the endpoints of the new edge resolved properly; fail otherwise
+		// verify that the endpoints of the new edge resolved properly
+		// fail otherwise
 		if(!src_node || !dest_node) {
-			ErrorCtx_RaiseRuntimeException("Failed to create relationship; endpoint was not found.");
+			ErrorCtx_RaiseRuntimeException(
+					"Failed to create relationship; endpoint was not found.");
 		}
 
 		// create the actual edge
