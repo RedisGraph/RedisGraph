@@ -88,3 +88,6 @@ Quickstart
 queryable
 RSALv
 SSPLv
+macOS
+ESC
+wq
