@@ -8,8 +8,8 @@
 #include "graph.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "rg_matrix/rg_matrix_iter.h"
 #include "../util/datablock/oo_datablock.h"
-#include "../graph/rg_matrix/rg_matrix_iter.h"
 
 //------------------------------------------------------------------------------
 // Forward declarations
@@ -1045,44 +1045,15 @@ uint Graph_GetNodeLabels
 	return i;
 }
 
-// removes node and all of its connections within the graph
-void Graph_DeleteNode
-(
-	Graph *g,
-	Node *n
-) {
-	// assumption, node is detached
- 	// there are no incoming nor outgoing edges leading to / from node
-	ASSERT(g != NULL);
-	ASSERT(n != NULL);
-
-	#if RG_DEBUG
-	// validate assumption
-	Edge *edges = array_new(Edge, 0);
-	Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
-	ASSERT(array_len(edges) == 0);
-	array_free(edges);
-	#endif
-
-	uint label_count;
-	EntityID n_id = ENTITY_GET_ID(n);
-
-	NODE_GET_LABELS(g, n, label_count);
-
-	// update label matrices
-	if(label_count > 0) Graph_RemoveNodeLabels(g, n_id, labels, label_count);
-
-	// remove node from datablock
-	DataBlock_DeleteItem(g->nodes, n_id);
-}
-
 // removes edges from Graph and updates graph relevant matrices
-int Graph_DeleteEdges
+void Graph_DeleteEdges
 (
 	Graph *g,
-	Edge *edges
+	Edge *edges,
+	uint64_t count
 ) {
 	ASSERT(g != NULL);
+	ASSERT(count > 0);
 	ASSERT(edges != NULL);
 
 	uint64_t    x;
@@ -1094,7 +1065,6 @@ int Graph_DeleteEdges
 	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 
-	uint count = array_len(edges);
 	for (uint i = 0; i < count; i++) {
 		Edge       *e         =  edges + i;
 		int         r         =  Edge_GetRelationID(e);
@@ -1113,6 +1083,9 @@ int Graph_DeleteEdges
 		ASSERT(info == GrB_SUCCESS);
 
 		if(entry_deleted) {
+			// TODO: consider making ADJ UINT64_T where ADJ[i,j] = #connections
+			// drop the entry once it reaches 0
+			//
 			// see if source is connected to destination with additional edges
 			bool connected = false;
 			int relationCount = Graph_RelationTypeCount(g);
@@ -1140,8 +1113,6 @@ int Graph_DeleteEdges
 	}
 
 	Graph_SetMatrixPolicy(g, policy);
-
-	return count;
 }
 
 inline bool Graph_EntityIsDeleted
