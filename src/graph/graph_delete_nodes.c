@@ -8,30 +8,31 @@
 #include "graph.h"
 #include "rg_matrix/rg_matrix_iter.h"
 
-// removes node and all of its connections within the graph
+// deletes nodes from the graph
+//
+// nodes deletion is performed in two steps
+// 1. update label matrices
+//    each deleted node is removed from all applicable label matrices
+//    suppose node N with internal ID 9 is labeld with labels 0 and 4
+//    in which case entry [9,9] is cleared from both label matrix 0 and 4
+//    to determine which labels are associated with a given node we consult
+//    with the labels-matrix we don't want to alter this matrix at this
+//    phase as we're constantly querying it.
+//    lastly each inspected entry e.g. [9,0] and [9,4]
+//    is collected within a temporary matrix used in the second phase
+//
+// 2. update labels-matrix
+//    using the temporary matrix we clear all relevant entries from the
+//    labels-matrix
+//
+// this seperation to two phases avoids multiple flushes of labels-matrix
+
 void Graph_DeleteNodes
 (
 	Graph *g,       // graph to delete nodes from
 	Node *nodes,    // nodes to delete
 	uint64_t count  // number of nodes
 ) {
-	// nodes deletion is performed in two steps
-	// 1. update label matrices
-	//    each deleted node is removed from all applicable label matrices
-	//    suppose node N with internal ID 9 is labeld with labels 0 and 4
-	//    in which case entry [9,9] is cleared from both label matrix 0 and 4
-	//    to determine which labels are associated with a given node we consult
-	//    with the labels-matrix we don't want to alter this matrix at this
-	//    phase as we're constantly querying it.
-	//    lastly each inspected entry e.g. [9,0] and [9,4]
-	//    is collected within a temporary matrix used in the second phase
-	//
-	// 2. update labels-matrix
-	//    using the temporary matrix we clear all relevant entries from the
-	//    labels-matrix
-	//
-	//    this seperation to two phases avoids multiple flushes of labels-matrix
-
 	// assumption, nodes are detached
 	// there are no incoming nor outgoing edges leading to / from nodes
 	ASSERT(g != NULL);
