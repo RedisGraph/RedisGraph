@@ -571,6 +571,7 @@ static void _ExecutionPlan_AggregatePlansFromOps
 	}
 }
 
+// Free the execution plans and all of the operations
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) {
 		return;
