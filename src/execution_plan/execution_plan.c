@@ -539,7 +539,7 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 	rm_free(plan);
 }
 
-// Free an op tree and its associated ExecutionPlan segments.
+// Free an op tree
 static void _ExecutionPlan_FreeOpTree(OpBase *op) {
 	if(op == NULL) {
 		return;
@@ -553,6 +553,7 @@ static void _ExecutionPlan_FreeOpTree(OpBase *op) {
 	OpBase_Free(op);
 }
 
+// Collect all ExecutionPlans from the given operation tree
 static void _ExecutionPlan_AggregatePlansFromOps
 (
 	OpBase *opBase,     // operation to aggregate plans from
