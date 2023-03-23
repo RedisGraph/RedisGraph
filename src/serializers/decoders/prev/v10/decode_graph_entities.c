@@ -104,8 +104,8 @@ void RdbLoadNodes_v10(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count)
 		if(l != GRAPH_NO_LABEL) {
 			Schema *s = GraphContext_GetSchemaByID(gc, l, SCHEMA_NODE);
 			ASSERT(s != NULL);
-			if(s->index) Index_IndexNode(s->index, &n);
-			if(s->fulltextIdx) Index_IndexNode(s->fulltextIdx, &n);
+			if(PENDING_FULLTEXT_IDX(s)) Index_IndexNode(PENDING_FULLTEXT_IDX(s), &n);
+			if(PENDING_EXACTMATCH_IDX(s)) Index_IndexNode(PENDING_EXACTMATCH_IDX(s), &n);
 		}
 	}
 }
@@ -141,6 +141,12 @@ void RdbLoadEdges_v10(RedisModuleIO *rdb, GraphContext *gc, uint64_t edge_count)
 				gc->decoding_context->multi_edge[relation], edgeId, srcId,
 				destId, relation, &e);
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
+
+		// index edge
+		Schema *s = GraphContext_GetSchemaByID(gc, relation, SCHEMA_EDGE);
+		ASSERT(s != NULL);
+
+		if(PENDING_EXACTMATCH_IDX(s)) Index_IndexEdge(PENDING_EXACTMATCH_IDX(s), &e);
 	}
 }
 
