@@ -73,11 +73,6 @@ static bool _EnforceUniqueEntity
 	bool    holds   = false;  // return value none-optimistic
 	RSIndex *rs_idx = Index_RSIndex(idx);
 
-	// index is still under construction, assume entity passes constraint
-	if(unlikely(Index_Enabled(idx) == false)) {
-		return true;
-	}
-
 	//--------------------------------------------------------------------------
 	// construct a RediSearch query locating entity
 	//--------------------------------------------------------------------------
