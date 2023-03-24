@@ -153,17 +153,15 @@ void Constraint_SetStatus
 }
 
 // sets constraint private data
-// if c->pdata == prev then c->pdata = pdata
 void Constraint_SetPrivateData
 (
 	Constraint c,  // constraint to update
-	void *prev,    // previous private data
-	void *pdata    // new private data
+	void *pdata    // private data
 ) {
 	ASSERT(c != NULL);
 
 	if(c->set_pdata != NULL) {
-		c->set_pdata(c, prev, pdata);
+		c->set_pdata(c, pdata);
 	}
 }
 
@@ -430,7 +428,8 @@ void Constraint_EnforceEdges
 			e.relationID = schema_id;
 
 			if(SINGLE_EDGE(edge_id)) {
-				Graph_GetEdge(g, edge_id, &e);
+				bool res = Graph_GetEdge(g, edge_id, &e);
+				assert(res == true);
 				if(!c->enforce(c, (GraphEntity*)&e, NULL)) {
 					holds = false;
 					break;
@@ -441,7 +440,8 @@ void Constraint_EnforceEdges
 
 				for(uint i = 0; i < edgeCount; i++) {
 					edge_id = edgeIds[i];
-					Graph_GetEdge(g, edge_id, &e);
+					bool res = Graph_GetEdge(g, edge_id, &e);
+					assert(res == true);
 					if(!c->enforce(c, (GraphEntity*)&e, NULL)) {
 						holds = false;
 						break;

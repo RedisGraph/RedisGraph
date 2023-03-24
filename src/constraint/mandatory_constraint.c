@@ -15,16 +15,16 @@
 
 // opaque structure representing a constraint
 struct _MandatoryConstraint {
-	uint8_t n_attr;                // number of fields
-	ConstraintType t;              // constraint type
+	uint8_t n_attr;                         // number of fields
+	ConstraintType t;                       // constraint type
 	Constraint_EnforcementCB enforce;       // enforcement function
 	Constraint_SetPrivateDataCB set_pdata;  // set private data
-	int schema_id;                 // enforced schema ID
-    Attribute_ID *attrs;           // enforced attributes
-	const char **attr_names;       // enforced attribute names
-    ConstraintStatus status;       // constraint status
-    uint _Atomic pending_changes;  // number of pending changes
-	GraphEntityType et;            // entity type
+	int schema_id;                          // enforced schema ID
+    Attribute_ID *attrs;                    // enforced attributes
+	const char **attr_names;                // enforced attribute names
+    ConstraintStatus status;                // constraint status
+    uint _Atomic pending_changes;           // number of pending changes
+	GraphEntityType et;                     // entity type
 };
 
 typedef struct _MandatoryConstraint* MandatoryConstraint;

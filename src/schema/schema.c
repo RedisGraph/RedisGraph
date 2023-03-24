@@ -236,20 +236,6 @@ static void Schema_ActivateExactMatchIndex
 	Index active  = ACTIVE_EXACTMATCH_IDX(s);
 	Index pending = PENDING_EXACTMATCH_IDX(s);
 
-
-	//--------------------------------------------------------------------------
-	// update unique constraint private data
-	//--------------------------------------------------------------------------
-
-	// uniqie constraint rely on exact-match indicies
-	// whenever such an index is updated
-	// we need to update the relevant uniqie constraint
-	uint n = array_len(s->constraints);
-	for(uint i = 0; i < n; i++) {
-		Constraint c = s->constraints[i];
-		Constraint_SetPrivateData(c, active, pending);
-	}
-
 	// drop active if exists
 	if(active != NULL) {
 		Index_Free(active);
@@ -260,6 +246,21 @@ static void Schema_ActivateExactMatchIndex
 
 	// clear pending index
 	PENDING_EXACTMATCH_IDX(s) = NULL;
+
+	//--------------------------------------------------------------------------
+	// update unique constraint private data
+	//--------------------------------------------------------------------------
+
+	active = ACTIVE_EXACTMATCH_IDX(s);
+
+	// uniqie constraint rely on exact-match indicies
+	// whenever such an index is updated
+	// we need to update the relevant uniqie constraint
+	uint n = array_len(s->constraints);
+	for(uint i = 0; i < n; i++) {
+		Constraint c = s->constraints[i];
+		Constraint_SetPrivateData(c, active);
+	}
 }
 
 static void Schema_ActivateFullTextIdx
