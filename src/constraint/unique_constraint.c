@@ -15,16 +15,17 @@
 
 // opaque structure representing a constraint
 struct _UniqueConstraint {
-	uint8_t n_attr;                // number of fields
-	ConstraintType t;              // constraint type
-	EnforcementCB enforce;         // enforcement function
-	int schema_id;                 // enforced schema ID
-	Attribute_ID *attrs;           // enforced attributes
-	const char **attr_names;       // enforced attribute names
-	ConstraintStatus status;       // constraint status
-	uint _Atomic pending_changes;  // number of pending changes
-	GraphEntityType et;            // entity type
-	Index idx;                     // supporting index
+	uint8_t n_attr;                         // number of fields
+	ConstraintType t;                       // constraint type
+	Constraint_EnforcementCB enforce;       // enforcement function
+	Constraint_SetPrivateDataCB set_pdata;  // set private data
+	int schema_id;                          // enforced schema ID
+	Attribute_ID *attrs;                    // enforced attributes
+	const char **attr_names;                // enforced attribute names
+	ConstraintStatus status;                // constraint status
+	uint _Atomic pending_changes;           // number of pending changes
+	GraphEntityType et;                     // entity type
+	Index idx;                              // supporting index
 };
 
 typedef struct _UniqueConstraint* UniqueConstraint;
@@ -35,9 +36,22 @@ static const char *_node_violation_err_msg =
 static const char *_edge_violation_err_msg =
 	"unique constraint violation, on edge of relationship-type %s";
 
+// sets constraint private data
+static void _SetPrivateData
+(
+	Constraint c,  // constraint to update
+	void *pdata    // private data
+) {
+	ASSERT(c != NULL);
+	ASSERT(pdata != NULL);
+
+	UniqueConstraint _c = (UniqueConstraint)c;
+	_c->idx = (Index)pdata;
+}
+
 // enforces unique constraint on given entity
 // returns true if entity confirms with constraint false otherwise
-static bool Constraint_EnforceUniqueEntity
+static bool _EnforceUniqueEntity
 (
 	const Constraint c,    // constraint to enforce
 	const GraphEntity *e,  // enforced entity
@@ -126,14 +140,31 @@ static bool Constraint_EnforceUniqueEntity
 	// constraint holds if there are no duplicates, a single index match
 	iter = RediSearch_GetResultsIterator(root, rs_idx);
 	if(Constraint_GetEntityType(c) == GETYPE_NODE) {
+		// first call, expecting to find 'e' in the index
 		const EntityID *id =
 			(EntityID*)RediSearch_ResultsIteratorNext(iter, rs_idx, NULL);
-		holds = (*id == ENTITY_GET_ID(e));
+
+		ASSERT(id != NULL);
+
+		if(*id != ENTITY_GET_ID(e)) {
+			holds = false;
+			goto cleanup;
+		}
 	} else {
+		// first call, expecting to find 'e' in the index
 		const EdgeIndexKey *id =
 			(EdgeIndexKey*)RediSearch_ResultsIteratorNext(iter, rs_idx, NULL);
-		holds = (id->edge_id == ENTITY_GET_ID(e));
+
+		ASSERT(id != NULL);
+
+		if(id->edge_id != ENTITY_GET_ID(e)) {
+			holds = false;
+			goto cleanup;
+		}
 	}
+
+	// second call, holds if no value is returned
+	holds = RediSearch_ResultsIteratorNext(iter, rs_idx, NULL) == NULL;
 
 cleanup:
 	if(iter != NULL) {
@@ -145,14 +176,16 @@ cleanup:
 	}
 
 	if(holds == false && err_msg != NULL) {
+		int res;
+		UNUSED(res);
 		// entity violates constraint, compose error message
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		SchemaType st = (_c->et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
 		Schema *s = GraphContext_GetSchemaByID(gc, _c->schema_id, st);
 		if(Constraint_GetEntityType(c) == GETYPE_NODE) {
-			asprintf(err_msg, _node_violation_err_msg, Schema_GetName(s));
+			res = asprintf(err_msg, _node_violation_err_msg, Schema_GetName(s));
 		} else {
-			asprintf(err_msg, _edge_violation_err_msg, Schema_GetName(s));
+			res = asprintf(err_msg, _edge_violation_err_msg, Schema_GetName(s));
 		}
 	}
 
@@ -183,7 +216,8 @@ Constraint Constraint_UniqueNew
 	c->idx             = idx;
 	c->n_attr          = n_fields;
 	c->status          = CT_PENDING;
-	c->enforce         = Constraint_EnforceUniqueEntity;
+	c->enforce         = _EnforceUniqueEntity;
+	c->set_pdata       = _SetPrivateData;
 	c->schema_id       = schema_id;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 
