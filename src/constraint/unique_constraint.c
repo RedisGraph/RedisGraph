@@ -9,6 +9,7 @@
 #include "../query_ctx.h"
 #include "../index/index.h"
 #include "redisearch_api.h"
+#include "../src/datatypes/point.h"
 #include "../graph/entities/attribute_set.h"
 
 #include <stdatomic.h>
@@ -51,7 +52,7 @@ static void _SetPrivateData
 
 // enforces unique constraint on given entity
 // returns true if entity confirms with constraint false otherwise
-static bool _EnforceUniqueEntity
+bool EnforceUniqueEntity
 (
 	const Constraint c,    // constraint to enforce
 	const GraphEntity *e,  // enforced entity
@@ -110,10 +111,14 @@ static bool _EnforceUniqueEntity
 			node = RediSearch_CreateTagNode(rs_idx, field);
 			RSQNode *child = RediSearch_CreateTagTokenNode(rs_idx, v->stringval);
 			RediSearch_QueryNodeAddChild(node, child);
-		} else {
-			ASSERT(t & SI_NUMERIC || t == T_BOOL);
+		} else if(t & (SI_NUMERIC | T_BOOL)) {
 			double d = SI_GET_NUMERIC((*v));
 			node = RediSearch_CreateNumericNode(rs_idx, field, d, d, true, true);
+		} else {
+			ASSERT(t == T_POINT);
+			double lat = (double)Point_lat(*v);
+			double lon = (double)Point_lon(*v);
+			node = RediSearch_CreateGeoNode(rs_idx, field, lat, lon, 0, RS_GEO_DISTANCE_M);
 		}
 
 		ASSERT(node != NULL);
@@ -216,7 +221,7 @@ Constraint Constraint_UniqueNew
 	c->idx             = idx;
 	c->n_attr          = n_fields;
 	c->status          = CT_PENDING;
-	c->enforce         = _EnforceUniqueEntity;
+	c->enforce         = EnforceUniqueEntity;
 	c->set_pdata       = _SetPrivateData;
 	c->schema_id       = schema_id;
 	c->pending_changes = ATOMIC_VAR_INIT(0);

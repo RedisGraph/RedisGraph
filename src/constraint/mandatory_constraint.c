@@ -36,7 +36,7 @@ static const char *_edge_violation_err_msg =
 	"mandatory constraint violation: edge with relationship-type %s missing property %s";
 
 // enforces mandatory constraint on given entity
-static bool Constraint_EnforceMandatory
+bool Constraint_EnforceMandatory
 (
 	const Constraint c,    // constraint to enforce
 	const GraphEntity *e,  // enforced entity

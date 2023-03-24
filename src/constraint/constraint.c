@@ -53,6 +53,34 @@ extern Constraint Constraint_MandatoryNew
 	GraphEntityType et        // entity type
 );
 
+// enforces unique constraint on given entity
+// returns true if entity confirms with constraint false otherwise
+extern bool EnforceUniqueEntity
+(
+	const Constraint c,    // constraint to enforce
+	const GraphEntity *e,  // enforced entity
+	char **err_msg         // report error message
+);
+
+// enforces mandatory constraint on given entity
+extern bool Constraint_EnforceMandatory
+(
+	const Constraint c,    // constraint to enforce
+	const GraphEntity *e,  // enforced entity
+	char **err_msg         // report error message
+);
+
+// disabled constraint enforce function
+// simply returns true
+static bool Constraint_EnforceNOP
+(
+	const Constraint c,    // constraint to enforce
+	const GraphEntity *e,  // enforced entity
+	char **err_msg         // report error message
+) {
+	return true;
+}
+
 // create a new constraint
 Constraint Constraint_New
 (
@@ -94,6 +122,32 @@ Constraint Constraint_New
 	ASSERT(Constraint_GetStatus(c) == CT_PENDING);
 
 	return c;
+}
+
+// enable constraint
+void Constraint_Enable
+(
+	Constraint c  // constraint to enable
+) {
+	ASSERT(c != NULL);
+	switch(Constraint_GetType(c)) {
+		case CT_UNIQUE:
+			c->enforce = EnforceUniqueEntity;
+			break;
+		case CT_MANDATORY:
+			c->enforce = Constraint_EnforceMandatory;
+			break;
+	}
+}
+
+// disable constraint
+void Constraint_Disable
+(
+	Constraint c  // constraint to disable
+) {
+	ASSERT(c != NULL);
+
+	c->enforce = Constraint_EnforceNOP;
 }
 
 // returns constraint's type

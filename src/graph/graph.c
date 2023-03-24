@@ -54,11 +54,16 @@ static void _CreateRWLock
 
 // acquire a lock that does not restrict access from additional reader threads
 void Graph_AcquireReadLock(Graph *g) {
+	ASSERT(g != NULL);
+
 	pthread_rwlock_rdlock(&g->_rwlock);
 }
 
 // acquire a lock for exclusive access to this graph's data
 void Graph_AcquireWriteLock(Graph *g) {
+	ASSERT(g != NULL);
+	ASSERT(g->_writelocked == false);
+
 	pthread_rwlock_wrlock(&g->_rwlock);
 	g->_writelocked = true;
 }
@@ -68,6 +73,8 @@ void Graph_ReleaseLock
 (
 	Graph *g
 ) {
+	ASSERT(g != NULL);
+
 	// set _writelocked to false BEFORE unlocking
 	// if this is a reader thread no harm done,
 	// if this is a writer thread the writer is about to unlock so once again
@@ -627,8 +634,8 @@ void Graph_GetEdgesConnectingNodes
 #ifdef RG_DEBUG
 	Node  srcNode   =  GE_NEW_NODE();
 	Node  destNode  =  GE_NEW_NODE();
-	ASSERT(Graph_GetNode(g, srcID, &srcNode));
-	ASSERT(Graph_GetNode(g, destID, &destNode));
+	ASSERT(Graph_GetNode(g, srcID, &srcNode)   == true);
+	ASSERT(Graph_GetNode(g, destID, &destNode) == true);
 #endif
 
 	if(r != GRAPH_NO_RELATION) {
@@ -764,8 +771,8 @@ bool Graph_FormConnection
 
 	GrB_Info info;
 	UNUSED(info);
-	RG_Matrix  M    =  Graph_GetRelationMatrix(g, r, false);
-	RG_Matrix  adj  =  Graph_GetAdjacencyMatrix(g, false);
+	RG_Matrix M   = Graph_GetRelationMatrix(g, r, false);
+	RG_Matrix adj = Graph_GetAdjacencyMatrix(g, false);
 
 	// rows represent source nodes, columns represent destination nodes
 	info = RG_Matrix_setElement_BOOL(adj, src, dest);
@@ -796,19 +803,19 @@ void Graph_CreateEdge
 #ifdef RG_DEBUG
 	// make sure both src and destination nodes exists
 	Node node = GE_NEW_NODE();
-	ASSERT(Graph_GetNode(g, src, &node) == 1);
-	ASSERT(Graph_GetNode(g, dest, &node) == 1);
+	ASSERT(Graph_GetNode(g, src, &node)  == true);
+	ASSERT(Graph_GetNode(g, dest, &node) == true);
 #endif
 
 	EdgeID id;
 	AttributeSet *set = DataBlock_AllocateItem(g->edges, &id);
 	*set = NULL;
 
-	e->id            =  id;
-	e->attributes    =  set;
-	e->srcNodeID     =  src;
-	e->destNodeID    =  dest;
-	e->relationID    =  r;
+	e->id         = id;
+	e->attributes = set;
+	e->srcNodeID  = src;
+	e->destNodeID = dest;
+	e->relationID = r;
 
 	Graph_FormConnection(g, src, dest, id, r);
 }
