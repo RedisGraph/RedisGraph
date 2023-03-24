@@ -289,9 +289,9 @@ static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence,
 			_PersistenceEventHandler);
 
-	RedisModule_SubscribeToServerEvent(ctx,
-			RedisModuleEvent_ReplicationRoleChanged,
-			_ReplicationRoleChangedEventHandler);
+//	RedisModule_SubscribeToServerEvent(ctx,
+//			RedisModuleEvent_ReplicationRoleChanged,
+//			_ReplicationRoleChangedEventHandler);
 }
 
 //------------------------------------------------------------------------------

@@ -450,6 +450,7 @@ void Constraint_EnforceEdges
 		prev_dest_id = dest_id;
 
 		// fetch relation matrix
+		ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_FLUSH_RESIZE);
 		const RG_Matrix m = Graph_GetRelationMatrix(g, schema_id, false);
 		ASSERT(m != NULL);
 
@@ -464,7 +465,7 @@ void Constraint_EnforceEdges
 		while((info = RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id,
 						&edge_id)) == GrB_SUCCESS &&
 				src_id == prev_src_id &&
-				dest_id <= prev_dest_id);
+				dest_id < prev_dest_id);
 
 		// process only if iterator is on an active entry
 		if(info != GrB_SUCCESS) {

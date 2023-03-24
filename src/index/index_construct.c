@@ -117,7 +117,6 @@ static void _Index_PopulateEdgeIndex
 	ASSERT(g   != NULL);
 	ASSERT(idx != NULL);
 
-
 	GrB_Info  info;
 	EntityID  src_id       = 0;     // current processed row idx
 	EntityID  dest_id      = 0;     // current processed column idx
@@ -146,6 +145,7 @@ static void _Index_PopulateEdgeIndex
 		prev_dest_id = dest_id;
 
 		// fetch relation matrix
+		ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_FLUSH_RESIZE);
 		const RG_Matrix m = Graph_GetRelationMatrix(g, Index_GetLabelID(idx),
 				false);
 		ASSERT(m != NULL);
@@ -163,7 +163,7 @@ static void _Index_PopulateEdgeIndex
 		while((info = RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id,
 						&edge_id)) == GrB_SUCCESS &&
 				src_id == prev_src_id &&
-				dest_id <= prev_dest_id);
+				dest_id < prev_dest_id);
 
 		// process only if iterator is on an active entry
 		if(info != GrB_SUCCESS) {
