@@ -305,6 +305,46 @@ void GraphContext_ActivateAllConstraints(const GraphContext *gc) {
 	}
 }
 
+// enable all constraints
+void GraphContext_EnableConstrains
+(
+	const GraphContext *gc
+) {
+	for(uint i = 0; i < array_len(gc->node_schemas); i ++) {
+		Schema *s = gc->node_schemas[i];
+		for(uint j = 0; j < array_len(s->constraints); j ++) {
+			Constraint_Enable(s->constraints[j]);
+		}
+	}
+
+	for(uint i = 0; i < array_len(gc->relation_schemas); i ++) {
+		Schema *s = gc->relation_schemas[i];
+		for(uint j = 0; j < array_len(s->constraints); j ++) {
+			Constraint_Enable(s->constraints[j]);
+		}
+	}
+}
+
+// disable all constraints
+void GraphContext_DisableConstrains
+(
+	GraphContext *gc
+) {
+	for(uint i = 0; i < array_len(gc->node_schemas); i ++) {
+		Schema *s = gc->node_schemas[i];
+		for(uint j = 0; j < array_len(s->constraints); j ++) {
+			Constraint_Disable(s->constraints[j]);
+		}
+	}
+
+	for(uint i = 0; i < array_len(gc->relation_schemas); i ++) {
+		Schema *s = gc->relation_schemas[i];
+		for(uint j = 0; j < array_len(s->constraints); j ++) {
+			Constraint_Disable(s->constraints[j]);
+		}
+	}
+}
+
 Schema *GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t) {
 	Schema **schemas = (t == SCHEMA_NODE) ? gc->node_schemas : gc->relation_schemas;
 	if(id == GRAPH_NO_LABEL) return NULL;

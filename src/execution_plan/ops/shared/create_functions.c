@@ -178,7 +178,6 @@ static void _CommitEdges
 				// constraint violated!
 				ASSERT(err_msg != NULL);
 				constraint_violation = true;
-				ASSERT(err_msg != NULL);
 				ErrorCtx_SetError("%s", err_msg);
 				free(err_msg);
 			}

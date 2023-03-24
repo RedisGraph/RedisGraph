@@ -61,6 +61,18 @@ Constraint Constraint_New
 	const char **err_msg      // error message
 );
 
+// enable constraint
+void Constraint_Enable
+(
+	Constraint c  // constraint to enable
+);
+
+// disable constraint
+void Constraint_Disable
+(
+	Constraint c  // constraint to disable
+);
+
 // returns constraint type
 ConstraintType Constraint_GetType
 (

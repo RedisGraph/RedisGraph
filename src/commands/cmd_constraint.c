@@ -432,8 +432,6 @@ int Graph_Constraint
 
 	if(success == true) {
 		RedisModule_ReplyWithSimpleString(ctx, op == CT_CREATE ? "PENDING" : "OK");
-		// TODO: see if we can pospone this replication
-		// to the point where the constraint is full enforced.
 		RedisModule_ReplicateVerbatim(ctx);
 		return REDISMODULE_OK;
 	}

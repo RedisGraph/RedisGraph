@@ -209,6 +209,29 @@ static bool _IsEventPersistenceEnd(RedisModuleEvent eid, uint64_t subevent) {
 		   );
 }
 
+static void _ReplicationRoleChangedEventHandler
+(
+	RedisModuleCtx *ctx,
+	RedisModuleEvent eid,
+	uint64_t subevent,
+	void *data
+) {
+	uint n = array_len(graphs_in_keyspace);
+	if(subevent == REDISMODULE_EVENT_REPLROLECHANGED_NOW_MASTER) {
+		// now master enable constraints
+		for(uint i = 0; i < n; i++) {
+			GraphContext *g = graphs_in_keyspace[i];
+			GraphContext_EnableConstrains(g);
+		}
+	} else if (subevent == REDISMODULE_EVENT_REPLROLECHANGED_NOW_REPLICA) {
+		// now slave disable constraints
+		for(uint i = 0; i < n; i++) {
+			GraphContext *g = graphs_in_keyspace[i];
+			GraphContext_DisableConstrains(g);
+		}
+	}
+}
+
 // server persistence event handler
 static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid,
 		uint64_t subevent, void *data) {
@@ -265,6 +288,10 @@ static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 
 	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence,
 			_PersistenceEventHandler);
+
+	RedisModule_SubscribeToServerEvent(ctx,
+			RedisModuleEvent_ReplicationRoleChanged,
+			_ReplicationRoleChangedEventHandler);
 }
 
 //------------------------------------------------------------------------------
