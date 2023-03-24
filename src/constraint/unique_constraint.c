@@ -146,14 +146,31 @@ static bool _EnforceUniqueEntity
 	// constraint holds if there are no duplicates, a single index match
 	iter = RediSearch_GetResultsIterator(root, rs_idx);
 	if(Constraint_GetEntityType(c) == GETYPE_NODE) {
+		// first call, expecting to find 'e' in the index
 		const EntityID *id =
 			(EntityID*)RediSearch_ResultsIteratorNext(iter, rs_idx, NULL);
-		holds = (*id == ENTITY_GET_ID(e));
+
+		ASSERT(id != NULL);
+
+		if(*id != ENTITY_GET_ID(e)) {
+			holds = false;
+			goto cleanup;
+		}
 	} else {
+		// first call, expecting to find 'e' in the index
 		const EdgeIndexKey *id =
 			(EdgeIndexKey*)RediSearch_ResultsIteratorNext(iter, rs_idx, NULL);
-		holds = (id->edge_id == ENTITY_GET_ID(e));
+
+		ASSERT(id != NULL);
+
+		if(id->edge_id != ENTITY_GET_ID(e)) {
+			holds = false;
+			goto cleanup;
+		}
 	}
+
+	// second call, holds if no value is returned
+	holds = RediSearch_ResultsIteratorNext(iter, rs_idx, NULL) == NULL;
 
 cleanup:
 	if(iter != NULL) {
