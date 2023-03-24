@@ -279,6 +279,6 @@ class testWithClause(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # error expected
             self.env.assertIn(
-                "In a WITH/RETURN with an aggregation,\
+                "Ambiguous Aggregation Expression: in a WITH/RETURN with an aggregation, \
 it is not possible to access variables not projected by the WITH/RETURN.",
                 str(e))
