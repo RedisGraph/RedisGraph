@@ -48,10 +48,14 @@ class testOrderBy(FlowTestsBase):
     def test02_order_by_projections(self):
         # test valid queries
         query_to_expected_result = {
-            "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY age, cnt RETURN sum(age)" : [[90]],
-            "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY n.age, count(n.age) RETURN sum(age)" : [[90]],
-            "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY n.age + 2 RETURN sum(age)" : [[90]],
-            "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY 2 + count(n.age) RETURN sum(age)" : [[90]],
+            "MATCH (n:Person) RETURN n.age AS age ORDER BY n.age*1" : [[20], [30], [40]],
+            # "MATCH (n:Person) RETURN n.age AS age ORDER BY age*(-1)" : [[40], [30], [20]],
+            "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY age, cnt RETURN age" : [[20],[30],[40]],
+            "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY n.age, count(n.age) RETURN age" : [[20],[30],[40]],
+            "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY n.age * (-1) RETURN age" : [[40], [30], [20]],
+            "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY (+1) * count(n.age), n.age RETURN age" : [[20],[30],[40]],
+            "MATCH (n:Person) WITH n.age AS age RETURN age ORDER BY ((-1) * age)" : [[40], [30], [20]],
+            # "MATCH (n:Person) WITH n.age AS age ORDER BY (age * (-1)) RETURN age" : [[40], [30], [20]],
             # "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY n.age + count(n.age) RETURN sum(age)" : [[90]],
             "CYPHER offset=10 MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY $offset + count(n.age) RETURN sum(age)" : [[90]],
         }
@@ -70,7 +74,7 @@ class testOrderBy(FlowTestsBase):
             "MATCH (n:Person) WITH n.id AS age, count(n.age) AS cnt ORDER BY n.id RETURN sum(n.age)" : "n not defined",
             "MATCH (n:Person) RETURN count(n.age) AS agg ORDER BY n.age + count(n.age)" : variable_agg_error,
             "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY $missing_parameter + count(n.age) RETURN sum(age)" : "Missing parameters",
-            # "MATCH (n: Person) RETURN n.age + n.age, count(*) AS cnt ORDER BY n.age + n.age + count(*)" : "",
+            # "MATCH (n:Person) RETURN n.age + n.age, count(*) AS cnt ORDER BY n.age + n.age + count(*)" : "",
         }
         for query, expected_result in queries_with_errors.items():
             self.expect_error(query, expected_result)

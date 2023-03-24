@@ -153,25 +153,15 @@ bool _validateOrderExpression(
 
 	if(order_exp->type == AR_EXP_OPERAND) {
 		AR_OperandNodeType type = order_exp->operand.type;
-		switch(type) {
-			case AR_EXP_CONSTANT:
-				return true;
-				break;
-			case AR_EXP_VARIADIC:
-				const char *entity_alias = order_exp->operand.variadic.entity_alias;
-				for(uint j = 0; j < project_count && !found; j++) {
-					found = (strcmp(entity_alias, project_exps[j]->resolved_name) == 0);
-				}
-				break;
-			case AR_EXP_PARAM:
-				return true;
-				break;
-			case AR_EXP_BORROW_RECORD:
-				return true;
-				break;
-			default:
-				// not supposed to get here
-				ASSERT(false);
+		if(type == AR_EXP_VARIADIC) {
+			for(uint j = 0; j < project_count && !found; j++) {
+				found = (strcmp(order_exp->operand.variadic.entity_alias, project_exps[j]->resolved_name) == 0);
+			}
+		} else if (type == AR_EXP_CONSTANT || type == AR_EXP_PARAM  || type == AR_EXP_BORROW_RECORD) {
+			return true;
+		} else {
+			// not supposed to get here
+			ASSERT(false);
 		}
 	} else if(order_exp->type == AR_EXP_OP) {
 		for(uint j = 0; j < project_count && !found; j++) {
