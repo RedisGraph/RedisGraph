@@ -37,22 +37,16 @@ static const char *_edge_violation_err_msg =
 	"unique constraint violation, on edge of relationship-type %s";
 
 // sets constraint private data
-// if c->pdata == prev then c->pdata = pdata
 static void _SetPrivateData
 (
 	Constraint c,  // constraint to update
-	void *prev,    // previous private data
-	void *pdata    // new private data
+	void *pdata    // private data
 ) {
 	ASSERT(c != NULL);
 	ASSERT(pdata != NULL);
 
 	UniqueConstraint _c = (UniqueConstraint)c;
-
-	// update index only if 'prev' == current idx
-	if(_c->idx == prev) {
-		_c->idx = (Index)pdata;
-	}
+	_c->idx = (Index)pdata;
 }
 
 // enforces unique constraint on given entity

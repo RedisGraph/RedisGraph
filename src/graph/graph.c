@@ -526,7 +526,7 @@ void Graph_AllocateEdges(Graph *g, size_t n) {
 	DataBlock_Accommodate(g->edges, n);
 }
 
-int Graph_GetNode
+bool Graph_GetNode
 (
 	const Graph *g,
 	NodeID id,
@@ -541,7 +541,7 @@ int Graph_GetNode
 	return (n->attributes != NULL);
 }
 
-int Graph_GetEdge
+bool Graph_GetEdge
 (
 	const Graph *g,
 	EdgeID id,

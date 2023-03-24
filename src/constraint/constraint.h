@@ -26,8 +26,7 @@ typedef bool (*Constraint_EnforcementCB)
 typedef void (*Constraint_SetPrivateDataCB)
 (
 	Constraint c,  // constraint to update
-	void *prev,    // previous private data
-	void *pdata    // new private data
+	void *pdata    // private data
 );
 
 // different states a constraint can be at
@@ -97,12 +96,10 @@ void Constraint_SetStatus
 );
 
 // sets constraint private data
-// if c->pdata == prev then c->pdata = pdata
 void Constraint_SetPrivateData
 (
 	Constraint c,  // constraint to update
-	void *prev,    // previous private data
-	void *pdata    // new private data
+	void *pdata    // private data
 );
 
 // returns a shallow copy of constraint attributes
