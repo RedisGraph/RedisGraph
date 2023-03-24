@@ -237,12 +237,5 @@ void Index_Populate
 	} else {
 		_Index_PopulateEdgeIndex(idx, g);
 	}
-
-	Graph_AcquireWriteLock(g);
-
-	// index populated, try to enable
-	Index_Enable(idx);
-
-	Graph_ReleaseLock(g);
 }
 

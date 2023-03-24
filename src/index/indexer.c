@@ -79,6 +79,9 @@ static void _indexer_idx_populate
 	RedisModule_ThreadSafeContextLock(rm_ctx);
 	Graph_AcquireWriteLock(ctx->gc->g);
 
+	// index populated, try to enable
+	Index_Enable(idx);
+
 	if(Index_Enabled(idx)) {
 		Schema_ActivateIndex(ctx->s, idx);
 	}
@@ -102,8 +105,7 @@ static void _indexer_idx_drop
 	RedisModuleCtx *rm_ctx = RedisModule_GetThreadSafeContext(NULL);
 	RedisModule_ThreadSafeContextLock(rm_ctx);
 
-	// expecting index pending_changes count to be either 0 or 1
-	// TODO: not sure how to validate statement above
+	// TODO: expecting index pending_changes count to be either 0 or 1
 	Index_Free(ctx->idx);
 
 	RedisModule_ThreadSafeContextUnlock(rm_ctx);
