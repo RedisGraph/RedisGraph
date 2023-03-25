@@ -22,6 +22,7 @@ typedef struct _Constraint {
 	ConstraintType t;                       // constraint type
 	Constraint_EnforcementCB enforce;       // enforcement function
 	Constraint_SetPrivateDataCB set_pdata;  // set private data
+	Constraint_GetPrivateDataCB get_pdata;  // get private data
 	int schema_id;                          // enforced label/relationship-type
 	Attribute_ID *attrs;                    // enforced attributes
 	const char **attr_names;                // enforced attribute names
@@ -217,6 +218,20 @@ void Constraint_SetPrivateData
 	if(c->set_pdata != NULL) {
 		c->set_pdata(c, pdata);
 	}
+}
+
+// get constraint private data
+void *Constraint_GetPrivateData
+(
+	Constraint c  // constraint from which to get private data
+) {
+	ASSERT(c != NULL);
+
+	if(c->get_pdata != NULL) {
+		return c->get_pdata(c);
+	}
+
+	return NULL;
 }
 
 // returns a shallow copy of constraint attributes

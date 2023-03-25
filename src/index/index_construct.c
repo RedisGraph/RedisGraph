@@ -81,6 +81,21 @@ static void _Index_PopulateNodeIndex
 
 		if(indexed != batch_size) {
 			// iterator depleted, no more nodes to index
+			// validate number of documents in index is the same as the number
+			// of entities in the matrix
+			GrB_Index nvals;
+			info = RG_Matrix_nvals(&nvals, m);
+			ASSERT(info == GrB_SUCCESS);
+
+			uint64_t label_node_count = Graph_LabeledNodeCount(g, Index_GetLabelID(idx));
+
+			RSIdxInfo rsInfo = { .version = RS_INFO_CURRENT_VERSION };
+			RSIndex *rsIdx = Index_RSIndex(idx);
+			RediSearch_IndexInfo(rsIdx, &rsInfo);
+			RedisModule_Log(NULL, "notice", "nvals: %d", nvals);
+			RedisModule_Log(NULL, "notice", "label_node_count: %d", label_node_count);
+			RedisModule_Log(NULL, "notice", "rsInfo.numDocuments: %d", rsInfo.numDocuments);
+			RediSearch_IndexInfoFree(&rsInfo);
 			break;
 		} else {
 			// release read lock
@@ -204,6 +219,16 @@ static void _Index_PopulateEdgeIndex
 
 		if(indexed != batch_size) {
 			// iterator depleted, no more edges to index
+			// validate number of documents in index is the same as the number
+			// of edges
+			uint64_t count = Graph_RelationEdgeCount(g, Index_GetLabelID(idx));
+
+			RSIdxInfo rsInfo = { .version = RS_INFO_CURRENT_VERSION };
+			RSIndex *rsIdx = Index_RSIndex(idx);
+			RediSearch_IndexInfo(rsIdx, &rsInfo);
+			RedisModule_Log(NULL, "notice", "count: %d", count);
+			RedisModule_Log(NULL, "notice", "rsInfo.numDocuments: %d", rsInfo.numDocuments);
+			RediSearch_IndexInfoFree(&rsInfo);
 			break;
 		} else {
 			// finished current batch

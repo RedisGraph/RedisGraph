@@ -29,6 +29,11 @@ typedef void (*Constraint_SetPrivateDataCB)
 	void *pdata    // private data
 );
 
+typedef void* (*Constraint_GetPrivateDataCB)
+(
+	Constraint c  // constraint to get private data from
+);
+
 // different states a constraint can be at
 // starting as pending and transitioning to either active or failed
 typedef enum ConstraintStatus {
@@ -112,6 +117,12 @@ void Constraint_SetPrivateData
 (
 	Constraint c,  // constraint to update
 	void *pdata    // private data
+);
+
+// get constraint private data
+void *Constraint_GetPrivateData
+(
+	Constraint c  // constraint from which to get private data
 );
 
 // returns a shallow copy of constraint attributes

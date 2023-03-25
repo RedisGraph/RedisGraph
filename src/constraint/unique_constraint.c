@@ -20,6 +20,7 @@ struct _UniqueConstraint {
 	ConstraintType t;                       // constraint type
 	Constraint_EnforcementCB enforce;       // enforcement function
 	Constraint_SetPrivateDataCB set_pdata;  // set private data
+	Constraint_GetPrivateDataCB get_pdata;  // get private data
 	int schema_id;                          // enforced schema ID
 	Attribute_ID *attrs;                    // enforced attributes
 	const char **attr_names;                // enforced attribute names
@@ -48,6 +49,17 @@ static void _SetPrivateData
 
 	UniqueConstraint _c = (UniqueConstraint)c;
 	_c->idx = (Index)pdata;
+}
+
+// gets constraint private data
+static void* _GetPrivateData
+(
+	Constraint c
+) {
+	ASSERT(c != NULL);
+
+	UniqueConstraint _c = (UniqueConstraint)c;
+	return _c->idx;
 }
 
 // enforces unique constraint on given entity
@@ -223,6 +235,7 @@ Constraint Constraint_UniqueNew
 	c->status          = CT_PENDING;
 	c->enforce         = EnforceUniqueEntity;
 	c->set_pdata       = _SetPrivateData;
+	c->get_pdata       = _GetPrivateData;
 	c->schema_id       = schema_id;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 
