@@ -224,9 +224,8 @@ void Index_Populate
 	Index idx,
 	Graph *g
 ) {
-	ASSERT(g        != NULL);
-	ASSERT(idx      != NULL);
-	ASSERT(Index_RSIndex(idx) != NULL);
+	ASSERT(g != NULL);
+	ASSERT(idx != NULL);
 	ASSERT(!Index_Enabled(idx));  // index should have pending changes
 
 	//--------------------------------------------------------------------------
@@ -238,8 +237,5 @@ void Index_Populate
 	} else {
 		_Index_PopulateEdgeIndex(idx, g);
 	}
-
-	// task been handled, try to enable index
-	Index_Enable(idx);
 }
 
