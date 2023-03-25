@@ -513,8 +513,6 @@ void Schema_ActivateIndex
 	Schema *s,  // schema to activate index on
 	Index idx   // index to activate
 ) {
-	RedisModule_Log(NULL, "notice", "Schema_ActivateIndex");
-
 	ASSERT(s != NULL);
 	// make sure pending index is enabled
 	ASSERT(Index_Enabled(idx) == true);
