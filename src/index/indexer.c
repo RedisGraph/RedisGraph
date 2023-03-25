@@ -372,6 +372,7 @@ void Indexer_PopulateIndex
 	Schema *s,        // schema containing the idx
 	Index idx         // index to populate
 ) {
+	RedisModule_Log(NULL, "notice", "Indexer_PopulateIndex");
 	ASSERT(s       != NULL);
 	ASSERT(gc      != NULL);
 	ASSERT(idx     != NULL);
@@ -402,6 +403,7 @@ void Indexer_DropIndex
 	Index idx,        // index to drop
 	GraphContext *gc  // graph context
 ) {
+	RedisModule_Log(NULL, "notice", "Indexer_DropIndex");
 	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
 
@@ -427,6 +429,7 @@ void Indexer_EnforceConstraint
 	Constraint c,     // constraint to enforce
 	GraphContext *gc  // graph context
 ) {
+	RedisModule_Log(NULL, "notice", "Indexer_EnforceConstraint");
 	ASSERT(c       != NULL);
 	ASSERT(gc      != NULL);
 	ASSERT(indexer != NULL);
@@ -452,6 +455,7 @@ void Indexer_DropConstraint
 	Constraint c,     // constraint to drop
 	GraphContext *gc  // graph context
 ) {
+	RedisModule_Log(NULL, "notice", "Indexer_DropConstraint");
 	ASSERT(c       != NULL);
 	ASSERT(indexer != NULL);
 

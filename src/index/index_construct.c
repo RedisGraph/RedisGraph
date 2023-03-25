@@ -92,9 +92,9 @@ static void _Index_PopulateNodeIndex
 			RSIdxInfo rsInfo = { .version = RS_INFO_CURRENT_VERSION };
 			RSIndex *rsIdx = Index_RSIndex(idx);
 			RediSearch_IndexInfo(rsIdx, &rsInfo);
-			RedisModule_Log(NULL, "notice", "nvals: %d", nvals);
-			RedisModule_Log(NULL, "notice", "label_node_count: %d", label_node_count);
-			RedisModule_Log(NULL, "notice", "rsInfo.numDocuments: %d", rsInfo.numDocuments);
+			RedisModule_Log(NULL, "notice", "nvals: %llu", nvals);
+			RedisModule_Log(NULL, "notice", "label_node_count: %llu", label_node_count);
+			RedisModule_Log(NULL, "notice", "rsInfo.numDocuments: %zu", rsInfo.numDocuments);
 			RediSearch_IndexInfoFree(&rsInfo);
 			break;
 		} else {
@@ -226,8 +226,8 @@ static void _Index_PopulateEdgeIndex
 			RSIdxInfo rsInfo = { .version = RS_INFO_CURRENT_VERSION };
 			RSIndex *rsIdx = Index_RSIndex(idx);
 			RediSearch_IndexInfo(rsIdx, &rsInfo);
-			RedisModule_Log(NULL, "notice", "count: %d", count);
-			RedisModule_Log(NULL, "notice", "rsInfo.numDocuments: %d", rsInfo.numDocuments);
+			RedisModule_Log(NULL, "notice", "count: %llu", count);
+			RedisModule_Log(NULL, "notice", "rsInfo.numDocuments: %zu", rsInfo.numDocuments);
 			RediSearch_IndexInfoFree(&rsInfo);
 			break;
 		} else {
