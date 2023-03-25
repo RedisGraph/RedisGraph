@@ -125,6 +125,24 @@ static void _indexer_enforce_constraint
 	GraphContext *gc = ctx->gc;
 	Graph *g = GraphContext_GetGraph(gc);
 
+//	if(Constraint_GetType(c) == CT_UNIQUE) {
+//		// get constraint's supporting index
+//		// make sure it is eanbled
+//		Index c_idx = Constraint_GetPrivateData(c);
+//		ASSERT(Index_Enabled(c_idx));
+//
+//		// get schema's active index
+//		// make sure schema's active index is the same as the constraint's
+//		int s_id = Constraint_GetSchemaID(c);
+//		SchemaType t = SCHEMA_NODE;
+//		if(Constraint_GetEntityType(c) == GETYPE_EDGE) t = SCHEMA_EDGE;
+//
+//		Schema *s = GraphContext_GetSchemaByID(gc, s_id, t);
+//
+//		Index s_idx = Schema_GetIndex(s, NULL, 0, IDX_EXACT_MATCH, false);
+//		ASSERT(c_idx == s_idx);
+//	}
+
 	if(Constraint_GetEntityType(c) == GETYPE_NODE) {
 		Constraint_EnforceNodes(c, g);
 	} else {
@@ -168,24 +186,28 @@ static void *_indexer_run
 		switch(ctx.op) {
 			case INDEXER_IDX_POPULATE:
 			{
+				//RedisModule_Log(NULL, "notice", "INDEXER_IDX_POPULATE");
 				IndexPopulateCtx *pdata = (IndexPopulateCtx*)ctx.pdata;
 				_indexer_idx_populate(pdata);
 				break;
 			}
 			case INDEXER_IDX_DROP:
 			{
+				//RedisModule_Log(NULL, "notice", "INDEXER_IDX_DROP");
 				IndexDropCtx *pdata = (IndexDropCtx*)ctx.pdata;
 				_indexer_idx_drop(pdata);
 				break;
 			}
 			case INDEXER_CONSTRAINT_ENFORCE:
 			{
+				//RedisModule_Log(NULL, "notice", "INDEXER_CONSTRAINT_ENFORCE");
 				ConstraintEnforceCtx *pdata = (ConstraintEnforceCtx*)ctx.pdata;
 				_indexer_enforce_constraint(pdata);
 				break;
 			}
 			case INDEXER_CONSTRAINT_DROP:
 			{
+				//RedisModule_Log(NULL, "notice", "INDEXER_CONSTRAINT_DROP");
 				ConstraintDropCtx *pdata = (ConstraintDropCtx*)ctx.pdata;
 				_indexer_drop_constraint(pdata);
 				break;
@@ -350,6 +372,7 @@ void Indexer_PopulateIndex
 	Schema *s,        // schema containing the idx
 	Index idx         // index to populate
 ) {
+	//RedisModule_Log(NULL, "notice", "Indexer_PopulateIndex");
 	ASSERT(s       != NULL);
 	ASSERT(gc      != NULL);
 	ASSERT(idx     != NULL);
@@ -380,6 +403,7 @@ void Indexer_DropIndex
 	Index idx,        // index to drop
 	GraphContext *gc  // graph context
 ) {
+	//RedisModule_Log(NULL, "notice", "Indexer_DropIndex");
 	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
 
@@ -405,6 +429,7 @@ void Indexer_EnforceConstraint
 	Constraint c,     // constraint to enforce
 	GraphContext *gc  // graph context
 ) {
+	//RedisModule_Log(NULL, "notice", "Indexer_EnforceConstraint");
 	ASSERT(c       != NULL);
 	ASSERT(gc      != NULL);
 	ASSERT(indexer != NULL);
@@ -430,6 +455,7 @@ void Indexer_DropConstraint
 	Constraint c,     // constraint to drop
 	GraphContext *gc  // graph context
 ) {
+	//RedisModule_Log(NULL, "notice", "Indexer_DropConstraint");
 	ASSERT(c       != NULL);
 	ASSERT(indexer != NULL);
 
