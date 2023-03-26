@@ -16,6 +16,7 @@ static Record AggregateConsume(OpBase *opBase);
 static OpResult AggregateReset(OpBase *opBase);
 static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void AggregateFree(OpBase *opBase);
+static void AggregateToString(const OpBase *opBase, sds *buf);
 
 // fake hash function
 // hash of key is simply key
@@ -233,7 +234,7 @@ OpBase *NewAggregateOp
 	op->group_iter           = NULL;
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL,
-			AggregateConsume, AggregateReset, NULL, AggregateClone,
+			AggregateConsume, AggregateReset, AggregateToString, AggregateClone,
 			AggregateFree, false, plan);
 
 	// expand hashtable to 2048 slots
@@ -409,3 +410,42 @@ static void AggregateFree
 	}
 }
 
+void AggregateAddProjections
+(
+	OpBase *opBase,    // operations to add the projections to
+	char **names,
+	char **alias_names
+) {
+	OpAggregate *op = (OpAggregate *) opBase;
+
+	uint exp_count = array_len(names);
+
+	for(uint i = 0; i < exp_count; i++) {
+		// create the AR_EXPNode from it
+		struct cypher_input_range range = {0};
+		AR_ExpNode *new_node = AR_EXP_NewVariableOperandNode(names[i]);
+		array_append(op->key_exps, new_node);
+		new_node->resolved_name = alias_names[i];
+		int record_idx = OpBase_Modifies(opBase, alias_names[i]);
+		array_append(op->record_offsets, record_idx);
+	}
+
+	op->key_count += exp_count;
+}
+
+static void AggregateToString
+(
+	const OpBase *opBase,
+	sds *buf
+) {
+	OpAggregate *op = (OpAggregate *)opBase;
+
+	*buf = sdscatprintf(*buf, "Aggregate | ");
+	for(uint i = 0; i < op->key_count; i++) {
+		AR_ExpNode *exp = op->key_exps[i];
+		if(exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_VARIADIC) {
+			const char *var = exp->operand.variadic.entity_alias;
+			*buf = sdscatprintf(*buf, "%s as %s, ", var, exp->resolved_name);
+		}
+	}
+}

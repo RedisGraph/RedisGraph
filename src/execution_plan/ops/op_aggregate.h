@@ -23,6 +23,13 @@ typedef struct {
 	uint aggregate_count;         // number of aggregating expressions
 } OpAggregate;
 
+void AggregateAddProjections
+(
+	OpBase *opBase,    // operations to add the projections to
+	char **names,
+	char **alias_names
+);
+
 OpBase *NewAggregateOp
 (
 	const ExecutionPlan *plan,

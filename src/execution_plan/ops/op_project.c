@@ -126,23 +126,23 @@ static void ProjectFree(OpBase *ctx) {
 void ProjectAddProjections
 (
 	OpBase *opBase,    // operations to add the projections to
-	AR_ExpNode **exps  // expressions to add to the projections
+	char **names,
+	char **alias_names
 ) {
 	OpProject *op = (OpProject *) opBase;
 
-	uint exp_count = array_len(exps);
+	uint exp_count = array_len(names);
 
 	for(uint i = 0; i < exp_count; i++) {
-		// add the expression to the operations expressions
-		array_append(op->exps, exps[i]);
-
-		// TODO: If the original alias is already imported --> it doesn't get a
-		// new index so that the transformation doesn't happen properly!
-
-		// add the alias to the record-mapping if it doesn't exist
-		int record_idx = OpBase_Modifies(opBase, exps[i]->resolved_name);
+		// create the AR_EXPNode from it
+		struct cypher_input_range range = {0};
+		AR_ExpNode *new_node = AR_EXP_NewVariableOperandNode(names[i]);
+		array_append(op->exps, new_node);
+		new_node->resolved_name = alias_names[i];
+		int record_idx = OpBase_Modifies(opBase, alias_names[i]);
 		array_append(op->record_offsets, record_idx);
 	}
+
 	op->exp_count += exp_count;
 }
 
@@ -175,12 +175,12 @@ static void ProjectToString
 ) {
 	OpProject *op = (OpProject *)opBase;
 
-	sdscatprintf(*buf, "Project | ");
+	*buf = sdscatprintf(*buf, "Project | ");
 	for(uint i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
 		if(exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_VARIADIC) {
 			const char *var = exp->operand.variadic.entity_alias;
-			sdscatprintf(*buf, "%s as %s, ", var, exp->resolved_name);
+			*buf = sdscatprintf(*buf, "%s as %s, ", var, exp->resolved_name);
 		}
 	}
 }

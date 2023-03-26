@@ -23,7 +23,8 @@ typedef struct {
 void ProjectAddProjections
 (
 	OpBase *opBase,    // operations to add the projections to
-	AR_ExpNode **exps  // expressions to add to the projections
+	char **names,
+	char **alias_names
 );
 
 void ProjectBindToPlan

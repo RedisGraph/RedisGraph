@@ -59,7 +59,7 @@ OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type);
 // returns pointers to all operations of a certain type in a execution plan
 void ExecutionPlan_LocateOps
 (
-	OpBase **plans,  // array in which op-pointers are stored
+	OpBase ***plans,  // array in which op-pointers are stored
 	OpBase *root,    // root operation of the plan to traverse
 	OPType type      // operation type to search
 );
