@@ -369,10 +369,6 @@ updating clause.")
 
         # TODO: Add tests for LIMIT.
 
-
-
-
-
     def test12_order_by(self):
         """Test the ordering of the output of the sq, and the outer query"""
 
@@ -415,24 +411,24 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][0],
         Node(label='N', properties={'name': 'Raz', 'v': 6}))
 
-        # TODO: This jams the db. Why?
-        # res = graph.query(
-        #     """
-        #     CALL {
-        #         UNWIND [1, 2, 3, 4, 5, 6, 7] AS x
-        #         MATCH (n:N {v: x})
-        #         RETURN n
-        #     }
-        #     RETURN n ORDER BY n.v ASC
-        #     """
-        # )
+        # multiple Sort operations, in and outside the CallSubquery op
+        res = graph.query(
+            """
+            CALL {
+                UNWIND [1, 2, 3, 4, 5, 6, 7] AS x
+                MATCH (n:N {v: x})
+                RETURN n ORDER BY n.v ASC
+            }
+            RETURN n ORDER BY n.v ASC
+            """
+        )
 
-        # # validate the results
-        # self.env.assertEquals(len(res.result_set), 2)
-        # self.env.assertEquals(res.result_set[0][0],
-        # Node(label='N', properties={'name': 'Raz', 'v': 1}))
-        # self.env.assertEquals(res.result_set[1][0],
-        # Node(label='N', properties={'name': 'Raz', 'v': 4}))
+        # validate the results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 5}))
+        self.env.assertEquals(res.result_set[1][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 6}))
 
     def test13_midrun_fail(self):
         """Tests that mid-run fails are recovered correctly (free'd)"""
