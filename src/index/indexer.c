@@ -109,6 +109,7 @@ static void _indexer_idx_drop
 	Index_Free(ctx->idx);
 
 	RedisModule_ThreadSafeContextUnlock(rm_ctx);
+	RedisModule_FreeThreadSafeContext(rm_ctx);
 
 	// decrease graph reference count
 	GraphContext_DecreaseRefCount(ctx->gc);
