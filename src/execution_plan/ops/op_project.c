@@ -12,10 +12,11 @@
 #include "../../util/rmalloc.h"
 
 /* Forward declarations. */
+static void ProjectFree(OpBase *opBase);
 static Record ProjectConsume(OpBase *opBase);
 static OpResult ProjectReset(OpBase *opBase);
+static void ProjectToString(const OpBase *opBase, sds *buf);
 static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase);
-static void ProjectFree(OpBase *opBase);
 
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpProject *op = rm_malloc(sizeof(OpProject));
@@ -28,7 +29,7 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", NULL, ProjectConsume,
-				ProjectReset, NULL, ProjectClone, ProjectFree, false, plan);
+				ProjectReset, ProjectToString, ProjectClone, ProjectFree, false, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
@@ -164,5 +165,22 @@ void ProjectBindToPlan
 	// to ensure that space is allocated for each entry.
 	int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
 	array_append(op->record_offsets, record_idx);
+	}
+}
+
+static void ProjectToString
+(
+	const OpBase *opBase,
+	sds *buf
+) {
+	OpProject *op = (OpProject *)opBase;
+
+	sdscatprintf(*buf, "Project | ");
+	for(uint i = 0; i < op->exp_count; i++) {
+		AR_ExpNode *exp = op->exps[i];
+		if(exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_VARIADIC) {
+			const char *var = exp->operand.variadic.entity_alias;
+			sdscatprintf(*buf, "%s as %s, ", var, exp->resolved_name);
+		}
 	}
 }
