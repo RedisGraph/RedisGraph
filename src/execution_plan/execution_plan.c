@@ -517,29 +517,24 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 			QueryGraph_Free(plan->connected_components[i]);
 		}
 		array_free(plan->connected_components);
-		plan->connected_components = NULL;
 	}
 
 	if(plan->query_graph) {
 		QueryGraph_Free(plan->query_graph);
-		plan->query_graph = NULL;
 	}
 	if(plan->record_map != NULL) {
 		raxFree(plan->record_map);
-		plan->record_map = NULL;
 	}
 	if(plan->record_pool != NULL) {
 		ObjectPool_Free(plan->record_pool);
-		plan->record_pool = NULL;
 	}
 	if(plan->ast_segment != NULL) {
 		AST_Free(plan->ast_segment);
-		plan->ast_segment = NULL;
 	}
 	rm_free(plan);
 }
 
-// Free an op tree
+// free an op tree
 static void _ExecutionPlan_FreeOpTree(OpBase *op) {
 	if(op == NULL) {
 		return;
@@ -553,13 +548,17 @@ static void _ExecutionPlan_FreeOpTree(OpBase *op) {
 	OpBase_Free(op);
 }
 
-// Collect all ExecutionPlans from the given operation tree
+// collect all ExecutionPlans from the given operation tree
 static void _ExecutionPlan_AggregatePlansFromOps
 (
 	OpBase *opBase,     // operation to aggregate plans from
 	rax *plans          // plans map to insert to
 ) {
 	ASSERT(plans != NULL);
+
+	if(opBase == NULL) {
+		return;
+	}
 
 	// add the plan if it doesn't exist already
 	static_assert(sizeof(opBase->plan) == sizeof(uint64_t), "pointer size is not 64 bits");
@@ -571,13 +570,9 @@ static void _ExecutionPlan_AggregatePlansFromOps
 	}
 }
 
-// Free the execution plans and all of the operations
+// free the execution plans and all of the operations
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) {
-		return;
-	}
-	if(plan->root == NULL) {
-		_ExecutionPlan_FreeInternals(plan);
 		return;
 	}
 
@@ -591,7 +586,7 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	// free the operations of the plans (all plans)
 	_ExecutionPlan_FreeOpTree(plan->root);
 
-	// Free the different op-trees
+	// free the plan internals
 	raxIterator it;
 	raxStart(&it, plans);
 	raxSeek(&it, "^", NULL, 0);
@@ -603,4 +598,3 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	raxStop(&it);
 	raxFree(plans);
 }
-
