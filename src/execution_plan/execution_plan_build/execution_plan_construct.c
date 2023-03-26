@@ -352,7 +352,7 @@ static void _buildCallSubqueryPlan
 					  OPType_MERGE, OPType_SORT, OPType_AGGREGATE};
 
 	bool is_eager =
-	  ExecutionPlan_LocateOpMatchingType(embedded_plan->root, types, 4) != NULL;
+	  ExecutionPlan_LocateOpMatchingType(embedded_plan->root, types, 6) != NULL;
 	// characterize whether the query is returning or not
 	bool is_returning = OpBase_Type(embedded_plan->root) == OPType_RESULTS;
 
@@ -381,20 +381,20 @@ static void _buildCallSubqueryPlan
 		// Project all existing entries according to the following transformation: 'alias' --> '@alias'.
 		// If an alias is imported, it needs to stay in the record mapping as well.
 
-		uint mapping_size = raxSize(ExecutionPlan_GetMappings(plan));
+		rax *outer_mapping = ExecutionPlan_GetMappings(plan);
+		uint mapping_size = raxSize(outer_mapping);
 		// create an array containing coupled names ("a1", "@a1", "a2", "@a2", ...)
 		// of the original names and the internal (temporary) representation of them.
 		char **names = array_new(char *, mapping_size);
 		AR_ExpNode **new_exps = array_new(AR_ExpNode *, mapping_size);
 		raxIterator it;
-		raxStart(&it, plan->record_map);
+		raxStart(&it, outer_mapping);
 		raxSeek(&it, "^", NULL, 0);
 		while(raxNext(&it)) {
 			// const char *curr = (const char *)it.key;
-			char *curr = calloc(1, it.key_len + 1);
-			sprintf(curr, "%.*s", (int)it.key_len, it.key);
+			char *curr = rm_strndup((const char *)it.key, it.key_len);
 			// think about working with sds
-			char *internal_rep = calloc(1, it.key_len + 2);
+			char *internal_rep = rm_malloc(it.key_len + 2);
 			sprintf(internal_rep, "@%.*s", (int)it.key_len, it.key);
 			// append original name
 			array_append(names, curr);
@@ -420,9 +420,6 @@ static void _buildCallSubqueryPlan
 			array_append(intermediate_proj_exps, new_node);
 		}
 
-		// modify the first projection (imports) to contain the transformation `n`-->`_n`
-		OpBase *import_proj = deepest;
-
 		// add the internal names of the outer-scope aliases to the outer-scope record-mapping
 		for(uint i = 0; i < mapping_size; i++) {
 			// skip the original name
@@ -431,10 +428,13 @@ static void _buildCallSubqueryPlan
 			OpBase_AliasModifier(plan->root, names[i-1], names[i], false);
 		}
 
+		// modify the first projection (imports) to contain the transformation `n`-->`_n`
+		OpBase *import_proj = deepest;
+
 		// modify to the intermidiate project_exps
 		ProjectAddProjections(import_proj, intermediate_proj_exps);
 
-		// find 'first' Project op in the embedded execution-plan (return)
+		// find the 'first' Project op in the embedded execution-plan (RETURN)
 		OpBase *returning_proj = ExecutionPlan_LocateOp(embedded_plan->root,
 			OPType_PROJECT);
 
@@ -472,10 +472,13 @@ static void _buildCallSubqueryPlan
 				returning_proj->children[0], OPType_PROJECT);
 
 			// the 'last' projection is the importing projection, pop it
-			array_pop(intermediate_projections);
+			// array_pop(intermediate_projections);
 
 			// modify projected expressions of the intermediate projections if exist
 			for(uint i = 0; i < array_len(intermediate_projections); i++) {
+				if(intermediate_projections[i] == import_proj) {
+					continue;
+				}
 				ProjectAddProjections(intermediate_projections[i],
 					intermediate_proj_exps);
 						// TODO: Add support for UNIONs
@@ -484,7 +487,7 @@ static void _buildCallSubqueryPlan
 
 		// bind the RETURN projection (last one) to the outer plan ('plan')
 			// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
-		ExecutionPlan_bindOpToPlan(returning_proj, plan);
+		ProjectBindToPlan(returning_proj, plan);
 
 		// TODO: Extend this to support UNION as well (unique exec-plan, which
 		// this mechanism is not yet good for)
