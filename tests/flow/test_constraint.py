@@ -28,16 +28,16 @@ class testConstraintNodes():
         create_mandatory_node_constraint(self.g, 'Person', 'height')
 
         # create unique node constraint over Person height
-        create_unique_node_constraint(self.g, 'Person', 'height')
+        create_unique_node_constraint(self.g, 'Person', 'height', sync=True)
 
         # create unique node constraint over Person name and age
-        create_unique_node_constraint(self.g, 'Person', 'name', 'age')
+        create_unique_node_constraint(self.g, 'Person', 'name', 'age', sync=True)
 
         # create mandatory edge constraint over
         create_mandatory_edge_constraint(self.g, 'Knows', 'since')
 
         # create unique edge constraint over
-        create_unique_edge_constraint(self.g, 'Knows', 'since')
+        create_unique_edge_constraint(self.g, 'Knows', 'since', sync=True)
 
         # validate constrains
         constraints = list_constraints(self.g)
@@ -362,7 +362,7 @@ class testConstraintNodes():
         #-----------------------------------------------------------------------
         create_unique_node_constraint(self.g, "Person", "age", sync=True)
         try:
-            create_unique_node_constraint(self.g, "Person", "age")
+            create_unique_node_constraint(self.g, "Person", "age", sync=True)
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Constraint already exists", str(e))
@@ -391,7 +391,8 @@ class testConstraintNodes():
         self.g.query("UNWIND range(0, 500000) AS x CREATE (:MarineBiologist {age: x})")
 
         # create unique constraint over MarineBiologist age attribute
-        create_unique_node_constraint(self.g, "MarineBiologist", "age", sync=False)
+        create_node_exact_match_index(self.g, "MarineBiologist", "age", sync=True)
+        create_unique_node_constraint(self.g, "MarineBiologist", "age")
 
         # make sure constraint is pending
         constraints = list_constraints(self.g)
@@ -558,10 +559,10 @@ class testConstraintEdges():
         create_mandatory_edge_constraint(self.g, 'Person', 'height')
 
         # create unique edge constraint over Person height
-        create_unique_edge_constraint(self.g, 'Person', 'height')
+        create_unique_edge_constraint(self.g, 'Person', 'height', sync=True)
 
         # create unique edge constraint over Person name and age
-        create_unique_edge_constraint(self.g, 'Person', 'name', 'age')
+        create_unique_edge_constraint(self.g, 'Person', 'name', 'age', sync=True)
 
         # validate constrains
         constraints = list_constraints(self.g)
@@ -813,7 +814,7 @@ class testConstraintEdges():
         #-----------------------------------------------------------------------
         create_unique_edge_constraint(self.g, "Person", "age", sync=True)
         try:
-            create_unique_edge_constraint(self.g, "Person", "age")
+            create_unique_edge_constraint(self.g, "Person", "age", sync=True)
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("Constraint already exists", str(e))
@@ -838,7 +839,8 @@ class testConstraintEdges():
         self.g.query("UNWIND range(0, 500000) AS x CREATE ()-[:MarineBiologist {age: x}]->()")
 
         # create unique constraint over MarineBiologist age attribute
-        create_unique_edge_constraint(self.g, "MarineBiologist", "age", sync=False)
+        create_edge_exact_match_index(self.g, "MarineBiologist", "age", sync=True)
+        create_unique_edge_constraint(self.g, "MarineBiologist", "age")
 
         # make sure constraint is pending
         constraints = list_constraints(self.g)

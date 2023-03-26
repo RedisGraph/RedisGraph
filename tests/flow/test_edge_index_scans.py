@@ -527,3 +527,38 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         result = redis_graph.query("MATCH (a:A)-[r:R]->(b:B) WHERE r.v > 0 RETURN count(r)")
         self.env.assertEquals(result.result_set[0][0], 500)
 
+    def test15_self_referencing_edge(self):
+        # make sure edge connecting node 0 to itself is indexed
+        # (0)->(0)
+        g = Graph(self.env.getConnection(), 'self_ref_edge')
+
+        res = g.query("CREATE (a)-[e:R{v:1}]->(a) RETURN a, e")
+        self.env.assertEquals(res.nodes_created, 1)
+        self.env.assertEquals(res.relationships_created, 1)
+
+        # validate IDs
+        self.env.assertEquals(res.result_set[0][0].id, 0)
+        self.env.assertEquals(res.result_set[0][1].id, 0)
+
+        # create index over R.v
+        create_edge_exact_match_index(g, "R", "v", sync=True)
+
+        # make sure edge can be located via index scan
+        q = "MATCH ()-[e:R{v:1}]->() RETURN e"
+
+        # validate index is utilized
+        plan = g.execution_plan(q)
+        self.env.assertIn("Edge By Index Scan", plan)
+
+        # get result using index scan
+        res = g.query(q)
+        self.env.assertEquals(len(res.result_set), 1)
+        actual = res.result_set
+
+        # get results without index
+        res = g.query("MATCH ()-[e]->() RETURN e")
+        expected = res.result_set
+
+        # make sure the same edge is returned
+        self.env.assertEquals(expected, actual)
+

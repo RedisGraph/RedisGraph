@@ -123,6 +123,18 @@ void GraphContext_ActivateAllConstraints
 	const GraphContext *gc
 );
 
+// enable all constraints
+void GraphContext_EnableConstrains
+(
+	const GraphContext *gc
+);
+
+// disable all constraints
+void GraphContext_DisableConstrains
+(
+	GraphContext *gc
+);
+
 // retrieve the specific schema for the provided ID
 Schema *GraphContext_GetSchemaByID
 (
