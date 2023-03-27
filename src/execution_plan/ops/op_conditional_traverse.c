@@ -79,6 +79,7 @@ OpBase *NewCondTraverseOp
 
 	op->ae         = ae;
 	op->graph      = g;
+	op->depleted   = false;
 	op->record_cap = BATCH_SIZE;
 
 	// Set our Op operations
@@ -143,6 +144,11 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		// Managed to get a tuple, break.
 		if(info == GrB_SUCCESS) break;
 
+		// if depleted, do not try to consume more
+		if(op->depleted) {
+			return NULL;
+		}
+
 		/* Run out of tuples, try to get new data.
 		 * Free old records. */
 		op->r = NULL;
@@ -154,7 +160,11 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		for(op->record_count = 0; op->record_count < op->record_cap; op->record_count++) {
 			Record childRecord = OpBase_Consume(child);
 			// If the Record is NULL, the child has been depleted.
-			if(!childRecord) break;
+			if(!childRecord) {
+				// mark depleted flag, so this op will not consume more records
+				op->depleted = true;
+				break;
+			}
 			if(!Record_GetNode(childRecord, op->srcNodeIdx)) {
 				/* The child Record may not contain the source node in scenarios like
 				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
@@ -200,6 +210,8 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	op->r = NULL;
 	for(uint i = 0; i < op->record_count; i++) OpBase_DeleteRecord(op->records[i]);
 	op->record_count = 0;
+
+	op->depleted = false;
 
 	if(op->edge_ctx) EdgeTraverseCtx_Reset(op->edge_ctx);
 
