@@ -127,10 +127,13 @@ bool EnforceUniqueEntity
 			double d = SI_GET_NUMERIC((*v));
 			node = RediSearch_CreateNumericNode(rs_idx, field, d, d, true, true);
 		} else {
-			ASSERT(t == T_POINT);
-			double lat = (double)Point_lat(*v);
-			double lon = (double)Point_lon(*v);
-			node = RediSearch_CreateGeoNode(rs_idx, field, lat, lon, 0, RS_GEO_DISTANCE_M);
+			// ASSERT(t == T_POINT);
+			// double lat = (double)Point_lat(*v);
+			// double lon = (double)Point_lon(*v);
+			// node = RediSearch_CreateGeoNode(rs_idx, field, lat, lon, 0, RS_GEO_DISTANCE_M);
+			// TODO: RediSearch exact match for point.
+			holds = true;
+			goto cleanup;
 		}
 
 		ASSERT(node != NULL);

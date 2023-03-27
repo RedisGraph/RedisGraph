@@ -126,23 +126,18 @@ static void _indexer_enforce_constraint
 	GraphContext *gc = ctx->gc;
 	Graph *g = GraphContext_GetGraph(gc);
 
-//	if(Constraint_GetType(c) == CT_UNIQUE) {
-//		// get constraint's supporting index
-//		// make sure it is eanbled
-//		Index c_idx = Constraint_GetPrivateData(c);
-//		ASSERT(Index_Enabled(c_idx));
-//
-//		// get schema's active index
-//		// make sure schema's active index is the same as the constraint's
-//		int s_id = Constraint_GetSchemaID(c);
-//		SchemaType t = SCHEMA_NODE;
-//		if(Constraint_GetEntityType(c) == GETYPE_EDGE) t = SCHEMA_EDGE;
-//
-//		Schema *s = GraphContext_GetSchemaByID(gc, s_id, t);
-//
-//		Index s_idx = Schema_GetIndex(s, NULL, 0, IDX_EXACT_MATCH, false);
-//		ASSERT(c_idx == s_idx);
-//	}
+	// unique constraint uses index to enforce the constraint
+	// if the index is not enabled, we'll delay the enforcement
+	// until the index is ready
+	if(Constraint_GetType(c) == CT_UNIQUE) {
+		Index idx = Constraint_GetPrivateData(c);
+		// if index is not enabled and the constraint is not marked for deletion
+		// postpone the enforcement
+		if(!Index_Enabled(idx) && Constraint_PendingChanges(c) == 1) {
+			Indexer_EnforceConstraint(c, gc);
+			goto cleanup;
+		}
+	}
 
 	if(Constraint_GetEntityType(c) == GETYPE_NODE) {
 		Constraint_EnforceNodes(c, g);
@@ -153,6 +148,7 @@ static void _indexer_enforce_constraint
 	// decrease number of pending changes
 	Constraint_DecPendingChanges(c);
 
+cleanup:
 	// decrease graph reference count
 	GraphContext_DecreaseRefCount(gc);
 
@@ -187,28 +183,24 @@ static void *_indexer_run
 		switch(ctx.op) {
 			case INDEXER_IDX_POPULATE:
 			{
-				//RedisModule_Log(NULL, "notice", "INDEXER_IDX_POPULATE");
 				IndexPopulateCtx *pdata = (IndexPopulateCtx*)ctx.pdata;
 				_indexer_idx_populate(pdata);
 				break;
 			}
 			case INDEXER_IDX_DROP:
 			{
-				//RedisModule_Log(NULL, "notice", "INDEXER_IDX_DROP");
 				IndexDropCtx *pdata = (IndexDropCtx*)ctx.pdata;
 				_indexer_idx_drop(pdata);
 				break;
 			}
 			case INDEXER_CONSTRAINT_ENFORCE:
 			{
-				//RedisModule_Log(NULL, "notice", "INDEXER_CONSTRAINT_ENFORCE");
 				ConstraintEnforceCtx *pdata = (ConstraintEnforceCtx*)ctx.pdata;
 				_indexer_enforce_constraint(pdata);
 				break;
 			}
 			case INDEXER_CONSTRAINT_DROP:
 			{
-				//RedisModule_Log(NULL, "notice", "INDEXER_CONSTRAINT_DROP");
 				ConstraintDropCtx *pdata = (ConstraintDropCtx*)ctx.pdata;
 				_indexer_drop_constraint(pdata);
 				break;
@@ -373,7 +365,6 @@ void Indexer_PopulateIndex
 	Schema *s,        // schema containing the idx
 	Index idx         // index to populate
 ) {
-	//RedisModule_Log(NULL, "notice", "Indexer_PopulateIndex");
 	ASSERT(s       != NULL);
 	ASSERT(gc      != NULL);
 	ASSERT(idx     != NULL);
@@ -404,7 +395,6 @@ void Indexer_DropIndex
 	Index idx,        // index to drop
 	GraphContext *gc  // graph context
 ) {
-	//RedisModule_Log(NULL, "notice", "Indexer_DropIndex");
 	ASSERT(idx     != NULL);
 	ASSERT(indexer != NULL);
 
@@ -430,7 +420,6 @@ void Indexer_EnforceConstraint
 	Constraint c,     // constraint to enforce
 	GraphContext *gc  // graph context
 ) {
-	//RedisModule_Log(NULL, "notice", "Indexer_EnforceConstraint");
 	ASSERT(c       != NULL);
 	ASSERT(gc      != NULL);
 	ASSERT(indexer != NULL);
@@ -456,7 +445,6 @@ void Indexer_DropConstraint
 	Constraint c,     // constraint to drop
 	GraphContext *gc  // graph context
 ) {
-	//RedisModule_Log(NULL, "notice", "Indexer_DropConstraint");
 	ASSERT(c       != NULL);
 	ASSERT(indexer != NULL);
 
