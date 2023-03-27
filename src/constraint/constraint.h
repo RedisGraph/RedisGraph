@@ -26,8 +26,12 @@ typedef bool (*Constraint_EnforcementCB)
 typedef void (*Constraint_SetPrivateDataCB)
 (
 	Constraint c,  // constraint to update
-	void *prev,    // previous private data
-	void *pdata    // new private data
+	void *pdata    // private data
+);
+
+typedef void* (*Constraint_GetPrivateDataCB)
+(
+	Constraint c  // constraint to get private data from
 );
 
 // different states a constraint can be at
@@ -60,6 +64,18 @@ Constraint Constraint_New
 	uint8_t n_fields,         // number of fields
 	GraphEntityType et,       // entity type
 	const char **err_msg      // error message
+);
+
+// enable constraint
+void Constraint_Enable
+(
+	Constraint c  // constraint to enable
+);
+
+// disable constraint
+void Constraint_Disable
+(
+	Constraint c  // constraint to disable
 );
 
 // returns constraint type
@@ -97,12 +113,16 @@ void Constraint_SetStatus
 );
 
 // sets constraint private data
-// if c->pdata == prev then c->pdata = pdata
 void Constraint_SetPrivateData
 (
 	Constraint c,  // constraint to update
-	void *prev,    // previous private data
-	void *pdata    // new private data
+	void *pdata    // private data
+);
+
+// get constraint private data
+void *Constraint_GetPrivateData
+(
+	Constraint c  // constraint from which to get private data
 );
 
 // returns a shallow copy of constraint attributes

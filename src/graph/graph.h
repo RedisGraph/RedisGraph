@@ -324,7 +324,7 @@ bool Graph_RelationshipContainsMultiEdge
 
 // retrieves node with given id from graph,
 // returns NULL if node wasn't found
-int Graph_GetNode
+bool Graph_GetNode
 (
 	const Graph *g,
 	NodeID id,
@@ -333,7 +333,7 @@ int Graph_GetNode
 
 // retrieves edge with given id from graph,
 // returns NULL if edge wasn't found
-int Graph_GetEdge
+bool Graph_GetEdge
 (
 	const Graph *g,
 	EdgeID id,

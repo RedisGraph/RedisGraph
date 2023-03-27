@@ -79,6 +79,9 @@ static void _indexer_idx_populate
 	RedisModule_ThreadSafeContextLock(rm_ctx);
 	Graph_AcquireWriteLock(ctx->gc->g);
 
+	// index populated, try to enable
+	Index_Enable(idx);
+
 	if(Index_Enabled(idx)) {
 		Schema_ActivateIndex(ctx->s, idx);
 	}
@@ -102,11 +105,11 @@ static void _indexer_idx_drop
 	RedisModuleCtx *rm_ctx = RedisModule_GetThreadSafeContext(NULL);
 	RedisModule_ThreadSafeContextLock(rm_ctx);
 
-	// expecting index pending_changes count to be either 0 or 1
-	// TODO: not sure how to validate statement above
+	// TODO: expecting index pending_changes count to be either 0 or 1
 	Index_Free(ctx->idx);
 
 	RedisModule_ThreadSafeContextUnlock(rm_ctx);
+	RedisModule_FreeThreadSafeContext(rm_ctx);
 
 	// decrease graph reference count
 	GraphContext_DecreaseRefCount(ctx->gc);
@@ -123,6 +126,19 @@ static void _indexer_enforce_constraint
 	GraphContext *gc = ctx->gc;
 	Graph *g = GraphContext_GetGraph(gc);
 
+	// unique constraint uses index to enforce the constraint
+	// if the index is not enabled, we'll delay the enforcement
+	// until the index is ready
+	if(Constraint_GetType(c) == CT_UNIQUE) {
+		Index idx = Constraint_GetPrivateData(c);
+		// if index is not enabled and the constraint is not marked for deletion
+		// postpone the enforcement
+		if(!Index_Enabled(idx) && Constraint_PendingChanges(c) == 1) {
+			Indexer_EnforceConstraint(c, gc);
+			goto cleanup;
+		}
+	}
+
 	if(Constraint_GetEntityType(c) == GETYPE_NODE) {
 		Constraint_EnforceNodes(c, g);
 	} else {
@@ -132,6 +148,7 @@ static void _indexer_enforce_constraint
 	// decrease number of pending changes
 	Constraint_DecPendingChanges(c);
 
+cleanup:
 	// decrease graph reference count
 	GraphContext_DecreaseRefCount(gc);
 

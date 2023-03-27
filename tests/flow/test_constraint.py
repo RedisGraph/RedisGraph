@@ -13,10 +13,10 @@ class testConstraintNodes():
 
     def populate_graph(self):
         g = self.g
-        g.query("CREATE (:Engineer:Person {name: 'Mike', age: 10, height: 180})")
-        g.query("CREATE (:Engineer:Person {name: 'Tim', age: 20, height: 190})")
-        g.query("CREATE (:Person:Engineer {name: 'Rick', age: 30, height: 200})")
-        g.query("CREATE (:Person:Engineer {name: 'Andrew', age: 36, height: 173})")
+        g.query("CREATE (:Engineer:Person {name: 'Mike', age: 10, height: 180, loc: point({latitude:1, longitude:2})})")
+        g.query("CREATE (:Engineer:Person {name: 'Tim', age: 20, height: 190, loc: point({latitude:2, longitude:2})})")
+        g.query("CREATE (:Person:Engineer {name: 'Rick', age: 30, height: 200, loc: point({latitude:3, longitude:2})})")
+        g.query("CREATE (:Person:Engineer {name: 'Andrew', age: 36, height: 173, loc: point({latitude:4, longitude:2})})")
         g.query("MATCH (a{name: 'Andrew'}),({name:'Rick'}) CREATE (a)-[:Knows {since:1984}]->(b)")
 
     def test01_create_constraint(self):
@@ -33,6 +33,9 @@ class testConstraintNodes():
         # create unique node constraint over Person name and age
         create_unique_node_constraint(self.g, 'Person', 'name', 'age')
 
+        # create unique node constraint over Person loc
+        create_unique_node_constraint(self.g, 'Person', 'loc')
+
         # create mandatory edge constraint over
         create_mandatory_edge_constraint(self.g, 'Knows', 'since')
 
@@ -41,7 +44,7 @@ class testConstraintNodes():
 
         # validate constrains
         constraints = list_constraints(self.g)
-        self.env.assertEqual(len(constraints), 5)
+        self.env.assertEqual(len(constraints), 6)
         for c in constraints:
             self.env.assertTrue(c.status != 'FAILED')
 
@@ -50,8 +53,9 @@ class testConstraintNodes():
         # 1. mandatory node constraint over Person height
         # 2. unique node constraint over Person height
         # 3. unique node constraint over Person name and age
-        # 4. mandatory edge constraint over Knows since
-        # 5. unique edge constraint over Knows since
+        # 4. unique node constraint over Person loc
+        # 5. mandatory edge constraint over Knows since
+        # 6. unique edge constraint over Knows since
 
         g = self.g
 
@@ -67,6 +71,16 @@ class testConstraintNodes():
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("mandatory constraint violation: node with label Person missing property height", str(e))
+
+        #-----------------------------------------------------------------------
+        # create a node that violates the unique constraint on point data ignored
+        #-----------------------------------------------------------------------
+
+        try:
+            g.query("MATCH (p:Person) CREATE (n:Person{height:p.height + 1, loc: p.loc}) DELETE n")
+            self.env.assertTrue(True)
+        except ResponseError as e:
+            self.env.assertTrue(False)
 
         #-----------------------------------------------------------------------
         # create a node that violates the unique constraint
@@ -391,7 +405,7 @@ class testConstraintNodes():
         self.g.query("UNWIND range(0, 500000) AS x CREATE (:MarineBiologist {age: x})")
 
         # create unique constraint over MarineBiologist age attribute
-        create_unique_node_constraint(self.g, "MarineBiologist", "age", sync=False)
+        create_unique_node_constraint(self.g, "MarineBiologist", "age")
 
         # make sure constraint is pending
         constraints = list_constraints(self.g)
@@ -838,7 +852,7 @@ class testConstraintEdges():
         self.g.query("UNWIND range(0, 500000) AS x CREATE ()-[:MarineBiologist {age: x}]->()")
 
         # create unique constraint over MarineBiologist age attribute
-        create_unique_edge_constraint(self.g, "MarineBiologist", "age", sync=False)
+        create_unique_edge_constraint(self.g, "MarineBiologist", "age")
 
         # make sure constraint is pending
         constraints = list_constraints(self.g)
