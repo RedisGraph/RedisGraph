@@ -442,7 +442,6 @@ Feature: WithOrderBy4 - Order by in combination with projection and aliasing
       | age |
     And no side effects
 
-  @skip
   Scenario: [19] Fail if not projected variables are used inside an order by item which contains an aggregation expression
     Given an empty graph
     When executing query:

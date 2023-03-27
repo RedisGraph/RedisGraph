@@ -49,13 +49,14 @@ class testOrderBy(FlowTestsBase):
         # test valid queries
         query_to_expected_result = {
             "MATCH (n:Person) RETURN n.age AS age ORDER BY n.age*1" : [[20], [30], [40]],
-            # "MATCH (n:Person) RETURN n.age AS age ORDER BY age*(-1)" : [[40], [30], [20]],
+            # "MATCH (n:Person) RETURN n.age AS age ORDER BY age*(-1)" : [[40], [30], [20]], # TO DO: Bug#1883
             "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY age, cnt RETURN age" : [[20],[30],[40]],
             "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY n.age, count(n.age) RETURN age" : [[20],[30],[40]],
             "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY n.age * (-1) RETURN age" : [[40], [30], [20]],
             "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY (+1) * count(n.age), n.age RETURN age" : [[20],[30],[40]],
             "MATCH (n:Person) WITH n.age AS age RETURN age ORDER BY ((-1) * age)" : [[40], [30], [20]],
-            # "MATCH (n:Person) WITH n.age AS age ORDER BY (age * (-1)) RETURN age" : [[40], [30], [20]],
+            # TO DO: Returns: (error) _AR_EXP_UpdateEntityIdx: Unable to locate a value with alias age within the record. Bug#1883 ?
+            # "MATCH (n:Person) WITH n.age AS age ORDER BY (age * (-1)) RETURN age" : [[40], [30], [20]], 
             # "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY n.age + count(n.age) RETURN sum(age)" : [[90]],
             "CYPHER offset=10 MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY $offset + count(n.age) RETURN sum(age)" : [[90]],
         }
@@ -63,6 +64,8 @@ class testOrderBy(FlowTestsBase):
             self.get_res_and_assertEquals(query, expected_result)
 
         # test invalid queries
+        redis_graph.query("MATCH (n:Person {age:20}) WITH n MATCH(m:Person {age:30}) WITH n, m CREATE (n)-[:R]->(m)")
+
         variable_agg_error = "Ambiguous Aggregation Expression: in a WITH/RETURN with an aggregation, it is not possible to access variables not projected by the WITH/RETURN."
         function_agg_error = "Ambiguous Aggregation Expression: in a WITH/RETURN with an aggregation, it is not possible to use aggregation functions different to the projected by the WITH."
         queries_with_errors = {
@@ -74,7 +77,10 @@ class testOrderBy(FlowTestsBase):
             "MATCH (n:Person) WITH n.id AS age, count(n.age) AS cnt ORDER BY n.id RETURN sum(n.age)" : "n not defined",
             "MATCH (n:Person) RETURN count(n.age) AS agg ORDER BY n.age + count(n.age)" : variable_agg_error,
             "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY $missing_parameter + count(n.age) RETURN sum(age)" : "Missing parameters",
+            # TO DO: Does this need CYPHER_AST_PROJECTION support in _AR_EXP_FromASTNode?
             # "MATCH (n:Person) RETURN n.age + n.age, count(*) AS cnt ORDER BY n.age + n.age + count(*)" : "",
+            # "MATCH (me: Person)--(you: Person) RETURN me.age + you.age, count(*) AS cnt ORDER BY me.age + you.age + count(*)" : "",
+            "MATCH (me: Person)--(you: Person) WITH me.age + you.age AS add, count(*) AS cnt ORDER BY me.age + you.age + count(*) RETURN *" : "",
         }
         for query, expected_result in queries_with_errors.items():
             self.expect_error(query, expected_result)
