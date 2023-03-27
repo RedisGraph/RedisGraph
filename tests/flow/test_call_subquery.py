@@ -38,7 +38,7 @@ class testCallSubqueryFlow():
             self.expect_error(query,
                 "WITH imports in CALL {} must be simple ('WITH a')")
 
-        # non-valid queries within CAll {}
+        # non-valid queries within CALL {}
         for query in [
             "CALL {CREATE (n:N) MATCH (n:N) RETURN n} RETURN 1",
             "WITH 1 AS a CALL {WITH a CREATE (n:N) MATCH (n:N) RETURN n} RETURN a",
@@ -145,7 +145,7 @@ updating clause.")
 
         # the graph has one node with label `N` and prop `name` with val `Raz`
         # add the `v` property to the one node currently existing, with val 4
-        res = graph.query("MATCH (n) SET n.v = 4")
+        res = graph.query("MATCH (n:N) SET n.v = 4")
         self.env.assertEquals(res.properties_set, 1)
 
         # if a returning subquery doesn't return records, the input record is
@@ -187,7 +187,7 @@ updating clause.")
         """Test the case Call {} gets several records, and returns only one,
         that corresponds to a record that is not the first one it gets"""
 
-                # first input record to sq yields no records, next inputs do
+        # first input record to sq yields no records, next inputs do
         res = graph.query(
             """
             UNWIND ['Omer', 'Raz', 'Moshe'] as name
@@ -257,11 +257,29 @@ updating clause.")
         """Test that filtering within the subquery works fine"""
 
         # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
+        # test filter using WHERE
         res = graph.query(
             """
             CALL {
                 MATCH (n:N)
                 WHERE n.v = 1
+                RETURN n
+            }
+            RETURN n
+            """
+        )
+
+        # assert the correctness of the results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 1}))
+
+        # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
+        # test filter using properties
+        res = graph.query(
+            """
+            CALL {
+                MATCH (n:N {v:1})
                 RETURN n
             }
             RETURN n
@@ -342,7 +360,38 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][0],
             Node(label='N', properties={'name': 'Raz', 'v': 6}))
 
-        # TODO: add another query with a non-returning subquery
+        # # Test with a non-returning subquery
+
+        # Create 3 nodes with label :Z
+        # res = graph.query("UNWIND range(1,3) AS i CREATE(:Z {name:tostring(i), value:i})")
+        # self.env.assertEquals(res.nodes_created, 3)
+
+        # Update properties using FOREACH in subquery
+        # graph.query(
+        #     """
+        #     CALL {
+        #         MATCH (n:Z)
+        #         FOREACH (m in [n] |
+        #             SET m.value = m.value * 2
+        #         )
+        #     }
+        #     """
+        # )
+
+        # # assert the correctness of the results
+        # res = graph.query("MATCH(n:W) RETURN n")
+        # self.env.assertEquals(len(res.result_set), 3)
+        # self.env.assertEquals(res.result_set[0][0],
+        #     Node(label='W', properties={'name': '1', 'v': 2}))
+        # self.env.assertEquals(res.result_set[1][0],
+        #     Node(label='W', properties={'name': '2', 'v': 4}))
+        # self.env.assertEquals(res.result_set[2][0],
+        #     Node(label='W', properties={'name': '3', 'v': 6}))
+
+        # delete the nodes with label :Z
+        # res = graph.query("MATCH (n:Z) DELETE n")
+        # print(res.nodes_deleted)
+        # self.env.assertEquals(res.nodes_deleted, 3)
 
     # tests that SKIP and LIMIT work properly
     def test11_skip_limit(self):
@@ -353,7 +402,7 @@ updating clause.")
         res = graph.query(
             """
             CALL {
-                MATCH (n)
+                MATCH (n:N)
                 RETURN n
                 ORDER BY n.v ASC
                 SKIP 1
@@ -367,7 +416,36 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0],
             Node(label='N', properties={'name': 'Raz', 'v': 6}))
 
-        # TODO: Add tests for LIMIT.
+        # Tests for LIMIT
+
+        # Create 10 nodes with label :W
+        res = graph.query("UNWIND range(1,10) AS i CREATE(:W {name:tostring(i), value:i})")
+        self.env.assertEquals(res.nodes_created, 10)
+
+        res = graph.query(
+            """
+            CALL {
+                MATCH (n:W)
+                RETURN n
+                ORDER BY n.value ASC
+                SKIP 5
+                LIMIT 2
+            }
+            RETURN n
+            """
+        )
+
+        # assert that only two records were returned
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0],
+            Node(label='W', properties={'name': '6', 'value': 6}))
+        self.env.assertEquals(res.result_set[1][0],
+            Node(label='W', properties={'name': '7', 'value': 7}))
+
+        # delete the nodes with label :X created only for LIMIT tests purpose
+        res = graph.query("MATCH (n:W) DELETE n")
+        self.env.assertEquals(res.nodes_deleted, 10)
+
 
     def test12_order_by(self):
         """Test the ordering of the output of the sq, and the outer query"""
@@ -443,7 +521,18 @@ updating clause.")
         """
         self.expect_error(query, "Division by zero")
 
-
+    def test14_nested_call_subquery(self):
+        query_to_expected_result = {
+            # "UNWIND [0, 1, 2] AS x CALL { CALL {RETURN 1 AS One} RETURN 2 AS Two} RETURN 0" : [[0],[0],[0]],
+            "UNWIND [0, 1, 2] AS x CALL { WITH x CALL {RETURN 1 AS One} RETURN 2 AS Two} RETURN 0" : [[0],[0],[0]],
+            # TODO: Crash reusing variable names in nested CALL{}
+            # "UNWIND [0, 1, 2] AS x CALL { CALL {RETURN 1 AS x} RETURN max(x) AS y} RETURN x" : [[0], [1], [2]],
+            # TODO: Wrong results using aggregation functions in inner CALL{}
+            # "UNWIND [0, 1, 2] AS x CALL { WITH x RETURN max(x) AS y} RETURN x" : [[0], [1], [2]],
+            # "UNWIND [0, 1, 2] AS x CALL { WITH x RETURN max(x) AS y} RETURN y" : [[0], [1], [2]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
 
 
