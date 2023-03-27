@@ -29,3 +29,10 @@ OpBase *NewAggregateOp
 	AR_ExpNode **exps
 );
 
+// adds projections to an Aggregate operation
+void AggregateAddProjections
+(
+	OpBase *opBase,     // operation to add the projections to
+	char **names,       // variable names
+	char **alias_names  // projected variable names
+);

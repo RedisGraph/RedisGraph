@@ -386,6 +386,7 @@ static void _buildCallSubqueryPlan
 		// create an array containing coupled names ("a1", "@a1", "a2", "@a2", ...)
 		// of the original names and the internal (temporary) representation of them.
 		char **names = array_new(char *, mapping_size);
+		char **inter_names = array_new(char *, mapping_size);
 		AR_ExpNode **new_exps = array_new(AR_ExpNode *, mapping_size);
 		raxIterator it;
 		raxStart(&it, outer_mapping);
@@ -399,66 +400,27 @@ static void _buildCallSubqueryPlan
 			// append original name
 			array_append(names, curr);
 			// append internal (temporary) name
-			array_append(names, internal_rep);
-		}
-
-		// create AR_EXPNodes for the intermediate projections
-		AR_ExpNode ** intermediate_proj_exps = array_new(AR_ExpNode *, mapping_size);
-		for(uint i = 0; i < mapping_size; i++) {
-			// advance index to the internal name index
-			i++;
-
-			// get alias
-			char *intermediate_alias = names[i];
-
-			// create the AR_EXPNode from it
-			struct cypher_input_range range = {0};
-			AR_ExpNode *new_node =
-				AR_EXP_FromASTNode(cypher_ast_identifier(intermediate_alias,
-					strlen(intermediate_alias), range));
-			new_node->resolved_name = intermediate_alias;
-			array_append(intermediate_proj_exps, new_node);
+			array_append(inter_names, internal_rep);
 		}
 
 		// add the internal names of the outer-scope aliases to the outer-scope record-mapping
 		for(uint i = 0; i < mapping_size; i++) {
-			// skip the original name
-			i++;
-
-			OpBase_AliasModifier(plan->root, names[i-1], names[i], false);
+			OpBase_AliasModifier(plan->root, names[i], inter_names[i], false);
 		}
 
 		// modify the first projection (imports) to contain the transformation `n`-->`_n`
 		OpBase *import_proj = deepest;
 
-		// modify to the intermidiate project_exps
-		ProjectAddProjections(import_proj, intermediate_proj_exps);
-
 		// find the 'first' Project op in the embedded execution-plan (RETURN)
 		OpBase *returning_proj = ExecutionPlan_LocateOp(embedded_plan->root,
 			OPType_PROJECT);
 
-		// create AR_EXPNodes for the return projection
-		AR_ExpNode ** return_proj_exps = array_new(AR_ExpNode *, mapping_size);
-		for(uint i = 0; i < mapping_size; i++) {
-			// get alias
-			char *orig_alias = names[i];
-
-			// advance index to the internal name index
-			i++;
-
-			// create the AR_EXPNode from it
-			struct cypher_input_range range = {0};
-			AR_ExpNode *new_node = AR_EXP_FromASTNode(cypher_ast_identifier(names[i], strlen(names[i]), range));
-			new_node->resolved_name = orig_alias;
-			array_append(return_proj_exps, new_node);
-		}
 
 		// Add to the RETURN projection (the 'first' projection in the embedded plan)
 		// the mapping of the internal representation of the outer-scope
 		// variables to their original names ('_alias' --> 'alias')
 			// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
-		ProjectAddProjections(returning_proj, return_proj_exps);
+		ProjectAddProjections(returning_proj, inter_names, names);
 
 
 		// modify intermediate projections in the body of the subquery, except the last Return projection (first in exec-plan),
@@ -468,7 +430,7 @@ static void _buildCallSubqueryPlan
 		// collect all the intermediate Project ops (from the child of the
 		// return projection)
 		if(returning_proj->childCount > 0) {
-			ExecutionPlan_LocateOps(intermediate_projections,
+			ExecutionPlan_LocateOps(&intermediate_projections,
 				returning_proj->children[0], OPType_PROJECT);
 
 			// the 'last' projection is the importing projection, pop it
@@ -476,17 +438,24 @@ static void _buildCallSubqueryPlan
 
 			// modify projected expressions of the intermediate projections if exist
 			for(uint i = 0; i < array_len(intermediate_projections); i++) {
-				if(intermediate_projections[i] == import_proj) {
-					continue;
-				}
 				ProjectAddProjections(intermediate_projections[i],
-					intermediate_proj_exps);
-						// TODO: Add support for UNIONs
+					inter_names, inter_names);
+				// TODO: Add support for UNIONs
+			}
+
+			array_clear(intermediate_projections);
+
+			ExecutionPlan_LocateOps(&intermediate_projections,
+				returning_proj->children[0], OPType_AGGREGATE);
+
+			for(uint i = 0; i < array_len(intermediate_projections); i++) {
+				AggregateAddProjections(intermediate_projections[i],
+					inter_names, inter_names);
 			}
 		}
 
 		// bind the RETURN projection (last one) to the outer plan ('plan')
-			// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
+		// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
 		ProjectBindToPlan(returning_proj, plan);
 
 		// TODO: Extend this to support UNION as well (unique exec-plan, which
