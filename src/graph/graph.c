@@ -189,7 +189,7 @@ void _MatrixSynchronize
 	bool require_resize = (n_rows != dims || n_cols != dims);
 
 	// matrix fully synced, nothing to do
-	if(!require_resize && !RG_Matrix_isDirty(m)) {
+	if(!require_resize && !dirty) {
 		return;
 	}
 
