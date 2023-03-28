@@ -26,7 +26,7 @@ static int _read_flags
   	int argc,                   // number of arguments
   	bool *compact,              // compact result-set format
     bool *should_track_info,    // whether or not we should track the info data
-	  long long *timeout,         // query level timeout
+	long long *timeout,         // query level timeout
   	bool *timeout_rw,           // apply timeout on both read and write queries
   	uint *graph_version,        // graph version [UNUSED]
   	char **errmsg               // reported error message

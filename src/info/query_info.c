@@ -5,31 +5,20 @@
  */
 
 // creates a new, empty query info object
-QueryInfo *QueryInfo_New(void) {
-    QueryInfo *query_info = rm_malloc(sizeof(QueryInfo));
-
-	query_info->context            = NULL;
-	query_info->stage_timer        = {}
-	query_info->received_ts        = 0;
-	query_info->wait_duration      = 0;
-	query_info->report_duration    = 0;
-	query_info->execution_duration = 0;
-
-    TIMER_RESTART(query_info->stage_timer);
-
-    return query_info;
-}
-
-// assigns the query context to the query info
-void QueryInfo_SetQueryContext
+QueryInfo *QueryInfo_New
 (
-    QueryInfo *qi,
-    const struct QueryCtx *ctx
+	QueryCtx *ctx
 ) {
-    ASSERT(qi != NULL);
-    ASSERT(ctx != NULL);
+	ASSERT(ctx != NULL);
 
-    query_info->context = ctx;
+    QueryInfo *qi = rm_calloc(1, sizeof(QueryInfo));
+
+	qi->ctx   = ctx;
+	qi->stage = QueryStage_WAITING;
+
+    TIMER_RESTART(qi->stage_timer);
+
+    return qi;
 }
 
 // returns the query context associated with the query info
@@ -40,16 +29,6 @@ const QueryCtx* QueryInfo_GetQueryContext
     ASSERT(qi != NULL);
 
     return qi->context;
-}
-
-// returns true if the query info object is valid and can be worked with
-bool QueryInfo_IsValid
-(
-	const QueryInfo *qi
-) {
-	ASSERT(qi != NULL);
-
-    return QueryInfo_GetQueryContext(qi) != NULL;
 }
 
 // returns the date/time when the query was received by the module
@@ -131,7 +110,7 @@ void QueryInfo_UpdateExecutionTime
 ) {
     ASSERT(qi);
 
-    info->execution_duration = QueryInfo_GetCountedMilliseconds(info);
+    qi->execution_duration = QueryInfo_GetCountedMilliseconds(qi);
 }
 
 // reads the stage timer and updates the reporting time with it

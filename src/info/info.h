@@ -32,6 +32,15 @@ typedef struct QueryCtx QueryCtx;
 // duplicate typedef from the circular buffer
 typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data,
                                                   const void *item);
+typedef QueryInfo* QueryInfoStorage;
+
+// an abstraction for iteration over QueryInfo objects
+typedef struct QueryInfoIterator {
+    const QueryInfoStorage *storage;
+    uint64_t current_index;
+    bool has_started; // true if at least one Next*/Get* was called
+} QueryInfoIterator;
+
 // holds a successfull query info
 typedef struct FinishedQueryInfo {
     uint64_t received_ts;         // query received timestamp
@@ -55,80 +64,26 @@ typedef struct FinishedQueryCounters {
 // information about a graph
 typedef struct Info {
     QueryInfoStorage waiting_queries;         // waiting queries
-    pthread_rwlock_t waiting_queries_rwlock;  // waiting_queries RW lock
     QueryInfoStorage working_queries;         // executing and reporting queries
+    pthread_rwlock_t waiting_queries_rwlock;  // waiting_queries RW lock
     atomic_uint_fast64_t max_query_time;      // slowest query time
     FinishedQueryCounters counters;           // counters with states
     pthread_mutex_t mutex;                    // info lock
 } Info;
 
-// returns the total number of queries recorded
-uint64_t FinishedQueryCounters_GetTotalCount
-(
-	const FinishedQueryCounters *counters  // counters to sum up
-);
-
-// adds the counts from another counters object
-void FinishedQueryCounters_Add
-(
-    FinishedQueryCounters *lhs,
-    const FinishedQueryCounters rhs
-);
-
-FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info);
-void FinishedQueryInfo_Free(const FinishedQueryInfo query_info);
-
-typedef QueryInfo* QueryInfoStorage;
-
-// An abstraction for iteration over QueryInfo objects.
-typedef struct QueryInfoIterator {
-    const QueryInfoStorage *storage;
-    uint64_t current_index;
-    // True if at least one Next*/Get* was called.
-    bool has_started;
-} QueryInfoIterator;
-
-// Returns a new iterator over the provided storage starting with the
-// provided index. The created iterator doesn't have to be freed.
-QueryInfoIterator QueryInfoIterator_NewStartingAt
-(
-    const QueryInfoStorage *,
-    const uint64_t
-);
-// Returns a new iterator over the provided storage starting from the beginning.
-QueryInfoIterator QueryInfoIterator_New(const QueryInfoStorage *);
-// Returns a pointer to the next element from the current, NULL if the end has
-// been reached.
-QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *);
-// Returns a pointer to the next valid element from the current, NULL if the end
-// has been reached.
-QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *);
-// Returns a pointer to the underlying storage being iterated over.
-const QueryInfoStorage* QueryInfoIterator_GetStorage(QueryInfoIterator *);
-// Returns current element being pointed at by the iterator.
-QueryInfo* QueryInfoIterator_Get(QueryInfoIterator *);
-// Returns the number of elements which are still to be iterated over.
-uint32_t QueryInfoIterator_Length(const QueryInfoIterator *);
-// Returns true if the iterator has no more elements to iterate over.
-bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *);
-
 // create a new info structure
 // returns true on successful creation
-bool Info_New(Info *);
-// Reset an already existing info structure.
-void Info_Reset(Info *);
-// Free the info structure's contents. Returns true on successful free.
-bool Info_Free(Info *);
-// Insert a query information into the info structure. The query is supposed
-// to be added right after being successfully parsed and known to the module,
-// and before it starts being executed.
+Info *Info_New(void);
+
+// insert a query information into the info structure
+// the query is supposed to be added just before added to the thread-pool
 void Info_AddWaitingQueryInfo
 (
-    Info *,
-    const QueryCtx *,
-    const millis_t wait_duration,
-    const uint64_t received_unix_timestamp_milliseconds
+    Info *info,                 // info to add query to
+    const QueryCtx *ctx,        // query context
+    const uint64_t received_ts  // query received time
 );
+
 // Indicates that the provided query has finished waiting and stated being
 // executed.
 void Info_IndicateQueryStartedExecution
@@ -190,3 +145,49 @@ void Info_ViewAllFinishedQueries
     CircularBufferNRG_ReadAllCallback callback,
     void *user_data
 );
+// free the info structure's content
+void Info_Free
+(
+	Info *info
+);
+
+// returns the total number of queries recorded
+uint64_t FinishedQueryCounters_GetTotalCount
+(
+	const FinishedQueryCounters *counters  // counters to sum up
+);
+
+// adds the counts from another counters object
+void FinishedQueryCounters_Add
+(
+    FinishedQueryCounters *lhs,
+    const FinishedQueryCounters rhs
+);
+
+FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info);
+void FinishedQueryInfo_Free(const FinishedQueryInfo query_info);
+
+// Returns a new iterator over the provided storage starting with the
+// provided index. The created iterator doesn't have to be freed.
+QueryInfoIterator QueryInfoIterator_NewStartingAt
+(
+    const QueryInfoStorage *,
+    const uint64_t
+);
+// Returns a new iterator over the provided storage starting from the beginning.
+QueryInfoIterator QueryInfoIterator_New(const QueryInfoStorage *);
+// Returns a pointer to the next element from the current, NULL if the end has
+// been reached.
+QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *);
+// Returns a pointer to the next valid element from the current, NULL if the end
+// has been reached.
+QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *);
+// Returns a pointer to the underlying storage being iterated over.
+const QueryInfoStorage* QueryInfoIterator_GetStorage(QueryInfoIterator *);
+// Returns current element being pointed at by the iterator.
+QueryInfo* QueryInfoIterator_Get(QueryInfoIterator *);
+// Returns the number of elements which are still to be iterated over.
+uint32_t QueryInfoIterator_Length(const QueryInfoIterator *);
+// Returns true if the iterator has no more elements to iterate over.
+bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *);
+

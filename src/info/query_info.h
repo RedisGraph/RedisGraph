@@ -24,23 +24,13 @@ typedef struct QueryInfo {
 } QueryInfo;
 
 // creates a new, empty query info object
-QueryInfo *QueryInfo_New(void);
-
-// assigns the query context to the query info
-void QueryInfo_SetQueryContext
+QueryInfo *QueryInfo_New
 (
-	QueryInfo *qi,
-	const QueryCtx *ctx
+	QueryCtx *ctx
 );
 
 // returns the query context associated with the query info
 const QueryCtx* QueryInfo_GetQueryContext
-(
-	const QueryInfo *qi
-);
-
-// returns true if the query info object is valid and can be worked with
-bool QueryInfo_IsValid
 (
 	const QueryInfo *qi
 );
