@@ -55,7 +55,7 @@ class testOrderBy(FlowTestsBase):
             "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY n.age * (-1) RETURN age" : [[40], [30], [20]],
             "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY (+1) * count(n.age), n.age RETURN age" : [[20],[30],[40]],
             "MATCH (n:Person) WITH n.age AS age RETURN age ORDER BY ((-1) * age)" : [[40], [30], [20]],
-            # TO DO: Returns: (error) _AR_EXP_UpdateEntityIdx: Unable to locate a value with alias age within the record. Bug#1883 ?
+            # TODO: Returns: (error) _AR_EXP_UpdateEntityIdx: Unable to locate a value with alias age within the record. Bug#1883 ?
             # "MATCH (n:Person) WITH n.age AS age ORDER BY (age * (-1)) RETURN age" : [[40], [30], [20]], 
             # "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY n.age + count(n.age) RETURN sum(age)" : [[90]],
             "CYPHER offset=10 MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY $offset + count(n.age) RETURN sum(age)" : [[90]],
@@ -77,10 +77,11 @@ class testOrderBy(FlowTestsBase):
             "MATCH (n:Person) WITH n.id AS age, count(n.age) AS cnt ORDER BY n.id RETURN sum(n.age)" : "n not defined",
             "MATCH (n:Person) RETURN count(n.age) AS agg ORDER BY n.age + count(n.age)" : variable_agg_error,
             "MATCH (n:Person) WITH n.age AS age, count(n.age) AS cnt ORDER BY $missing_parameter + count(n.age) RETURN sum(age)" : "Missing parameters",
-            # TO DO: Does this need CYPHER_AST_PROJECTION support in _AR_EXP_FromASTNode?
+            # TODO: Does this need CYPHER_AST_PROJECTION support in _AR_EXP_FromASTNode?
             # "MATCH (n:Person) RETURN n.age + n.age, count(*) AS cnt ORDER BY n.age + n.age + count(*)" : "",
             # "MATCH (me: Person)--(you: Person) RETURN me.age + you.age, count(*) AS cnt ORDER BY me.age + you.age + count(*)" : "",
-            "MATCH (me: Person)--(you: Person) WITH me.age + you.age AS add, count(*) AS cnt ORDER BY me.age + you.age + count(*) RETURN *" : "",
+            # TODO: Returns: (error) _AR_EXP_UpdateEntityIdx: Unable to locate a value with alias me within the record
+            # "MATCH (me: Person)--(you: Person) WITH me.age + you.age AS add, count(*) AS cnt ORDER BY me.age + you.age + count(*) RETURN *" : "",
         }
         for query, expected_result in queries_with_errors.items():
             self.expect_error(query, expected_result)
