@@ -20,6 +20,7 @@
 #include <pthread.h>
 #include <stdatomic.h>
 
+#include "query_info.h"
 #include "../util/num.h"
 #include "../util/simple_timer.h"
 
@@ -63,9 +64,7 @@ typedef struct FinishedQueryCounters {
 
 // information about a graph
 typedef struct Info {
-    QueryInfoStorage waiting_queries;         // waiting queries
     QueryInfoStorage working_queries;         // executing and reporting queries
-    pthread_rwlock_t waiting_queries_rwlock;  // waiting_queries RW lock
     atomic_uint_fast64_t max_query_time;      // slowest query time
     FinishedQueryCounters counters;           // counters with states
     pthread_mutex_t mutex;                    // info lock
@@ -75,22 +74,19 @@ typedef struct Info {
 // returns true on successful creation
 Info *Info_New(void);
 
-// insert a query information into the info structure
-// the query is supposed to be added just before added to the thread-pool
-void Info_AddWaitingQueryInfo
-(
-    Info *info,                 // info to add query to
-    const QueryCtx *ctx,        // query context
-    const uint64_t received_ts  // query received time
-);
-
-// Indicates that the provided query has finished waiting and stated being
-// executed.
+// insert a query to the executing queue, and set its stage
 void Info_IndicateQueryStartedExecution
 (
     Info *,
-    const QueryCtx *
+    QueryCtx *
 );
+
+// transitions a query from executing to waiting
+void Info_executing_to_waiting
+(
+    QueryInfo *qi
+);
+
 // Indicates that the query has finished the execution and has started
 // reporting the results back to the client.
 void Info_IndicateQueryStartedReporting
@@ -98,6 +94,7 @@ void Info_IndicateQueryStartedReporting
     Info *,
     const QueryCtx *
 );
+
 // Indicates that the query has finished reporting the results and is no longer
 // required to be stored and kept track of.
 void Info_IndicateQueryFinishedReporting

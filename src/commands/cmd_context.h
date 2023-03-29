@@ -33,6 +33,7 @@ typedef struct {
 	simple_timer_t timer;           // The timer for "GRAPH.INFO".
 	uint64_t received_timestamp;    // The timestamp when the command was received.
 	bool should_track_info;         // Whether or not to track info.
+	QueryCtx query_ctx;             // query context
 } CommandCtx;
 
 // Create a new command context.

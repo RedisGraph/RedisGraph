@@ -18,22 +18,12 @@ typedef struct QueryInfo {
     millis_t wait_duration;      // waiting time
     millis_t execution_duration; // executing time
     millis_t report_duration;    // reporting time
-    const QueryCtx *ctx;         // query context
     QueryStage stage;            // query stage
     simple_timer_t stage_timer;  // timer
 } QueryInfo;
 
 // creates a new, empty query info object
-QueryInfo *QueryInfo_New
-(
-	QueryCtx *ctx
-);
-
-// returns the query context associated with the query info
-const QueryCtx* QueryInfo_GetQueryContext
-(
-	const QueryInfo *qi
-);
+QueryInfo *QueryInfo_New(void);
 
 // returns the date/time when the query was received by the module
 // in milliseconds from UNIX epoch

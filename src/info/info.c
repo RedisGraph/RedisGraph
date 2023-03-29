@@ -317,48 +317,15 @@ static bool _Info_UnlockEverything(Info *info) {
     return _unlock_rwlock(&info->inverse_global_lock);
 }
 
-static void _Info_WLockWaitingQueries
-(
-	Info *info
-) {
-    ASSERT(info != NULL);
-
-	int res = pthread_rwlock_wrlock(info->waiting_queries_rwlock);
-	ASSERT(res == 0);
-}
-
-static void _InfoRLockWaitingQueries
-(
-	Info *info
-) {
-    ASSERT(info != NULL);
-
-	int res = pthread_rwlock_rdlock(info->waiting_queries_rwlock);
-	ASSERT(res == 0);
-}
-
-static void _Info_UnlockWaitingQueries
-(
-	Info *info
-) {
-    ASSERT(info != NULL);
-	// TODO: assert lock is acquired
-    _unlock_rwlock(&info->waiting_queries_rwlock);
-}
-
 Info *Info_New(void) {
     // HACK: compensate for the main thread
     const uint64_t thread_count = ThreadPools_ThreadCount() + 1;
 
 	Info *info = rm_malloc(sizeof(Info));
-    info->waiting_queries = array_new(QueryInfo*, 128);
     info->working_queries = array_newlen(QueryInfo*, thread_count);
 
     _FinishedQueryCounters_Reset(&info->counters);
 	memset(info->working_queries, 0, sizeof(QueryInfo) * thread_count);
-
-    int res = pthread_rwlock_init(&info->waiting_queries_rwlock, NULL);
-    ASSERT(res == 0);
 
     res = pthread_rwlock_init(&info->inverse_global_lock, NULL);
     ASSERT(res == 0);
@@ -366,62 +333,33 @@ Info *Info_New(void) {
     return info;
 }
 
-// insert a query information into the info structure
-// the query is supposed to be added just before added to the thread-pool
-void Info_AddWaitingQueryInfo
-(
-    Info *info,                 // info to add query to
-    const QueryCtx *ctx,        // query context
-    const uint64_t received_ts  // query received time
-) {
-	ASSERT(ctx  != NULL);
-    ASSERT(info != NULL);
-
-    QueryInfo *qi = QueryInfo_New(ctx);
-
-	qi->stage       = QueryStage_WAITING;
-	qi->received_ts = received_ts;
-
-    _Info_WLockWaitingQueries(info);
-
-    array_append(&info->waiting_queries, qi);
-
-	_Info_UnlockWaitingQueries(info);
-}
-
+// insert a query to the executing queue, and set its stage
 void Info_IndicateQueryStartedExecution
 (
-    Info *info,
-    const struct QueryCtx *ctx
+    Info *info
 ) {
     ASSERT(ctx  != NULL);
     ASSERT(info != NULL);
 
-    _Info_WLockWaitingQueries(info);
+    QueryInfo *qi = ctx->qi;
 
-    // this effectively moves the query info object from the waiting queue
-    // to the executing queue, recording the time spent waiting
-
-    QueryInfoStorage storage = info->waiting_queries;
     const int thread_id = ThreadPools_GetThreadID();
 
-    for (uint32_t i = 0; i < array_len(storage.queries); ++i) {
-        QueryInfo query_info = storage.queries[i];
-        if (QueryInfo_GetQueryContext(&query_info) == context) {
-            QueryInfo_UpdateWaitingTime(&query_info);
-            QueryInfo_ResetStageTimer(&query_info);
-            array_del(storage.queries, i);
-            query_info.stage = QueryStage_EXECUTING;
+    // set the stage
+    qi->stage = QueryStage_EXECUTING;
 
-            QueryInfo *info = array_elem(info->working_queries, thread_id);
-            memcpy(info, &query_info, sizeof(QueryInfo));
-
-            break;
-        }
+    // update waiting time
+    if(qi->stage_timer != NULL) {
+        QueryInfo_UpdateWaitingTime(qi);
+        QueryInfo_ResetStageTimer(qi);
     }
 
-    REQUIRE_TRUE(_Info_UnlockWaitingQueries(info));
-    REQUIRE_TRUE(_Info_UnlockEverything(info));
+    // add to working queries array
+    QueryInfo *working_q_info = array_elem(info->working_queries, index);
+    memcpy(working_q_info, &qi, sizeof(QueryInfo));
+
+    ASSERT(_Info_UnlockWaitingQueries(info) != NULL);
+    ASSERT(_Info_UnlockEverything(info) != NULL);
 }
 
 
@@ -431,13 +369,9 @@ void Info_Free
 ) {
     ASSERT(info != NULL);
 
-    array_free(&info->waiting_queries);
     array_free(&info->working_queries);
 
-    int res = pthread_rwlock_destroy(&info->waiting_queries_rwlock);
-    ASSERT(res == 0);
-
-    res = pthread_rwlock_destroy(&info->inverse_global_lock);
+    int res = pthread_rwlock_destroy(&info->inverse_global_lock);
     ASSERT(res == 0);
 }
 
@@ -455,6 +389,25 @@ static bool _Info_MoveQueryInfoBetweenStorages
     memset(array_elem(*from, index), 0, sizeof(QueryInfo));
 
     return true;
+}
+
+// transitions a query from executing to waiting
+void Info_executing_to_waiting
+(
+    QueryInfo *qi
+) {
+    // update the elapsed time in executing state, and restart timer
+    qi->execution_duration += simple_toc(qi->stage_timer);
+    TIMER_RESTART(qi->stage_timer);
+
+    // change state
+    qi->stage = QueryStage_WAITING;
+
+    // remove from working queries array
+    const int thread_id = ThreadPools_GetThreadID();
+    GraphContext *gc = QueryCtx_GetGraphCtx();
+    QueryInfo *info = array_elem(gc->info.working_queries, thread_id);
+    memset(info, 0, sizeof(QueryInfo));
 }
 
 void Info_IndicateQueryStartedReporting
@@ -480,7 +433,6 @@ void Info_IndicateQueryStartedReporting
     query_info->stage = QueryStage_REPORTING;
     QueryInfo_UpdateExecutionTime(query_info);
     QueryInfo_ResetStageTimer(query_info);
-    // Statistics_RecordExecutionDuration(&info->statistics, QueryInfo_GetExecutionTime(*query_info));
 }
 
 void Info_IndicateQueryFinishedReporting
@@ -535,15 +487,9 @@ uint64_t Info_GetTotalQueriesCount(Info *info) {
 }
 
 uint64_t Info_GetWaitingQueriesCount(Info *info) {
-    REQUIRE_ARG_OR_RETURN(info, 0);
+    // TBD
 
-    REQUIRE_TRUE_OR_RETURN(_Info_LockWaitingQueries(info, false), 0);
-
-    const uint64_t count = array_len(&info->waiting_queries);
-
-    REQUIRE_TRUE_OR_RETURN(_Info_UnlockWaitingQueries(info), 0);
-
-    return count;
+    return 0;
 }
 
 uint64_t Info_GetExecutingQueriesCount(Info *info) {
@@ -593,12 +539,18 @@ millis_t Info_GetMaxQueryWaitTime(Info *info) {
     millis_t max_time = 0;
     QueryInfo *query = NULL;
     {
-        REQUIRE_TRUE_OR_RETURN(_Info_LockWaitingQueries(info, false), 0);
-        QueryInfoIterator iterator = QueryInfoIterator_New(&info->waiting_queries);
-        while ((query = QueryInfoIterator_NextValid(&iterator)) != NULL) {
-            max_time = MAX(max_time, QueryInfo_GetWaitingTime(*query));
-        }
-        REQUIRE_TRUE_OR_RETURN(_Info_UnlockWaitingQueries(info), 0);
+        // TBD - replace this with code that traverses the thread pool job queue
+        // (we added the queryCtx which has the QueryInfo which has the waiting time!)
+
+
+
+
+        // REQUIRE_TRUE_OR_RETURN(_Info_LockWaitingQueries(info, false), 0);
+        // QueryInfoIterator iterator = QueryInfoIterator_New(&info->waiting_queries);
+        // while ((query = QueryInfoIterator_NextValid(&iterator)) != NULL) {
+        //     max_time = MAX(max_time, QueryInfo_GetWaitingTime(*query));
+        // }
+        // REQUIRE_TRUE_OR_RETURN(_Info_UnlockWaitingQueries(info), 0);
     }
     {
         QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries_per_thread);
@@ -637,11 +589,6 @@ bool Info_Lock(Info *info) {
 
 bool Info_Unlock(Info *info) {
     return _Info_UnlockEverything(info);
-}
-
-QueryInfoStorage* Info_GetWaitingQueriesStorage(Info *info) {
-    REQUIRE_ARG_OR_RETURN(info, NULL);
-    return &info->waiting_queries;
 }
 
 QueryInfoStorage* Info_GetWorkingQueriesStorage(Info *info) {

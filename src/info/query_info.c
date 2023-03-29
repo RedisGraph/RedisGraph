@@ -4,31 +4,23 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
+#include "query_info.h"
+#include "../graph/graphcontext.h"
+
 // creates a new, empty query info object
-QueryInfo *QueryInfo_New
-(
-	QueryCtx *ctx
-) {
+QueryInfo *QueryInfo_New(void) {
 	ASSERT(ctx != NULL);
 
     QueryInfo *qi = rm_calloc(1, sizeof(QueryInfo));
 
-	qi->ctx   = ctx;
-	qi->stage = QueryStage_WAITING;
+	// this function is called when a thread is already executing the query
+    // (for parsing and execution-plan planning)
+    GraphContext *gc = (GraphContext *)QueryCtx_GetGraphCtx();
+    Info_IndicateQueryStartedExecution(gc->info);
 
     TIMER_RESTART(qi->stage_timer);
 
     return qi;
-}
-
-// returns the query context associated with the query info
-const QueryCtx* QueryInfo_GetQueryContext
-(
-	const QueryInfo *qi
-) {
-    ASSERT(qi != NULL);
-
-    return qi->context;
 }
 
 // returns the date/time when the query was received by the module

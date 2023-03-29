@@ -81,24 +81,6 @@ static bool abort_and_check_timeout
 	return has_timed_out;
 }
 
-static void _info_indicate_query_already_waiting(const GraphQueryCtx *gq_ctx) {
-	ASSERT(gq_ctx);
-	ASSERT(gq_ctx->command_ctx);
-	const struct QueryCtx *context = gq_ctx->query_ctx;
-	if (!context || !gq_ctx->command_ctx) {
-		return;
-	}
-
-	const millis_t milliseconds_waited = CommandCtx_GetTimeSpent(gq_ctx->command_ctx);
-	const uint64_t received_milliseconds = CommandCtx_GetReceivedTimestamp(gq_ctx->command_ctx);
-	Info_AddWaitingQueryInfo(
-		&gq_ctx->graph_ctx->info,
-		context,
-		milliseconds_waited,
-		received_milliseconds
-	);
-}
-
 static void _info_indicate_query_finished
 (
 	GraphQueryCtx *gq_ctx
@@ -323,11 +305,6 @@ static void _ExecuteQuery(void *args) {
 		CommandCtx_ThreadSafeContextUnlock(command_ctx);
 	}
 
-	Info_IndicateQueryStartedExecution(
-		&gq_ctx->graph_ctx->info,
-		gq_ctx->query_ctx
-	);
-
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
 		// set policy after lock acquisition,
 		// avoid resetting policies between readers and writers
@@ -454,6 +431,9 @@ void _query(bool profile, void *args) {
 	exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 	if(exec_ctx == NULL) goto cleanup;
 
+	QueryInfo *qi = (QueryCtx_GetQueryCtx())->qi;
+	qi->received_ts = CommandCtx_GetReceivedTimestamp(command_ctx);
+
 	ExecutionType exec_type = exec_ctx->exec_type;
 	bool readonly = AST_ReadOnly(exec_ctx->ast->root);
 	bool index_op = (exec_type == EXECUTION_TYPE_INDEX_CREATE ||
@@ -491,9 +471,6 @@ void _query(bool profile, void *args) {
 	}
 	GraphQueryCtx *gq_ctx = GraphQueryCtx_New(gc, ctx, exec_ctx, command_ctx,
 											  flags, timeout_task);
-	// Report to the info tracker that this query has already been in the
-	// waiting stage for some time and the info tracker should register it.
-	_info_indicate_query_already_waiting(gq_ctx);
 
 	// if 'thread' is redis main thread, continue running
 	// if readonly is true we're executing on a worker thread from
@@ -501,6 +478,7 @@ void _query(bool profile, void *args) {
 	if(readonly || command_ctx->thread == EXEC_THREAD_MAIN) {
 		_ExecuteQuery(gq_ctx);
 	} else {
+		Info_executing_to_waiting(qi);
 		_DelegateWriter(gq_ctx);
 	}
 

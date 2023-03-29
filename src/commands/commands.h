@@ -40,11 +40,10 @@ void Graph_Profile(void *args);
 void Graph_Explain(void *args);
 
 int Graph_List(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
-int Graph_Debug(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Info(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int Graph_Debug(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Slowlog(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
-int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
-
+int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);

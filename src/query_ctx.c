@@ -24,6 +24,7 @@ static inline QueryCtx *_QueryCtx_GetCreateCtx(void) {
 		// Set a new thread-local QueryCtx if one has not been created.
 		ctx = rm_calloc(1, sizeof(QueryCtx));
 		ctx->undo_log = UndoLog_New();
+		ctx->qi = QueryInfo_New();
 		pthread_setspecific(_tlsQueryCtxKey, ctx);
 	}
 	return ctx;
@@ -259,6 +260,8 @@ void QueryCtx_Free(void) {
 		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);
 		ctx->query_data.params = NULL;
 	}
+
+	// TODO: Free QueryInfo here (?)
 
 	rm_free(ctx);
 	// NULL-set the context for reuse the next time this thread receives a query

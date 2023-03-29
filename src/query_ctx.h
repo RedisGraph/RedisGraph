@@ -9,11 +9,13 @@
 #include "ast/ast.h"
 #include "redismodule.h"
 #include "util/rmalloc.h"
-#include "graph/graphcontext.h"
-#include "commands/cmd_context.h"
-#include "resultset/resultset.h"
-#include "execution_plan/ops/op.h"
+#include "info/query_info.h"
 #include "undo_log/undo_log.h"
+#include "graph/graphcontext.h"
+#include "resultset/resultset.h"
+#include "commands/cmd_context.h"
+#include "execution_plan/ops/op.h"
+
 #include <pthread.h>
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
@@ -57,13 +59,14 @@ typedef struct {
 } QueryCtx_GlobalExecCtx;
 
 typedef struct QueryCtx {
-	QueryCtx_QueryData query_data;              // The data related to the query syntax.
-	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
-	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
+	QueryInfo *qi;                              // the query info
 	GraphContext *gc;                           // The GraphContext associated with this query's graph.
 	UndoLog undo_log;                           // Undo log for updates, used in the case of write query can fail and rollback is needed.
-	QueryExecutionTypeFlag flags;               // The execution flags.
 	QueryExecutionStatus status;                // The query execution status.
+	QueryExecutionTypeFlag flags;               // The execution flags.
+	QueryCtx_QueryData query_data;              // The data related to the query syntax.
+	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
+	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
 } QueryCtx;
 
 /* Instantiate the thread-local QueryCtx on module load. */
