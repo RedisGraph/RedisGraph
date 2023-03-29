@@ -53,13 +53,26 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	return (OpBase *)op;
 }
 
+// fake hash function
+// hash of key is simply key
+static uint64_t nop_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+// hashtable callbacks
+static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
+	NULL, NULL, NULL};
+
 static OpResult UpdateInit(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
 
 	op->stats         =  QueryCtx_GetResultSetStatistics();
 	op->records       =  array_new(Record, 64);
-	op->node_updates  =  array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
-	op->edge_updates  =  array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
+	op->node_updates  =  HashTableCreate(&dt);
+	op->edge_updates  =  HashTableCreate(&dt);
 
 	return OP_OK;
 }
@@ -79,14 +92,14 @@ static Record UpdateConsume(OpBase *opBase) {
 		raxSeek(&op->it, "^", NULL, 0);
 		while(raxNext(&op->it)) {
 			EntityUpdateEvalCtx *ctx = op->it.data;
-			EvalEntityUpdates(op->gc, &op->node_updates, &op->edge_updates, r, ctx, true);
+			EvalEntityUpdates(op->gc, op->node_updates, op->edge_updates, r, ctx, true);
 		}
 
 		array_append(op->records, r);
 	}
 	
-	uint node_updates_count = array_len(op->node_updates);
-	uint edge_updates_count = array_len(op->edge_updates);
+	uint node_updates_count = HashTableElemCount(op->node_updates);
+	uint edge_updates_count = HashTableElemCount(op->edge_updates);
 
 	if(node_updates_count > 0 || edge_updates_count > 0) {
 		// done reading; we're not going to call Consume any longer
@@ -101,18 +114,8 @@ static Record UpdateConsume(OpBase *opBase) {
 		CommitUpdates(op->gc, op->stats, op->edge_updates, ENTITY_EDGE);
 	}
 
-	for(uint i = 0; i < node_updates_count; i ++) {
-		PendingUpdateCtx *pending_update = op->node_updates + i;
-		AttributeSet_Free(&pending_update->attributes);
-	}
-		
-	for(uint i = 0; i < edge_updates_count; i ++) {
-		PendingUpdateCtx *pending_update = op->edge_updates + i;
-		AttributeSet_Free(&pending_update->attributes);
-	}
-
-	array_clear(op->node_updates);
-	array_clear(op->edge_updates);
+	HashTableEmpty(op->node_updates, NULL);
+	HashTableEmpty(op->edge_updates, NULL);
 
 	op->updates_committed = true;
 
@@ -130,19 +133,22 @@ static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
-	uint node_updates_count = array_len(op->node_updates);
-	for(uint i = 0; i < node_updates_count; i ++) {
-		PendingUpdateCtx *pending_update = op->node_updates + i;
+	dictIterator *it = HashTableGetIterator(op->node_updates);
+	dictEntry *entry;
+	while((entry  = HashTableNext(it)) != NULL) {
+		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
 		AttributeSet_Free(&pending_update->attributes);
 	}
-	array_clear(op->node_updates);
+	HashTableReleaseIterator(it);
+	HashTableEmpty(op->node_updates, NULL);
 
-	uint edge_updates_count = array_len(op->edge_updates);
-	for(uint i = 0; i < edge_updates_count; i ++) {
-		PendingUpdateCtx *pending_update = op->edge_updates + i;
+	it = HashTableGetIterator(op->edge_updates);
+	while((entry = HashTableNext(it)) != NULL) {
+		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
 		AttributeSet_Free(&pending_update->attributes);
 	}
-	array_clear(op->edge_updates);
+	HashTableReleaseIterator(it);
+	HashTableEmpty(op->edge_updates, NULL);
 
 	op->updates_committed = false;
 	return OP_OK;
@@ -152,22 +158,26 @@ static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
 	if(op->node_updates) {
-		uint node_updates_count = array_len(op->node_updates);
-		for(uint i = 0; i < node_updates_count; i ++) {
-			PendingUpdateCtx *pending_update = op->node_updates + i;
+		dictIterator *it = HashTableGetIterator(op->node_updates);
+		dictEntry *entry;
+		while((entry  = HashTableNext(it)) != NULL) {
+			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
 			AttributeSet_Free(&pending_update->attributes);
 		}
-		array_free(op->node_updates);
+		HashTableReleaseIterator(it);
+		HashTableRelease(op->node_updates);
 		op->node_updates = NULL;
 	}
 
 	if(op->edge_updates) {
-		uint edge_updates_count = array_len(op->edge_updates);
-		for(uint i = 0; i < edge_updates_count; i ++) {
-			PendingUpdateCtx *pending_update = op->edge_updates + i;
+		dictIterator *it = HashTableGetIterator(op->edge_updates);
+		dictEntry *entry;
+		while((entry  = HashTableNext(it)) != NULL) {
+			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
 			AttributeSet_Free(&pending_update->attributes);
 		}
-		array_free(op->edge_updates);
+		HashTableReleaseIterator(it);
+		HashTableRelease(op->edge_updates);
 		op->edge_updates = NULL;
 	}
 

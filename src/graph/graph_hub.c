@@ -191,55 +191,6 @@ void DeleteEdges
 	Graph_DeleteEdges(gc->g, edges, count);
 }
 
-// update entity attributes and update undo log
-// in case attr_id is ATTRIBUTE_ID_ALL clear all attributes values
-static void _Update_Entity_Property
-(
-	GraphContext *gc,
-	GraphEntity *ge,
-	Attribute_ID attr_id,
-	SIValue new_value,
-	GraphEntityType entity_type,
-	uint *props_set_count,
-	uint *props_removed_count
-) {
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	if(attr_id == ATTRIBUTE_ID_ALL) {
-		// we're requested to clear entitiy's attribute-set
-		// backup entity's attributes in case we'll need to roolback
-		const AttributeSet set = GraphEntity_GetAttributes(ge);
-		for(int i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
-			Attribute_ID id;
-			// add entity update operation to undo log
-			SIValue value = AttributeSet_GetIdx(set, i, &id);
-			UndoLog_UpdateEntity(&query_ctx->undo_log, ge, id, value,
-					entity_type);
-		}
-	} else {
-		SIValue *orig_value = GraphEntity_GetProperty(ge, attr_id);
-		// add entity update operation to undo log
-		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, attr_id, *orig_value,
-				entity_type);
-	}
-
-	// update the property and set the appropriate counter.
-	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
-	int updates = Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
-
-	if(SIValue_IsNull(new_value)) {
-		// removal of an attribute. In case the attribute is not present,
-		// the update will not be counted (Graph_UpdateEntity logic).
-		*props_removed_count = updates;
-	} else {
-		// addition of an attribte
-		*props_set_count = updates;
-		// overwrite exiting attribute is considered a removal
-		if(old_value != ATTRIBUTE_NOTFOUND) {
-			*props_removed_count = updates;
-		}
-	}
-}
-
 // updates a graph entity attribute set. Returns as out params the number
 // of properties set and removed.
 void UpdateEntityProperties
@@ -259,17 +210,35 @@ void UpdateEntityProperties
 	int set_props     = 0;
 	int removed_props = 0;
 
+	AttributeSet old_set = *ge->attributes;
+
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	UndoLog_UpdateEntity(&query_ctx->undo_log, ge, old_set, entity_type);
+
 	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
 		Attribute *prop = set->attributes + i;
-		uint _set_props     = 0;
-		uint _removed_props = 0;
 
-		_Update_Entity_Property(gc, ge, prop->id, prop->value, entity_type,
-				&_set_props, &_removed_props);
+		SIValue *v = AttributeSet_Get(old_set, prop->id);
 
-		set_props     += _set_props;
-		removed_props += _removed_props;
+		if(v == ATTRIBUTE_NOTFOUND) {
+			set_props++;
+		} else if(SIValue_Compare(*v, prop->value, NULL) != 0) {
+			set_props++;
+			removed_props++;
+		}
 	}
+
+	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(old_set); i++) {
+		Attribute *prop = old_set->attributes + i;
+
+		SIValue *v = AttributeSet_Get(set, prop->id);
+
+		if(v == ATTRIBUTE_NOTFOUND) {
+			removed_props++;
+		}
+	}
+
+	*ge->attributes = set;
 
 	if(entity_type == GETYPE_NODE) {
 		_AddNodeToIndices(gc, (Node *)ge);

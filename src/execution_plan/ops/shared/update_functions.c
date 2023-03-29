@@ -43,7 +43,7 @@ void CommitUpdates
 (
 	GraphContext *gc,
 	ResultSetStatistics *stats,
-	PendingUpdateCtx *updates,
+	dict *updates,
 	EntityType type
 ) {
 	ASSERT(gc      != NULL);
@@ -51,7 +51,7 @@ void CommitUpdates
 	ASSERT(updates != NULL);
 	ASSERT(type    != ENTITY_UNKNOWN);
 
-	uint update_count         = array_len(updates);
+	uint update_count         = HashTableElemCount(updates);
 	uint labels_added         = 0;
 	uint labels_removed       = 0;
 	uint properties_set       = 0;
@@ -61,11 +61,14 @@ void CommitUpdates
 	// return early if no updates are enqueued
 	if(update_count == 0) return;
 
-	for(uint i = 0; i < update_count; i++) {
-		PendingUpdateCtx *update = updates + i;
+	dictIterator *it = HashTableGetIterator(updates);
+	dictEntry *entry;
+	while((entry = HashTableNext(it)) != NULL) {
+		PendingUpdateCtx *update = HashTableGetVal(entry);
 
 		// if entity has been deleted, perform no updates
 		if(GraphEntity_IsDeleted(update->ge)) continue;
+		
 		uint _labels_added   = 0;
 		uint _labels_removed = 0;
 		uint _props_set      = 0;
@@ -135,8 +138,8 @@ void CommitUpdates
 void EvalEntityUpdates
 (
 	GraphContext *gc,
-	PendingUpdateCtx **node_updates,
-	PendingUpdateCtx **edge_updates,
+	dict *node_updates,
+	dict *edge_updates,
 	const Record r,
 	const EntityUpdateEvalCtx *ctx,
 	bool allow_null
@@ -168,18 +171,62 @@ void EvalEntityUpdates
 				"Type mismatch: expected Node but was Relationship");
 	}
 
-	PendingUpdateCtx **updates = (t == REC_TYPE_NODE)
+	dict *updates = (t == REC_TYPE_NODE)
 		? node_updates
 		: edge_updates;
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
 
-	PendingUpdateCtx update = {0};
+	PendingUpdateCtx *update;
+	dictEntry *entry = HashTableFind(updates, (void *)ENTITY_GET_ID(entity));
+	if(entry == NULL) {
+		// create a new update context
+		update = rm_malloc(sizeof(PendingUpdateCtx));
+		update->ge            = entity;
+		update->attributes    = AttributeSet_Clone(*entity->attributes);
+		update->add_labels    = array_new(const char *, array_len(ctx->add_labels));
+		update->remove_labels = array_new(const char *, array_len(ctx->remove_labels));
+		// add update context to updates dictionary
+		HashTableAdd(updates, (void *)ENTITY_GET_ID(entity), update);
+	} else {
+		// update context already exists
+		update = (PendingUpdateCtx *)HashTableGetVal(entry);
+	}
+	
+	for (uint i = 0; i < array_len(ctx->add_labels); i++) {
+		bool found = false;
+		for(uint j = 0; j < array_len(update->add_labels); j++) {
+			if(strcmp(update->add_labels[j], ctx->add_labels[i]) == 0) {
+				found = true;
+				break;
+			}
+		}
+		if(!found) {
+			array_append(update->add_labels, ctx->add_labels[i]);
+		}
+	}
 
-	update.ge            = entity;
-	update.attributes    = NULL;
-	update.add_labels    = ctx->add_labels;
-	update.remove_labels = ctx->remove_labels;
+	for (uint i = 0; i < array_len(ctx->remove_labels); i++) {
+		bool found = false;
+		for(uint j = 0; j < array_len(update->remove_labels); j++) {
+			if(strcmp(update->remove_labels[j], ctx->remove_labels[i]) == 0) {
+				found = true;
+				break;
+			}
+		}
+		if(!found) {
+			array_append(update->remove_labels, ctx->remove_labels[i]);
+		}
+	}
+
+	AttributeSet *old_attributes = entity->attributes;
+	entity->attributes = &update->attributes;
+	if(t == REC_TYPE_NODE) {
+		Record_AddNode(r, ctx->record_idx, *(Node *)entity);
+	} else {
+		Record_AddEdge(r, ctx->record_idx, *(Edge *)entity);
+	}
+	
 
 	// if we're converting a SET clause, NULL is acceptable
 	// as it indicates a deletion
@@ -222,7 +269,7 @@ void EvalEntityUpdates
 			}
 
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute);
-			AttributeSet_Set_Allow_Null(&update.attributes, attr_id, v);
+			AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v);
 			SIValue_Free(v);
 			continue;
 		}
@@ -241,8 +288,7 @@ void EvalEntityUpdates
 		if(mode == UPDATE_REPLACE) {
 			// if this update replaces all existing properties
 			// enqueue a 'clear' update to do so
-			AttributeSet_Set_Allow_Null(&update.attributes, ATTRIBUTE_ID_ALL,
-					SI_NullVal());
+			AttributeSet_Free(&update->attributes);
 		}
 
 		//----------------------------------------------------------------------
@@ -266,7 +312,7 @@ void EvalEntityUpdates
 				}
 
 				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval);
-				AttributeSet_Set_Allow_Null(&update.attributes, attr_id, value);
+				AttributeSet_Set_Allow_Null(&update->attributes, attr_id, value);
 			}
 
 			// free map
@@ -291,11 +337,15 @@ void EvalEntityUpdates
 			SIValue v = AttributeSet_GetIdx(set, j, &attr_id);
 
 			// simple assignment, no need to value validation
-			AttributeSet_Set_Allow_Null(&update.attributes, attr_id, v);
+			AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v);
 		}
 	} // for loop end
 
-	// enqueue the current update
-	array_append(*updates, update);
+	entity->attributes = old_attributes;
+	if(t == REC_TYPE_NODE) {
+		Record_AddNode(r, ctx->record_idx, *(Node *)entity);
+	} else {
+		Record_AddEdge(r, ctx->record_idx, *(Edge *)entity);
+	}
 }
 

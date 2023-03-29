@@ -69,8 +69,7 @@ typedef struct {
 		Edge e;
 	};
 	GraphEntityType entity_type;  // node/edge
-	Attribute_ID attr_id;         // attribute update
-	SIValue orig_value;           // attribute original value
+	AttributeSet set;             // old attribute set
 } UndoUpdateOp;
 
 typedef struct {
@@ -146,8 +145,7 @@ void UndoLog_UpdateEntity
 (
 	UndoLog *log,                // undo log
 	GraphEntity *ge,             // updated entity
-	Attribute_ID attr_id,        // updated attribute ID
-	SIValue orig_value,          // attribute original value
+	AttributeSet set,            // old attribute set
 	GraphEntityType entity_type  // entity type
 );
 

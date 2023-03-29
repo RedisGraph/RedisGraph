@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../../util/dict.h"
 #include "../execution_plan.h"
 #include "shared/update_functions.h"
 #include "../../resultset/resultset_statistics.h"
@@ -18,8 +19,8 @@ typedef struct {
 	GraphContext *gc;
 	rax *update_ctxs;               // Entities to update and their expressions
 	bool updates_committed;         // True if we've already committed updates and are now in handoff mode.
-	PendingUpdateCtx *node_updates; // Enqueued node updates
-	PendingUpdateCtx *edge_updates; // Enqueued edge updates
+	dict *node_updates;             // Enqueued node updates
+	dict *edge_updates;             // Enqueued edge updates
 	ResultSetStatistics *stats;
 } OpUpdate;
 

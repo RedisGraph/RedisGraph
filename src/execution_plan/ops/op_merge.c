@@ -27,8 +27,8 @@ static void MergeFree(OpBase *opBase);
 // apply a set of updates to the given records
 static void _UpdateProperties
 (
-	PendingUpdateCtx **node_pending_updates,
-	PendingUpdateCtx **edge_pending_updates,
+	dict *node_pending_updates,
+	dict *edge_pending_updates,
 	ResultSetStatistics *stats,
 	raxIterator updates,
 	Record *records,
@@ -84,22 +84,26 @@ static inline void _free_pending_updates
 	OpMerge *op
 ) {
 	if(op->node_pending_updates) {
-		uint pending_updates_count = array_len(op->node_pending_updates);
-		for(uint i = 0; i < pending_updates_count; i++) {
-			PendingUpdateCtx *pending_update = op->node_pending_updates + i;
+		dictIterator *it = HashTableGetIterator(op->node_pending_updates);
+		dictEntry *entry;
+		while((entry  = HashTableNext(it)) != NULL) {
+			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
 			AttributeSet_Free(&pending_update->attributes);
 		}
-		array_free(op->node_pending_updates);
+		HashTableReleaseIterator(it);
+		HashTableRelease(op->node_pending_updates);
 		op->node_pending_updates = NULL;
 	}
 
 	if(op->edge_pending_updates) {
-		uint pending_updates_count = array_len(op->edge_pending_updates);
-		for(uint i = 0; i < pending_updates_count; i++) {
-			PendingUpdateCtx *pending_update = op->edge_pending_updates + i;
+		dictIterator *it = HashTableGetIterator(op->edge_pending_updates);
+		dictEntry *entry;
+		while((entry = HashTableNext(it)) != NULL) {
+			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
 			AttributeSet_Free(&pending_update->attributes);
 		}
-		array_free(op->edge_pending_updates);
+		HashTableReleaseIterator(it);
+		HashTableRelease(op->edge_pending_updates);
 		op->edge_pending_updates = NULL;
 	}
 }
@@ -259,6 +263,19 @@ static Record _handoff
 	return r;
 }
 
+// fake hash function
+// hash of key is simply key
+static uint64_t nop_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+// hashtable callbacks
+static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
+	NULL, NULL, NULL};
+
 static Record MergeConsume
 (
 	OpBase *opBase
@@ -362,12 +379,12 @@ static Record MergeConsume
 	}
 	OpBase_PropagateReset(op->match_stream);
 
-	op->node_pending_updates = array_new(PendingUpdateCtx, 0);
-	op->edge_pending_updates = array_new(PendingUpdateCtx, 0);
+	op->node_pending_updates = HashTableCreate(&dt);
+	op->edge_pending_updates = HashTableCreate(&dt);
 
 	// if we are setting properties with ON MATCH, compute all pending updates
 	if(op->on_match && match_count > 0) {
-		_UpdateProperties(&op->node_pending_updates, &op->edge_pending_updates,
+		_UpdateProperties(op->node_pending_updates, op->edge_pending_updates,
 			op->stats, op->on_match_it, op->output_records, match_count);
 	}
 
@@ -394,8 +411,8 @@ static Record MergeConsume
 			// TODO: note we're under lock at this point! is there a way
 			// to compute these changes before locking ?
 			if(op->on_create) {
-				_UpdateProperties(&op->node_pending_updates,
-					&op->edge_pending_updates, op->stats, op->on_create_it,
+				_UpdateProperties(op->node_pending_updates,
+					op->edge_pending_updates, op->stats, op->on_create_it,
 					op->output_records + match_count, create_count);
 			}
 		}
@@ -405,8 +422,8 @@ static Record MergeConsume
 	// update
 	//--------------------------------------------------------------------------
 
-	if(array_len(op->node_pending_updates) > 0 ||
-	   array_len(op->edge_pending_updates) > 0) {
+	if(HashTableElemCount(op->node_pending_updates) > 0 ||
+	   HashTableElemCount(op->edge_pending_updates) > 0) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		// lock everything
 		QueryCtx_LockForCommit(); {
@@ -421,7 +438,8 @@ static Record MergeConsume
 	// free updates
 	//--------------------------------------------------------------------------
 
-	_free_pending_updates(op);
+	HashTableEmpty(op->node_pending_updates, NULL);
+	HashTableEmpty(op->edge_pending_updates, NULL);
 
 	return _handoff(op);
 }

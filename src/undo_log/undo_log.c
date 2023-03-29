@@ -132,12 +132,12 @@ static void _UndoLog_Rollback_Update_Entity
 
 		// update indices
 		if(update_op->entity_type == GETYPE_NODE) {
-			_UndoLog_Restore_Entity_Property((GraphEntity *)&update_op->n, update_op->attr_id,
-				update_op->orig_value);
+			AttributeSet_Free(update_op->n.attributes);
+			*update_op->n.attributes = update_op->set;
 			_index_node(ctx, &update_op->n);
 		} else {
-			_UndoLog_Restore_Entity_Property((GraphEntity *)&update_op->e, update_op->attr_id,
-				update_op->orig_value);
+			AttributeSet_Free(update_op->e.attributes);
+			*update_op->e.attributes = update_op->set;
 			_index_edge(ctx, &update_op->e);
 		}
 	}
@@ -432,19 +432,16 @@ void UndoLog_UpdateEntity
 (
 	UndoLog *log,                // undo log
 	GraphEntity *ge,             // updated entity
-	Attribute_ID attr_id,        // updated attribute ID
-	SIValue orig_value,          // attribute original value
+	AttributeSet set,            // old attribute set
 	GraphEntityType entity_type  // entity type
 ) {
 	ASSERT(log != NULL && *log != NULL);
 	ASSERT(ge != NULL);
-	ASSERT(attr_id != ATTRIBUTE_ID_NONE && attr_id != ATTRIBUTE_ID_ALL);
 
 	UndoOp op;
 
 	op.type                  = UNDO_UPDATE;
-	op.update_op.attr_id     = attr_id;
-	op.update_op.orig_value  = SI_CloneValue(orig_value);
+	op.update_op.set         = set;
 	op.update_op.entity_type = entity_type;
 
 	if(entity_type == GETYPE_NODE) {
@@ -600,7 +597,7 @@ void UndoLog_Free
 		UndoOp *op = log + i;
 		switch(op->type) {
 			case UNDO_UPDATE:
-				SIValue_Free(op->update_op.orig_value);
+				AttributeSet_Free(&op->update_op.set);
 				break;
 			case UNDO_CREATE_NODE:
 				break;

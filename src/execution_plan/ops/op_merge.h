@@ -28,8 +28,8 @@ typedef struct {
 	rax *on_create;                          // Updates to be performed on creation.
 	raxIterator on_match_it;                 // Iterator for traversing ON MATCH update contexts.
 	raxIterator on_create_it;                // Iterator for traversing ON CREATE update contexts.
-	PendingUpdateCtx *node_pending_updates;  // Pending updates to apply, generated 
-	PendingUpdateCtx *edge_pending_updates;  // Pending updates to apply, generated 
+	dict *node_pending_updates;              // Pending updates to apply, generated 
+	dict *edge_pending_updates;              // Pending updates to apply, generated 
 	ResultSetStatistics *stats;              // Required for tracking statistics updates in ON MATCH.
 } OpMerge;
 

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../execution_plan.h"
+#include "../../../util/dict.h"
 
 // context representing a single update to perform on an entity
 typedef struct {
@@ -21,7 +22,7 @@ void CommitUpdates
 (
 	GraphContext *gc,
 	ResultSetStatistics *stats,
-	PendingUpdateCtx *updates,
+	dict *updates,
 	EntityType type
 );
 
@@ -31,8 +32,8 @@ void CommitUpdates
 void EvalEntityUpdates
 (
 	GraphContext *gc,
-	PendingUpdateCtx **node_updates,
-	PendingUpdateCtx **edge_updates,
+	dict *node_updates,
+	dict *edge_updates,
 	const Record r,
 	const EntityUpdateEvalCtx *ctx,
 	bool allow_null

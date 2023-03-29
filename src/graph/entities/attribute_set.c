@@ -203,6 +203,8 @@ void AttributeSet_Set_Allow_Null
 		return;
 	}
 
+	if(SIValue_IsNull(value)) return;
+
 	// allocate room for new attribute
 	_set = AttributeSet_AddPrepare(set, attr_id);
 
