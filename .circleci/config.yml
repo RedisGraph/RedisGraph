@@ -724,6 +724,8 @@ workflows:
       - benchmark:
           <<: *on-integ-and-version-tags
           context: common
+      - valgrind-test:
+          <<: *always #@@
 
   benchmark-flow-label:
     when:
@@ -745,7 +747,7 @@ workflows:
             parameters:
               redis_version: ["6.0", "6.2", "7", "unstable"]
       - valgrind-test:
-          <<: *on-integ-branch-cron
+          name: nightly-valgrind
       - fuzzer:
           name: nightly-fuzzer
 
