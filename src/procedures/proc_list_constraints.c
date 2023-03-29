@@ -114,9 +114,9 @@ static void _EmitConstraint
 	if(ctx->yield_type != NULL) {
 		ConstraintType t = Constraint_GetType(c);
 		if(t == CT_UNIQUE) {
-			*ctx->yield_type = SI_ConstStringVal("unique");
+			*ctx->yield_type = SI_ConstStringVal("UNIQUE");
 		} else {
-			*ctx->yield_type = SI_ConstStringVal("mandatory");
+			*ctx->yield_type = SI_ConstStringVal("MANDATORY");
 		}
 	}
 

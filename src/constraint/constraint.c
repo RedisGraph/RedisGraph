@@ -18,15 +18,17 @@
 
 // opaque structure representing a constraint
 typedef struct _Constraint {
-	uint8_t n_attr;                // number of fields
-	ConstraintType t;              // constraint type
-	EnforcementCB enforce;         // enforcement function
-	int schema_id;                 // enforced label/relationship-type
-	Attribute_ID *attrs;           // enforced attributes
-	const char **attr_names;       // enforced attribute names
-	ConstraintStatus status;       // constraint status
-	uint _Atomic pending_changes;  // number of pending changes
-	GraphEntityType et;            // entity type
+	uint8_t n_attr;                         // number of fields
+	ConstraintType t;                       // constraint type
+	Constraint_EnforcementCB enforce;       // enforcement function
+	Constraint_SetPrivateDataCB set_pdata;  // set private data
+	Constraint_GetPrivateDataCB get_pdata;  // get private data
+	int schema_id;                          // enforced label/relationship-type
+	Attribute_ID *attrs;                    // enforced attributes
+	const char **attr_names;                // enforced attribute names
+	ConstraintStatus status;                // constraint status
+	uint _Atomic pending_changes;           // number of pending changes
+	GraphEntityType et;                     // entity type
 } _Constraint;
 
 // Extern functions
@@ -52,6 +54,34 @@ extern Constraint Constraint_MandatoryNew
 	GraphEntityType et        // entity type
 );
 
+// enforces unique constraint on given entity
+// returns true if entity confirms with constraint false otherwise
+extern bool EnforceUniqueEntity
+(
+	const Constraint c,    // constraint to enforce
+	const GraphEntity *e,  // enforced entity
+	char **err_msg         // report error message
+);
+
+// enforces mandatory constraint on given entity
+extern bool Constraint_EnforceMandatory
+(
+	const Constraint c,    // constraint to enforce
+	const GraphEntity *e,  // enforced entity
+	char **err_msg         // report error message
+);
+
+// disabled constraint enforce function
+// simply returns true
+static bool Constraint_EnforceNOP
+(
+	const Constraint c,    // constraint to enforce
+	const GraphEntity *e,  // enforced entity
+	char **err_msg         // report error message
+) {
+	return true;
+}
+
 // create a new constraint
 Constraint Constraint_New
 (
@@ -69,10 +99,10 @@ Constraint Constraint_New
 	Constraint c = NULL;
 
 	if(t == CT_UNIQUE) {
-		// a unique constraints requires an index
-		// try to get supporting index
-		Index idx = GraphContext_GetIndexByID((GraphContext*) gc, schema_id,
-				fields, n_fields, IDX_EXACT_MATCH, et);
+		// a unique constraints requires an index, try to get supporting index
+		SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+		Schema *s = GraphContext_GetSchemaByID((GraphContext*)gc, schema_id, st);
+		Index idx = Schema_GetIndex(s, fields, n_fields, IDX_EXACT_MATCH, true);
 
 		// supporting index is missing, can't create constraint
 		if(idx == NULL) {
@@ -93,6 +123,32 @@ Constraint Constraint_New
 	ASSERT(Constraint_GetStatus(c) == CT_PENDING);
 
 	return c;
+}
+
+// enable constraint
+void Constraint_Enable
+(
+	Constraint c  // constraint to enable
+) {
+	ASSERT(c != NULL);
+	switch(Constraint_GetType(c)) {
+		case CT_UNIQUE:
+			c->enforce = EnforceUniqueEntity;
+			break;
+		case CT_MANDATORY:
+			c->enforce = Constraint_EnforceMandatory;
+			break;
+	}
+}
+
+// disable constraint
+void Constraint_Disable
+(
+	Constraint c  // constraint to disable
+) {
+	ASSERT(c != NULL);
+
+	c->enforce = Constraint_EnforceNOP;
 }
 
 // returns constraint's type
@@ -149,6 +205,33 @@ void Constraint_SetStatus
 
 	// assuming under lock
     c->status = status;
+}
+
+// sets constraint private data
+void Constraint_SetPrivateData
+(
+	Constraint c,  // constraint to update
+	void *pdata    // private data
+) {
+	ASSERT(c != NULL);
+
+	if(c->set_pdata != NULL) {
+		c->set_pdata(c, pdata);
+	}
+}
+
+// get constraint private data
+void *Constraint_GetPrivateData
+(
+	Constraint c  // constraint from which to get private data
+) {
+	ASSERT(c != NULL);
+
+	if(c->get_pdata != NULL) {
+		return c->get_pdata(c);
+	}
+
+	return NULL;
 }
 
 // returns a shallow copy of constraint attributes
@@ -354,8 +437,6 @@ void Constraint_EnforceEdges
 	GrB_Info info;
 	RG_MatrixTupleIter it = {0};
 
-	// TODO: change to RelationID
-	LabelID   r            = c->schema_id;  // edge relationship type ID
 	bool      holds        = true;          // constraint holds
 	EntityID  src_id       = 0;             // current processed row idx
 	EntityID  dest_id      = 0;             // current processed column idx
@@ -363,6 +444,7 @@ void Constraint_EnforceEdges
 	EntityID  prev_src_id  = 0;             // last processed row idx
 	EntityID  prev_dest_id = 0;             // last processed column idx
 	int       enforced     = 0;             // # entities enforced in batch
+	int       schema_id    = c->schema_id;  // edge relationship type ID
 	int       batch_size   = 1000;          // max number of entities to enforce
 
 	while(holds) {
@@ -383,23 +465,22 @@ void Constraint_EnforceEdges
 		prev_dest_id = dest_id;
 
 		// fetch relation matrix
-		const RG_Matrix m = Graph_GetRelationMatrix(g, r, false);
+		ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_FLUSH_RESIZE);
+		const RG_Matrix m = Graph_GetRelationMatrix(g, schema_id, false);
 		ASSERT(m != NULL);
 
 		//----------------------------------------------------------------------
 		// resume scanning from previous row/col indices
 		//----------------------------------------------------------------------
 
-		info = RG_MatrixTupleIter_attach(&it, m);
-		ASSERT(info == GrB_SUCCESS);
-		info = RG_MatrixTupleIter_iterate_range(&it, src_id, UINT64_MAX);
+		info = RG_MatrixTupleIter_AttachRange(&it, m, src_id, UINT64_MAX);
 		ASSERT(info == GrB_SUCCESS);
 
 		// skip previously enforced edges
 		while((info = RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id,
 						&edge_id)) == GrB_SUCCESS &&
 				src_id == prev_src_id &&
-				dest_id <= prev_dest_id);
+				dest_id < prev_dest_id);
 
 		// process only if iterator is on an active entry
 		if(info != GrB_SUCCESS) {
@@ -414,10 +495,11 @@ void Constraint_EnforceEdges
 			Edge e;
 			e.srcNodeID  = src_id;
 			e.destNodeID = dest_id;
-			e.relationID = r;
+			e.relationID = schema_id;
 
 			if(SINGLE_EDGE(edge_id)) {
-				Graph_GetEdge(g, edge_id, &e);
+				bool res = Graph_GetEdge(g, edge_id, &e);
+				assert(res == true);
 				if(!c->enforce(c, (GraphEntity*)&e, NULL)) {
 					holds = false;
 					break;
@@ -428,7 +510,8 @@ void Constraint_EnforceEdges
 
 				for(uint i = 0; i < edgeCount; i++) {
 					edge_id = edgeIds[i];
-					Graph_GetEdge(g, edge_id, &e);
+					bool res = Graph_GetEdge(g, edge_id, &e);
+					assert(res == true);
 					if(!c->enforce(c, (GraphEntity*)&e, NULL)) {
 						holds = false;
 						break;

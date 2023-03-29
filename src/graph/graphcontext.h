@@ -149,6 +149,18 @@ void GraphContext_ActivateAllConstraints
 	const GraphContext *gc
 );
 
+// enable all constraints
+void GraphContext_EnableConstrains
+(
+	const GraphContext *gc
+);
+
+// disable all constraints
+void GraphContext_DisableConstrains
+(
+	GraphContext *gc
+);
+
 // retrieve the specific schema for the provided ID
 Schema *GraphContext_GetSchemaByID
 (
@@ -292,7 +304,6 @@ bool GraphContext_AddFullTextIndex
 (
 	Index *idx,              // [input/output] index created
 	GraphContext *gc,        // graph context
-	SchemaType schema_type,  // type of entities to index nodes/edges
 	const char *label,       // label of indexed entities
 	const char **fields,     // fields to index
 	uint fields_count,       // number of fields to index

@@ -5,12 +5,15 @@
  */
 
 #include "RG.h"
+#include "util/strutil.h"
 #include "../query_ctx.h"
 #include "../index/indexer.h"
 #include "../graph/graph_hub.h"
 #include "../undo_log/undo_log.h"
 #include "../graph/graphcontext.h"
 #include "constraint/constraint.h"
+
+#define PROPERTY_NAME_PATTERN "[a-zA-Z_][a-zA-Z0-9_$]*"
 
 // constraint operation
 typedef enum {
@@ -42,11 +45,6 @@ static int Constraint_Parse
 	uint8_t *prop_count,
 	RedisModuleString ***props
 ) {
-	//--------------------------------------------------------------------------
-	// get graph name
-	//--------------------------------------------------------------------------
-
-	*graph_name = *argv++;
 
 	//--------------------------------------------------------------------------
 	// get constraint operation CREATE/DROP
@@ -61,6 +59,12 @@ static int Constraint_Parse
 		RedisModule_ReplyWithError(ctx, "Invalid constraint operation");
 		return REDISMODULE_ERR;
 	}
+
+	//--------------------------------------------------------------------------
+	// get graph name
+	//--------------------------------------------------------------------------
+
+	*graph_name = *argv++;
 
 	//--------------------------------------------------------------------------
 	// get constraint type UNIQUE/MANDATORY
@@ -95,6 +99,10 @@ static int Constraint_Parse
 	//--------------------------------------------------------------------------
 
 	*label = RedisModule_StringPtrLen(*argv++, NULL);
+	if(str_MatchRegex(PROPERTY_NAME_PATTERN, *label) == false) {
+		RedisModule_ReplyWithErrorFormat(ctx, "Label name %s is invalid", *label);
+		return REDISMODULE_ERR;
+	}
 
 	//--------------------------------------------------------------------------
 	// extract properties
@@ -104,8 +112,8 @@ static int Constraint_Parse
 	long long _prop_count;
 	if(strcasecmp(token, "PROPERTIES") == 0) {
 		if(RedisModule_StringToLongLong(*argv++, &_prop_count) != REDISMODULE_OK
-				|| _prop_count < 1 || _prop_count > 256) {
-			RedisModule_ReplyWithError(ctx, "Invalid property count");
+				|| _prop_count < 1 || _prop_count > 255) {
+			RedisModule_ReplyWithError(ctx, "Number of properties must be an integer between 1 and 255");
 			return REDISMODULE_ERR;
 		}
 	} else {
@@ -206,7 +214,7 @@ static bool _Constraint_Drop
 
 	// TODO: consider disallowing droping a pending constraint
 	// asynchronously delete constraint
-	Indexer_DropConstraint(c);
+	Indexer_DropConstraint(c, gc);
 
 cleanup:
 	if(res == false) {
@@ -274,6 +282,7 @@ static bool _Constraint_Create
 
 	// duplicates found, fail operation
 	if(dups) {
+		error_msg = "Properties cannot contain duplicates";
 		res = false;
 		goto cleanup;
 	}
@@ -366,16 +375,16 @@ cleanup:
 	return res;
 }
 
-// command handler for GRAPH.CONSTRAIN command
-// GRAPH.CONSTRAIN <key> CREATE UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
-// GRAPH.CONSTRAIN <key> DROP   UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
+// command handler for GRAPH.CONSTRAINT command
+// GRAPH.CONSTRAINT CREATE <key> UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
+// GRAPH.CONSTRAINT DROP <key> UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
 int Graph_Constraint
 (
 	RedisModuleCtx *ctx,
 	RedisModuleString **argv,
 	int argc
 ) {
-	if(argc < 9) {
+	if(argc < 8) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -399,10 +408,14 @@ int Graph_Constraint
 		return REDISMODULE_ERR;
 	}
 
-	// extract constraint properties
+	// extract constraint properties and validate property name
 	const char *props_cstr[prop_count];
 	for(uint8_t i = 0; i < prop_count; i++) {
 		props_cstr[i] = RedisModule_StringPtrLen(props[i], NULL);
+		if(str_MatchRegex(PROPERTY_NAME_PATTERN, props_cstr[i]) == false) {
+			RedisModule_ReplyWithErrorFormat(ctx, "Property name %s is invalid", props_cstr[i]);
+			return REDISMODULE_ERR;
+		}
 	}
 
 	bool success = false;
@@ -418,9 +431,7 @@ int Graph_Constraint
 	}
 
 	if(success == true) {
-		RedisModule_ReplyWithSimpleString(ctx, "OK");
-		// TODO: see if we can pospone this replication
-		// to the point where the constraint is full enforced.
+		RedisModule_ReplyWithSimpleString(ctx, op == CT_CREATE ? "PENDING" : "OK");
 		RedisModule_ReplicateVerbatim(ctx);
 		return REDISMODULE_OK;
 	}

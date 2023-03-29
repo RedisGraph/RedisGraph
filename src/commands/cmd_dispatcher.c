@@ -241,7 +241,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 				REDISMODULE_CTX_FLAGS_LUA           |
 				REDISMODULE_CTX_FLAGS_DENY_BLOCKING |
 				REDISMODULE_CTX_FLAGS_LOADING)));
-	ExecutorThread exec_thread =  main_thread ? EXEC_THREAD_MAIN : EXEC_THREAD_READER;
+	ExecutorThread exec_thread = main_thread ? EXEC_THREAD_MAIN : EXEC_THREAD_READER;
 
 	Command_Handler handler = get_command_handler(cmd);
 	if(exec_thread == EXEC_THREAD_MAIN) {

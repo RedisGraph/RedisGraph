@@ -112,21 +112,6 @@ void *CircularBuffer_Current
 	return cb->read;
 }
 
-void CircularBuffer_Advance
-(
-	CircularBuffer cb
-) {
-	ASSERT(cb != NULL);
-
-	// update buffer item count
-	cb->item_count--;
-
-	cb->read += cb->item_size;
-	if(unlikely(cb->read >= cb->end_marker)) {
-		cb->read = cb->data;
-	}
-}
-
 // returns number of items in buffer
 int CircularBuffer_ItemCount
 (

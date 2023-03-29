@@ -15,27 +15,29 @@
 
 // opaque structure representing a constraint
 struct _MandatoryConstraint {
-	uint8_t n_attr;                // number of fields
-	ConstraintType t;              // constraint type
-	EnforcementCB enforce;         // enforcement function
-	int schema_id;                 // enforced schema ID
-    Attribute_ID *attrs;           // enforced attributes
-	const char **attr_names;       // enforced attribute names
-    ConstraintStatus status;       // constraint status
-    uint _Atomic pending_changes;  // number of pending changes
-	GraphEntityType et;            // entity type
+	uint8_t n_attr;                         // number of fields
+	ConstraintType t;                       // constraint type
+	Constraint_EnforcementCB enforce;       // enforcement function
+	Constraint_SetPrivateDataCB set_pdata;  // set private data
+	Constraint_GetPrivateDataCB get_pdata;  // get private data
+	int schema_id;                          // enforced schema ID
+    Attribute_ID *attrs;                    // enforced attributes
+	const char **attr_names;                // enforced attribute names
+    ConstraintStatus status;                // constraint status
+    uint _Atomic pending_changes;           // number of pending changes
+	GraphEntityType et;                     // entity type
 };
 
 typedef struct _MandatoryConstraint* MandatoryConstraint;
 
 static const char *_node_violation_err_msg =
-	"mandatory constraint violation, node of type %s missing attribute %s";
+	"mandatory constraint violation: node with label %s missing property %s";
 
 static const char *_edge_violation_err_msg =
-	"mandatory constraint violation, edge of relationship-type %s missing attribute %s";
+	"mandatory constraint violation: edge with relationship-type %s missing property %s";
 
 // enforces mandatory constraint on given entity
-static bool Constraint_EnforceMandatory
+bool Constraint_EnforceMandatory
 (
 	const Constraint c,    // constraint to enforce
 	const GraphEntity *e,  // enforced entity
@@ -50,15 +52,18 @@ static bool Constraint_EnforceMandatory
 			// entity violates constraint
 			if(err_msg != NULL) {
 				// compose error message
+				int res;
+				UNUSED(res);
+
 				GraphContext *gc = QueryCtx_GetGraphCtx();
 				SchemaType st = (_c->et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
 				Schema *s = GraphContext_GetSchemaByID(gc, _c->schema_id, st);
 
 				if(Constraint_GetEntityType(c) == GETYPE_NODE) {
-					asprintf(err_msg, _node_violation_err_msg, Schema_GetName(s),
+					res = asprintf(err_msg, _node_violation_err_msg, Schema_GetName(s),
 							_c->attr_names[i]);
 				} else {
-					asprintf(err_msg, _edge_violation_err_msg, Schema_GetName(s),
+					res = asprintf(err_msg, _edge_violation_err_msg, Schema_GetName(s),
 							_c->attr_names[i]);
 				}
 			}
@@ -94,6 +99,8 @@ Constraint Constraint_MandatoryNew
 	c->status          = CT_PENDING;
 	c->n_attr          = n_fields;
 	c->enforce         = Constraint_EnforceMandatory;
+	c->set_pdata       = NULL;
+	c->get_pdata       = NULL;
 	c->schema_id       = schema_id;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 

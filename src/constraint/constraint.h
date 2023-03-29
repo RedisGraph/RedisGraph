@@ -16,11 +16,22 @@
 typedef struct _Constraint *Constraint;
 
 // constraint enforcement callback function
-typedef bool (*EnforcementCB)
+typedef bool (*Constraint_EnforcementCB)
 (
 	const Constraint c,
 	const GraphEntity *e,
 	char **err_msg
+);
+
+typedef void (*Constraint_SetPrivateDataCB)
+(
+	Constraint c,  // constraint to update
+	void *pdata    // private data
+);
+
+typedef void* (*Constraint_GetPrivateDataCB)
+(
+	Constraint c  // constraint to get private data from
 );
 
 // different states a constraint can be at
@@ -55,6 +66,18 @@ Constraint Constraint_New
 	const char **err_msg      // error message
 );
 
+// enable constraint
+void Constraint_Enable
+(
+	Constraint c  // constraint to enable
+);
+
+// disable constraint
+void Constraint_Disable
+(
+	Constraint c  // constraint to disable
+);
+
 // returns constraint type
 ConstraintType Constraint_GetType
 (
@@ -87,6 +110,19 @@ void Constraint_SetStatus
 (
 	Constraint c,            // constraint to update
 	ConstraintStatus status  // new status
+);
+
+// sets constraint private data
+void Constraint_SetPrivateData
+(
+	Constraint c,  // constraint to update
+	void *pdata    // private data
+);
+
+// get constraint private data
+void *Constraint_GetPrivateData
+(
+	Constraint c  // constraint from which to get private data
 );
 
 // returns a shallow copy of constraint attributes
