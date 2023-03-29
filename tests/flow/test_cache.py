@@ -258,6 +258,7 @@ class testCache():
             self.env.skip()
 
         # stop previous env
+        self.env.flush()
         self.env.stop()
 
         self.env = Env(decodeResponses=True, moduleArgs='THREAD_COUNT 8 CACHE_SIZE 1')
