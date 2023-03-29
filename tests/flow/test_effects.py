@@ -36,10 +36,7 @@ class testEffects():
         except:
             pass
 
-    def wait_for_effect(self, timeout=1):
-        # wait for replica to ack write
-        self.master.wait(1, 400)
-
+    def wait_for_effect(self, timeout=10):
         # wait for monitor to receive effects
         interval = 0.1
         while len(self.effects) == 0 and timeout > 0:
@@ -50,6 +47,15 @@ class testEffects():
             return self.effects.pop()
         else:
             return None
+
+    # query master and wait for replica
+    def query_master_and_wait(self, q):
+        res = self.master_graph.query(q)
+
+        # wait for replica to ack write
+        self.master.wait(1, 400)
+
+        return res
 
     # asserts that master and replica have the same view over the graph
     def assert_graph_eq(self):
@@ -88,7 +94,7 @@ class testEffects():
 
         # introduce a new label which in turn creates a new schema
         q = "CREATE (:L)"
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.labels_added, 1)
         self.env.assertEquals(res.nodes_created, 1)
 
@@ -99,7 +105,7 @@ class testEffects():
 
         # introduce multiple labels
         q = "CREATE (:X:Y)"
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.labels_added, 2)
         self.env.assertEquals(res.nodes_created, 1)
 
@@ -110,7 +116,7 @@ class testEffects():
 
         # introduce a new relationship-type which in turn creates a new schema
         q = "CREATE ()-[:R]->()"
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.relationships_created, 1)
 
         if(expect_effect):
@@ -134,7 +140,7 @@ class testEffects():
                 n.d = [1, [2], '3']
             """
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.properties_set, 4)
 
         if(expect_effect):
@@ -149,7 +155,7 @@ class testEffects():
                 e.empty_string = ''
             """
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.properties_set, 3)
 
         if(expect_effect):
@@ -193,7 +199,7 @@ class testEffects():
 
         queries = [q0, q1, q2, q3]
         for q in queries:
-            res = self.master_graph.query(q)
+            res = self.query_master_and_wait(q)
             self.env.assertEquals(res.nodes_created, 1)
 
             if(expect_effect):
@@ -229,8 +235,8 @@ class testEffects():
 
         queries = [q1, q2, q3, q4]
         for q in queries:
-            result = self.master_graph.query(q)
-            self.env.assertEquals(result.relationships_created, 1)
+            res = self.query_master_and_wait(q)
+            self.env.assertEquals(res.relationships_created, 1)
 
             if(expect_effect):
                 self.env.assertIsNotNone(self.wait_for_effect())
@@ -255,7 +261,7 @@ class testEffects():
                     n.f=6.28,
                     n.xempty_string = ''"""
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertGreater(res.properties_set, 0)
 
         if(expect_effect):
@@ -276,7 +282,7 @@ class testEffects():
                 f:2.68,
                 empty_string:''}"""
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertGreater(res.properties_set, 0)
         self.env.assertGreater(res.properties_removed, 0)
 
@@ -298,7 +304,7 @@ class testEffects():
                 f:8.26,
                 empty_string:''}"""
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertGreater(res.properties_set, 0)
 
         if(expect_effect):
@@ -310,7 +316,7 @@ class testEffects():
 
         q = "MATCH (n:L) WITH n LIMIT 1 SET n.b = NULL"
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.properties_removed, 1)
 
         if(expect_effect):
@@ -322,7 +328,7 @@ class testEffects():
 
         q = "MATCH (n:L) WITH n LIMIT 1 SET n = {}"
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertGreater(res.properties_removed, 0)
 
         if(expect_effect):
@@ -348,7 +354,7 @@ class testEffects():
                     e.f=6.28,
                     e.empty_string = ''"""
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertGreater(res.properties_set, 0)
 
         if(expect_effect):
@@ -369,7 +375,7 @@ class testEffects():
                 f:2.68,
                 empty_string:''}"""
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertGreater(res.properties_set, 0)
         self.env.assertGreater(res.properties_removed, 0)
 
@@ -391,7 +397,7 @@ class testEffects():
                 f:8.26,
                 empty_string:''}"""
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertGreater(res.properties_set, 0)
 
         if(expect_effect):
@@ -403,7 +409,7 @@ class testEffects():
 
         q = "MATCH ()-[e]->() WITH e LIMIT 1 SET e.b = NULL"
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.properties_removed, 1)
 
         if(expect_effect):
@@ -415,7 +421,7 @@ class testEffects():
 
         q = "MATCH ()-[e]->() WITH e LIMIT 1 SET e = {}"
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertGreater(res.properties_removed, 0)
 
         if(expect_effect):
@@ -430,8 +436,8 @@ class testEffects():
         self.env.assertEquals(len(self.effects), 0)
 
         q = """MATCH (n:A:B) SET n:C"""
-        result = self.master_graph.query(q)
-        self.env.assertEquals(result.labels_added, 1)
+        res = self.query_master_and_wait(q)
+        self.env.assertEquals(res.labels_added, 1)
 
         if(expect_effect):
             self.env.assertIsNotNone(self.wait_for_effect())
@@ -440,8 +446,8 @@ class testEffects():
 
         # test the addition of an existing and anew node label by an effect
         q = """MATCH (n:A:B:C) SET n:C:D"""
-        result = self.master_graph.query(q)
-        self.env.assertEquals(result.labels_added, 1)
+        res = self.query_master_and_wait(q)
+        self.env.assertEquals(res.labels_added, 1)
 
         if(expect_effect):
             self.env.assertIsNotNone(self.wait_for_effect())
@@ -455,8 +461,8 @@ class testEffects():
         self.env.assertEquals(len(self.effects), 0)
 
         q = """MATCH (n:C) REMOVE n:C RETURN n"""
-        result = self.master_graph.query(q)
-        self.env.assertEquals(result.labels_removed, 1)
+        res = self.query_master_and_wait(q)
+        self.env.assertEquals(res.labels_removed, 1)
 
         if(expect_effect):
             self.env.assertIsNotNone(self.wait_for_effect())
@@ -470,8 +476,8 @@ class testEffects():
         self.env.assertEquals(len(self.effects), 0)
 
         q = """MATCH ()-[e]->() WITH e LIMIT 1 DELETE e"""
-        result = self.master_graph.query(q)
-        self.env.assertEquals(result.relationships_deleted, 1)
+        res = self.query_master_and_wait(q)
+        self.env.assertEquals(res.relationships_deleted, 1)
 
         if(expect_effect):
             self.env.assertIsNotNone(self.wait_for_effect())
@@ -486,7 +492,7 @@ class testEffects():
 
         # using 'n' and 'x' to try and introduce "duplicated" deletions
         q = "MATCH (n) WITH n as n, n as x DELETE n, x"
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertGreater(res.nodes_deleted, 1)
 
         if(expect_effect):
@@ -503,7 +509,7 @@ class testEffects():
         q = """MERGE (n:A {v:'red'})
                ON MATCH SET n.v = 'green'
                ON CREATE SET n.v = 'blue'"""
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.nodes_created, 1)
         self.env.assertEquals(res.properties_set, 2)
         self.env.assertEquals(res.properties_removed, 1)
@@ -517,7 +523,7 @@ class testEffects():
         q = """MERGE (n:A {v:'blue'})
                ON MATCH SET n.v = 'green'
                ON CREATE SET n.v = 'red'"""
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.properties_set, 1)
         self.env.assertEquals(res.properties_removed, 1)
 
@@ -536,7 +542,7 @@ class testEffects():
                MERGE (n)-[e:R{v:'red'}]->(n)
                ON MATCH SET e.v = 'green'
                ON CREATE SET e.v = 'blue'"""
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.properties_set, 3)
         self.env.assertEquals(res.relationships_created, 1)
 
@@ -550,7 +556,7 @@ class testEffects():
                MERGE (n)-[e:R{v:'blue'}]->(n)
                ON MATCH SET e.v = 'green'
                ON CREATE SET e.v = 'red'"""
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.properties_set, 1)
         self.env.assertEquals(res.properties_removed, 1)
 
@@ -572,7 +578,7 @@ class testEffects():
                UNWIND range(0, 10000) as x
                SET n.v = x"""
 
-        res = self.master_graph.query(q)
+        res = self.query_master_and_wait(q)
         self.env.assertEquals(res.properties_set, 10001)
 
         # make sure no effect been sent
