@@ -19,9 +19,11 @@ if [[ $1 == --help || $1 == help || $HELP == 1 ]]; then
 		OSNICK=nick   Operate on packages for given OSNICK (default: host)
 
 		RELEASE=1     Upload release artifacts
+		STAGING=1     Upload into staging area
 
 		FORCE=1       Allow uploading outside of CI
 		NOP=1         No operation
+		VERBOSE=1     Show artifacts details
 		HELP=1        Show help
 
 	END
