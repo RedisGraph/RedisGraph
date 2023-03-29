@@ -37,6 +37,9 @@ class testEffects():
             pass
 
     def wait_for_effect(self, timeout=1):
+        # wait for replica to ack write
+        self.master.wait(1, 400)
+
         # wait for monitor to receive effects
         interval = 0.1
         while len(self.effects) == 0 and timeout > 0:
