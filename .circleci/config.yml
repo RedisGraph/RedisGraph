@@ -124,6 +124,8 @@ commands:
             rm -f tests/tck/logs/*.{aof,rdb}
           when: always
       - store_artifacts:
+          path: tests/unit/logs
+      - store_artifacts:
           path: tests/flow/logs
       - store_artifacts:
           path: tests/tck/logs
