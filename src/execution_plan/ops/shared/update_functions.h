@@ -39,3 +39,8 @@ void EvalEntityUpdates
 	bool allow_null
 );
 
+void PendingUpdateCtx_Free
+(
+	PendingUpdateCtx *ctx
+);
+

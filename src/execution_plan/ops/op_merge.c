@@ -88,7 +88,7 @@ static inline void _free_pending_updates
 		dictEntry *entry;
 		while((entry  = HashTableNext(it)) != NULL) {
 			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-			AttributeSet_Free(&pending_update->attributes);
+			PendingUpdateCtx_Free(pending_update);
 		}
 		HashTableReleaseIterator(it);
 		HashTableRelease(op->node_pending_updates);
@@ -100,7 +100,7 @@ static inline void _free_pending_updates
 		dictEntry *entry;
 		while((entry = HashTableNext(it)) != NULL) {
 			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-			AttributeSet_Free(&pending_update->attributes);
+			PendingUpdateCtx_Free(pending_update);
 		}
 		HashTableReleaseIterator(it);
 		HashTableRelease(op->edge_pending_updates);
@@ -438,7 +438,21 @@ static Record MergeConsume
 	// free updates
 	//--------------------------------------------------------------------------
 
+	dictIterator *it = HashTableGetIterator(op->node_pending_updates);
+	dictEntry *entry;
+	while((entry  = HashTableNext(it)) != NULL) {
+		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
+		PendingUpdateCtx_Free(pending_update);
+	}
+	HashTableReleaseIterator(it);
 	HashTableEmpty(op->node_pending_updates, NULL);
+
+	it = HashTableGetIterator(op->edge_pending_updates);
+	while((entry  = HashTableNext(it)) != NULL) {
+		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
+		PendingUpdateCtx_Free(pending_update);
+	}
+	HashTableReleaseIterator(it);
 	HashTableEmpty(op->edge_pending_updates, NULL);
 
 	return _handoff(op);

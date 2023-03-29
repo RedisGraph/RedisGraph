@@ -114,7 +114,21 @@ static Record UpdateConsume(OpBase *opBase) {
 		CommitUpdates(op->gc, op->stats, op->edge_updates, ENTITY_EDGE);
 	}
 
+	dictIterator *it = HashTableGetIterator(op->node_updates);
+	dictEntry *entry;
+	while((entry  = HashTableNext(it)) != NULL) {
+		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
+		PendingUpdateCtx_Free(pending_update);
+	}
+	HashTableReleaseIterator(it);
 	HashTableEmpty(op->node_updates, NULL);
+
+	it = HashTableGetIterator(op->edge_updates);
+	while((entry = HashTableNext(it)) != NULL) {
+		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
+		PendingUpdateCtx_Free(pending_update);
+	}
+	HashTableReleaseIterator(it);
 	HashTableEmpty(op->edge_updates, NULL);
 
 	op->updates_committed = true;
@@ -137,7 +151,7 @@ static OpResult UpdateReset(OpBase *ctx) {
 	dictEntry *entry;
 	while((entry  = HashTableNext(it)) != NULL) {
 		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-		AttributeSet_Free(&pending_update->attributes);
+		PendingUpdateCtx_Free(pending_update);
 	}
 	HashTableReleaseIterator(it);
 	HashTableEmpty(op->node_updates, NULL);
@@ -145,7 +159,7 @@ static OpResult UpdateReset(OpBase *ctx) {
 	it = HashTableGetIterator(op->edge_updates);
 	while((entry = HashTableNext(it)) != NULL) {
 		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-		AttributeSet_Free(&pending_update->attributes);
+		PendingUpdateCtx_Free(pending_update);;
 	}
 	HashTableReleaseIterator(it);
 	HashTableEmpty(op->edge_updates, NULL);
@@ -162,7 +176,7 @@ static void UpdateFree(OpBase *ctx) {
 		dictEntry *entry;
 		while((entry  = HashTableNext(it)) != NULL) {
 			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-			AttributeSet_Free(&pending_update->attributes);
+			PendingUpdateCtx_Free(pending_update);
 		}
 		HashTableReleaseIterator(it);
 		HashTableRelease(op->node_updates);
@@ -174,7 +188,7 @@ static void UpdateFree(OpBase *ctx) {
 		dictEntry *entry;
 		while((entry  = HashTableNext(it)) != NULL) {
 			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-			AttributeSet_Free(&pending_update->attributes);
+			PendingUpdateCtx_Free(pending_update);
 		}
 		HashTableReleaseIterator(it);
 		HashTableRelease(op->edge_updates);

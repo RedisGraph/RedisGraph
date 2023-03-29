@@ -78,6 +78,7 @@ void CommitUpdates
 		UpdateEntityProperties(gc, update->ge, update->attributes,
 				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &_props_set,
 				&_props_removed);
+		update->attributes = NULL;
 
 		if(type == ENTITY_NODE) {
 			UpdateNodeLabels(gc, (Node*)update->ge, update->add_labels,
@@ -123,6 +124,7 @@ void CommitUpdates
 			}
 		}
 	}
+	HashTableReleaseIterator(it);
 
 	if(stats) {
 		stats->labels_added       += labels_added;
@@ -349,3 +351,12 @@ void EvalEntityUpdates
 	}
 }
 
+void PendingUpdateCtx_Free
+(
+	PendingUpdateCtx *ctx
+) {
+	AttributeSet_Free(&ctx->attributes);
+	array_free(ctx->add_labels);
+	array_free(ctx->remove_labels);
+	rm_free(ctx);
+}
