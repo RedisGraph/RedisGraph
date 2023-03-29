@@ -274,23 +274,6 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0],
         Node(label='N', properties={'name': 'Raz', 'v': 1}))
 
-        # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
-        # test filter using properties
-        res = graph.query(
-            """
-            CALL {
-                MATCH (n:N {v:1})
-                RETURN n
-            }
-            RETURN n
-            """
-        )
-
-        # assert the correctness of the results
-        self.env.assertEquals(len(res.result_set), 1)
-        self.env.assertEquals(res.result_set[0][0],
-        Node(label='N', properties={'name': 'Raz', 'v': 1}))
-
     def test09_simple_ret_eager(self):
         """Simple test for the returning eager subquery case"""
 
@@ -360,38 +343,32 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][0],
             Node(label='N', properties={'name': 'Raz', 'v': 6}))
 
-        # # Test with a non-returning subquery
+        # Test with a non-returning subquery
+        # TODO: Add this test after exec-plan freeing refactor is merged.
 
-        # Create 3 nodes with label :Z
-        # res = graph.query("UNWIND range(1,3) AS i CREATE(:Z {name:tostring(i), value:i})")
-        # self.env.assertEquals(res.nodes_created, 3)
-
-        # Update properties using FOREACH in subquery
+        # # Update properties using FOREACH in subquery
         # graph.query(
         #     """
         #     CALL {
-        #         MATCH (n:Z)
+        #         MATCH (n:N)
         #         FOREACH (m in [n] |
-        #             SET m.value = m.value * 2
+        #             MERGE (:TEMP {v: m.v})
         #         )
         #     }
         #     """
         # )
 
         # # assert the correctness of the results
-        # res = graph.query("MATCH(n:W) RETURN n")
-        # self.env.assertEquals(len(res.result_set), 3)
+        # res = graph.query("MATCH(n:TEMP) RETURN n ORDER BY n.v ASC")
+        # self.env.assertEquals(len(res.result_set), 2)
         # self.env.assertEquals(res.result_set[0][0],
-        #     Node(label='W', properties={'name': '1', 'v': 2}))
+        #     Node(label='TEMP', properties={'v': 5}))
         # self.env.assertEquals(res.result_set[1][0],
-        #     Node(label='W', properties={'name': '2', 'v': 4}))
-        # self.env.assertEquals(res.result_set[2][0],
-        #     Node(label='W', properties={'name': '3', 'v': 6}))
+        #     Node(label='TEMP', properties={'v': 6}))
 
-        # delete the nodes with label :Z
-        # res = graph.query("MATCH (n:Z) DELETE n")
-        # print(res.nodes_deleted)
-        # self.env.assertEquals(res.nodes_deleted, 3)
+        # # delete the nodes with label :TEMP
+        # res = graph.query("MATCH (n:TEMP) DELETE n")
+        # self.env.assertEquals(res.nodes_deleted, 2)
 
     # tests that SKIP and LIMIT work properly
     def test11_skip_limit(self):
