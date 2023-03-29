@@ -55,6 +55,9 @@
 // size of node creation buffer
 #define NODE_CREATION_BUFFER "NODE_CREATION_BUFFER"
 
+// size of node creation buffer
+#define REPLICATE_EFFECTS "REPLICATE_EFFECTS"
+
 //------------------------------------------------------------------------------
 // Configuration defaults
 //------------------------------------------------------------------------------
@@ -65,20 +68,21 @@
 
 // configuration object
 typedef struct {
-	uint64_t timeout;                  // The timeout for each query in milliseconds.
-	uint64_t timeout_max;              // max timeout that can be enforced
-	uint64_t timeout_default;          // default timeout for read and write queries
-	bool async_delete;                 // If true, graph deletion is done asynchronously.
-	uint64_t cache_size;               // The cache size for each thread, per graph.
-	uint thread_pool_size;             // Thread count for thread pool.
-	uint omp_thread_count;             // Maximum number of OpenMP threads.
-	uint64_t resultset_size;           // resultset maximum size, UINT64_MAX unlimited
-	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
-	uint64_t max_queued_queries;       // max number of queued queries
-	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
-	uint64_t node_creation_buffer;     // Number of extra node creations to buffer as margin in matrices
-	int64_t delta_max_pending_changes; // number of pending changed befor RG_Matrix flushed
-	Config_on_change cb;               // callback function which being called when config param changed
+	uint64_t timeout;                   // The timeout for each query in milliseconds.
+	uint64_t timeout_max;               // max timeout that can be enforced
+	uint64_t timeout_default;           // default timeout for read and write queries
+	bool async_delete;                  // If true, graph deletion is done asynchronously.
+	uint64_t cache_size;                // The cache size for each thread, per graph.
+	uint thread_pool_size;              // Thread count for thread pool.
+	uint omp_thread_count;              // Maximum number of OpenMP threads.
+	uint64_t resultset_size;            // resultset maximum size, UINT64_MAX unlimited
+	uint64_t vkey_entity_count;         // The limit of number of entities encoded at once for each RDB key.
+	uint64_t max_queued_queries;        // max number of queued queries
+	int64_t query_mem_capacity;         // Max mem(bytes) that query/thread can utilize at any given time
+	uint64_t node_creation_buffer;      // Number of extra node creations to buffer as margin in matrices
+	int64_t delta_max_pending_changes;  // number of pending changed befor RG_Matrix flushed
+	bool replicate_effects;             // replicate queries via effects
+	Config_on_change cb;                // callback function which being called when config param changed
 } RG_Config;
 
 RG_Config config; // global module configuration
@@ -376,6 +380,21 @@ static uint64_t Config_node_creation_buffer_get(void) {
 	return config.node_creation_buffer;
 }
 
+//------------------------------------------------------------------------------
+// replicate effects
+//------------------------------------------------------------------------------
+
+static void Config_replicate_effects_set
+(
+	bool enabled
+) {
+	config.replicate_effects = enabled;
+}
+
+static bool Config_replicate_effects_get(void) {
+	return config.replicate_effects;
+}
+
 bool Config_Contains_field
 (
 	const char *field_str,
@@ -409,6 +428,8 @@ bool Config_Contains_field
 		f = Config_DELTA_MAX_PENDING_CHANGES;
 	} else if(!(strcasecmp(field_str, NODE_CREATION_BUFFER))) {
 		f = Config_NODE_CREATION_BUFFER;
+	} else if (!(strcasecmp(field_str, REPLICATE_EFFECTS))) {
+		f = Config_REPLICATE_EFFECTS;
 	} else {
 		return false;
 	}
@@ -475,6 +496,10 @@ const char *Config_Field_name
 			name = NODE_CREATION_BUFFER;
 			break;
 
+		case Config_REPLICATE_EFFECTS:
+			name = REPLICATE_EFFECTS;
+			break;
+
 		//----------------------------------------------------------------------
 		// invalid option
 		//----------------------------------------------------------------------
@@ -533,6 +558,9 @@ static void _Config_SetToDefaults(void) {
 
 	// the amount of empty space to reserve for node creations in matrices
 	config.node_creation_buffer = NODE_CREATION_BUFFER_DEFAULT;
+
+	// use effects to replicate queries
+	config.replicate_effects = true;
 }
 
 int Config_Init
@@ -799,6 +827,21 @@ bool Config_Option_get
 		break;
 
 		//----------------------------------------------------------------------
+		// replicate effects enabled/distabled ?
+		//----------------------------------------------------------------------
+
+		case Config_REPLICATE_EFFECTS: {
+			va_start(ap, field);
+			bool *replicate_effects = va_arg(ap, bool *);
+			va_end(ap);
+
+			ASSERT(replicate_effects != NULL);
+			(*replicate_effects) = Config_replicate_effects_get();
+
+		}
+		break;
+
+		//----------------------------------------------------------------------
 		// invalid option
 		//----------------------------------------------------------------------
 
@@ -995,6 +1038,19 @@ bool Config_Option_set
 				node_creation_buffer = 1 << msb;
 			}
 			Config_node_creation_buffer_set(node_creation_buffer);
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// replicate effects
+		//----------------------------------------------------------------------
+				
+		case Config_REPLICATE_EFFECTS: {
+			bool enabled;
+			if(!_Config_ParseYesNo(val, &enabled)) {
+				return false;
+			}
+			Config_replicate_effects_set(enabled);
 		}
 		break;
 

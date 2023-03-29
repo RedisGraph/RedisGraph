@@ -8,61 +8,95 @@
 
 #include <stdint.h>
 #include "../util/arr.h"
+#include "entities/node.h"
+#include "entities/edge.h"
 
-// Graph related statistics
+// graph related statistics
 
 typedef struct {
-	uint64_t *node_count; // Array of node count per label matrix
-	uint64_t *edge_count; // Array of edge count per relationship matrix
+	uint64_t *node_count; // array of node count per label matrix
+	uint64_t *edge_count; // array of edge count per relationship matrix
 } GraphStatistics;
 
-// Initialize the node_count and edge_count arrays
-void GraphStatistics_init(GraphStatistics *stats);
+// initialize the node_count and edge_count arrays
+void GraphStatistics_init
+(
+	GraphStatistics *stats
+);
 
-// New relationship is added, resize the edge_count array.
-void GraphStatistics_IntroduceRelationship(GraphStatistics *stats);
+// new relationship is added, resize the edge_count array
+void GraphStatistics_IntroduceRelationship
+(
+	GraphStatistics *stats
+);
 
-// New label is added, resize the node_count array.
-void GraphStatistics_IntroduceLabel(GraphStatistics *stats);
+// new label is added, resize the node_count array
+void GraphStatistics_IntroduceLabel
+(
+	GraphStatistics *stats
+);
 
-// Increment the edge counter by amount
-static inline void GraphStatistics_IncEdgeCount(GraphStatistics *stats,
-												int relation_idx, uint64_t amount) {
-	ASSERT(relation_idx < array_len(stats->edge_count));
-	stats->edge_count[relation_idx] += amount;
+// increment the edge counter by amount
+static inline void GraphStatistics_IncEdgeCount
+(
+	GraphStatistics *stats,
+	RelationID r,
+	uint64_t amount
+) {
+	ASSERT(r < array_len(stats->edge_count));
+	stats->edge_count[r] += amount;
 }
 
-// Decrement the edge counter by amount
-static inline void GraphStatistics_DecEdgeCount(GraphStatistics *stats,
-												int relation_idx, uint64_t amount) {
-	ASSERT(relation_idx < array_len(stats->edge_count) &&
-		   stats->edge_count[relation_idx] >= amount);
-	stats->edge_count[relation_idx] -= amount;
+// decrement the edge counter by amount
+static inline void GraphStatistics_DecEdgeCount
+(
+	GraphStatistics *stats,
+	RelationID r,
+	uint64_t amount
+) {
+	ASSERT(r < array_len(stats->edge_count) && stats->edge_count[r] >= amount);
+	stats->edge_count[r] -= amount;
 }
 
-// Increment the node counter by amount
-static inline void GraphStatistics_IncNodeCount(GraphStatistics *stats,
-												int label_idx, uint64_t amount) {
-	ASSERT(label_idx < array_len(stats->node_count));
-	stats->node_count[label_idx] += amount;
+// increment the node counter by amount
+static inline void GraphStatistics_IncNodeCount
+(
+	GraphStatistics *stats,
+	LabelID l,
+	uint64_t amount
+) {
+	ASSERT(l < array_len(stats->node_count));
+	stats->node_count[l] += amount;
 }
 
-// Decrement the node counter by amount
-static inline void GraphStatistics_DecNodeCount(GraphStatistics *stats,
-												int label_idx, uint64_t amount) {
-	ASSERT(label_idx < array_len(stats->node_count) &&
-		   stats->node_count[label_idx] >= amount);
-	stats->node_count[label_idx] -= amount;
+// decrement the node counter by amount
+static inline void GraphStatistics_DecNodeCount
+(
+	GraphStatistics *stats,
+	int l,
+	uint64_t amount
+) {
+	ASSERT(l < array_len(stats->node_count) && stats->node_count[l] >= amount);
+	stats->node_count[l] -= amount;
 }
 
-// Retrieves edge count for given relationship type
-uint64_t GraphStatistics_EdgeCount(const GraphStatistics *stats,
-								   int relation_idx);
+// retrieves edge count for given relationship type
+uint64_t GraphStatistics_EdgeCount
+(
+	const GraphStatistics *stats,
+	RelationID r
+);
 
-// Retrieves node count for given label
-uint64_t GraphStatistics_NodeCount(const GraphStatistics *stats,
-								   int label_idx);
+// retrieves node count for given label
+uint64_t GraphStatistics_NodeCount
+(
+	const GraphStatistics *stats,
+	LabelID l
+);
 
-// Free the internal structures.
-void GraphStatistics_FreeInternals(GraphStatistics *stats);
+// free the internal structures
+void GraphStatistics_FreeInternals
+(
+	GraphStatistics *stats
+);
 

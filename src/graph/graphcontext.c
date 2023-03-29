@@ -335,7 +335,12 @@ Schema *GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t)
 	return schemas[id];
 }
 
-Schema *GraphContext_GetSchema(const GraphContext *gc, const char *label, SchemaType t) {
+Schema *GraphContext_GetSchema
+(
+	const GraphContext *gc,
+	const char *label,
+	SchemaType t
+) {
 	int id = _GraphContext_GetLabelID(gc, label, t);
 	return GraphContext_GetSchemaByID(gc, id, t);
 }

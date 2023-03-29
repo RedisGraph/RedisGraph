@@ -74,11 +74,11 @@ void CommitUpdates
 		// update the attributes on the graph entity
 		UpdateEntityProperties(gc, update->ge, update->attributes,
 				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &_props_set,
-				&_props_removed);
+				&_props_removed, true);
 
 		if(type == ENTITY_NODE) {
 			UpdateNodeLabels(gc, (Node*)update->ge, update->add_labels,
-				update->remove_labels, &_labels_added, &_labels_removed);
+				update->remove_labels, &_labels_added, &_labels_removed, true);
 		}
 
 		labels_added       += _labels_added;
@@ -221,7 +221,7 @@ void EvalEntityUpdates
 				break;
 			}
 
-			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute);
+			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
 			AttributeSet_Set_Allow_Null(&update.attributes, attr_id, v);
 			SIValue_Free(v);
 			continue;
@@ -265,7 +265,8 @@ void EvalEntityUpdates
 					break;
 				}
 
-				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval);
+				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval,
+						true);
 				AttributeSet_Set_Allow_Null(&update.attributes, attr_id, value);
 			}
 

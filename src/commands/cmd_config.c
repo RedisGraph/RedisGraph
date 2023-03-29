@@ -8,7 +8,10 @@
 #include "RG.h"
 #include "configuration/config.h"
 
-void _Config_get_all(RedisModuleCtx *ctx) {
+void _Config_get_all
+(
+	RedisModuleCtx *ctx
+) {
 	uint config_count = Config_END_MARKER;
 	RedisModule_ReplyWithArray(ctx, config_count);
 
@@ -28,7 +31,12 @@ void _Config_get_all(RedisModuleCtx *ctx) {
 	}
 }
 
-void _Config_get(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+void _Config_get
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString **argv,
+	int argc
+) {
 	// return the given config's value to the user
 	Config_Option_Field config_field;
 	const char *config_name = RedisModule_StringPtrLen(argv[2], NULL);
@@ -56,7 +64,12 @@ void _Config_get(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	}
 }
 
-void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+void _Config_set
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString **argv,
+	int argc
+) {
 	//--------------------------------------------------------------------------
 	// validate configuration
 	//--------------------------------------------------------------------------
@@ -132,21 +145,32 @@ void _Config_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModule_ReplyWithSimpleString(ctx, "OK");
 }
 
-int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+int Graph_Config
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString **argv,
+	int argc
+) {
 	// GRAPH.CONFIG <GET|SET> <NAME> [value]
-	if(argc < 3) return RedisModule_WrongArity(ctx);
+	if(argc < 3) {
+		return RedisModule_WrongArity(ctx);
+	}
 
 	const char *action = RedisModule_StringPtrLen(argv[1], NULL);
 
 	if(!strcasecmp(action, "GET")) {
 		// GRAPH.CONFIG GET <NAME>
-		if(argc != 3) return RedisModule_WrongArity(ctx);
+		if(argc != 3) {
+			return RedisModule_WrongArity(ctx);
+		}
 		_Config_get(ctx, argv, argc);
 	} else if(!strcasecmp(action, "SET")) {
 		// GRAPH.CONFIG SET <NAME> [value] <NAME> [value] ...
 		// emit an error if we received an odd number of arguments,
 		// as this indicates an invalid configuration
-		if(argc < 4 || (argc % 2) == 1) return RedisModule_WrongArity(ctx);
+		if(argc < 4 || (argc % 2) == 1) {
+			return RedisModule_WrongArity(ctx);
+		}
 		_Config_set(ctx, argv+2, argc-2);
 	} else {
 		RedisModule_ReplyWithError(ctx, "Unknown subcommand for GRAPH.CONFIG");
