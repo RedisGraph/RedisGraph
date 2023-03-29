@@ -726,8 +726,6 @@ workflows:
       - benchmark:
           <<: *on-integ-and-version-tags
           context: common
-      - valgrind-test:
-          <<: *always #@@
 
   benchmark-flow-label:
     when:
