@@ -332,7 +332,7 @@ class testProcedures(FlowTestsBase):
         self.env.assertEquals(actual_resultset, expected_results)
 
         # Add an exact-match index to a different property on the same label..
-        result = redis_graph.query("CREATE INDEX ON :fruit(other_property)")
+        result = create_node_exact_match_index(redis_graph, 'fruit', 'other_property')
         self.env.assertEquals(result.indices_created, 1)
 
         # Verify that all indexes are reported.
@@ -342,7 +342,7 @@ class testProcedures(FlowTestsBase):
         self.env.assertEquals(actual_resultset, expected_results)
 
         # Add an exact-match index to the full-text indexed property on the same label..
-        result = redis_graph.query("CREATE INDEX ON :fruit(name)")
+        result = create_node_exact_match_index(redis_graph, 'fruit', 'name', sync=True)
         self.env.assertEquals(result.indices_created, 1)
 
         # Verify that all indexes are reported.

@@ -82,7 +82,7 @@ class testReplication(FlowTestsBase):
         # add a unique constraint which is destined to fail
         origin.query("CREATE (:Actor {age: 10, name: 'jerry'}), (:Actor {age: 10, name: 'jerry'})")
         create_unique_node_constraint(origin, "Actor", "age", sync=True)
-        c = get_constraint(origin, "unique", "LABEL", "Actor", "age")
+        c = get_constraint(origin, "UNIQUE", "LABEL", "Actor", "age")
         self.env.assertEquals(c.status, "FAILED")
 
         # update entity

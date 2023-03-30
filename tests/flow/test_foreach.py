@@ -640,3 +640,19 @@ class testForeachFlow():
 
         # no nodes should have been created
         self.env.assertEquals(res.nodes_created, 0)
+
+    def test14_unbound_list_var(self):
+        """Tests that given an unbound list-var, an error is raised"""
+
+        try:
+            graph.query("FOREACH(n in li | CREATE (:N))")
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("li not defined", str(e))
+
+        # same check, when the list-var is the same as the list expression
+        try:
+            graph.query("FOREACH(n in n | CREATE (:N))")
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn("n not defined", str(e))

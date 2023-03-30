@@ -117,7 +117,6 @@ static void _Index_PopulateEdgeIndex
 	ASSERT(g   != NULL);
 	ASSERT(idx != NULL);
 
-
 	GrB_Info  info;
 	EntityID  src_id       = 0;     // current processed row idx
 	EntityID  dest_id      = 0;     // current processed column idx
@@ -163,7 +162,7 @@ static void _Index_PopulateEdgeIndex
 		while((info = RG_MatrixTupleIter_next_UINT64(&it, &src_id, &dest_id,
 						&edge_id)) == GrB_SUCCESS &&
 				src_id == prev_src_id &&
-				dest_id <= prev_dest_id);
+				dest_id < prev_dest_id);
 
 		// process only if iterator is on an active entry
 		if(info != GrB_SUCCESS) {
@@ -224,9 +223,8 @@ void Index_Populate
 	Index idx,
 	Graph *g
 ) {
-	ASSERT(g        != NULL);
-	ASSERT(idx      != NULL);
-	ASSERT(Index_RSIndex(idx) != NULL);
+	ASSERT(g != NULL);
+	ASSERT(idx != NULL);
 	ASSERT(!Index_Enabled(idx));  // index should have pending changes
 
 	//--------------------------------------------------------------------------
@@ -238,8 +236,5 @@ void Index_Populate
 	} else {
 		_Index_PopulateEdgeIndex(idx, g);
 	}
-
-	// task been handled, try to enable index
-	Index_Enable(idx);
 }
 

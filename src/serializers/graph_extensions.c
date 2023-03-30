@@ -70,16 +70,16 @@ void Serializer_Graph_SetNode
 	AttributeSet *set = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
 	*set = NULL;
 
-	n->id             =  id;
-	n->attributes     =  set;
+	n->id =  id;
+	n->attributes =  set;
 	GrB_Info info;
 	UNUSED(info);
 
 	for(uint i = 0; i < label_count; i ++) {
 		LabelID label = labels[i];
 		// set label matrix at position [id, id]
-		RG_Matrix  M  =  Graph_GetLabelMatrix(g, label);
-		GrB_Matrix m  =  RG_MATRIX_M(M);
+		RG_Matrix  M = Graph_GetLabelMatrix(g, label);
+		GrB_Matrix m = RG_MATRIX_M(M);
 		info = GrB_Matrix_setElement_BOOL(m, true, id, id);
 		if(info == GrB_INVALID_INDEX) {
 			RedisModule_Log(NULL, "notice", "RESIZE LABEL MATRIX");

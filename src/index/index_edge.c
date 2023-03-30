@@ -22,34 +22,32 @@ void Index_IndexEdge
 	ASSERT(idx  !=  NULL);
 	ASSERT(e    !=  NULL);
 
-	RSIndex   *rsIdx   =  Index_RSIndex(idx);
-	EntityID  src_id   =  Edge_GetSrcNodeID(e);
-	EntityID  dest_id  =  Edge_GetDestNodeID(e);
-	EntityID  edge_id  =  ENTITY_GET_ID(e);
+	RSDoc    *doc    = NULL;
+	RSIndex  *rsIdx  = Index_RSIndex(idx);
+	EntityID src_id  = Edge_GetSrcNodeID(e);
+	EntityID dest_id = Edge_GetDestNodeID(e);
+	EntityID edge_id = ENTITY_GET_ID(e);
 
 	EdgeIndexKey key = {.src_id = src_id, .dest_id = dest_id, .edge_id = edge_id};
 	size_t key_len = sizeof(EdgeIndexKey);
 
 	uint doc_field_count = 0;
-	RSDoc *doc = Index_IndexGraphEntity(
-			idx, (const GraphEntity *)e, (const void *)&key, key_len,
-			&doc_field_count);
+	doc = Index_IndexGraphEntity(idx, (const GraphEntity *)e,
+			(const void *)&key, key_len, &doc_field_count);
 
-	if(doc_field_count > 0) {
-		// add src_node and dest_node fields
-		RediSearch_DocumentAddFieldNumber(doc, "_src_id", src_id,
-				RSFLDTYPE_NUMERIC);
-
-		RediSearch_DocumentAddFieldNumber(doc, "_dest_id", dest_id,
-				RSFLDTYPE_NUMERIC);
-
-		RediSearch_SpecAddDocument(rsIdx, doc);
-	} else {
+	if(doc_field_count == 0) {
 		// entity doesn't possess any attributes which are indexed
 		// remove entity from index and delete document
 		Index_RemoveEdge(idx, e);
 		RediSearch_FreeDocument(doc);
+		return;
 	}
+
+	// add document to active RediSearch index
+	// add src_node and dest_node fields
+	RediSearch_DocumentAddFieldNumber(doc, "_src_id", src_id, RSFLDTYPE_NUMERIC);
+	RediSearch_DocumentAddFieldNumber(doc, "_dest_id", dest_id, RSFLDTYPE_NUMERIC);
+	RediSearch_SpecAddDocument(rsIdx, doc);
 }
 
 void Index_RemoveEdge
@@ -60,12 +58,13 @@ void Index_RemoveEdge
 	ASSERT(e   != NULL);
 	ASSERT(idx != NULL);
 
-	EntityID  src_id   =  Edge_GetSrcNodeID(e);
-	EntityID  dest_id  =  Edge_GetDestNodeID(e);
-	EntityID  edge_id  =  ENTITY_GET_ID(e);
+	RSIndex  *rsIdx  = Index_RSIndex(idx);
+	EntityID src_id  = Edge_GetSrcNodeID(e);
+	EntityID dest_id = Edge_GetDestNodeID(e);
+	EntityID edge_id = ENTITY_GET_ID(e);
 
 	EdgeIndexKey key = {.src_id = src_id, .dest_id = dest_id, .edge_id = edge_id};
 	size_t key_len = sizeof(EdgeIndexKey);
-	RediSearch_DeleteDocument(Index_RSIndex(idx), &key, key_len);
+	RediSearch_DeleteDocument(rsIdx, &key, key_len);
 }
 
