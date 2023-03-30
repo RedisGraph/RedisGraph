@@ -3,12 +3,9 @@ import threading
 from common import *
 
 GRAPH_ID = "effects"
+MONITOR_ATTACHED = False
 
 class testEffects():
-    async def wait_for_command(self):
-        monitor_response = await self.monitor.next_command()
-        return monitor_response
-    
     # enable effects replication
     def effects_enable(self):
         self.master.execute_command("GRAPH.CONFIG", "SET", "REPLICATE_EFFECTS", 'YES')
@@ -28,25 +25,46 @@ class testEffects():
         return not self.effects_enabled()
 
     def monitor_thread(self):
+        global MONITOR_ATTACHED
         try:
             with self.replica.monitor() as m:
+                MONITOR_ATTACHED = True
                 for cmd in m.listen():
-                    if 'GRAPH.EFFECT' in cmd['command']:
-                        self.effects.append(cmd['command'][len('GRAPH.EFFECT ' + GRAPH_ID):])
+                    if 'GRAPH.EFFECT' in cmd['command'] or 'GRAPH.QUERY' in cmd['command']:
+                        self.monitor.append(cmd)
         except:
             pass
 
-    def wait_for_effect(self, timeout=10):
-        # wait for monitor to receive effects
-        interval = 0.1
-        while len(self.effects) == 0 and timeout > 0:
-            time.sleep(interval)
-            timeout -= interval
+    def wait_for_command(self, cmd, timeout=500):
+        # wait for monitor to receive cmd
+        found = False
+        interval = 0.2
 
-        if len(self.effects) > 0:
-            return self.effects.pop()
-        else:
-            return None
+        while not found and timeout > 0:
+            while len(self.monitor) == 0:
+                # wait for an item
+                time.sleep(interval)
+                timeout -= interval
+            item = self.monitor.pop()
+            found = cmd in item['command']
+
+        if found is False:
+            raise Exception(f"missing expected replicated command: {cmd}")
+
+    def wait_for_effect(self):
+        self.wait_for_command('GRAPH.EFFECT')
+
+    def wait_for_query(self):
+        self.wait_for_command('GRAPH.QUERY')
+
+    def monitor_containt_effect(self):
+        for item in self.monitor:
+            if 'GRAPH.EFFECT' in item['command']:
+                return True
+        return False
+
+    def clear_monitor(self):
+        self.monitor = []
 
     # query master and wait for replica
     def query_master_and_wait(self, q):
@@ -71,7 +89,7 @@ class testEffects():
 
     def __init__(self):
         self.env = Env(decodeResponses=True, env='oss', useSlaves=True)
-        self.effects = []
+        self.monitor = []
         self.master = self.env.getConnection()
         self.replica = self.env.getSlaveConnection()
         self.master_graph = Graph(self.master, GRAPH_ID)
@@ -79,6 +97,9 @@ class testEffects():
 
         self.monitor_thread = threading.Thread(target=self.monitor_thread)
         self.monitor_thread.start()
+        # wait for monitor thread to attach
+        while MONITOR_ATTACHED is False:
+            time.sleep(0.2)
 
     def __del__(self):
         # all done, shutdown replica
@@ -99,7 +120,7 @@ class testEffects():
         self.env.assertEquals(res.nodes_created, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -110,7 +131,7 @@ class testEffects():
         self.env.assertEquals(res.nodes_created, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -120,7 +141,7 @@ class testEffects():
         self.env.assertEquals(res.relationships_created, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -128,7 +149,7 @@ class testEffects():
         # test the introduction of an attribute by an effect
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         # set a new attribute for each supported attribute type
         q = """MATCH (n:L) WITH n
@@ -144,7 +165,7 @@ class testEffects():
         self.env.assertEquals(res.properties_set, 4)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         q = """MATCH ()-[e]->()
                 WITH e
@@ -159,7 +180,7 @@ class testEffects():
         self.env.assertEquals(res.properties_set, 3)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -167,7 +188,7 @@ class testEffects():
         # test the introduction of a new node by an effect
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         # empty node
         q0 = """CREATE ()"""
@@ -203,7 +224,7 @@ class testEffects():
             self.env.assertEquals(res.nodes_created, 1)
 
             if(expect_effect):
-                self.env.assertIsNotNone(self.wait_for_effect())
+                self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -211,7 +232,7 @@ class testEffects():
         # tests the introduction of a new edge by an effect
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         # edge without attributes
         q1 = """CREATE ()-[:R]->()"""
@@ -239,7 +260,7 @@ class testEffects():
             self.env.assertEquals(res.relationships_created, 1)
 
             if(expect_effect):
-                self.env.assertIsNotNone(self.wait_for_effect())
+                self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -247,7 +268,7 @@ class testEffects():
         # test an entity attribute set update by an effect
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         q = """MATCH (n:L)
                WITH n
@@ -265,7 +286,7 @@ class testEffects():
         self.env.assertGreater(res.properties_set, 0)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -287,7 +308,7 @@ class testEffects():
         self.env.assertGreater(res.properties_removed, 0)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -308,7 +329,7 @@ class testEffects():
         self.env.assertGreater(res.properties_set, 0)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -320,7 +341,7 @@ class testEffects():
         self.env.assertEquals(res.properties_removed, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -332,14 +353,14 @@ class testEffects():
         self.env.assertGreater(res.properties_removed, 0)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
     def test07_update_edge_effect(self, expect_effect=True):
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         # test an edge attribute set update by an effect
         q = """MATCH ()-[e]->()
@@ -358,7 +379,7 @@ class testEffects():
         self.env.assertGreater(res.properties_set, 0)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -380,7 +401,7 @@ class testEffects():
         self.env.assertGreater(res.properties_removed, 0)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -401,7 +422,7 @@ class testEffects():
         self.env.assertGreater(res.properties_set, 0)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -413,7 +434,7 @@ class testEffects():
         self.env.assertEquals(res.properties_removed, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -425,7 +446,7 @@ class testEffects():
         self.env.assertGreater(res.properties_removed, 0)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -433,14 +454,14 @@ class testEffects():
         # test the addition of a new node label by an effect
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         q = """MATCH (n:A:B) SET n:C"""
         res = self.query_master_and_wait(q)
         self.env.assertEquals(res.labels_added, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -450,7 +471,7 @@ class testEffects():
         self.env.assertEquals(res.labels_added, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -458,14 +479,14 @@ class testEffects():
         # test the removal of a node label by an effect
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         q = """MATCH (n:C) REMOVE n:C RETURN n"""
         res = self.query_master_and_wait(q)
         self.env.assertEquals(res.labels_removed, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -473,14 +494,14 @@ class testEffects():
         # test the deletion of an edge by an effect
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         q = """MATCH ()-[e]->() WITH e LIMIT 1 DELETE e"""
         res = self.query_master_and_wait(q)
         self.env.assertEquals(res.relationships_deleted, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -488,7 +509,7 @@ class testEffects():
         # test the deletion of a node by an effect
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         # using 'n' and 'x' to try and introduce "duplicated" deletions
         q = "MATCH (n) WITH n as n, n as x DELETE n, x"
@@ -496,7 +517,7 @@ class testEffects():
         self.env.assertGreater(res.nodes_deleted, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -504,7 +525,7 @@ class testEffects():
         # test create and update of a node by an effect
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         q = """MERGE (n:A {v:'red'})
                ON MATCH SET n.v = 'green'
@@ -515,7 +536,7 @@ class testEffects():
         self.env.assertEquals(res.properties_removed, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -528,7 +549,7 @@ class testEffects():
         self.env.assertEquals(res.properties_removed, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -536,7 +557,7 @@ class testEffects():
         # test create and update of an edge by an effect
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         q = """MERGE (n:A {v:'red'})
                MERGE (n)-[e:R{v:'red'}]->(n)
@@ -547,7 +568,7 @@ class testEffects():
         self.env.assertEquals(res.relationships_created, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
@@ -561,16 +582,15 @@ class testEffects():
         self.env.assertEquals(res.properties_removed, 1)
 
         if(expect_effect):
-            self.env.assertIsNotNone(self.wait_for_effect())
+            self.wait_for_effect()
 
         self.assert_graph_eq()
 
-    def test14_large_num_of_chages(self, expect_effect=True):
+    def test14_large_num_of_chages(self):
         # make sure a query which introduces a large number of changes
         # doesn't replicate effects
 
-        # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.clear_monitor()
 
         q = """MATCH (n)
                WITH n
@@ -582,13 +602,13 @@ class testEffects():
         self.env.assertEquals(res.properties_set, 10001)
 
         # make sure no effect been sent
-        self.env.assertIsNone(self.wait_for_effect(), 0.5)
+        self.wait_for_query()
 
     def test15_rerun_disable_effects(self):
         # test replication works when effects are disabled
 
         # no leftovers from previous test
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
         # update graph key
         global GRAPH_ID
@@ -615,8 +635,8 @@ class testEffects():
         self.test11_delete_node_effect(False)
         self.test12_merge_node(False)
         self.test13_merge_edge(False)
-        self.test14_large_num_of_chages(False)
+        self.test14_large_num_of_chages()
 
         # make sure no effects had been recieved
-        self.env.assertEquals(len(self.effects), 0)
+        self.env.assertFalse(self.monitor_containt_effect())
 
