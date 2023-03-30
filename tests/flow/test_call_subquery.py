@@ -376,6 +376,25 @@ updating clause.")
 
         # the graph has two nodes, with `name` 'Raz' and `v` 5 and 6
 
+        # Test LIMIT
+        res = graph.query(
+            """
+            CALL {
+                MATCH (n:N)
+                RETURN n
+                ORDER BY n.v ASC
+                LIMIT 1
+            }
+            RETURN n
+            """
+        )
+
+        # assert that only one record was returned
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0],
+            Node(label='N', properties={'name': 'Raz', 'v': 5}))
+
+        # Test SKIP
         res = graph.query(
             """
             CALL {
@@ -393,7 +412,7 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0],
             Node(label='N', properties={'name': 'Raz', 'v': 6}))
 
-        # Tests for LIMIT
+        # Tests SKIP and LIMIT together
 
         # Create 10 nodes with label :W
         res = graph.query("UNWIND range(1,10) AS i CREATE(:W {name:tostring(i), value:i})")
@@ -500,29 +519,132 @@ updating clause.")
 
     def test14_nested_call_subquery(self):
         query_to_expected_result = {
-            # "UNWIND [0, 1, 2] AS x CALL { CALL {RETURN 1 AS One} RETURN 2 AS Two} RETURN 0" : [[0],[0],[0]],
-            "UNWIND [0, 1, 2] AS x CALL { WITH x CALL {RETURN 1 AS One} RETURN 2 AS Two} RETURN 0" : [[0],[0],[0]],
+            # """
+            # UNWIND [0, 1, 2] AS x 
+            # CALL { 
+            #     CALL {
+            #         RETURN 1 AS One
+            #     } 
+            #     RETURN 2 AS Two
+            # } RETURN 0
+            # """ 
+            # : [[0],[0],[0]],
+            """
+            UNWIND [0, 1, 2] AS x 
+            CALL { 
+                WITH x 
+                CALL {
+                    RETURN 1 AS One
+                } 
+                RETURN 2 AS Two
+            } 
+            RETURN 0
+            """ 
+            : [[0],[0],[0]],
             # TODO: Crash reusing variable names in nested CALL{}
-            # "UNWIND [0, 1, 2] AS x CALL { CALL {RETURN 1 AS x} RETURN max(x) AS y} RETURN x" : [[0], [1], [2]],
+            # """
+            # UNWIND [0, 1, 2] AS x 
+            # CALL { 
+            #     CALL {
+            #         RETURN 1 AS x
+            #     } 
+            #     RETURN max(x) AS y
+            # } 
+            # RETURN x
+            # """ 
+            # : [[0], [1], [2]],
             # TODO: Wrong results using aggregation functions in inner CALL{}
-            # "UNWIND [0, 1, 2] AS x CALL { WITH x RETURN max(x) AS y} RETURN x" : [[0], [1], [2]],
-            # "UNWIND [0, 1, 2] AS x CALL { WITH x RETURN max(x) AS y} RETURN y" : [[0], [1], [2]],
+            # """
+            # UNWIND [0, 1, 2] AS x 
+            # CALL { 
+            #     WITH x 
+            #     RETURN max(x) AS y
+            # } 
+            # RETURN x
+            # """
+            # : [[0], [1], [2]],
+            # """
+            # UNWIND [0, 1, 2] AS x 
+            # CALL { 
+            #     WITH x 
+            #     RETURN max(x) AS y
+            # }
+            # RETURN y
+            # """
+            # : [[0], [1], [2]],
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
 
+    # TODO: Enable this test once WITH validation is fixed
+    # def test15_leading_with(self):
+    #     res = graph.query(
+    #         """
+    #         CALL { 
+    #             WITH ['foo', 'bar'] AS l1 
+    #             RETURN l1
+    #         } 
+    #         RETURN l1
+    #         """
+    #     )
 
+    #     # validate the results
+    #     self.env.assertEquals(len(res.result_set), 1)
+    #     self.env.assertEquals(res.result_set[0][0], ['foo', 'bar'])
 
+    # TODO: Enable this test after fix the bug. Currently, the query returns: 'S', 'T'
+    # def test16_unwind_optional_match_with(self):  
+    #     res = graph.query (
+    #         """
+    #         CALL { 
+    #             UNWIND ['S','T'] AS l1 
+    #             OPTIONAL MATCH (n:XX) 
+    #             WITH n 
+    #             RETURN n
+    #         } 
+    #         RETURN n
+    #         """
+    #     )
 
+    #     # validate the results
+    #     self.env.assertEquals(len(res.result_set), 2)
+    #     self.env.assertEquals(res.result_set[0][0], None)
+    #     self.env.assertEquals(res.result_set[1][0], None)
 
-
-
-
-
-
+    # TODO: Enable this test after fixing: (error) _AR_EXP_UpdateEntityIdx: Unable to locate a value with alias n within the record
+    # def test17_aggregation_in_subquery(self):
+    #     # Create 3 nodes for this test
+    #     graph.query("UNWIND range(1, 3) AS i CREATE (n:A {v:i})")
+        
+    #     query_to_expected_result = {
+    #         """
+    #         CALL {
+    #             MATCH (n:A) 
+    #                 WHERE n.v % 2 = 0 
+    #             WITH max(n.v) AS cn
+    #             RETURN cn
+    #         } 
+    #         RETURN cn
+    #         """ 
+    #         : [[2]],
+    #         """
+    #         CALL {
+    #             OPTIONAL MATCH (n:A) 
+    #                 WHERE n.v%2=0 
+    #             WITH collect(n.v) AS cn 
+    #             OPTIONAL MATCH (m:A) 
+    #                 WHERE m.v%2=1 
+    #             WITH sum(m.v) AS cm, cn  
+    #             RETURN cn, cm
+    #         } 
+    #         RETURN cn, cm""" 
+    #         : [[[2], 4]]
+    #     }
+    #     for query, expected_result in query_to_expected_result.items():
+    #         self.get_res_and_assertEquals(query, expected_result)
 
     # # TODO: Add this once UNION is supported
-    # def test09_union(self):
+    # def test18_union(self):
     #     """Test that UNION works properly within a subquery"""
 
     #     # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
@@ -552,7 +674,7 @@ updating clause.")
 
     # # TODO: Add these tests once the eager returning case is implemented
         # Note: It's supported (eager returning case) - modify the test to match new db state.
-    # def test13_update(self):
+    # def test19_update(self):
     #     """Test that updates within the subquery are applied appropriately and
     #     later read correctly"""
 
