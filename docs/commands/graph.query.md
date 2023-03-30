@@ -804,6 +804,9 @@ GRAPH.QUERY DEMO_GRAPH
 ```
 
 #### FOREACH
+
+(Since RedisGraph v2.12)
+
 The `FOREACH` clause feeds the components of a list to a sub-query comprised of **updating clauses only** (`CREATE`, `MERGE`, `SET`, `REMOVE`, `DELETE` and `FOREACH`), while passing on the records it receives without change.
 
 The clauses within the sub-query recognize the bound variables defined prior to the `FOREACH` clause, but are local in the sense that later clauses are not aware of the variables defined inside them. In other words, `FOREACH` uses the current context, and does not affect it.
