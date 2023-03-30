@@ -117,12 +117,6 @@ unsigned short GraphContext_SchemaCount
 	SchemaType t
 );
 
-// activate all constraints for a given graph context
-void GraphContext_ActivateAllConstraints
-(
-	const GraphContext *gc
-);
-
 // enable all constraints
 void GraphContext_EnableConstrains
 (
