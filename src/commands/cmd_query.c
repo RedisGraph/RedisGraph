@@ -72,41 +72,36 @@ static void inline GraphQueryCtx_Free
 // compared to query's execution time
 static bool _should_replicate_effects(void)
 {
+	// GRAPH.EFFECT will be used to replicate a query when
+	// the average modification time > configuted replicate effects threshold
+	//
+	// for example:
+	// a query which ran for 10ms and performed 5 changes
+	// the average change time is 10/5 = 2ms
+	// if 2ms > configured replicate effects threshold
+	// then the query will be replicated via GRAPH.EFFECT
+	//
+	// on the other hand if a query ran for 1ms and performed 4 changes
+	// the average change timw is 1/4 = 0.25ms
+	// 0.25 < configured replicate effects threshold
+	// then the query will be replicate via GRAPH.QUERY
+
 	//--------------------------------------------------------------------------
 	// consult with configuration
 	//--------------------------------------------------------------------------
 
-	bool replicate_effects;
-	Config_Option_get(Config_REPLICATE_EFFECTS, &replicate_effects);
-	if(replicate_effects == false) {
-		// effects replication disabled via configuration
-		return false;
-	}
+	uint64_t effects_threshold;
+	Config_Option_get(Config_EFFECTS_THRESHOLD, &effects_threshold);
 
-	// effects replication enabled via configuration
-	// use effects when:
-	// 1. the number of changes is small (<64)
-	// 2. the ratio between query execution time and number of changes
-	//    favours number of effects
+	// compute average change time
+	double exec_time = QueryCtx_GetExecutionTime();   // query execution time
+	uint n = UndoLog_Length(*QueryCtx_GetUndoLog());  // number of modifications
+	double avg_mod_time = exec_time / n;              // avg modification time
 
-	// number of changes
-	UndoLog *undolog = QueryCtx_GetUndoLog();
-	uint n = UndoLog_Length(*undolog);
+	avg_mod_time *= 1000; // convert from ms to μs microseconds
 
-	if(n > 2048 || n == 0) {
-		// either no changes or too many changes, do not use effects
-		return false;
-	} else if(n < 64) {
-		// small number of changes, use effects
-		return true;
-	}
-
-	// compare ratio between query execution time (ms)
-	// and number of changes
-	// (exec_time / n) > 1 when execution time is relatively larger than
-	// number of changes, in which case we want to use effects
-	double exec_time = QueryCtx_GetExecutionTime();
-	return ((exec_time / n) > 1);
+	// use GRAPH.EFFECT when avg_mod_time > effects_threshold
+	return (avg_mod_time > (double)effects_threshold);
 }
 
 static void abort_and_check_timeout
@@ -287,17 +282,17 @@ inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 static void _ExecuteQuery(void *args) {
 	ASSERT(args != NULL);
 
-	GraphQueryCtx   *gq_ctx       =  args;
-	QueryCtx        *query_ctx    =  gq_ctx->query_ctx;
-	GraphContext    *gc           =  gq_ctx->graph_ctx;
-	RedisModuleCtx  *rm_ctx       =  gq_ctx->rm_ctx;
-	bool            profile       =  gq_ctx->profile;
-	bool            readonly      =  gq_ctx->readonly_query;
-	ExecutionCtx    *exec_ctx     =  gq_ctx->exec_ctx;
-	CommandCtx      *command_ctx  =  gq_ctx->command_ctx;
-	AST             *ast          =  exec_ctx->ast;
-	ExecutionPlan   *plan         =  exec_ctx->plan;
-	ExecutionType   exec_type     =  exec_ctx->exec_type;
+	GraphQueryCtx  *gq_ctx      = args;
+	QueryCtx       *query_ctx   = gq_ctx->query_ctx;
+	GraphContext   *gc          = gq_ctx->graph_ctx;
+	RedisModuleCtx *rm_ctx      = gq_ctx->rm_ctx;
+	bool           profile      = gq_ctx->profile;
+	bool           readonly     = gq_ctx->readonly_query;
+	ExecutionCtx   *exec_ctx    = gq_ctx->exec_ctx;
+	CommandCtx     *command_ctx = gq_ctx->command_ctx;
+	AST            *ast         = exec_ctx->ast;
+	ExecutionPlan  *plan        = exec_ctx->plan;
+	ExecutionType  exec_type    = exec_ctx->exec_type;
 
 	// if we have migrated to a writer thread,
 	// update thread-local storage and track the CommandCtx
@@ -378,13 +373,13 @@ static void _ExecuteQuery(void *args) {
 				size_t effects_len = 0;
 				u_char *effects = Effects_FromUndoLog(*QueryCtx_GetUndoLog(),
 						&effects_len);
-				ASSERT(effects != NULL && effects_len > 0);
 
 				// replicate effects
-				RedisModule_Replicate(rm_ctx, "GRAPH.EFFECT", "cb!",
-						gc->graph_name, effects, effects_len);
-
-				rm_free(effects);
+				if(effects != NULL) {
+					RedisModule_Replicate(rm_ctx, "GRAPH.EFFECT", "cb!",
+							GraphContext_GetName(gc), effects, effects_len);
+					rm_free(effects);
+				}
 			} else {
 				// replicate original query
 				QueryCtx_Replicate(query_ctx);

@@ -8,17 +8,17 @@ MONITOR_ATTACHED = False
 class testEffects():
     # enable effects replication
     def effects_enable(self):
-        self.master.execute_command("GRAPH.CONFIG", "SET", "REPLICATE_EFFECTS", 'YES')
-        self.replica.execute_command("GRAPH.CONFIG", "SET", "REPLICATE_EFFECTS", 'YES')
+        self.master.execute_command("GRAPH.CONFIG", "SET", "EFFECTS_THRESHOLD", '0')
+        self.replica.execute_command("GRAPH.CONFIG", "SET", "EFFECTS_THRESHOLD", '0')
 
     # disable effects replication
     def effects_disable(self):
-        res = self.master.execute_command("GRAPH.CONFIG", "SET", "REPLICATE_EFFECTS", 'NO')
+        res = self.master.execute_command("GRAPH.CONFIG", "SET", "EFFECTS_THRESHOLD", '999999')
 
     # checks if effects replication is enabled
     def effects_enabled(self):
-        conf = self.master.execute_command("GRAPH.CONFIG", "GET", "REPLICATE_EFFECTS")
-        return (conf[1] == 1)
+        conf = self.master.execute_command("GRAPH.CONFIG", "GET", "EFFECTS_THRESHOLD")
+        return (conf[1] == 0)
 
     # checks if effects replication is enabled
     def effects_disabled(self):
@@ -95,6 +95,8 @@ class testEffects():
         self.master_graph = Graph(self.master, GRAPH_ID)
         self.replica_graph = Graph(self.replica, GRAPH_ID)
 
+        self.effects_enable()
+
         self.monitor_thread = threading.Thread(target=self.monitor_thread)
         self.monitor_thread.start()
         # wait for monitor thread to attach
@@ -121,6 +123,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -132,6 +136,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -142,6 +148,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -166,6 +174,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         q = """MATCH ()-[e]->()
                 WITH e
@@ -181,6 +191,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -225,6 +237,8 @@ class testEffects():
 
             if(expect_effect):
                 self.wait_for_effect()
+            else:
+                self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -261,6 +275,8 @@ class testEffects():
 
             if(expect_effect):
                 self.wait_for_effect()
+            else:
+                self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -287,6 +303,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -309,6 +327,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -330,6 +350,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -342,6 +364,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -354,6 +378,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -380,6 +406,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -402,6 +430,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -423,6 +453,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -435,6 +467,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -447,6 +481,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -462,6 +498,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -472,6 +510,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -487,6 +527,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -502,6 +544,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -518,6 +562,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -537,6 +583,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -550,6 +598,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -569,6 +619,8 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
@@ -583,28 +635,12 @@ class testEffects():
 
         if(expect_effect):
             self.wait_for_effect()
+        else:
+            self.wait_for_query()
 
         self.assert_graph_eq()
 
-    def test14_large_num_of_chages(self):
-        # make sure a query which introduces a large number of changes
-        # doesn't replicate effects
-
-        self.clear_monitor()
-
-        q = """MATCH (n)
-               WITH n
-               LIMIT 1
-               UNWIND range(0, 10000) as x
-               SET n.v = x"""
-
-        res = self.query_master_and_wait(q)
-        self.env.assertEquals(res.properties_set, 10001)
-
-        # make sure no effect been sent
-        self.wait_for_query()
-
-    def test15_rerun_disable_effects(self):
+    def test14_rerun_disable_effects(self):
         # test replication works when effects are disabled
 
         # no leftovers from previous test
@@ -635,7 +671,6 @@ class testEffects():
         self.test11_delete_node_effect(False)
         self.test12_merge_node(False)
         self.test13_merge_edge(False)
-        self.test14_large_num_of_chages()
 
         # make sure no effects had been recieved
         self.env.assertFalse(self.monitor_containt_effect())

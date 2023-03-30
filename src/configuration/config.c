@@ -55,8 +55,8 @@
 // size of node creation buffer
 #define NODE_CREATION_BUFFER "NODE_CREATION_BUFFER"
 
-// size of node creation buffer
-#define REPLICATE_EFFECTS "REPLICATE_EFFECTS"
+// effects replication threshold
+#define EFFECTS_THRESHOLD "EFFECTS_THRESHOLD"
 
 //------------------------------------------------------------------------------
 // Configuration defaults
@@ -81,7 +81,7 @@ typedef struct {
 	int64_t query_mem_capacity;         // Max mem(bytes) that query/thread can utilize at any given time
 	uint64_t node_creation_buffer;      // Number of extra node creations to buffer as margin in matrices
 	int64_t delta_max_pending_changes;  // number of pending changed befor RG_Matrix flushed
-	bool replicate_effects;             // replicate queries via effects
+	uint64_t effects_threshold;         // replicate via effects when runtime exceeds threshold
 	Config_on_change cb;                // callback function which being called when config param changed
 } RG_Config;
 
@@ -381,18 +381,18 @@ static uint64_t Config_node_creation_buffer_get(void) {
 }
 
 //------------------------------------------------------------------------------
-// replicate effects
+// effects threshold
 //------------------------------------------------------------------------------
 
-static void Config_replicate_effects_set
+static void Config_effects_threshold_set
 (
-	bool enabled
+	uint64_t threshold
 ) {
-	config.replicate_effects = enabled;
+	config.effects_threshold = threshold;
 }
 
-static bool Config_replicate_effects_get(void) {
-	return config.replicate_effects;
+static uint64_t Config_effects_threshold_get (void) {
+	return config.effects_threshold;
 }
 
 bool Config_Contains_field
@@ -428,8 +428,8 @@ bool Config_Contains_field
 		f = Config_DELTA_MAX_PENDING_CHANGES;
 	} else if(!(strcasecmp(field_str, NODE_CREATION_BUFFER))) {
 		f = Config_NODE_CREATION_BUFFER;
-	} else if (!(strcasecmp(field_str, REPLICATE_EFFECTS))) {
-		f = Config_REPLICATE_EFFECTS;
+	} else if (!(strcasecmp(field_str, EFFECTS_THRESHOLD))) {
+		f = Config_EFFECTS_THRESHOLD;
 	} else {
 		return false;
 	}
@@ -496,8 +496,8 @@ const char *Config_Field_name
 			name = NODE_CREATION_BUFFER;
 			break;
 
-		case Config_REPLICATE_EFFECTS:
-			name = REPLICATE_EFFECTS;
+		case Config_EFFECTS_THRESHOLD:
+			name = EFFECTS_THRESHOLD;
 			break;
 
 		//----------------------------------------------------------------------
@@ -559,8 +559,8 @@ static void _Config_SetToDefaults(void) {
 	// the amount of empty space to reserve for node creations in matrices
 	config.node_creation_buffer = NODE_CREATION_BUFFER_DEFAULT;
 
-	// use effects to replicate queries
-	config.replicate_effects = true;
+	// replicate effects if avg change time μs > effects_threshold μs
+	config.effects_threshold = 1 ;
 }
 
 int Config_Init
@@ -827,16 +827,16 @@ bool Config_Option_get
 		break;
 
 		//----------------------------------------------------------------------
-		// replicate effects enabled/distabled ?
+		// effects threshold
 		//----------------------------------------------------------------------
 
-		case Config_REPLICATE_EFFECTS: {
+		case Config_EFFECTS_THRESHOLD: {
 			va_start(ap, field);
-			bool *replicate_effects = va_arg(ap, bool *);
+			uint64_t *effects_threshold = va_arg(ap, uint64_t *);
 			va_end(ap);
 
-			ASSERT(replicate_effects != NULL);
-			(*replicate_effects) = Config_replicate_effects_get();
+			ASSERT(effects_threshold != NULL);
+			(*effects_threshold) = Config_effects_threshold_get();
 
 		}
 		break;
@@ -1042,15 +1042,15 @@ bool Config_Option_set
 		break;
 
 		//----------------------------------------------------------------------
-		// replicate effects
+		// effects threshold
 		//----------------------------------------------------------------------
 				
-		case Config_REPLICATE_EFFECTS: {
-			bool enabled;
-			if(!_Config_ParseYesNo(val, &enabled)) {
+		case Config_EFFECTS_THRESHOLD: {
+			long long threshold;
+			if(!_Config_ParseNonNegativeInteger(val, &threshold)) {
 				return false;
 			}
-			Config_replicate_effects_set(enabled);
+			Config_effects_threshold_set(threshold);
 		}
 		break;
 
