@@ -47,6 +47,14 @@ void str_ExtendBuffer
 	size_t extensionLen   // number of bytes to add
 );
 
+// Utility function to check if the string matches
+// the regex pattern.
+bool str_MatchRegex
+(
+	const char* regex,   // regex pattern to match with
+	const char* str      // string to match
+);
+
 // utility function to append a string to array of int32_t elements
 int32_t *str_toInt32
 (

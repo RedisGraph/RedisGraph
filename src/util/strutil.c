@@ -9,6 +9,7 @@
 #include "RG.h"
 #include "rmalloc.h"
 #include "utf8proc/utf8proc.h"
+#include "oniguruma/src/oniguruma.h"
 
 // convert ascii str to a lower case string and save it in lower
 void str_tolower_ascii
@@ -141,6 +142,50 @@ void str_ExtendBuffer
 ) {
 	*bufferLen += extensionLen;
 	*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+}
+
+// Utility function to check if the string matches
+// the regex pattern.
+bool str_MatchRegex
+(
+	const char* regex,   // regex pattern to match with
+	const char* str      // string to match
+) {
+	const int len = strlen(str);
+	regex_t *reg;
+	OnigErrorInfo einfo;
+	OnigRegion *region = onig_region_new();
+
+	bool match = true;
+
+	int rv = onig_new(&reg, (const UChar *)regex,
+		(const UChar *)(regex + strlen(regex)), ONIG_OPTION_DEFAULT,
+		ONIG_ENCODING_UTF8, ONIG_SYNTAX_JAVA, &einfo);
+	if(unlikely(rv != ONIG_NORMAL)) {
+		ASSERT(rv == ONIG_NORMAL);
+		onig_free(reg);
+		onig_region_free(region, 1);
+		return false;
+	}
+
+	rv = onig_search(reg, (const UChar*)str, (UChar* )(str + len),
+					(const UChar* )str, (const UChar* )(str + len),
+					region, ONIG_OPTION_NONE);
+	if (rv < ONIG_MISMATCH) {
+		ASSERT(rv >= ONIG_MISMATCH);
+		onig_free(reg);
+		onig_region_free(region, 1);
+		return false;
+	}
+
+	if (rv == ONIG_MISMATCH || region->beg[0] != 0 || region->end[0] != len) {
+		match = false;
+	} 
+
+	onig_free(reg);
+	onig_region_free(region, 1);
+
+	return match;
 }
 
 // utility function to append a string to a buffer of int32_t elements

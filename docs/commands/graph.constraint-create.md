@@ -3,7 +3,7 @@ syntax: |
   GRAPH.CONSTRAINT CREATE key 
     MANDATORY|UNIQUE
     NODE label | RELATIONSHIP reltype
-    PROPERTIES <prop-count> prop [prop...]  
+    PROPERTIES propCount prop [prop...]  
 ---
 
 Creates a graph constraint.
@@ -12,7 +12,7 @@ Creates a graph constraint.
 
 ## Introduction to constraints
 
-A constraint is a rule enforced on graph entities or relationships, used to guarantee a certain structure of the data.
+A constraint is a rule enforced on graph nodes or relationships, used to guarantee a certain structure of the data.
 
 RedisGraph supports two types of constraints:
 
@@ -46,7 +46,7 @@ But trying to create a third node with `first_name` Frank and `last_name` Costan
 
 - A unique constraint requires the existence of an exact-match index prior to its creation. For example, trying to create a unique constraint governing attributes: `first_name` and `last_name` of nodes with label `Person` without having an exact-match index over `Person`'s `first_name` and `last_name` attributes will fail.
    
-- A unique constraint is enforced for a given node/edge only if all the constrainted properties are set (non-null).
+- A unique constraint is enforced for a given node or edge only if all the constrainted properties are defined (non-null).
 - Unique constraints are not enforced for array-valued properties.
 - Trying to delete an index that supports a constraint will fail.
    
@@ -93,8 +93,8 @@ is a list of `propCount` property names.
 
 <note><b>Notes:</b>
 
-- Constraints are created asynchronously. The constraint creation command will reply with `PENDING` and the newly created constraint is enforced gradually on all relevant entities.
-  During its creation phase, a constraint's status is `PENDING`. If all governed entities confirm to the constraint - its status is updated to `OPERATIONAL`, otherwise, if a conflicting entity has been detected, the constraint status is updated to `FAILED` and the constraint is not enforced. The caller may try to resolve the conflict and recreate the constraint. To retrieve the status of all constraints - use the `db.constraints()` procedure.
+- Constraints are created asynchronously. The constraint creation command will reply with `PENDING` and the newly created constraint is enforced gradually on all relevant nodes or relationships.
+  During its creation phase, a constraint's status is `UNDER CONSTRUCTION`. When all governed nodes or relationships confirm to the constraint - its status is updated to `OPERATIONAL`, otherwise, if a conflict is detected, the constraint status is updated to `FAILED` and the constraint is not enforced. The caller may try to resolve the conflict and recreate the constraint. To retrieve the status of all constraints - use the `db.constraints()` procedure.
 - A constraint creation command may fail synchronously due to the following reasons:
   1. Syntax error
   2. Constraint already exists
@@ -106,28 +106,44 @@ is a list of `propCount` property names.
 
 </note>
 
+## Return value
+
+@simple-string-reply - `PENDING` if executed correctly and the constraint is being created asynchronously, or @error-reply otherwise.
+
+
 ## Examples
+
+### Creating a unique constraint for a node label
 
 To create a unique constraint for all nodes with label `Person` enforcing uniqueness on the combination of values of attributes `first_name` and `last_name`, issue the following commands:
 
 ```
-GRAPH.QUERY g "CREATE INDEX FOR (p:Person) ON (p.first_name, p.last_name)"
-GRAPH.CONSTRAINT CREATE g UNIQUE NODE Person PROPERTIES 2 first_name last_name
+redis> GRAPH.QUERY g "CREATE INDEX FOR (p:Person) ON (p.first_name, p.last_name)"
+1) 1) "Indices created: 2"
+   2) "Cached execution: 0"
+   3) "Query internal execution time: 25.779500 milliseconds"
+redis> GRAPH.CONSTRAINT CREATE g UNIQUE NODE Person PROPERTIES 2 first_name last_name
+PENDING
 ```
 
-Similarly, to create a mandatory constraint for all edges with relationship-type `Visited`, enforcing the existence of a `date` attribute, issue the following command:
+Since RedisGraph 2.12 indexes are constructed asynchronously. The constraint construction will start once the index is fully constructed.
+
+### Creating a mandatory constraint for a relationship type
+
+To create a mandatory constraint for all edges with relationship-type `Visited`, enforcing the existence of a `date` attribute, issue the following command:
 
 ```
-GRAPH.CONSTRAINT CREATE g MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
+redis> GRAPH.CONSTRAINT CREATE g MANDATORY RELATIONSHIP Visited PROPERTIES 1 date
+PENDING
 ```
 
 ## Deleting a constraint
 
-See [GRAPH.CONSTRAINT DROP](/commands/graph.constraint-drop.md)
+See [GRAPH.CONSTRAINT DROP](/commands/graph.constraint-drop)
 
 ## Listing constraints
 
-To list all constraints on a given graph, use the `db.constraints` procedure:
+To list all constraints enforced on a given graph, use the `db.constraints` procedure:
 
 ```
 GRAPH.RO_QUERY <key> "CALL db.constraints()"
@@ -138,15 +154,15 @@ For each constraint the procedure will yield the following fields:
 | Field        | Desc                                                   |
 | ------------ | ------------------------------------------------------ |
 | `type`       | type of constraint, either `UNIQUE` or `MANDATORY`     |
-| `label`      | label or relationship-type enforced by constraint      |
-| `properties` | list of properties enforced by constraint              |
+| `label`      | label or relationship-type enforced by the constraint  |
+| `properties` | list of properties enforced by the constraint          |
 | `entitytype` | type of entity, either `NODE` or `RELATIONSHIP`        |
 | `status`     | either `UNDER CONSTRUCTION`, `OPERATIONAL` or `FAILED` |
 
 Example:
 
 ```
-127.0.0.1:6379> GRAPH.RO_QUERY g "call db.constraints()"
+redis> GRAPH.RO_QUERY g "call db.constraints()"
 1) 1) "type"
    2) "label"
    3) "properties"
