@@ -368,18 +368,18 @@ static void _ExecuteQuery(void *args) {
 		// replicate if graph was modified
 		if(ResultSetStat_IndicateModification(&result_set->stats)) {
 			// determine rather or not to replicate via effects
-			if(_should_replicate_effects()) {
+			if(UndoLog_Length(*QueryCtx_GetUndoLog()) > 0 &&
+			   _should_replicate_effects()) {
 				// compute effects buffer
 				size_t effects_len = 0;
 				u_char *effects = Effects_FromUndoLog(*QueryCtx_GetUndoLog(),
 						&effects_len);
+				ASSERT(effects_len > 0 && effects != NULL);
 
 				// replicate effects
-				if(effects != NULL) {
-					RedisModule_Replicate(rm_ctx, "GRAPH.EFFECT", "cb!",
-							GraphContext_GetName(gc), effects, effects_len);
-					rm_free(effects);
-				}
+				RedisModule_Replicate(rm_ctx, "GRAPH.EFFECT", "cb!",
+						GraphContext_GetName(gc), effects, effects_len);
+				rm_free(effects);
 			} else {
 				// replicate original query
 				QueryCtx_Replicate(query_ctx);
