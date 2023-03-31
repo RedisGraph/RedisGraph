@@ -779,18 +779,19 @@ static SIValue _dedupSorted(const SIValue list) {
 	uint32_t n   = SIArray_Length(list);
 	SIValue  res = SI_Array(n);
 
-	SIValue prev = SIArray_Get(list, 0);
-	SIArray_Append(&res, prev);
+	if (n > 0) {
+		SIValue prev = SIArray_Get(list, 0);
+		SIArray_Append(&res, prev);
 
-	for(uint i = 1; i < n; i++) {
-		SIValue cur = SIArray_Get(list, i);
+		for(uint i = 1; i < n; i++) {
+			SIValue cur = SIArray_Get(list, i);
 
-		if(SIValue_Compare(prev, cur, NULL) != 0) {
-			SIArray_Append(&res, cur);
-			prev = cur;
+			if(SIValue_Compare(prev, cur, NULL) != 0) {
+				SIArray_Append(&res, cur);
+				prev = cur;
+			}
 		}
 	}
-
 	return res;
 }
 
@@ -837,10 +838,8 @@ static SIValue handle_union_bag_semantic_dup_2(const SIValue *_A, const SIValue 
 			*count_b = 0;
 		}
 
-		if(*count_a > 0) {
-			SIArray_Append(&res, val);
-			(*count_a)--;
-		}
+		SIArray_Append(&res, val);
+		(*count_a)--;
 	}
 
 	// append values from B
@@ -896,6 +895,9 @@ SIValue AR_UNION(SIValue *argv, int argc, void *private_data) {
 
 	if(SI_TYPE(A) == T_NULL && SI_TYPE(B) == T_NULL) {
 		return SI_NullVal();
+	}
+	if(SIArray_Length(A) == 0 && SIArray_Length(B) == 0) {
+		return SI_Array(0);
 	}
 
 	SIValue res;
@@ -1000,9 +1002,12 @@ SIValue AR_INTERSECTION(SIValue *argv, int argc, void *private_data) {
 		// if the array is null it is treated as an empty array
 		return SI_Array(0);
 	}
+	if(SIArray_Length(A) == 0 && SIArray_Length(B) == 0) {
+		return SI_Array(0);
+	}
 
 	SIValue res = handle_intersect_bag_semantic(&A, &B);
-	if (dup == 0) {
+	if (dup == 0 && SIArray_Length(res) > 0) {
 		res = sortAndDedup(res);
 	}
 

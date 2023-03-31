@@ -119,12 +119,14 @@ void SIArray_Sort
 ) {
 	uint32_t arrayLen = SIArray_Length(siarray);
 
-	if(ascending) {
-		sort_r(siarray.array, arrayLen, sizeof(SIValue),
-				_siarray_compare_func_asc, (void *)&ascending);
-	} else {
-		sort_r(siarray.array, arrayLen, sizeof(SIValue),
-				_siarray_compare_func_desc, (void *)&ascending);
+	if(arrayLen > 1) {
+		if(ascending) {
+			sort_r(siarray.array, arrayLen, sizeof(SIValue),
+					_siarray_compare_func_asc, (void *)&ascending);
+		} else {
+			sort_r(siarray.array, arrayLen, sizeof(SIValue),
+					_siarray_compare_func_desc, (void *)&ascending);
+		}
 	}
 }
 

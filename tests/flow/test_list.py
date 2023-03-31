@@ -58,6 +58,10 @@ class testList(FlowTestsBase):
         redis_con = self.env.getConnection()
         redis_graph = Graph(redis_con, GRAPH_ID)
 
+    def get_res_and_assertEquals(self, query, expected_result):
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
     def test01_collect(self):
         for i in range(10):
             redis_graph.add_node(Node())
@@ -1502,6 +1506,9 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        # Test DupPolicy = 2 (bag semantics, alternative definition)
+        # If a value appears x times in v1 and y times in v2 - it will appear max(x,y) times in the result.
+        # Ordering: lists are concatenated with duplicates removed from the end of the list.
         expected_result = [[None,1,3,2,None,4,7]]
         query = """RETURN list.union([null,1,3,2], [null,4,null,7,2], 2)"""
         actual_result = redis_graph.query(query)
@@ -1512,6 +1519,32 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        expected_result = [['a', 'a', 'b', 'a', 'c']]
+        query = """RETURN list.union(['a', 'a', 'b', 'a'], ['b', 'c'], 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # Test empty list inputs
+        for dupPolicy in [0, 1, 2]:
+            queries = {
+                f"RETURN list.union([], [], {dupPolicy})",
+                f"RETURN list.union([], null, {dupPolicy})",
+                f"RETURN list.union(null, [], {dupPolicy})",
+            }
+            for query in queries:
+                self.get_res_and_assertEquals(query, [[[]]]);
+
+        # Test [null] input
+        for dupPolicy in [0, 1, 2]:
+            queries = {
+                f"RETURN list.union([null], [], {dupPolicy})",
+                f"RETURN list.union([], [null], {dupPolicy})",
+                f"RETURN list.union([null], null, {dupPolicy})",
+                f"RETURN list.union(null, [null], {dupPolicy})",
+            }
+            for query in queries:
+                self.get_res_and_assertEquals(query, [[[None]]]);
+        
     def test15_intersection(self):
         # 2nd arg should be list
         try:
@@ -1571,12 +1604,6 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
-        # NULL should be replace with empty list
-        expected_result = [[]]
-        query = """RETURN list.intersection(null, [1,3,2,3,2], 0)"""
-        actual_result = redis_graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0], expected_result)
-
         expected_result = [[None]]
         query = """RETURN list.intersection([null,1,3,2], [null,4,null])"""
         actual_result = redis_graph.query(query)
@@ -1606,6 +1633,27 @@ class testList(FlowTestsBase):
         query = """RETURN list.intersection([null,1,null,3,2,7,7,7], [null,4,7,2], 0)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+        # Test empty list inputs
+        for dupPolicy in [0, 1]:
+            queries = {
+                f"RETURN list.intersection([], [], {dupPolicy})",
+                f"RETURN list.intersection([], null, {dupPolicy})",
+                f"RETURN list.intersection(null, [], {dupPolicy})",
+            }
+            for query in queries:
+                self.get_res_and_assertEquals(query, [[[]]]);
+
+        # Test [null] input
+        for dupPolicy in [0, 1]:
+            queries = {
+                f"RETURN list.intersection([null], [], {dupPolicy})",
+                f"RETURN list.intersection([], [null], {dupPolicy})",
+                f"RETURN list.intersection([null], null, {dupPolicy})",
+                f"RETURN list.intersection(null, [null], {dupPolicy})",
+            }
+            for query in queries:
+                self.get_res_and_assertEquals(query, [[[]]]);
 
     def test16_diff(self):
         # 2nd arg should be list
@@ -1697,6 +1745,25 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        # Test empty list inputs
+        for dupPolicy in [0, 1, 2]:
+            queries = {
+                f"RETURN list.diff([], [], {dupPolicy})",
+                f"RETURN list.diff([], null, {dupPolicy})",
+            }
+            for query in queries:
+                self.get_res_and_assertEquals(query, [[[]]]);
+
+        # Test [null] input
+        for dupPolicy in [0, 1, 2]:
+            query_to_expected_result = {
+                f"RETURN list.diff([null], [], {dupPolicy})" : [[[None]]],
+                f"RETURN list.diff([], [null], {dupPolicy})" : [[[]]],
+                f"RETURN list.diff([null], null, {dupPolicy})" : [[[None]]],
+            }
+            for query, expected_result in query_to_expected_result.items():
+                self.get_res_and_assertEquals(query, expected_result)
+
     def test17_symDiff(self):
         # 2nd arg should be list
         try:
@@ -1777,6 +1844,26 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        # Test empty list inputs
+        for dupPolicy in [0, 1]:
+            queries = {
+                f"RETURN list.symDiff([], [], {dupPolicy})",
+                f"RETURN list.symDiff([], null, {dupPolicy})",
+                f"RETURN list.symDiff(null, [], {dupPolicy})",
+            }
+            for query in queries:
+                self.get_res_and_assertEquals(query, [[[]]]);
+
+        # Test [null] input
+        for dupPolicy in [0, 1]:
+            queries = {
+                f"RETURN list.symDiff([null], [], {dupPolicy})",
+                f"RETURN list.symDiff([], [null], {dupPolicy})",
+                f"RETURN list.symDiff([null], null, {dupPolicy})",
+            }
+            for query in queries:
+                self.get_res_and_assertEquals(query, [[[None]]]);
+
     def test18_flatten(self):
 
         # levels is lower than -1
@@ -1800,6 +1887,12 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Type mismatch: expected Integer but was String", str(e))
 
+        try:
+            redis_graph.query("RETURN list.flatten([1,2,3], NULL)")
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("Type mismatch: expected Integer but was Null", str(e))
+
         # Test without input argument
         try:
             query = """RETURN list.flatten()"""
@@ -1819,9 +1912,9 @@ class testList(FlowTestsBase):
 
         ### Test valid inputs ###
 
-        # NULL, NULL input should return NULL
+        # NULL, (integer > -2) input should return NULL
         expected_result = [None]
-        query = """RETURN list.flatten(null, null)"""
+        query = """RETURN list.flatten(null, 3)"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
@@ -1851,3 +1944,11 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        query_to_expected_result = {
+            "RETURN list.flatten([[]])" : [[[]]], 
+            "RETURN list.flatten([null])" : [[[None]]], 
+            "RETURN list.flatten([[], [], []])" : [[[]]], 
+            "RETURN list.flatten([[], [5.5], [], [3]])" : [[[5.5, 3]]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
