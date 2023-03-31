@@ -888,7 +888,7 @@ SIValue AR_UNION(SIValue *argv, int argc, void *private_data) {
 		dup = SI_GET_NUMERIC(argv[2]);
 		if(dup < 0 || dup > 2) {
 			// invalid duplicate policy
-			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in union()");
+			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in function 'list.union'");
 			return SI_NullVal();
 		}
 	}
@@ -990,7 +990,7 @@ SIValue AR_INTERSECTION(SIValue *argv, int argc, void *private_data) {
 		dup = SI_GET_NUMERIC(argv[2]);
 		if(dup < 0 || dup > 1) {
 			// invalid duplicate policy
-			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in intersection()");
+			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in function 'list.intersection'");
 			return SI_NullVal();
 		}
 	}
@@ -1050,7 +1050,7 @@ SIValue AR_DIFF(SIValue *argv, int argc, void *private_data) {
 		dup = SI_GET_NUMERIC(argv[2]);
 		if(dup < 0 || dup > 2) {
 			// invalid duplicate policy
-			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in diff()");
+			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in function 'list.diff'");
 			return SI_NullVal();
 		}
 	}
@@ -1106,7 +1106,7 @@ SIValue AR_SYMDIFF(SIValue *argv, int argc, void *private_data) {
 		dup = SI_GET_NUMERIC(argv[2]);
 		if(dup < 0 || dup > 2) {
 			// invalid duplicate policy
-			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in symdiff()");
+			ErrorCtx_RaiseRuntimeException("ArgumentError: invalid dupPolicy argument value in function 'list.symDiff'");
 			return SI_NullVal();
 		}
 	}

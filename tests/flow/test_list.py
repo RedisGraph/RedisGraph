@@ -1465,6 +1465,13 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Received 4 arguments to function 'list.union', expected at most 3", str(e))
 
+        # Test invalid dupPolicy
+        try:
+            query = """RETURN list.union([1,2,3], [2], 4)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: invalid dupPolicy argument value in function 'list.union'", str(e))
 
         ### Test valid inputs ###
         # NULL, NULL input should return NULL
@@ -1584,6 +1591,13 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Received 4 arguments to function 'list.intersection', expected at most 3", str(e))
 
+        # Test invalid dupPolicy
+        try:
+            query = """RETURN list.intersection([1,2,3], [2], 4)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: invalid dupPolicy argument value in function 'list.intersection'", str(e))
 
         ### Test valid inputs ###
         # NULL, NULL input should return NULL
@@ -1694,6 +1708,13 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Received 4 arguments to function 'list.diff', expected at most 3", str(e))
 
+        # Test invalid dupPolicy
+        try:
+            query = """RETURN list.diff([1,2,3], [2], 4)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: invalid dupPolicy argument value in function 'list.diff'", str(e))
 
         ### Test valid inputs ###
 
@@ -1803,6 +1824,13 @@ class testList(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("Received 4 arguments to function 'list.symDiff', expected at most 3", str(e))
 
+        # Test invalid dupPolicy
+        try:
+            query = """RETURN list.symDiff([1,2,3], [2], 4)"""
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: invalid dupPolicy argument value in function 'list.symDiff'", str(e))
 
         ### Test valid inputs ###
 
