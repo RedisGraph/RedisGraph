@@ -9,17 +9,18 @@
  * a graph. This information is used by the "GRAPH.INFO" command.
 */
 
+
+#include "RG.h"
 #include "info.h"
+#include "util/arr.h"
+#include "util/num.h"
+#include "../query_ctx.h"
+#include "util/thpool/pools.h"
+// #include "hdr/hdr_histogram.h"
+#include "util/circular_buffer_nrg.h"
 
 #include <string.h>
-#include "util/arr.h"
-#include "RG.h"
-#include "util/num.h"
 #include <sys/types.h>
-#include "../query_ctx.h"
-// #include "hdr/hdr_histogram.h"
-#include "util/thpool/pools.h"
-#include "util/circular_buffer_nrg.h"
 
 #define INITIAL_QUERY_INFO_CAPACITY 100
 
@@ -219,7 +220,7 @@ static bool _unlock_rwlock(pthread_rwlock_t *lock) {
 
 QueryInfoIterator QueryInfoIterator_NewStartingAt
 (
-    const QueryInfoStorage *storage,
+    const QueryInfoStorage storage,
     const uint64_t index
 ) {
     ASSERT(storage && "Storage has to be provided.");
@@ -245,7 +246,7 @@ QueryInfoIterator QueryInfoIterator_NewStartingAt
     return iterator;
 }
 
-QueryInfoIterator QueryInfoIterator_New(const QueryInfoStorage *storage) {
+QueryInfoIterator QueryInfoIterator_New(const QueryInfoStorage storage) {
     return QueryInfoIterator_NewStartingAt(storage, 0);
 }
 
@@ -283,7 +284,7 @@ QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *iterator) {
     return next;
 }
 
-const QueryInfoStorage* QueryInfoIterator_GetStorage
+const QueryInfoStorage QueryInfoIterator_GetStorage
 (
     QueryInfoIterator *iterator
 ) {
@@ -296,7 +297,7 @@ const QueryInfoStorage* QueryInfoIterator_GetStorage
 QueryInfo* QueryInfoIterator_Get(QueryInfoIterator *iterator) {
     ASSERT(iterator != NULL);
     iterator->has_started = true;
-    return array_elem(*iterator->storage, iterator->current_index);
+    return array_elem(iterator->storage, iterator->current_index);
 }
 
 uint32_t QueryInfoIterator_Length(const QueryInfoIterator *iterator) {
@@ -378,7 +379,7 @@ Info *Info_New(void) {
 	NULL, NULL, NULL};
     info->waiting_queries = HashTableCreate(&dt);
 
-    info->waiting_queries = array_new(QueryInfo*, 128);
+    // initialize working_queries array
     info->working_queries = array_newlen(QueryInfo*, thread_count);
 
     _FinishedQueryCounters_Reset(&info->counters);
@@ -481,7 +482,7 @@ void Info_executing_to_waiting
     memset(info, 0, sizeof(QueryInfo));
 
     // add qi to the waiting queries hashmap
-    hashtableAdd(info->waiting_queries, qi);
+    HashTableAdd(info->waiting_queries, qi, qi);
 }
 
 void Info_IndicateQueryStartedReporting
@@ -565,7 +566,7 @@ uint64_t Info_GetWaitingQueriesCount(Info *info) {
 
     ASSERT(_Info_LockWaitingQueries(info, false) != NULL);
 
-    const uint64_t count = array_len(&info->waiting_queries);
+    const uint64_t count = HashTableElemCount(info->waiting_queries);
 
     ASSERT(_Info_UnlockWaitingQueries(info) != NULL);
 

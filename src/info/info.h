@@ -37,7 +37,7 @@ typedef QueryInfo* QueryInfoStorage;
 
 // an abstraction for iteration over QueryInfo objects
 typedef struct QueryInfoIterator {
-    const QueryInfoStorage *storage;
+    const QueryInfoStorage storage;
     uint64_t current_index;
     bool has_started; // true if at least one Next*/Get* was called
 } QueryInfoIterator;
@@ -174,11 +174,11 @@ void FinishedQueryInfo_Free(const FinishedQueryInfo query_info);
 // provided index. The created iterator doesn't have to be freed.
 QueryInfoIterator QueryInfoIterator_NewStartingAt
 (
-    const QueryInfoStorage *,
+    const QueryInfoStorage,
     const uint64_t
 );
 // Returns a new iterator over the provided storage starting from the beginning.
-QueryInfoIterator QueryInfoIterator_New(const QueryInfoStorage *);
+QueryInfoIterator QueryInfoIterator_New(const QueryInfoStorage);
 // Returns a pointer to the next element from the current, NULL if the end has
 // been reached.
 QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *);
@@ -186,7 +186,7 @@ QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *);
 // has been reached.
 QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *);
 // Returns a pointer to the underlying storage being iterated over.
-const QueryInfoStorage* QueryInfoIterator_GetStorage(QueryInfoIterator *);
+const QueryInfoStorage QueryInfoIterator_GetStorage(QueryInfoIterator *);
 // Returns current element being pointed at by the iterator.
 QueryInfo* QueryInfoIterator_Get(QueryInfoIterator *);
 // Returns the number of elements which are still to be iterated over.
