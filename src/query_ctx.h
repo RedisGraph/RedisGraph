@@ -9,7 +9,6 @@
 #include "ast/ast.h"
 #include "redismodule.h"
 #include "util/rmalloc.h"
-#include "info/query_info.h"
 #include "undo_log/undo_log.h"
 #include "graph/graphcontext.h"
 #include "resultset/resultset.h"

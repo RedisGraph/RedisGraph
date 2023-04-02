@@ -275,7 +275,8 @@ QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *iterator) {
 QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *iterator) {
     QueryInfo *next = QueryInfoIterator_Next(iterator);
 
-    while (next && !next->ctx) {
+    // while (next && !next->ctx) {     // Make sure this change is valid
+    while (next) {
         next = QueryInfoIterator_Next(iterator);
     }
 

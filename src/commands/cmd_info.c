@@ -301,13 +301,13 @@ static CommonQueryInfo _CommonQueryInfo_FromFinished
     const FinishedQueryInfo finished
 ) {
     const CommonQueryInfo info = {
-        .received_at_ms = finished.received_unix_timestamp_milliseconds,
+        .received_at_ms = finished.received_ts,
         .stage = QueryStage_FINISHED,
         .graph_name = (char *)finished.graph_name,
         .query_string = (char *)finished.query_string,
-        .wait_duration = finished.total_wait_duration,
-        .execution_duration = finished.total_execution_duration,
-        .report_duration = finished.total_report_duration
+        .wait_duration = finished.wait_duration,
+        .execution_duration = finished.execution_duration,
+        .report_duration = finished.report_duration
     };
     return info;
 }
@@ -507,10 +507,11 @@ static CommonQueryInfo _CommonQueryInfo_FromUnfinished
     const QueryStage stage
 ) {
     const CommonQueryInfo info = {
-        .received_at_ms = unfinished.received_unix_timestamp_milliseconds,
+        .received_at_ms = unfinished.received_ts,
         .stage = stage,
-        .graph_name = (char *)unfinished.context->gc->graph_name,
-        .query_string = (char *)unfinished.context->query_data.query,
+        // TODO: We removed the queryCtx from QueryInfo --> no graph_name or query_string (bring it back?)
+        // .graph_name = (char *)unfinished.context->gc->graph_name,
+        // .query_string = (char *)unfinished.context->query_data.query,
         .wait_duration = unfinished.wait_duration,
         .execution_duration = unfinished.execution_duration,
         .report_duration = unfinished.report_duration

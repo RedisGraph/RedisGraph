@@ -6,9 +6,9 @@
 
 #pragma once
 
+#include "../info/info.h"
 #include "cypher-parser.h"
 #include "../redismodule.h"
-#include "../graph/graphcontext.h"
 #include "../util/simple_timer.h"
 
 // ExecutorThread lists the diffrent types of threads in the system

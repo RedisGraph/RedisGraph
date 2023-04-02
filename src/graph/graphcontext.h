@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "info.h"
 #include "graph.h"
 #include "../info/info.h"
 #include "../redismodule.h"

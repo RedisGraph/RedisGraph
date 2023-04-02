@@ -28,7 +28,6 @@
 typedef enum QueryExecutionStatus QueryExecutionStatus;
 typedef enum QueryExecutionTypeFlag QueryExecutionTypeFlag;
 
-typedef uint32_t millis_t;
 #define MILLIS_T_MAX UINT32_MAX
 typedef struct QueryCtx QueryCtx;
 // duplicate typedef from the circular buffer
