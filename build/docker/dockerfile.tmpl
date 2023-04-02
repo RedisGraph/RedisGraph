@@ -56,7 +56,7 @@ COPY --from=builder /build/bin/artifacts/ /var/opt/redislabs/artifacts/
 {% endif %}
 
 {% if OSNICK == "xenial" and ARCH == "x64" %}
-RUN apt-get -qy ca-certificates wget
+RUN apt-get install -qy ca-certificates wget
 RUN wget -q -P /tmp https://redismodules.s3.amazonaws.com/platform/xenial-x64/gcc-9-base_9.4.0-1ubuntu1~16.04_amd64.deb
 RUN wget -q -P /tmp https://redismodules.s3.amazonaws.com/platform/xenial-x64/libgomp1_9.4.0-1ubuntu1~16.04_amd64.deb
 RUN md5sum --quiet -c <<EOF
