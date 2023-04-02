@@ -679,11 +679,13 @@ workflows:
           name: build
           <<: *not-on-integ-branch
       - build-platforms:
-          <<: *on-integ-and-version-tags
+          #@@<<: *on-integ-and-version-tags
+          <<: *always
           context: common
           matrix:
             parameters:
-              platform: [jammy, focal, bionic, amzn2, xenial, centos7, rocky8, bullseye]
+              #@@platform: [jammy, focal, bionic, amzn2, xenial, centos7, rocky8, bullseye]
+              platform: [jammy, xenial]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
