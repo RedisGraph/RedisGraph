@@ -478,7 +478,7 @@ void _query(bool profile, void *args) {
 	if(readonly || command_ctx->thread == EXEC_THREAD_MAIN) {
 		_ExecuteQuery(gq_ctx);
 	} else {
-		Info_executing_to_waiting(qi);
+		Info_executing_to_waiting(gc->info, qi);
 		_DelegateWriter(gq_ctx);
 	}
 

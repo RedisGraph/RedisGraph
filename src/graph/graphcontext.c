@@ -109,8 +109,7 @@ GraphContext *GraphContext_New
 	gc->string_mapping        = array_new(char *, 64);
 	gc->encoding_context      = GraphEncodeContext_New();
 	gc->decoding_context      = GraphDecodeContext_New();
-	const bool info_created   = Info_New(&gc->info);
-	ASSERT(info_created);
+	gc->info                  = Info_New();
 
 	// read NODE_CREATION_BUFFER size from configuration
 	// this value controls how much extra room we're willing to spend for:

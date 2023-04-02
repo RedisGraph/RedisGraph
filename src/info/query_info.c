@@ -5,6 +5,7 @@
  */
 
 #include "query_info.h"
+#include "../util/simple_timer.h"
 #include "../graph/graphcontext.h"
 
 // creates a new, empty query info object
@@ -16,7 +17,7 @@ QueryInfo *QueryInfo_New(void) {
 	// this function is called when a thread is already executing the query
     // (for parsing and execution-plan planning)
     GraphContext *gc = (GraphContext *)QueryCtx_GetGraphCtx();
-    Info_IndicateQueryStartedExecution(gc->info);
+    Info_IndicateQueryStartedExecution(gc->info, qi);
 
     TIMER_RESTART(qi->stage_timer);
 

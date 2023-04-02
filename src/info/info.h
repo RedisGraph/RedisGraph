@@ -22,6 +22,7 @@
 
 #include "query_info.h"
 #include "../util/num.h"
+#include "../util/dict.h"
 #include "../util/simple_timer.h"
 
 typedef enum QueryExecutionStatus QueryExecutionStatus;
@@ -64,6 +65,8 @@ typedef struct FinishedQueryCounters {
 
 // information about a graph
 typedef struct Info {
+    dict *waiting_queries;                     // waiting queries
+    pthread_rwlock_t waiting_queries_rwlock;  // lock for waiting queries
     QueryInfoStorage working_queries;         // executing and reporting queries
     atomic_uint_fast64_t max_query_time;      // slowest query time
     FinishedQueryCounters counters;           // counters with states
@@ -74,17 +77,21 @@ typedef struct Info {
 // returns true on successful creation
 Info *Info_New(void);
 
-// insert a query to the executing queue, and set its stage
+// remove a query from the waiting_queries, insert it to the executing queue,
+// and set its stage
 void Info_IndicateQueryStartedExecution
 (
-    Info *,
-    QueryCtx *
+    Info *info,    // info
+    QueryInfo *qi  // query info that is starting the execution stage
 );
 
 // transitions a query from executing to waiting
+// the queryInfo in the index corresponding to the thread_id will be removed
+// from the `working_queries` array of the Info struct.
 void Info_executing_to_waiting
 (
-    QueryInfo *qi
+    Info *info,     // info
+    QueryInfo *qi   // query info
 );
 
 // Indicates that the query has finished the execution and has started

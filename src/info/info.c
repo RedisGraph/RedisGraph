@@ -76,12 +76,12 @@ uint64_t FinishedQueryCounters_GetTotalCount
 	const FinishedQueryCounters *counters  // counters to sum up
 ) {
     return 
-		   counters->write_failed_count       +
-		   counters->write_timedout_count     +
-		   counters->readonly_failed_count    +
-		   counters->write_succeeded_count    +
-		   counters->readonly_timedout_count  +
-		   counters->readonly_succeeded_count ;
+        counters->write_failed_n     +
+        counters->write_timedout_n   +
+        counters->ro_failed_n        +
+        counters->write_succeeded_n  +
+        counters->ro_timedout_n      +
+        counters->ro_succeeded_n ;
 }
 
 void FinishedQueryCounters_Add
@@ -91,12 +91,12 @@ void FinishedQueryCounters_Add
 ) {
     REQUIRE_ARG(lhs);
 
-    lhs->readonly_failed_count += rhs.readonly_failed_count;
-    lhs->readonly_succeeded_count += rhs.readonly_succeeded_count;
-    lhs->readonly_timedout_count += rhs.readonly_timedout_count;
-    lhs->write_failed_count += rhs.write_failed_count;
-    lhs->write_succeeded_count += rhs.write_succeeded_count;
-    lhs->write_timedout_count += rhs.write_timedout_count;
+    lhs->ro_failed_n += rhs.ro_failed_n;
+    lhs->ro_failed_n += rhs.ro_failed_n;
+    lhs->ro_timedout_n += rhs.ro_timedout_n;
+    lhs->write_failed_n += rhs.write_failed_n;
+    lhs->write_succeeded_n += rhs.write_succeeded_n;
+    lhs->write_timedout_n += rhs.write_timedout_n;
 }
 
 static void _FinishedQueryCounters_Reset
@@ -105,12 +105,12 @@ static void _FinishedQueryCounters_Reset
 ) {
     ASSERT(counters != NULL);
 
-	counters->write_failed_count       = 0;
-	counters->write_timedout_count     = 0;
-	counters->readonly_failed_count    = 0;
-	counters->write_succeeded_count    = 0;
-	counters->readonly_timedout_count  = 0;
-	counters->readonly_succeeded_count = 0;
+	counters->write_failed_n     = 0;
+	counters->write_timedout_n   = 0;
+	counters->ro_failed_n        = 0;
+	counters->write_succeeded_n  = 0;
+	counters->ro_timedout_n      = 0;
+	counters->ro_succeeded_n     = 0;
 }
 
 static void _FinishedQueryCounters_Increment(
@@ -122,21 +122,21 @@ static void _FinishedQueryCounters_Increment(
 
     if (CHECK_FLAG(flags, QueryExecutionTypeFlag_WRITE)) {
         if (status == QueryExecutionStatus_FAILURE) {
-            ++counters->write_failed_count;
+            ++counters->write_failed_n;
         } else if (status == QueryExecutionStatus_TIMEDOUT) {
-            ++counters->write_timedout_count;
+            ++counters->write_timedout_n;
         } else {
-            ++counters->write_succeeded_count;
+            ++counters->write_succeeded_n;
         }
 
         return;
     } else {
         if (status == QueryExecutionStatus_FAILURE) {
-            ++counters->readonly_failed_count;
+            ++counters->ro_failed_n;
         } else if (status == QueryExecutionStatus_TIMEDOUT) {
-            ++counters->readonly_timedout_count;
+            ++counters->ro_timedout_n;
         } else {
-            ++counters->readonly_succeeded_count;
+            ++counters->ro_succeeded_n;
         }
 
         return;
@@ -146,28 +146,29 @@ static void _FinishedQueryCounters_Increment(
 }
 
 FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info) {
-    ASSERT(info.context);
+    // ASSERT(info.context);        context removed. Update accordingly.
 
     FinishedQueryInfo finished;
     memset(&finished, 0, sizeof(FinishedQueryInfo));
 
-    finished.received_unix_timestamp_milliseconds = info.received_unix_timestamp_milliseconds;
-    finished.total_wait_duration = info.wait_duration;
-    finished.total_execution_duration = info.execution_duration;
-    finished.total_report_duration = info.report_duration;
+    finished.received_ts = info.received_ts;
+    finished.wait_duration = info.wait_duration;
+    finished.execution_duration = info.execution_duration;
+    finished.report_duration = info.report_duration;
 
-    if (info.context) {
-        finished.query_string = strdup(info.context->query_data.query);
-        finished.graph_name = strdup(info.context->gc->graph_name);
-    }
+    // context removed from QueryInfo, update this accordingly
+    // if (info.context) {
+    //     finished.query_string = strdup(info.context->query_data.query);
+    //     finished.graph_name = strdup(info.context->gc->graph_name);
+    // }
 
     return finished;
 }
 
 millis_t _FinishedQueryInfo_GetTotalDuration(const FinishedQueryInfo info) {
-    return info.total_execution_duration
-         + info.total_report_duration
-         + info.total_wait_duration;
+    return info.execution_duration
+         + info.report_duration
+         + info.wait_duration;
 }
 
 void FinishedQueryInfo_Free(const FinishedQueryInfo query_info) {
@@ -211,7 +212,7 @@ static bool _lock_rwlock
 }
 
 static bool _unlock_rwlock(pthread_rwlock_t *lock) {
-    REQUIRE_ARG_OR_RETURN(lock, false);
+    ASSERT(lock != NULL);
 
     return !pthread_rwlock_unlock(lock);
 }
@@ -309,12 +310,60 @@ bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *iterator) {
 static bool _Info_LockEverything(Info *info, const bool is_write) {
 	ASSERT(info     != NULL);
     ASSERT(iterator != NULL);
-    return _lock_rwlock(&info->inverse_global_lock, !is_write);
+    return _lock_rwlock(&info->mutex, !is_write);
 }
 
 static bool _Info_UnlockEverything(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, false);
-    return _unlock_rwlock(&info->inverse_global_lock);
+    return _unlock_rwlock(&info->mutex);
+}
+
+static bool _Info_LockWaitingQueries(Info *info, const bool is_write) {
+    REQUIRE_ARG_OR_RETURN(info, false);
+    return _lock_rwlock(&info->waiting_queries_rwlock, is_write);
+}
+
+static bool _Info_UnlockWaitingQueries(Info *info) {
+    REQUIRE_ARG_OR_RETURN(info, false);
+    return _unlock_rwlock(&info->waiting_queries_rwlock);
+}
+
+static void _Info_WLockWaitingQueries
+(
+	Info *info
+) {
+    ASSERT(info != NULL);
+
+	int res = pthread_rwlock_wrlock(&info->waiting_queries_rwlock);
+	ASSERT(res == 0);
+}
+
+static void _InfoRLockWaitingQueries
+(
+	Info *info
+) {
+    ASSERT(info != NULL);
+
+	int res = pthread_rwlock_rdlock(&info->waiting_queries_rwlock);
+	ASSERT(res == 0);
+}
+
+static void _Info_UnlockWaitingQueries
+(
+	Info *info
+) {
+    ASSERT(info != NULL);
+	// TODO: assert lock is acquired
+    _unlock_rwlock(&info->waiting_queries_rwlock);
+}
+
+// fake hash function
+// hash of key is simply key
+static uint64_t nop_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
 }
 
 Info *Info_New(void) {
@@ -322,40 +371,54 @@ Info *Info_New(void) {
     const uint64_t thread_count = ThreadPools_ThreadCount() + 1;
 
 	Info *info = rm_malloc(sizeof(Info));
+
+    // initialize hashmap for the waiting queries (keys are QueryInfo *)
+    static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
+	NULL, NULL, NULL};
+    info->waiting_queries = HashTableCreate(&dt);
+
+    info->waiting_queries = array_new(QueryInfo*, 128);
     info->working_queries = array_newlen(QueryInfo*, thread_count);
 
     _FinishedQueryCounters_Reset(&info->counters);
 	memset(info->working_queries, 0, sizeof(QueryInfo) * thread_count);
 
-    res = pthread_rwlock_init(&info->inverse_global_lock, NULL);
+    int res = pthread_rwlock_init(&info->waiting_queries_rwlock, NULL);
+    ASSERT(res == 0);
+
+    res = pthread_rwlock_init(&info->mutex, NULL);
     ASSERT(res == 0);
 
     return info;
 }
 
-// insert a query to the executing queue, and set its stage
+// remove a query from the waiting_queries, insert it to the executing queue,
+// and set its stage
 void Info_IndicateQueryStartedExecution
 (
-    Info *info
+    Info *info,    // info
+    QueryInfo *qi  // query info that is starting the execution stage
 ) {
     ASSERT(ctx  != NULL);
     ASSERT(info != NULL);
 
-    QueryInfo *qi = ctx->qi;
+    ASSERT(_Info_LockEverything(info, true));
+    ASSERT(_Info_LockWaitingQueries(info, true));
 
-    const int thread_id = ThreadPools_GetThreadID();
+    // update waiting time
+    QueryInfo_UpdateWaitingTime(qi);
+    QueryInfo_ResetStageTimer(qi);
+
+    // remove from waiting_queries (TODO: add case that the query isn't found --> error)
+    HashTableDelete(info->waiting_queries, (void *)qi);
 
     // set the stage
     qi->stage = QueryStage_EXECUTING;
 
-    // update waiting time
-    if(qi->stage_timer != NULL) {
-        QueryInfo_UpdateWaitingTime(qi);
-        QueryInfo_ResetStageTimer(qi);
-    }
+    const int thread_id = ThreadPools_GetThreadID();
 
     // add to working queries array
-    QueryInfo *working_q_info = array_elem(info->working_queries, index);
+    QueryInfo *working_q_info = array_elem(info->working_queries, thread_id);
     memcpy(working_q_info, &qi, sizeof(QueryInfo));
 
     ASSERT(_Info_UnlockWaitingQueries(info) != NULL);
@@ -371,7 +434,12 @@ void Info_Free
 
     array_free(&info->working_queries);
 
-    int res = pthread_rwlock_destroy(&info->inverse_global_lock);
+    HashTableRelease(info->waiting_queries);
+
+    int res = pthread_rwlock_destroy(&info->waiting_queries_rwlock);
+    ASSERT(res == 0);
+
+    res = pthread_rwlock_destroy(&info->mutex);
     ASSERT(res == 0);
 }
 
@@ -392,9 +460,12 @@ static bool _Info_MoveQueryInfoBetweenStorages
 }
 
 // transitions a query from executing to waiting
+// the queryInfo in the index corresponding to the thread_id will be removed
+// from the `working_queries` array of the Info struct.
 void Info_executing_to_waiting
 (
-    QueryInfo *qi
+    Info *info,     // info
+    QueryInfo *qi   // query info
 ) {
     // update the elapsed time in executing state, and restart timer
     qi->execution_duration += simple_toc(qi->stage_timer);
@@ -405,9 +476,11 @@ void Info_executing_to_waiting
 
     // remove from working queries array
     const int thread_id = ThreadPools_GetThreadID();
-    GraphContext *gc = QueryCtx_GetGraphCtx();
-    QueryInfo *info = array_elem(gc->info.working_queries, thread_id);
+    QueryInfo *info = array_elem(info->working_queries, thread_id);
     memset(info, 0, sizeof(QueryInfo));
+
+    // add qi to the waiting queries hashmap
+    hashtableAdd(info->waiting_queries, qi);
 }
 
 void Info_IndicateQueryStartedReporting
@@ -487,9 +560,15 @@ uint64_t Info_GetTotalQueriesCount(Info *info) {
 }
 
 uint64_t Info_GetWaitingQueriesCount(Info *info) {
-    // TBD
+    ASSERT(info != NULL);
 
-    return 0;
+    ASSERT(_Info_LockWaitingQueries(info, false) != NULL);
+
+    const uint64_t count = array_len(&info->waiting_queries);
+
+    ASSERT(_Info_UnlockWaitingQueries(info) != NULL);
+
+    return count;
 }
 
 uint64_t Info_GetExecutingQueriesCount(Info *info) {
@@ -497,7 +576,7 @@ uint64_t Info_GetExecutingQueriesCount(Info *info) {
 
     REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), 0);
 
-    QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries_per_thread);
+    QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries);
     uint64_t count = 0;
 
     QueryInfo *query_info = NULL;
@@ -517,7 +596,7 @@ uint64_t Info_GetReportingQueriesCount(Info *info) {
 
     REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), 0);
 
-    QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries_per_thread);
+    QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries);
     uint64_t count = 0;
 
     QueryInfo *query_info = NULL;
@@ -539,23 +618,18 @@ millis_t Info_GetMaxQueryWaitTime(Info *info) {
     millis_t max_time = 0;
     QueryInfo *query = NULL;
     {
-        // TBD - replace this with code that traverses the thread pool job queue
-        // (we added the queryCtx which has the QueryInfo which has the waiting time!)
-
-
-
-
-        // REQUIRE_TRUE_OR_RETURN(_Info_LockWaitingQueries(info, false), 0);
-        // QueryInfoIterator iterator = QueryInfoIterator_New(&info->waiting_queries);
-        // while ((query = QueryInfoIterator_NextValid(&iterator)) != NULL) {
-        //     max_time = MAX(max_time, QueryInfo_GetWaitingTime(*query));
-        // }
-        // REQUIRE_TRUE_OR_RETURN(_Info_UnlockWaitingQueries(info), 0);
+        dictIterator *it = HashTableGetIterator(info->waiting_queries);
+        dictEntry *entry;
+		while((entry  = HashTableNext(it)) != NULL) {
+            max_time = MAX(max_time, QueryInfo_GetWaitingTime((const QueryInfo *)entry));
+        }
+        ASSERT(_Info_UnlockWaitingQueries(info) != NULL);
+        HashTableReleaseIterator(it);
     }
     {
-        QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries_per_thread);
+        QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries);
         while ((query = QueryInfoIterator_NextValid(&iterator)) != NULL) {
-            max_time = MAX(max_time, QueryInfo_GetWaitingTime(*query));
+            max_time = MAX(max_time, QueryInfo_GetWaitingTime((const QueryInfo *)query));
         }
     }
 
@@ -573,14 +647,14 @@ void Info_IncrementNumberOfQueries
     REQUIRE_ARG(info);
 
     _FinishedQueryCounters_Increment(
-        &info->finished_query_counters,
+        &info->counters,
         flags,
         status
     );
 }
 
 FinishedQueryCounters Info_GetFinishedQueryCounters(const Info info) {
-    return info.finished_query_counters;
+    return info.counters;
 }
 
 bool Info_Lock(Info *info) {
@@ -591,9 +665,14 @@ bool Info_Unlock(Info *info) {
     return _Info_UnlockEverything(info);
 }
 
+dict* Info_GetWaitingQueries(Info *info) {
+    ASSERT(info != NULL);
+    return info->waiting_queries;
+}
+
 QueryInfoStorage* Info_GetWorkingQueriesStorage(Info *info) {
-    REQUIRE_ARG_OR_RETURN(info, NULL);
-    return &info->working_queries_per_thread;
+    ASSERT(info != NULL);
+    return &info->working_queries;
 }
 
 static void _FinishedQueryInfoDeleter(void *user_data, void *info) {

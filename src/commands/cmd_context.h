@@ -18,7 +18,7 @@ typedef enum {
 	EXEC_THREAD_WRITER,  // write only thread
 } ExecutorThread;
 
-/* Query context, used for concurent query processing. */
+/* Command context, used for concurrent query processing. */
 typedef struct {
 	char *query;                    // Query string.
 	RedisModuleCtx *ctx;            // Redis module context.
