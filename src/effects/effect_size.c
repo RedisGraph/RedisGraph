@@ -277,14 +277,16 @@ size_t ComputeBufferSize
 (
 	const UndoLog undolog
 ) {
+	ASSERT(undolog != NULL);
+
 	size_t s = 0;  // effects-buffer required size in bytes
 	uint n = UndoLog_Length(undolog);  // number of undo entries
 
 	// make sure undo-log is not empty
 	ASSERT(n > 0);
 
-	// account for effects version
-	s += sizeof(EffectsFmtVersion);
+	// account for effect version
+	s += sizeof(uint8_t);
 
 	// compute effect size from each undo operation
 	for(uint i = 0; i < n; i++) {

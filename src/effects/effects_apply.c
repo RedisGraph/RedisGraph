@@ -11,7 +11,7 @@
 #include <stdio.h>
 
 // read effect type from stream
-static EffectType ReadEffectType
+static inline EffectType ReadEffectType
 (
 	FILE *stream  // effects stream
 ) {
@@ -27,6 +27,12 @@ static AttributeSet ReadAttributeSet
 (
 	FILE *stream
 ) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	// attribute count
+	// attributes (id,value) pair
+	//--------------------------------------------------------------------------
+
 	//--------------------------------------------------------------------------
 	// read attribute count
 	//--------------------------------------------------------------------------
@@ -195,9 +201,10 @@ static void ApplyLabels
 	fread_assert(&lbl_count, sizeof(lbl_count), stream);
 	ASSERT(lbl_count > 0);
 
+	// TODO: move to LabelID
 	const char **add_labels    = NULL;
 	const char **remove_labels = NULL;
-	const char **lbl           = array_newlen(const char*, lbl_count);
+	const char *lbl[lbl_count];
 
 	// assign lbl to the appropriate array
 	if(add) {
@@ -226,8 +233,6 @@ static void ApplyLabels
 	uint labels_removed_count;
 	UpdateNodeLabels(gc, &n, add_labels, remove_labels, &labels_added_count,
 			&labels_removed_count, false);
-
-	array_free(lbl);
 }
 
 static void ApplyAddSchema
@@ -521,8 +526,30 @@ static void ApplyDeleteEdge
 	DeleteEdges(gc, &e, 1, false);
 }
 
+// returns false in case of effect encode/decode version mismatch
+static bool ValidateVersion
+(
+	FILE *stream  // effects stream
+) {
+	ASSERT(stream != NULL);
+
+	// read version
+	uint8_t v;
+	fread_assert(&v, sizeof(uint8_t), stream);
+
+	if(v != EFFECTS_VERSION) {
+		// unexpected effects version
+		RedisModule_Log(NULL, "warning",
+				"GRAPH.EFFECT version mismatch expected: %d got: %d",
+				EFFECTS_VERSION, v);
+		return false;
+	}
+
+	return true;
+}
+
 // applys effects encoded in buffer
-bool Effects_Apply
+void Effects_Apply
 (
 	GraphContext *gc,          // graph to operate on
 	const char *effects_buff,  // encoded effects
@@ -531,24 +558,19 @@ bool Effects_Apply
 	// validations
 	ASSERT(l > 0);  // buffer can't be empty
 	ASSERT(effects_buff != NULL);  // buffer can't be NULL
-	
-	bool res = true;  // return value
 
 	// read buffer in a stream fashion
 	FILE *stream = fmemopen((void*)effects_buff, l, "r");
 
-	// read effects encoder version
-	EffectsFmtVersion v;
-	fread_assert(&v, sizeof(v), stream);
-	if(v != EFFECTS_FMT_VERSION) {
-		// recieved a format version we're not aware of
-		RedisModule_Log(NULL, "warning",
-				"unexpected GRAPH.EFFECT version, current: %d recived: %d",
-				EFFECTS_FMT_VERSION, v);
-
-		res = false;
-		goto cleanup;
+	// validate effects version
+	if(ValidateVersion(stream) == false) {
+		// replica/primary out of sync
+		exit(1);
 	}
+
+	// lock graph for writing
+	Graph *g = GraphContext_GetGraph(gc);
+	Graph_AcquireWriteLock(g);
 
 	// as long as there's data in stream
 	while(ftell(stream) < l) {
@@ -591,10 +613,10 @@ bool Effects_Apply
 		}
 	}
 
-cleanup:
+	// release write lock
+	Graph_ReleaseLock(g);
+
 	// close stream
 	fclose(stream);
-
-	return res;
 }
 

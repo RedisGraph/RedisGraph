@@ -530,19 +530,23 @@ u_char *Effects_FromUndoLog
 	//--------------------------------------------------------------------------
 
 	size_t buff_size = ComputeBufferSize(log);
-	ASSERT(buff_size != 0);
+	ASSERT(buff_size > 0);
 
 	// allocate effects buffer and treat it as a stream
 	u_char *buffer = rm_malloc(sizeof(u_char) * buff_size);
 	FILE *stream = fmemopen(buffer, buff_size, "w");
 
 	//--------------------------------------------------------------------------
-	// encode effects
+	// encode effects header
 	//--------------------------------------------------------------------------
 
-	// encode effects version
-	EffectsFmtVersion v = EFFECTS_FMT_VERSION;
-	fwrite_assert(&v, sizeof(v), stream);
+	// effects version
+	uint8_t v = EFFECTS_VERSION;
+	fwrite_assert(&v, sizeof(uint8_t), stream);
+
+	//--------------------------------------------------------------------------
+	// encode effects
+	//--------------------------------------------------------------------------
 
 	for(uint i = 0; i < n; i++) {
 		UndoOp *op = log + i;

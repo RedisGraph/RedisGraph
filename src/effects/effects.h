@@ -9,11 +9,7 @@
 #include "../undo_log/undo_log.h"
 #include "../graph/graphcontext.h"
 
-// effects encoding / decoding version
-#define EFFECTS_FMT_VERSION 1
-
-// effects format version datatype
-typedef ushort EffectsFmtVersion;
+#define EFFECTS_VERSION 1  // current effects encoding/decoding version
 
 // size of the field in the structure
 #define	fldsiz(name, field) \
@@ -52,8 +48,7 @@ u_char *Effects_FromUndoLog
 );
 
 // applys effects encoded in buffer
-// returns true if effects been applied false otherwise
-bool Effects_Apply
+void Effects_Apply
 (
 	GraphContext *gc,          // graph to operate on
 	const char *effects_buff,  // encoded effects

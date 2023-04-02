@@ -560,7 +560,7 @@ static void _Config_SetToDefaults(void) {
 	config.node_creation_buffer = NODE_CREATION_BUFFER_DEFAULT;
 
 	// replicate effects if avg change time μs > effects_threshold μs
-	config.effects_threshold = 1 ;
+	config.effects_threshold = 300 ;
 }
 
 int Config_Init

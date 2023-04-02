@@ -27,7 +27,7 @@ int Graph_Effect
 	// get graph
 	Graph *g = GraphContext_GetGraph(gc);
 
-	// back up graph sync policy
+	// backup graph sync policy
 	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
 
 	// update graph sync policy
@@ -40,14 +40,8 @@ int Graph_Effect
 	size_t l = 0;  // effects buffer length
 	const char *effects_buff = RedisModule_StringPtrLen(argv[2], &l);
 
-	// lock graph for writing
-	Graph_AcquireWriteLock(g);
-
 	// apply effects
-	bool res = Effects_Apply(gc, effects_buff, l);
-
-	// release write lock
-	Graph_ReleaseLock(g);
+	Effects_Apply(gc, effects_buff, l);
 
 	// restore graph sync policy
 	Graph_SetMatrixPolicy(g, policy);
@@ -55,16 +49,11 @@ int Graph_Effect
 	// release GraphContext
 	GraphContext_DecreaseRefCount(gc);
 
-	if(res == true) {
-		// replicate effect
-		RedisModule_ReplicateVerbatim(ctx);
+	// replicate effect
+	RedisModule_ReplicateVerbatim(ctx);
 
-		// reply back to caller
-		RedisModule_ReplyWithSimpleString(ctx, "OK");
-	} else {
-		// failed to apply effects buffer
-		RedisModule_ReplyWithError(ctx, "Failed to apply effects buffer");
-	}
+	// reply back to caller
+	RedisModule_ReplyWithSimpleString(ctx, "OK");
 
 	return REDISMODULE_OK;
 }
