@@ -87,7 +87,7 @@ void Edge_ToString
 	char **buffer,
 	size_t *bufferLen,
 	size_t *bytesWritten,
-	GraphEntityStringFromat format
+	GraphEntityStringFormat format
 ) {
 	GraphEntity_ToString((const GraphEntity *)e, buffer, bufferLen, bytesWritten, format, GETYPE_EDGE);
 }

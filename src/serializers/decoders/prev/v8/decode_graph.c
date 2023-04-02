@@ -173,6 +173,7 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 		// revert to default synchronization behavior
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
+		uint rel_count   = Graph_RelationTypeCount(g);
 		uint label_count = Graph_LabelTypeCount(g);
 		// update the node statistics
 		// index the nodes
@@ -182,12 +183,31 @@ GraphContext *RdbLoadGraphContext_v8(RedisModuleIO *rdb) {
 			RG_Matrix_nvals(&nvals, L);
 			GraphStatistics_IncNodeCount(&g->stats, i, nvals);
 
+			Index idx = NULL;
 			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
-			if(s->index) {
-				Index_Populate(s->index, g);
+			idx = PENDING_EXACTMATCH_IDX(s);
+			if(idx != NULL) {
+				Index_Populate(idx, g);
+				Index_Enable(idx);
+				Schema_ActivateIndex(s, idx);
 			}
-			if(s->fulltextIdx) {
-				Index_Populate(s->fulltextIdx, g);
+
+			idx = PENDING_FULLTEXT_IDX(s);
+			if(idx != NULL) {
+				Index_Populate(idx, g);
+				Index_Enable(idx);
+				Schema_ActivateIndex(s, idx);
+			}
+		}
+
+		// enable all edge indices
+		for(uint i = 0; i < rel_count; i++) {
+			Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
+			Index idx = PENDING_EXACTMATCH_IDX(s);
+			if(idx != NULL) {
+				Index_Populate(idx, g);
+				Index_Enable(idx);
+				Schema_ActivateIndex(s, idx);
 			}
 		}
 

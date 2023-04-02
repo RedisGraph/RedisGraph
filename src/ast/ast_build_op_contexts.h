@@ -9,6 +9,7 @@
 #include "ast.h"
 #include "ast_shared.h"
 #include "../graph/query_graph.h"
+#include "../graph/graphcontext.h"
 #include "../graph/entities/graph_entity.h"
 
 #define DIR_DESC -1

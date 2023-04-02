@@ -5,6 +5,7 @@
  */
 
 #include "ast.h"
+#include <inttypes.h>
 #include <pthread.h>
 
 #include "RG.h"
@@ -615,11 +616,11 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection
 
 static inline char *_create_anon_alias
 (
-	int anon_count
+	const uint32_t anon_count
 ) {
 	char *alias;
 	int rc __attribute__((unused));
-	rc = asprintf(&alias, "@anon_%d", anon_count);
+	rc = asprintf(&alias, "@anon_%" PRIu32, anon_count);
 	return alias;
 }
 

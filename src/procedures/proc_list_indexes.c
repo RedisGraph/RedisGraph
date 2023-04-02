@@ -16,9 +16,7 @@
 
 typedef struct {
 	SIValue *out;               // outputs
-	int node_schema_id;         // current node schema ID
-	int edge_schema_id;         // current edge schema ID
-	IndexType type;             // current index type to retrieve
+	Index *indices;             // indicies to emit
 	GraphContext *gc;           // graph context
 	SIValue *yield_type;        // yield index type
 	SIValue *yield_label;       // yield index label
@@ -117,11 +115,38 @@ ProcedureResult Proc_IndexesInvoke
 
 	IndexesContext *pdata = rm_malloc(sizeof(IndexesContext));
 
-	pdata->gc             = gc;
-	pdata->out            = array_new(SIValue, 8);
-	pdata->type           = IDX_EXACT_MATCH;
-	pdata->node_schema_id = GraphContext_SchemaCount(gc, SCHEMA_NODE) - 1;
-	pdata->edge_schema_id = GraphContext_SchemaCount(gc, SCHEMA_EDGE) - 1;
+	pdata->gc      = gc;
+	pdata->out     = array_new(SIValue, 8);
+	pdata->indices = array_new(Index, 0);
+
+	//--------------------------------------------------------------------------
+	// collect all indices
+	//--------------------------------------------------------------------------
+
+	unsigned short n;            // number of schemas
+	Schema         *s;           // current schema
+	unsigned short idx_count;    // number of indicies in schema
+	Index          indicies[4];  // schema indicies
+
+	// collect indices from node schemas
+	n = GraphContext_SchemaCount(gc, SCHEMA_NODE);
+	for(unsigned short i = 0; i < n; i++) {
+		s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
+		idx_count = Schema_GetIndicies(s, indicies);
+		for(unsigned short j = 0; j < idx_count; j++) {
+			array_append(pdata->indices, indicies[j]);
+		}
+	}
+
+	// collect indices from edge schemas
+	n = GraphContext_SchemaCount(gc, SCHEMA_EDGE);
+	for(unsigned short i = 0; i < n; i++) {
+		s = GraphContext_GetSchemaByID(gc, i, SCHEMA_EDGE);
+		idx_count = Schema_GetIndicies(s, indicies);
+		for(uint j = 0; j < idx_count; j++) {
+			array_append(pdata->indices, indicies[j]);
+		}
+	}
 
 	_process_yield(pdata, yield);
 
@@ -133,18 +158,14 @@ ProcedureResult Proc_IndexesInvoke
 static bool _EmitIndex
 (
 	IndexesContext *ctx,
-	const Schema *s,
-	IndexType type
+	Index idx
 ) {
-	Index idx = Schema_GetIndex(s, NULL, type);
-	if(idx == NULL) return false;
-
 	//--------------------------------------------------------------------------
 	// index entity type
 	//--------------------------------------------------------------------------
 
 	if(ctx->yield_entity_type != NULL) {
-		if(s->type == SCHEMA_NODE) {
+		if(Index_GraphEntityType(idx) == SCHEMA_NODE) {
 			*ctx->yield_entity_type = SI_ConstStringVal("NODE");
 		} else {
 			*ctx->yield_entity_type = SI_ConstStringVal("RELATIONSHIP");
@@ -168,7 +189,7 @@ static bool _EmitIndex
 	//--------------------------------------------------------------------------
 
 	if(ctx->yield_type != NULL) {
-		if(type == IDX_EXACT_MATCH) {
+		if(Index_Type(idx) == IDX_EXACT_MATCH) {
 			*ctx->yield_type = SI_ConstStringVal("exact-match");
 		} else {
 			*ctx->yield_type = SI_ConstStringVal("full-text");
@@ -180,7 +201,7 @@ static bool _EmitIndex
 	//--------------------------------------------------------------------------
 
 	if(ctx->yield_label) {
-		*ctx->yield_label = SI_ConstStringVal((char *)Schema_GetName(s));
+		*ctx->yield_label = SI_ConstStringVal((char *)Index_GetLabel(idx));
 	}
 
 	//--------------------------------------------------------------------------
@@ -234,12 +255,14 @@ static bool _EmitIndex
 	if(ctx->yield_info) {
 		RSIdxInfo info = { .version = RS_INFO_CURRENT_VERSION };
 
-		RediSearch_IndexInfo(Index_RSIndex(idx), &info);
+		RSIndex *rsIdx = Index_RSIndex(idx);
+
+		RediSearch_IndexInfo(rsIdx, &info);
 		SIValue map = SI_Map(23);
 
-		Map_Add(&map, SI_ConstStringVal("gcPolicy"),  SI_LongVal(info.gcPolicy));
-		Map_Add(&map, SI_ConstStringVal("score"),     SI_DoubleVal(info.score));
-		Map_Add(&map, SI_ConstStringVal("lang"),      SI_ConstStringVal(info.lang));
+		Map_Add(&map, SI_ConstStringVal("gcPolicy"), SI_LongVal(info.gcPolicy));
+		Map_Add(&map, SI_ConstStringVal("score"),    SI_DoubleVal(info.score));
+		Map_Add(&map, SI_ConstStringVal("lang"),     SI_ConstStringVal(info.lang));
 
 		SIValue fields = SIArray_New(info.numFields);
 		for (uint i = 0; i < info.numFields; i++) {
@@ -284,41 +307,6 @@ static bool _EmitIndex
 	return true;
 }
 
-static SIValue *Schema_Step
-(
-	int *schema_id,
-	SchemaType t,
-	IndexesContext *pdata
-) {
-	Schema *s = NULL;
-
-	// loop over all schemas from last to first
-	while(*schema_id >= 0) {
-		s = GraphContext_GetSchemaByID(pdata->gc, *schema_id, t);
-		if(!Schema_HasIndices(s)) {
-			// no indexes found, continue to the next schema
-			(*schema_id)--;
-			continue;
-		}
-
-		// populate index data if one is found
-		bool found = _EmitIndex(pdata, s, pdata->type);
-
-		if(pdata->type == IDX_FULLTEXT) {
-			// all indexes retrieved; update schema_id, reset schema type
-			(*schema_id)--;
-			pdata->type = IDX_EXACT_MATCH;
-		} else {
-			// next iteration will check the same schema for a full-text index
-			pdata->type = IDX_FULLTEXT;
-		}
-
-		if(found) return pdata->out;
-	}
-
-	return NULL;
-}
-
 SIValue *Proc_IndexesStep
 (
 	ProcedureCtx *ctx
@@ -328,10 +316,16 @@ SIValue *Proc_IndexesStep
 	SIValue *res;
 	IndexesContext *pdata = ctx->privateData;
 
-	res = Schema_Step(&pdata->node_schema_id, SCHEMA_NODE, pdata);
-	if(res != NULL) return res;
+	// no more indices to emit
+	if(array_len(pdata->indices) == 0) {
+		return NULL;
+	}
 
-	return Schema_Step(&pdata->edge_schema_id, SCHEMA_EDGE, pdata);
+	// emit index
+	Index idx = array_pop(pdata->indices);
+	_EmitIndex(pdata, idx);
+
+	return pdata->out;
 }
 
 ProcedureResult Proc_IndexesFree
@@ -342,13 +336,14 @@ ProcedureResult Proc_IndexesFree
 	if(ctx->privateData) {
 		IndexesContext *pdata = ctx->privateData;
 		array_free(pdata->out);
+		array_free(pdata->indices);
 		rm_free(pdata);
 	}
 
 	return PROCEDURE_OK;
 }
 
-ProcedureCtx *Proc_IndexesCtx() {
+ProcedureCtx *Proc_IndexesCtx(void) {
 	void *privateData = NULL;
 	ProcedureOutput output;
 	ProcedureOutput *outputs = array_new(ProcedureOutput, 8);

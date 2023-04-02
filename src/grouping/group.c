@@ -11,28 +11,45 @@
 #include "../util/rmalloc.h"
 #include "../execution_plan/ops/op.h"
 
-// Creates a new group
-// arguments specify group's key.
-Group *NewGroup(SIValue *keys, uint key_count, AR_ExpNode **funcs, uint func_count, Record r) {
+// creates a new group
+Group *Group_New
+(
+	SIValue *keys,     // group keys
+	uint key_count,    // number of keys
+	AR_ExpNode **agg,  // aggregation functions
+	uint func_count    // number of aggregation functions
+) {
 	Group *g = rm_malloc(sizeof(Group));
-	g->keys = keys;
-	g->aggregationFunctions = funcs;
-	g->key_count = key_count;
+
+	g->keys       = keys;
+	g->agg        = agg;
+	g->key_count  = key_count;
 	g->func_count = func_count;
-	g->r = (r) ? OpBase_CloneRecord(r) : NULL;
+
 	return g;
 }
 
-void FreeGroup(Group *g) {
-	if(g == NULL) return;
-	if(g->r) Record_FreeEntries(g->r);  // Will be freed by Record owner.
-	if(g->keys) {
-		for(int i = 0; i < g->key_count; i ++) SIValue_Free(g->keys[i]);
+// free group
+void Group_Free
+(
+	Group *g  // group to free
+) {
+	if(g == NULL) {
+		return;
+	}
+
+	if(g->keys != NULL) {
+		for(int i = 0; i < g->key_count; i ++) {
+			SIValue_Free(g->keys[i]);
+		}
 		rm_free(g->keys);
 	}
 
-	for(uint i = 0; i < g->func_count; i++) AR_EXP_Free(g->aggregationFunctions[i]);
-	rm_free(g->aggregationFunctions);
+	for(uint i = 0; i < g->func_count; i++) {
+		AR_EXP_Free(g->agg[i]);
+	}
+
+	rm_free(g->agg);
 	rm_free(g);
 }
 

@@ -28,10 +28,10 @@ static bool _AttributeSet_Remove
 	Attribute_ID attr_id
 ) {
 	AttributeSet _set = *set;
-	int attr_count = _set->attr_count;
+	const uint16_t attr_count = _set->attr_count;
 
 	// locate attribute position
-	for(int i = 0; i < attr_count; i++) {
+	for (uint16_t i = 0; i < attr_count; ++i) {
 		if(attr_id != _set->attributes[i].id) {
 			continue;
 		}
@@ -51,7 +51,7 @@ static bool _AttributeSet_Remove
 		_set->attributes[i] = _set->attributes[attr_count - 1];
 
 		// update attribute count
-		_set->attr_count--;
+		--_set->attr_count;
 
 		// compute new set size
 		size_t n = ATTRIBUTESET_BYTE_SIZE(_set);
@@ -81,7 +81,7 @@ SIValue *AttributeSet_Get
 	// sorted set
 	// array divided in two:
 	// [attr_id_0, attr_id_1, attr_id_2, value_0, value_1, value_2]
-	for(int i = 0; i < set->attr_count; i++) {
+	for (uint16_t i = 0; i < set->attr_count; ++i) {
 		Attribute *attr = set->attributes + i;
 		if(attr_id == attr->id) {
 			// note, unsafe as attribute-set can get reallocated
@@ -99,7 +99,7 @@ SIValue *AttributeSet_Get
 SIValue AttributeSet_GetIdx
 (
 	const AttributeSet set,  // set to retieve attribute from
-	int i,                   // index of the property
+	uint16_t i,              // index of the property
 	Attribute_ID *attr_id    // attribute identifier
 ) {
 	ASSERT(set != NULL);
@@ -130,7 +130,7 @@ static AttributeSet AttributeSet_AddPrepare
 		_set = rm_malloc(sizeof(_AttributeSet) + sizeof(Attribute));
 		_set->attr_count = 1;
 	} else {
-		_set->attr_count++;
+		++_set->attr_count;
 		size_t n = ATTRIBUTESET_BYTE_SIZE(_set);
 		_set = rm_realloc(_set, n);
 	}
@@ -281,8 +281,8 @@ AttributeSet AttributeSet_Clone
 	size_t n = ATTRIBUTESET_BYTE_SIZE(set);
 	AttributeSet clone  = rm_malloc(n);
 	clone->attr_count   = set->attr_count;
-	
-	for (ushort i = 0; i < set->attr_count; i++) {
+
+	for (uint16_t i = 0; i < set->attr_count; ++i) {
 		Attribute *attr        = set->attributes   + i;
 		Attribute *clone_attr  = clone->attributes + i;
 
@@ -305,10 +305,11 @@ void AttributeSet_Free
 	if(_set == NULL) return;
 
 	// free all allocated properties
-	for(int i = 0; i < _set->attr_count; i++) {
+	for(uint16_t i = 0; i < _set->attr_count; ++i) {
 		SIValue_Free(_set->attributes[i].value);
 	}
 
 	rm_free(_set);
 	*set = NULL;
 }
+
