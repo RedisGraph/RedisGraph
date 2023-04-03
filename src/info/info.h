@@ -76,6 +76,14 @@ typedef struct Info {
 // returns true on successful creation
 Info *Info_New(void);
 
+// add a query to the waiting list for the first time (from dispatcher)
+// at this stage, no time has been previously accumulated
+void Info_AddWaiting
+(
+    Info *info,    // info
+    QueryInfo *qi  // query info of the query starting to wait
+);
+
 // remove a query from the waiting_queries, insert it to the executing queue,
 // and set its stage
 void Info_IndicateQueryStartedExecution

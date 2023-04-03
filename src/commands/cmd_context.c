@@ -31,7 +31,8 @@ CommandCtx *CommandCtx_New
 	bool timeout_rw,
 	const simple_timer_t timer,
 	const uint64_t received_timestamp,
-	const bool should_track_info
+	const bool should_track_info,
+	QueryCtx *query_ctx
 ) {
 	CommandCtx *context         = rm_malloc(sizeof(CommandCtx));
 	context->bc                 = bc;
@@ -47,6 +48,7 @@ CommandCtx *CommandCtx_New
 	TIMER_ASSIGN(context->timer, timer);
 	context->received_timestamp = received_timestamp;
 	context->should_track_info  = should_track_info;
+	context->query_ctx          = NULL;
 
 	if(cmd_name) {
 		// Make a copy of command name.

@@ -394,6 +394,27 @@ Info *Info_New(void) {
     return info;
 }
 
+// add a query to the waiting list for the first time (from dispatcher)
+// at this stage, no time has been previously accumulated
+void Info_AddWaiting
+(
+    Info *info,    // info
+    QueryInfo *qi  // query info of the query starting to wait
+) {
+    // lock the waiting queries
+    bool res = _Info_LockWaitingQueries(info, true);
+    ASSERT(res != NULL);
+    // add the query to the waiting dict
+    HashTableAdd(info->waiting_queries, qi, qi);
+    // set the stage to waiting
+    qi->stage = QueryStage_WAITING;
+    // start the stage-timer
+    TIMER_RESTART(qi->stage_timer);
+    // unlock waiting queries
+    res = _Info_UnlockWaitingQueries(info);
+    ASSERT(res != NULL);
+}
+
 // remove a query from the waiting_queries, insert it to the executing queue,
 // and set its stage
 void Info_IndicateQueryStartedExecution
@@ -404,8 +425,8 @@ void Info_IndicateQueryStartedExecution
     ASSERT(ctx  != NULL);
     ASSERT(info != NULL);
 
-    ASSERT(_Info_LockEverything(info, true));
-    ASSERT(_Info_LockWaitingQueries(info, true));
+    ASSERT(_Info_LockEverything(info, true) != NULL);
+    ASSERT(_Info_LockWaitingQueries(info, true) != NULL);
 
     // update waiting time
     QueryInfo_UpdateWaitingTime(qi);

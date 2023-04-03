@@ -10,17 +10,7 @@
 
 // creates a new, empty query info object
 QueryInfo *QueryInfo_New(void) {
-	ASSERT(ctx != NULL);
-
     QueryInfo *qi = rm_calloc(1, sizeof(QueryInfo));
-
-	// this function is called when a thread is already executing the query
-    // (for parsing and execution-plan planning)
-    GraphContext *gc = (GraphContext *)QueryCtx_GetGraphCtx();
-    Info_IndicateQueryStartedExecution(gc->info, qi);
-
-    TIMER_RESTART(qi->stage_timer);
-
     return qi;
 }
 

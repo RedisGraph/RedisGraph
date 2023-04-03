@@ -243,19 +243,29 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 				REDISMODULE_CTX_FLAGS_LOADING)));
 	ExecutorThread exec_thread = main_thread ? EXEC_THREAD_MAIN : EXEC_THREAD_READER;
 
+	// create the query context for this query
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+
 	Command_Handler handler = get_command_handler(cmd);
 	if(exec_thread == EXEC_THREAD_MAIN) {
 		// run query on Redis main thread
 		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout, timeout_rw, timer,
-								 received_milliseconds, should_track_info);
+								 is_replicated, compact, timeout, timeout_rw,
+								 timer, received_milliseconds,
+								 should_track_info, query_ctx);
 		handler(context);
 	} else {
 		// run query on a dedicated thread
 		RedisModuleBlockedClient *bc = RedisGraph_BlockClient(ctx);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout, timeout_rw, timer,
-								 received_milliseconds, should_track_info);
+								 is_replicated, compact, timeout, timeout_rw,
+								 timer, received_milliseconds,
+								 should_track_info, query_ctx);
+
+		// indicate that the query has started waiting
+		QueryInfo *qi = query_ctx->qi;
+		qi->received_ts = CommandCtx_GetReceivedTimestamp(context);
+		Info_AddWaiting(gc->info, qi);
 
 		if(ThreadPools_AddWorkReader(handler, context, false) ==
 				THPOOL_QUEUE_FULL) {

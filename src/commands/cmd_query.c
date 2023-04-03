@@ -427,12 +427,13 @@ void _query(bool profile, void *args) {
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 	QueryCtx_BeginTimer(); // start query timing
 
+	// transition the query from waiting to executing
+	QueryInfo *qi = command_ctx->query_ctx->qi;
+	Info_IndicateQueryStartedExecution(gc->info, qi);
+
 	// parse query parameters and build an execution plan or retrieve it from the cache
 	exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 	if(exec_ctx == NULL) goto cleanup;
-
-	QueryInfo *qi = (QueryCtx_GetQueryCtx())->qi;
-	qi->received_ts = CommandCtx_GetReceivedTimestamp(command_ctx);
 
 	ExecutionType exec_type = exec_ctx->exec_type;
 	bool readonly = AST_ReadOnly(exec_ctx->ast->root);

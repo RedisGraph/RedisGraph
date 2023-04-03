@@ -33,7 +33,7 @@ typedef struct {
 	simple_timer_t timer;           // The timer for "GRAPH.INFO".
 	uint64_t received_timestamp;    // The timestamp when the command was received.
 	bool should_track_info;         // Whether or not to track info.
-	QueryCtx query_ctx;             // query context
+	QueryCtx *query_ctx;            // query context
 } CommandCtx;
 
 // Create a new command context.
@@ -51,7 +51,8 @@ CommandCtx *CommandCtx_New
 	bool timeout_rw,                   // Apply timeout on both read and write queries.
 	const simple_timer_t timer,        // The timer for timing the command.
 	const uint64_t received_timestamp, // The command receive timestamp (epoch).
-	const bool should_track_info       // Whether or not to track info.
+	const bool should_track_info,      // Whether or not to track info.
+	QueryCtx *query_ctx                // query context
 );
 
 // Tracks given 'ctx' such that in case of a crash we will be able to report
