@@ -50,9 +50,11 @@ static void _ExecutionPlan_ProcessQueryGraph
 
 		if(edge_count == 0) {
 			// if there are no edges in the component, we only need a node scan
+			// if no labels are introduced, and the var is bound, don't build
+			// a traversal
 			QGNode *n = cc->nodes[0];
 			if(raxFind(bound_vars, (unsigned char *)n->alias, strlen(n->alias))
-					!= raxNotFound) {
+					!= raxNotFound && QGNode_LabelCount(n) == 0) {
 				continue;
 			}
 		}
@@ -108,11 +110,11 @@ static void _ExecutionPlan_ProcessQueryGraph
 					QueryGraph_GetEdgeByAlias(qg, AlgebraicExpression_Edge(exp));
 			}
 
-			if(edge && QGEdge_VariableLength(edge)) {
-				// edge is part of a shortest-path
-				// MATCH allShortestPaths((a)-[*..]->(b))
-				// validate both edge ends are bounded
+			if(edge && (QGEdge_VariableLength(edge) || !QGEdge_SingleHop(edge))) {
 				if(QGEdge_IsShortestPath(edge)) {
+					// edge is part of a shortest-path
+					// MATCH allShortestPaths((a)-[*..]->(b))
+					// validate both edge ends are bounded
 					const char *src_alias  = QGNode_Alias(QGEdge_Src(edge));
 					const char *dest_alias = QGNode_Alias(QGEdge_Dest(edge));
 					bool src_bounded =

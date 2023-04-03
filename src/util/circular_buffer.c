@@ -47,7 +47,7 @@ int CircularBuffer_Add
 ) {
 	ASSERT(cb != NULL);
 	ASSERT(item != NULL);
-	
+
 	// do not add item if buffer is full
 	if(unlikely(CircularBuffer_Full(cb))) {
 		return 0;
@@ -110,21 +110,6 @@ void *CircularBuffer_Current
 	ASSERT(!CircularBuffer_Empty(cb));
 
 	return cb->read;
-}
-
-void CircularBuffer_Advance
-(
-	CircularBuffer cb
-) {
-	ASSERT(cb != NULL);
-
-	// update buffer item count
-	cb->item_count--;
-
-	cb->read += cb->item_size;
-	if(unlikely(cb->read >= cb->end_marker)) {
-		cb->read = cb->data;
-	}
 }
 
 // returns number of items in buffer

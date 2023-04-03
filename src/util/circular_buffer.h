@@ -39,11 +39,6 @@ void *CircularBuffer_Current
 	const CircularBuffer cb
 );
 
-void CircularBuffer_Advance
-(
-	CircularBuffer cb
-);
-
 // returns number of items in buffer
 int CircularBuffer_ItemCount
 (
@@ -67,4 +62,3 @@ void CircularBuffer_Free
 (
 	CircularBuffer *cb  // buffer to free
 );
-

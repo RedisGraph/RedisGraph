@@ -8,8 +8,8 @@
 #include "graph.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "rg_matrix/rg_matrix_iter.h"
 #include "../util/datablock/oo_datablock.h"
-#include "../graph/rg_matrix/rg_matrix_iter.h"
 
 //------------------------------------------------------------------------------
 // Forward declarations
@@ -54,11 +54,16 @@ static void _CreateRWLock
 
 // acquire a lock that does not restrict access from additional reader threads
 void Graph_AcquireReadLock(Graph *g) {
+	ASSERT(g != NULL);
+
 	pthread_rwlock_rdlock(&g->_rwlock);
 }
 
 // acquire a lock for exclusive access to this graph's data
 void Graph_AcquireWriteLock(Graph *g) {
+	ASSERT(g != NULL);
+	ASSERT(g->_writelocked == false);
+
 	pthread_rwlock_wrlock(&g->_rwlock);
 	g->_writelocked = true;
 }
@@ -68,6 +73,8 @@ void Graph_ReleaseLock
 (
 	Graph *g
 ) {
+	ASSERT(g != NULL);
+
 	// set _writelocked to false BEFORE unlocking
 	// if this is a reader thread no harm done,
 	// if this is a writer thread the writer is about to unlock so once again
@@ -182,7 +189,7 @@ void _MatrixSynchronize
 	bool require_resize = (n_rows != dims || n_cols != dims);
 
 	// matrix fully synced, nothing to do
-	if(!require_resize && !RG_Matrix_isDirty(m)) {
+	if(!require_resize && !dirty) {
 		return;
 	}
 
@@ -526,7 +533,7 @@ void Graph_AllocateEdges(Graph *g, size_t n) {
 	DataBlock_Accommodate(g->edges, n);
 }
 
-int Graph_GetNode
+bool Graph_GetNode
 (
 	const Graph *g,
 	NodeID id,
@@ -541,7 +548,7 @@ int Graph_GetNode
 	return (n->attributes != NULL);
 }
 
-int Graph_GetEdge
+bool Graph_GetEdge
 (
 	const Graph *g,
 	EdgeID id,
@@ -627,8 +634,8 @@ void Graph_GetEdgesConnectingNodes
 #ifdef RG_DEBUG
 	Node  srcNode   =  GE_NEW_NODE();
 	Node  destNode  =  GE_NEW_NODE();
-	ASSERT(Graph_GetNode(g, srcID, &srcNode));
-	ASSERT(Graph_GetNode(g, destID, &destNode));
+	ASSERT(Graph_GetNode(g, srcID, &srcNode)   == true);
+	ASSERT(Graph_GetNode(g, destID, &destNode) == true);
 #endif
 
 	if(r != GRAPH_NO_RELATION) {
@@ -764,8 +771,8 @@ bool Graph_FormConnection
 
 	GrB_Info info;
 	UNUSED(info);
-	RG_Matrix  M    =  Graph_GetRelationMatrix(g, r, false);
-	RG_Matrix  adj  =  Graph_GetAdjacencyMatrix(g, false);
+	RG_Matrix M   = Graph_GetRelationMatrix(g, r, false);
+	RG_Matrix adj = Graph_GetAdjacencyMatrix(g, false);
 
 	// rows represent source nodes, columns represent destination nodes
 	info = RG_Matrix_setElement_BOOL(adj, src, dest);
@@ -796,20 +803,19 @@ void Graph_CreateEdge
 #ifdef RG_DEBUG
 	// make sure both src and destination nodes exists
 	Node node = GE_NEW_NODE();
-	ASSERT(Graph_GetNode(g, src, &node) == 1);
-	ASSERT(Graph_GetNode(g, dest, &node) == 1);
+	ASSERT(Graph_GetNode(g, src, &node)  == true);
+	ASSERT(Graph_GetNode(g, dest, &node) == true);
 #endif
 
 	EdgeID id;
 	AttributeSet *set = DataBlock_AllocateItem(g->edges, &id);
 	*set = NULL;
 
-	e->id            =  id;
-	e->attributes    =  set;
-	e->srcNodeID     =  src;
-	e->destNodeID    =  dest;
-	e->relationID    =  r;
-
+	e->id         = id;
+	e->attributes = set;
+	e->srcNodeID  = src;
+	e->destNodeID = dest;
+	e->relationID = r;
 
 	Graph_FormConnection(g, src, dest, id, r);
 }
@@ -1046,44 +1052,15 @@ uint Graph_GetNodeLabels
 	return i;
 }
 
-// removes node and all of its connections within the graph
-void Graph_DeleteNode
-(
-	Graph *g,
-	Node *n
-) {
-	// assumption, node is detached
- 	// there are no incoming nor outgoing edges leading to / from node
-	ASSERT(g != NULL);
-	ASSERT(n != NULL);
-
-	#if RG_DEBUG
-	// validate assumption
-	Edge *edges = array_new(Edge, 0);
-	Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
-	ASSERT(array_len(edges) == 0);
-	array_free(edges);
-	#endif
-
-	uint label_count;
-	EntityID n_id = ENTITY_GET_ID(n);
-
-	NODE_GET_LABELS(g, n, label_count);
-
-	// update label matrices
-	if(label_count > 0) Graph_RemoveNodeLabels(g, n_id, labels, label_count);
-
-	// remove node from datablock
-	DataBlock_DeleteItem(g->nodes, n_id);
-}
-
 // removes edges from Graph and updates graph relevant matrices
-int Graph_DeleteEdges
+void Graph_DeleteEdges
 (
 	Graph *g,
-	Edge *edges
+	Edge *edges,
+	uint64_t count
 ) {
 	ASSERT(g != NULL);
+	ASSERT(count > 0);
 	ASSERT(edges != NULL);
 
 	uint64_t    x;
@@ -1095,7 +1072,6 @@ int Graph_DeleteEdges
 	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 
-	uint count = array_len(edges);
 	for (uint i = 0; i < count; i++) {
 		Edge       *e         =  edges + i;
 		int         r         =  Edge_GetRelationID(e);
@@ -1103,7 +1079,7 @@ int Graph_DeleteEdges
 		NodeID      dest_id   =  Edge_GetDestNodeID(e);
 
 		ASSERT(!DataBlock_ItemIsDeleted((void *)e->attributes));
-		
+
 		// an edge of type r has just been deleted, update statistics
 		GraphStatistics_DecEdgeCount(&g->stats, r, 1);
 
@@ -1114,6 +1090,9 @@ int Graph_DeleteEdges
 		ASSERT(info == GrB_SUCCESS);
 
 		if(entry_deleted) {
+			// TODO: consider making ADJ UINT64_T where ADJ[i,j] = #connections
+			// drop the entry once it reaches 0
+			//
 			// see if source is connected to destination with additional edges
 			bool connected = false;
 			int relationCount = Graph_RelationTypeCount(g);
@@ -1138,12 +1117,9 @@ int Graph_DeleteEdges
 
 		// free and remove edges from datablock.
 		DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
-
 	}
-	
-	Graph_SetMatrixPolicy(g, policy);
 
-	return count;
+	Graph_SetMatrixPolicy(g, policy);
 }
 
 inline bool Graph_EntityIsDeleted
@@ -1164,7 +1140,7 @@ static void _Graph_FreeRelationMatrices
 // update entity's attribute with given value
 int Graph_UpdateEntity
 (
-	GraphEntity *ge,             // entity yo update
+	GraphEntity *ge,             // entity to update
 	Attribute_ID attr_id,        // attribute to update
 	SIValue value,               // value to be set
 	GraphEntityType entity_type  // type of the entity node/edge

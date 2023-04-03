@@ -158,7 +158,7 @@ static void _UndoLog_Rollback_Set_Labels
 
 		Graph_RemoveNodeLabels(g, update_labels_op->node.id,
 				update_labels_op->label_lds, labels_count);
-				
+
 		_index_delete_node_with_labels(ctx, &(update_labels_op->node),
 				update_labels_op->label_lds, labels_count);
 
@@ -179,7 +179,7 @@ static void _UndoLog_Rollback_Remove_Labels
 		UndoLabelsOp *update_labels_op = &(op->labels_op);
 		uint         labels_count      = update_labels_op->labels_count;
 
-		Graph_LabelNode(g, update_labels_op->node.id, 
+		Graph_LabelNode(g, update_labels_op->node.id,
 				update_labels_op->label_lds, labels_count);
 
 		_index_node_with_labels(ctx, &(update_labels_op->node),
@@ -196,12 +196,21 @@ static void _UndoLog_Rollback_Create_Node
 	int seq_start,
 	int seq_end
 ) {
+	ASSERT(seq_start > seq_end);
+
+	uint node_count = seq_start - seq_end;
 	UndoOp *undo_list = ctx->undo_log;
-	for(int i = seq_start; i > seq_end; --i) {
-		Node *n = &undo_list[i].create_op.n;
+
+	Node *nodes = rm_malloc(sizeof(Node) * node_count);
+
+	for(int i = 0; i < node_count; i++) {
+		Node *n = &undo_list[seq_start - i].create_op.n;
+		nodes[i] = *n;
 		_index_delete_node(ctx, n);
-		Graph_DeleteNode(ctx->gc->g, n);
 	}
+
+	Graph_DeleteNodes(ctx->gc->g, nodes, node_count);
+	rm_free(nodes);
 }
 
 // undo edge creation
@@ -211,15 +220,21 @@ static void _UndoLog_Rollback_Create_Edge
 	int seq_start,
 	int seq_end
 ) {
+	ASSERT(seq_start > seq_end);
+
+	uint edge_count = seq_start - seq_end;
 	UndoOp *undo_list = ctx->undo_log;
-	Edge *edges = array_new(Edge, seq_start - seq_end);
-	for(int i = seq_start; i > seq_end; --i) {
-		Edge *e = &undo_list[i].create_op.e;
+
+	Edge *edges = rm_malloc(sizeof(Edge) * edge_count);
+
+	for(int i = 0; i < edge_count; i++) {
+		Edge *e = &undo_list[seq_start - i].create_op.e;
+		edges[i] = *e;
 		_index_delete_edge(ctx, e);
-		array_append(edges, *e);
 	}
-	Graph_DeleteEdges(ctx->gc->g, edges);
-	array_free(edges);
+
+	Graph_DeleteEdges(ctx->gc->g, edges, edge_count);
+	rm_free(edges);
 }
 
 // undo node deletion
@@ -287,7 +302,7 @@ static void _UndoLog_Rollback_Add_Schema
 			Graph_RemoveLabel(ctx->gc->g, schema_id);
 		} else {
 			Graph_RemoveRelation(ctx->gc->g, schema_id);
-		}	
+		}
 	}
 }
 
@@ -304,7 +319,7 @@ static void _UndoLog_Rollback_Add_Attribute
 		UndoOp *op = undo_list + i;
 		UndoAddAttributeOp attribute_op = op->attribute_op;
 		int attribute_id = attribute_op.attribute_id;
-		GraphContext_RemoveAttribute(ctx->gc, attribute_id);	
+		GraphContext_RemoveAttribute(ctx->gc, attribute_id);
 	}
 }
 
@@ -371,9 +386,12 @@ void UndoLog_DeleteNode
 
 	UndoOp op;
 
-	op.type                        =  UNDO_DELETE_NODE;
-	op.delete_node_op.id           =  node->id;
-	op.delete_node_op.set          =  AttributeSet_Clone(*node->attributes);
+	op.type              = UNDO_DELETE_NODE;
+	op.delete_node_op.id = node->id;
+
+	// take ownership over node's attribute-set
+	op.delete_node_op.set = *node->attributes;
+	*node->attributes = NULL;
 
 	Graph *g = QueryCtx_GetGraph();
 	NODE_GET_LABELS(g, node, op.delete_node_op.label_count);
@@ -389,19 +407,22 @@ void UndoLog_DeleteNode
 void UndoLog_DeleteEdge
 (
 	UndoLog *log,  // undo log
-	Edge *edge      // edge deleted
+	Edge *edge     // edge deleted
 ) {
 	ASSERT(log != NULL && *log != NULL);
 	ASSERT(edge != NULL);
 
 	UndoOp op;
 
-	op.type                       = UNDO_DELETE_EDGE;
-	op.delete_edge_op.id          = edge->id;
-	op.delete_edge_op.relationID  = edge->relationID;
-	op.delete_edge_op.srcNodeID   = edge->srcNodeID;
-	op.delete_edge_op.destNodeID  = edge->destNodeID;
-	op.delete_edge_op.set         = AttributeSet_Clone(*edge->attributes);
+	op.type                      = UNDO_DELETE_EDGE;
+	op.delete_edge_op.id         = edge->id;
+	op.delete_edge_op.srcNodeID  = edge->srcNodeID;
+	op.delete_edge_op.destNodeID = edge->destNodeID;
+	op.delete_edge_op.relationID = edge->relationID;
+
+	// take ownership over edge's attribute-set
+	op.delete_edge_op.set = *edge->attributes;
+	*edge->attributes = NULL;
 
 	_UndoLog_AddOperation(log, &op);
 }
@@ -480,9 +501,9 @@ void UndoLog_RemoveLabels
 // undo schema addition
 void UndoLog_AddSchema
 (
-	UndoLog *log,                // undo log
-	int schema_id,               // id of the schema
-	SchemaType t                 // type of the schema
+	UndoLog *log,   // undo log
+	int schema_id,  // id of the schema
+	SchemaType t    // type of the schema
 ) {
 	ASSERT(log != NULL);
 	UndoOp op;
@@ -495,8 +516,8 @@ void UndoLog_AddSchema
 
 void UndoLog_AddAttribute
 (
-	UndoLog *log,                // undo log
-	Attribute_ID attribute_id             // id of the attribute
+	UndoLog *log,             // undo log
+	Attribute_ID attribute_id // id of the attribute
 ) {
 	ASSERT(log != NULL);
 	UndoOp op;
@@ -516,7 +537,7 @@ void UndoLog_Rollback
 	UndoLog log
 ) {
 	ASSERT(log != NULL);
-	
+
 	QueryCtx *ctx  = QueryCtx_GetQueryCtx();
 	uint64_t count = array_len(log);
 
@@ -567,7 +588,6 @@ void UndoLog_Rollback
  	}
 
 	array_clear(log);
-
 }
 
 void UndoLog_Free

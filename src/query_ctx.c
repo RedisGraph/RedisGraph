@@ -35,9 +35,11 @@ static inline QueryCtx *_QueryCtx_GetCtx(void) {
 	return ctx;
 }
 
-/* rax callback routine for freeing computed parameter values. */
+// rax callback routine for freeing computed parameter values
 static void _ParameterFreeCallback(void *param_val) {
-	AR_EXP_Free(param_val);
+	SIValue *val = (SIValue*)param_val;
+	SIValue_Free(*val);
+	rm_free(val);
 }
 
 bool QueryCtx_Init(void) {
@@ -112,6 +114,13 @@ GraphContext *QueryCtx_GetGraphCtx(void) {
 Graph *QueryCtx_GetGraph(void) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	return gc->g;
+}
+
+UndoLog QueryCtx_GetUndoLog(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ASSERT(ctx && ctx->undo_log);
+	
+	return ctx->undo_log;
 }
 
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
@@ -255,4 +264,3 @@ void QueryCtx_Free(void) {
 	// NULL-set the context for reuse the next time this thread receives a query
 	QueryCtx_RemoveFromTLS();
 }
-

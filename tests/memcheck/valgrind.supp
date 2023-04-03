@@ -34,3 +34,17 @@
    Memcheck:Value8
    fun:lzf_compress
 }
+
+{
+   <dlopen>
+   Memcheck:Leak
+   ...
+   fun:_dl_map_object_deps
+   fun:dl_open_worker
+   fun:_dl_catch_exception
+   ...
+   fun:_dlerror_run
+   ...
+   fun:moduleLoad
+   ...
+}

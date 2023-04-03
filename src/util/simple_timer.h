@@ -64,7 +64,7 @@
     // Finally, the ANSI C11 clock() function is used if no other timer
     // is available.
 
-#endif
+#endif // #if defined(_OPENMP)
 
 //------------------------------------------------------------------------------
 
@@ -78,4 +78,4 @@ double simple_toc           // returns time since last simple_tic
     const double tic [2]    // tic from last call to simple_tic
 ) ;
 
-#endif
+#endif // SIMPLE_TIMER_H

@@ -29,7 +29,9 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 
 	// Initialize the plan's record mapping if necessary.
 	// It will already be set if this ExecutionPlan has been created to populate a single stream.
-	if(plan->record_map == NULL) plan->record_map = raxNew();
+	if(plan->record_map == NULL) {
+		plan->record_map = raxNew();
+	}
 
 	// Build query graph
 	// Query graph is set if this ExecutionPlan has been created to populate a single stream.
@@ -219,10 +221,17 @@ static ExecutionPlan *_tie_segments
 		ExecutionPlan *segment = segments[i];
 		AST *ast = segment->ast_segment;
 
-		// find the firstmost non-argument operation in this segment
+		// find the first non-argument op with no children in this segment
 		prev_connecting_op = connecting_op;
 		OpBase **taps = ExecutionPlan_LocateTaps(segment);
-		ASSERT(array_len(taps) > 0);
+		// in the case of a single segment with FOREACH as its root, there is no
+		// tap (of the current definition)
+		// for instance: FOREACH(i in [i] | CREATE (n:N))
+		// in any other case, there must be a tap
+		ASSERT((array_len(taps) > 0) ||
+		   (segment_count == 1 &&
+			(OpBase_Type(segment->root) == OPType_FOREACH)));
+
 		connecting_op = taps[0];
 		array_free(taps);
 
@@ -503,10 +512,18 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 		array_free(plan->connected_components);
 	}
 
-	QueryGraph_Free(plan->query_graph);
-	if(plan->record_map) raxFree(plan->record_map);
-	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
-	if(plan->ast_segment) AST_Free(plan->ast_segment);
+	if(plan->query_graph) {
+		QueryGraph_Free(plan->query_graph);
+	}
+	if(plan->record_map != NULL) {
+		raxFree(plan->record_map);
+	}
+	if(plan->record_pool != NULL) {
+		ObjectPool_Free(plan->record_pool);
+	}
+	if(plan->ast_segment != NULL) {
+		AST_Free(plan->ast_segment);
+	}
 	rm_free(plan);
 }
 
@@ -521,7 +538,7 @@ static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
 		child_plan = _ExecutionPlan_FreeOpTree(op->children[i]);
 		// In most cases all children will share the same plan, but if they don't
 		// (for an operation like UNION) then free the now-obsolete previous child plan.
-		if(prev_child_plan != child_plan) {
+		if(prev_child_plan != child_plan && prev_child_plan != current_plan) {
 			_ExecutionPlan_FreeInternals(prev_child_plan);
 			prev_child_plan = child_plan;
 		}

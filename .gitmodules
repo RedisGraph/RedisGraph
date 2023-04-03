@@ -10,9 +10,12 @@
 [submodule "deps/RediSearch"]
 	path = deps/RediSearch
 	url = https://github.com/RediSearch/RediSearch.git
-[submodule "deps/googletest"]
-	path = deps/googletest
-	url = https://github.com/google/googletest.git
 [submodule "deps/readies"]
 	path = deps/readies
 	url = https://github.com/RedisLabsModules/readies.git
+[submodule "deps/utf8proc"]
+	path = deps/utf8proc
+	url = https://github.com/JuliaStrings/utf8proc.git
+[submodule "deps/oniguruma"]
+	path = deps/oniguruma
+	url = https://github.com/kkos/oniguruma.git

@@ -22,7 +22,7 @@ class testOrderBy(FlowTestsBase):
 
         redis_graph.commit()
 
-    def test_multiple_order_by(self):
+    def test01_multiple_order_by(self):
         # Query with multiple order by operation
         q = """MATCH (n:Person) RETURN n.id, n.name ORDER BY n.id DESC, n.name ASC"""
         expected = [[819, "Bing"], [819, "Qiu"], [622, "Mo"]]
@@ -33,3 +33,43 @@ class testOrderBy(FlowTestsBase):
         q = """MATCH (n:Person) RETURN n.id, n.name ORDER BY n.id DESC, n.name ASC LIMIT 10"""
         actual_result = redis_graph.query(q)
         self.env.assertEquals(actual_result.result_set, expected)
+
+    def test02_foreach(self):
+        """Tests that ORDER BY works properly with FOREACH before it"""
+
+        # clean db
+        self.env.flush()
+        redis_graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        res = redis_graph.query("CREATE (:N {v: 1}), (:N {v: 2})")
+        self.env.assertEquals(res.nodes_created, 2)
+
+        res = redis_graph.query(
+            """
+            MATCH (n:N)
+            FOREACH(node in [n] |
+                SET n.v = n.v
+            )
+            RETURN n
+            ORDER BY n.v DESC
+            """
+        )
+
+        # assert the order of the results
+        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'v': 2}))
+        self.env.assertEquals(res.result_set[1][0], Node(label='N', properties={'v': 1}))
+
+        res = redis_graph.query(
+            """
+            MATCH (n:N)
+            FOREACH(node in [n] |
+                SET n.v = n.v
+            )
+            RETURN n
+            ORDER BY n.v ASC
+            """
+        )
+
+        # assert the order of the results
+        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'v': 1}))
+        self.env.assertEquals(res.result_set[1][0], Node(label='N', properties={'v': 2}))

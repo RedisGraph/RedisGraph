@@ -205,18 +205,20 @@ void Graph_CreateEdge
 	Edge *e
 );
 
-// removes node and all of its connections within the graph
-void Graph_DeleteNode
+// deletes nodes from the graph
+void Graph_DeleteNodes
 (
-	Graph *g,
-	Node *node
+	Graph *g,       // graph to delete nodes from
+	Node *nodes,    // nodes to delete
+	uint64_t count  // number of nodes
 );
 
 // removes edges from Graph and updates graph relevent matrices
-int Graph_DeleteEdges
+void Graph_DeleteEdges
 (
 	Graph *g,
-	Edge *edges
+	Edge *edges,
+	uint64_t count
 );
 
 // update entity attribute with new value
@@ -322,7 +324,7 @@ bool Graph_RelationshipContainsMultiEdge
 
 // retrieves node with given id from graph,
 // returns NULL if node wasn't found
-int Graph_GetNode
+bool Graph_GetNode
 (
 	const Graph *g,
 	NodeID id,
@@ -331,7 +333,7 @@ int Graph_GetNode
 
 // retrieves edge with given id from graph,
 // returns NULL if edge wasn't found
-int Graph_GetEdge
+bool Graph_GetEdge
 (
 	const Graph *g,
 	EdgeID id,

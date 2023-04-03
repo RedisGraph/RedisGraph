@@ -6,6 +6,7 @@
 
 #include "array.h"
 #include "../util/arr.h"
+#include "../util/qsort.h"
 #include <limits.h>
 #include "xxhash.h"
 
@@ -34,10 +35,17 @@ uint32_t SIArray_Length(SIValue siarray) {
 	return array_len(siarray.array);
 }
 
+/**
+  * @brief  Returns true if any of the types in 't' are contained in the array
+            or its nested array children, if any
+  * @param  siarray: array
+  * @param  t: bitmap of types to search for
+  * @retval a boolean indicating whether any types were matched
+  */
 bool SIArray_ContainsType(SIValue siarray, SIType t) {
 	uint array_len = SIArray_Length(siarray);
 	for(uint i = 0; i < array_len; i++) {
-		SIValue elem = SIArray_Get(siarray, i);
+		SIValue elem = siarray.array[i];
 		if(SI_TYPE(elem) & t) return true;
 
 		// recursively check nested arrays
@@ -46,25 +54,85 @@ bool SIArray_ContainsType(SIValue siarray, SIType t) {
 			if(type_is_nested) return true;
 		}
 	}
+	return false;
+}
 
+/**
+  * @brief  Returns true if the array contains an element equals to 'value'
+  * @param  siarray: array
+  * @param  value: value to search for
+  * @param  comparedNull: indicate if there was a null comparison during the array scan
+  * @retval a boolean indicating whether value was found in siarray
+  */
+bool SIArray_ContainsValue(SIValue siarray, SIValue value, bool *comparedNull) {
+	// indicate if there was a null comparison during the array scan
+	if(comparedNull) *comparedNull = false;
+	uint array_len = SIArray_Length(siarray);
+	for(uint i = 0; i < array_len; i++) {
+		int disjointOrNull = 0;
+		SIValue elem = siarray.array[i];
+		int compareValue = SIValue_Compare(elem, value, &disjointOrNull);
+		if(disjointOrNull == COMPARED_NULL) {
+			if(comparedNull) *comparedNull = true;
+			continue;
+		}
+		if(compareValue == 0) return true;
+	}
 	return false;
 }
 
 bool SIArray_AllOfType(SIValue siarray, SIType t) {
 	uint array_len = SIArray_Length(siarray);
 	for(uint i = 0; i < array_len; i++) {
-		SIValue elem = SIArray_Get(siarray, i);
+		SIValue elem = siarray.array[i];
 		if((SI_TYPE(elem) & t) == 0) return false;
 	}
 
 	return true;
 }
 
+// compare two SIValues, wrt ascending order
+static int _siarray_compare_func_asc
+(
+	const void *a,
+	const void *b,
+	void *data
+) {
+	return SIValue_Compare(*(SIValue*)a, *(SIValue*)b, NULL);
+}
+
+// compare two SIValues, wrt ascending order
+static int _siarray_compare_func_desc
+(
+	const void *a,
+	const void *b,
+	void *data
+) {
+	return SIValue_Compare(*(SIValue*)b, *(SIValue*)a, NULL);
+}
+
+// sorts the array in place in ascending\descending order
+void SIArray_Sort
+(
+	SIValue siarray,
+	bool ascending
+) {
+	uint32_t arrayLen = SIArray_Length(siarray);
+
+	if(ascending) {
+		sort_r(siarray.array, arrayLen, sizeof(SIValue),
+				_siarray_compare_func_asc, (void *)&ascending);
+	} else {
+		sort_r(siarray.array, arrayLen, sizeof(SIValue),
+				_siarray_compare_func_desc, (void *)&ascending);
+	}
+}
+
 SIValue SIArray_Clone(SIValue siarray) {
 	uint arrayLen = SIArray_Length(siarray);
 	SIValue newArray = SIArray_New(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
-		SIArray_Append(&newArray, SIArray_Get(siarray, i));
+		SIArray_Append(&newArray, siarray.array[i]);
 	}
 	return newArray;
 }
@@ -79,7 +147,7 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
 	uint arrayLen = SIArray_Length(list);
 	for(uint i = 0; i < arrayLen; i ++) {
 		// write the next value
-		SIValue_ToString(SIArray_Get(list, i), buf, bufferLen, bytesWritten);
+		SIValue_ToString(list.array[i], buf, bufferLen, bytesWritten);
 		// if it is not the last element, add ", "
 		if(i != arrayLen - 1) {
 			if(*bufferLen - *bytesWritten < 64) {

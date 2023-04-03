@@ -5,6 +5,7 @@
  */
 
 #include "execution_plan_construct.h"
+#include "../../ast/enrichment/annotate_projected_named_paths.h"
 #include "execution_plan_modify.h"
 #include "../execution_plan.h"
 #include "../../RG.h"
@@ -189,6 +190,96 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
+static void _buildForeachOp
+(
+	ExecutionPlan *plan,             // execution plan to add operation to
+	const cypher_astnode_t *clause,  // foreach clause
+	GraphContext *gc                 // graph context
+) {
+	// construct the following sub execution plan structure
+	// foreach
+	//   loop body (foreach/create/update/remove/delete/merge)
+	//		unwind
+	//			argument list
+
+	//--------------------------------------------------------------------------
+	// Create embedded execution plan for the body of the Foreach clause
+	//--------------------------------------------------------------------------
+	// construct AST from Foreach body
+	uint nclauses = cypher_ast_foreach_nclauses(clause);
+	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, nclauses);
+	for(uint i = 0; i < nclauses; i++) {
+		cypher_astnode_t *inner_clause =
+			(cypher_astnode_t *)cypher_ast_foreach_get_clause(clause, i);
+		array_append(clauses, inner_clause);
+	}
+
+	struct cypher_input_range range = {0};
+	cypher_astnode_t *new_root = cypher_ast_query(
+		NULL, 0, clauses, nclauses, clauses, nclauses, range
+	);
+
+	uint *ref_count = rm_malloc(sizeof(uint));
+	*ref_count = 1;
+
+	AST *body_ast = rm_malloc(sizeof(AST));
+	body_ast->root = new_root;
+	body_ast->free_root = true;
+	body_ast->parse_result = NULL;
+	body_ast->ref_count = ref_count;
+	body_ast->params_parse_result = NULL;
+	body_ast->anot_ctx_collection = plan->ast_segment->anot_ctx_collection;
+	body_ast->referenced_entities =
+		raxClone(plan->ast_segment->referenced_entities);
+
+	ExecutionPlan *embedded_plan = ExecutionPlan_NewEmptyExecutionPlan();
+	embedded_plan->ast_segment = body_ast;
+	embedded_plan->record_map = raxClone(plan->record_map);
+
+	//--------------------------------------------------------------------------
+	// build Unwind op
+	//--------------------------------------------------------------------------
+
+	// unwind foreach list expression
+	AR_ExpNode *exp = AR_EXP_FromASTNode(
+		cypher_ast_foreach_get_expression(clause));
+	exp->resolved_name = cypher_ast_identifier_get_name(
+		cypher_ast_foreach_get_identifier(clause));
+	OpBase *unwind = NewUnwindOp(embedded_plan, exp);
+
+	//--------------------------------------------------------------------------
+	// build ArgumentList op
+	//--------------------------------------------------------------------------
+
+	OpBase *argument_list = NewArgumentListOp(embedded_plan);
+	// TODO: After refactoring the execution-plan freeing mechanism, bind the
+	// ArgumentList op to the outer-scope plan (plan), and change the condition
+	// for Unwind's 'free_rec' field to be whether the child plan is different
+	// from the plan the Unwind is binded to.
+
+	// add the op as a child of the unwind operation
+	ExecutionPlan_AddOp(unwind, argument_list);
+
+	// update the root of the (currently empty) embedded plan
+	ExecutionPlan_UpdateRoot(embedded_plan, unwind);
+
+	// build the execution-plan of the body of the clause
+	AST *orig_ast = QueryCtx_GetAST();
+	QueryCtx_SetAST(body_ast);
+	ExecutionPlan_PopulateExecutionPlan(embedded_plan);
+	QueryCtx_SetAST(orig_ast);
+
+	// free the artificial body array (not its components)
+	array_free(clauses);
+
+	// create the Foreach op, and update (outer) plan root
+	OpBase *foreach = NewForeachOp(plan);
+	ExecutionPlan_UpdateRoot(plan, foreach);
+
+	// connect the embedded plan to the Foreach op
+	ExecutionPlan_AddOp(foreach, embedded_plan->root);
+}
+
 void ExecutionPlanSegment_ConvertClause
 (
 	GraphContext *gc,
@@ -219,8 +310,9 @@ void ExecutionPlanSegment_ConvertClause
 	} else if(t == CYPHER_AST_WITH) {
 		// Converting a WITH clause can create multiple operations.
 		buildWithOps(plan, clause);
+	} else if(t == CYPHER_AST_FOREACH) {
+		_buildForeachOp(plan, clause, gc);
 	} else {
 		assert(false && "unhandeled clause");
 	}
 }
-

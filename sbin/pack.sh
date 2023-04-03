@@ -5,6 +5,7 @@ HERE="$(cd "$(dirname "$PROGNAME")" &>/dev/null && pwd)"
 ROOT=$(cd $HERE/.. && pwd)
 export READIES=$ROOT/deps/readies
 . $READIES/shibumi/defs
+
 SBIN=$ROOT/sbin
 
 export PYTHONWARNINGS=ignore
@@ -18,23 +19,28 @@ if [[ $1 == --help || $1 == help || $HELP == 1 ]]; then
 		Generate RedisGraph distribution packages.
 
 		[ARGVARS...] pack.sh [--help|help]
-		
+
 		Argument variables:
-		MODULE=path       Path of module .so
+		MODULE=path         Path of module .so
 
-		RAMP=1            Build RAMP file
-		DEPS=1            Build dependencies file
-		SYM=1             Build debug symbols file
+		RAMP=0|1            Build RAMP package
+		DEPS=0|1            Build dependencies files
+		SYM=0|1             Build debug symbols file
 
-		BRANCH=name       Branch name for snapshot packages
-		WITH_GITSHA=1     Append Git SHA to shapshot package names
-		VARIANT=name      Build variant (default: empty)
+		BRANCH=name         Branch name for snapshot packages
+		WITH_GITSHA=1       Append Git SHA to shapshot package names
+		VARIANT=name        Build variant
+		RAMP_VARIANT=name   RAMP variant (e.g. ramp-{name}.yml)
 
-		ARTDIR=dir        Directory in which packages are created (default: bin/artifacts)
+		ARTDIR=dir          Directory in which packages are created (default: bin/artifacts)
+		
+		RAMP_YAML=path      RAMP configuration file path
+		RAMP_ARGS=args      Extra arguments to RAMP
 
-		JUST_PRINT=1      Only print package names, do not generate
-		VERBOSE=1         Print commands
-		IGNERR=1          Do not abort on error
+		JUST_PRINT=1        Only print package names, do not generate
+		VERBOSE=1           Print commands
+		HELP=1              Show help
+		NOP=1               Print commands, do not execute
 
 	END
 	exit 0
@@ -42,20 +48,8 @@ fi
 
 #----------------------------------------------------------------------------------------------
 
-RAMP=${RAMP:-1}
-DEPS=${DEPS:-1}
-
-if [[ -z $MODULE || ! -f $MODULE ]]; then
-	eprint "MODULE is not defined or does not refer to a file"
-	exit 1
-fi
-
-[[ -z $BINDIR ]] && BINDIR=$(dirname $MODULE)
-BINDIR=$(cd $BINDIR && pwd)
-
-[[ -z $ARTDIR ]] && ARTDIR=bin/artifacts
-mkdir -p $ARTDIR $ARTDIR/snapshots
-ARTDIR=$(cd $ARTDIR && pwd)
+OP=""
+[[ $NOP == 1 ]] && OP=echo
 
 # RLEC naming conventions
 
@@ -78,11 +72,30 @@ OSNICK=$($READIES/bin/platform --osnick)
 
 [[ $OSNICK == bigsur ]]  && OSNICK=catalina
 
-export PRODUCT=redisgraph
-export PRODUCT_LIB=$PRODUCT.so
-export DEPNAMES=""
+PLATFORM="$OS-$OSNICK-$ARCH"
 
-export PACKAGE_NAME=redisgraph
+#----------------------------------------------------------------------------------------------
+
+RAMP=${RAMP:-1}
+# DEPS=${DEPS:-1}
+# SYM=${SYM:-1}
+
+RELEASE=${RELEASE:-1}
+SNAPSHOT=${SNAPSHOT:-1}
+
+if [[ -z $MODULE || ! -f $MODULE ]]; then
+	eprint "MODULE is not defined or does not refer to a file"
+	exit 1
+fi
+
+[[ -z $ARTDIR ]] && ARTDIR=bin/artifacts
+mkdir -p $ARTDIR $ARTDIR/snapshots
+ARTDIR=$(cd $ARTDIR && pwd)
+
+MODULE_NAME=${MODULE_NAME:-graph}
+PACKAGE_NAME=${PACKAGE_NAME:-redisgraph}
+
+DEP_NAMES=""
 
 RAMP_CMD="python3 -m RAMP.ramp"
 
@@ -91,44 +104,107 @@ RAMP_CMD="python3 -m RAMP.ramp"
 pack_ramp() {
 	cd $ROOT
 
-	local platform="$OS-$OSNICK-$ARCH"
-	local stem=${PACKAGE_NAME}.${platform}
+	local stem=${PACKAGE_NAME}.${PLATFORM}
+	local stem_debug=${PACKAGE_NAME}.debug.${PLATFORM}
 
-	local verspec=${SEMVER}${VARIANT}
+	if [[ $SNAPSHOT == 0 ]]; then
+		local verspec=${SEMVER}${VARIANT}
+		local packdir=.
+		local s3base=""
+	else
+		local verspec=${BRANCH}${VARIANT}
+		local packdir=snapshots
+		local s3base=snapshots/
+	fi
 	
 	local fq_package=$stem.${verspec}.zip
+	local fq_package_debug=$stem_debug.${verspec}.zip
 
-	local packfile="$ARTDIR/$fq_package"
-	local product_so="$MODULE"
+	[[ ! -d $ARTDIR/$packdir ]] && mkdir -p $ARTDIR/$packdir
+
+	local packfile=$ARTDIR/$packdir/$fq_package
+	local packfile_debug=$ARTDIR/$packdir/$fq_package_debug
 
 	local xtx_vars=""
-	local dep_fname=${PACKAGE_NAME}.${platform}.${verspec}.tgz
+	for dep in $DEP_NAMES; do
+		eval "export NAME_${dep}=${PACKAGE_NAME}_${dep}"
+		local dep_fname="${PACKAGE_NAME}.${dep}.${PLATFORM}.${verspec}.tgz"
+		eval "export PATH_${dep}=${s3base}${dep_fname}"
+		local dep_sha256="$ARTDIR/$packdir/${dep_fname}.sha256"
+		eval "export SHA256_${dep}=$(cat $dep_sha256)"
 
+		xtx_vars+=" -e NAME_$dep -e PATH_$dep -e SHA256_$dep"
+	done
+	
 	if [[ -z $RAMP_YAML ]]; then
 		RAMP_YAML=$ROOT/ramp.yml
+	elif [[ -z $RAMP_VARIANT ]]; then
+		RAMP_YAML=$ROOT/ramp.yml
+	else
+		RAMP_YAML=$ROOT/ramp${_RAMP_VARIANT}.yml
 	fi
 
 	python3 $READIES/bin/xtx \
 		$xtx_vars \
 		-e NUMVER -e SEMVER \
 		$RAMP_YAML > /tmp/ramp.yml
-	rm -f /tmp/ramp.fname $packfile
-	$RAMP_CMD pack -m /tmp/ramp.yml --packname-file /tmp/ramp.fname --verbose --debug \
-		-o $packfile $product_so >/tmp/ramp.err 2>&1 || true
-	if [[ ! -e $packfile ]]; then
-		eprint "Error generating RAMP file:"
-		>&2 cat /tmp/ramp.err
-		exit 1
+	if [[ $VERBOSE == 1 ]]; then
+		echo "# ramp.yml:"
+		cat /tmp/ramp.yml
 	fi
 
-	cd $ARTDIR/snapshots
-	if [[ ! -z $BRANCH ]]; then
-		local snap_package=$stem.${BRANCH}${VARIANT}.zip
-		ln -sf ../$fq_package $snap_package
+	runn rm -f /tmp/ramp.fname $packfile
+	
+	# ROOT is required so ramp will detect the right git commit
+	cd $ROOT
+	runn @ <<-EOF
+		$RAMP_CMD pack -m /tmp/ramp.yml \
+			$RAMP_ARGS \
+			-n $MODULE_NAME \
+			--verbose \
+			--debug \
+			--packname-file /tmp/ramp.fname \
+			-o $packfile \
+			$MODULE \
+			>/tmp/ramp.err 2>&1 || true
+		EOF
+
+	if [[ $NOP != 1 ]]; then
+		if [[ ! -e $packfile ]]; then
+			eprint "Error generating RAMP file:"
+			>&2 cat /tmp/ramp.err
+			exit 1
+		else
+			local packname=`cat /tmp/ramp.fname`
+			echo "# Created $packname"
+		fi
 	fi
 
-	local packname=`cat /tmp/ramp.fname`
-	echo "Created $packname"
+	if [[ -f $MODULE.debug ]]; then
+		runn @ <<-EOF
+			$RAMP_CMD pack -m /tmp/ramp.yml \
+				$RAMP_ARGS \
+				-n $MODULE_NAME \
+				--verbose \
+				--debug \
+				--packname-file /tmp/ramp.fname \
+				-o $packfile_debug \
+				$MODULE.debug \
+				>/tmp/ramp.err 2>&1 || true
+			EOF
+
+		if [[ $NOP != 1 ]]; then
+			if [[ ! -e $packfile_debug ]]; then
+				eprint "Error generating RAMP file:"
+				>&2 cat /tmp/ramp.err
+				exit 1
+			else
+				local packname=`cat /tmp/ramp.fname`
+				echo "# Created $packname"
+			fi
+		fi
+	fi
+
 	cd $ROOT
 }
 
@@ -136,61 +212,75 @@ pack_ramp() {
 
 pack_deps() {
 	local dep="$1"
-
-	local platform="$OS-$OSNICK-$ARCH"
-	local stem=${PACKAGE_NAME}.${dep}.${platform}
+	
+	cd $ROOT
+	
+	local stem=${PACKAGE_NAME}.${dep}.${PLATFORM}
 	local verspec=${SEMVER}${VARIANT}
+	local fq_package=$stem.${verspec}.tgz
 
 	local depdir=$(cat $ARTDIR/$dep.dir)
-
-	local fq_dep=$stem.${verspec}.tgz
-	local tar_path=$ARTDIR/$fq_dep
+	local tar_path=$ARTDIR/$fq_package
 	local dep_prefix_dir=$(cat $ARTDIR/$dep.prefix)
 	
-	{ cd $depdir ;\
-	  cat $ARTDIR/$dep.files | \
-	  xargs tar -c --sort=name --owner=root:0 --group=root:0 --mtime='UTC 1970-01-01' \
-		--transform "s,^,$dep_prefix_dir," 2> /tmp/pack.err | \
-	  gzip -n - > $tar_path ; E=$?; } || true
-	rm -f $ARTDIR/$dep.prefix $ARTDIR/$dep.files $ARTDIR/$dep.dir
-
-	cd $ROOT
-	if [[ $E != 0 || -s /tmp/pack.err ]]; then
-		eprint "Error creating $tar_path:"
-		cat /tmp/pack.err >&2
-		exit 1
+	rm -f $tar_path
+	if [[ $NOP != 1 ]]; then
+		{ cd $depdir ;\
+		  cat $ARTDIR/$dep.files | \
+		  xargs tar -c --sort=name --owner=root:0 --group=root:0 --mtime='UTC 1970-01-01' \
+			--transform "s,^,$dep_prefix_dir," 2> /tmp/pack.err | \
+		  gzip -n - > $tar_path ; E=$?; } || true
+		if [[ ! -e $tar_path || -z $(tar tzf $tar_path) ]]; then
+			eprint "Count not create $tar_path. Aborting."
+			rm -f $tar_path
+			exit 1
+		fi
+	else
+		runn @ <<-EOF
+			cd $depdir
+			cat $ARTDIR/$dep.files | \
+			xargs tar -c --sort=name --owner=root:0 --group=root:0 --mtime='UTC 1970-01-01' \
+				--transform "s,^,$dep_prefix_dir," 2>> /tmp/pack.err | \
+			gzip -n - > $tar_path ; E=$?; } || true
+			EOF
 	fi
-	sha256sum $tar_path | awk '{print $1}' > $tar_path.sha256
+	runn @ <<-EOF
+		sha256sum $tar_path | awk '{print $1}' > $tar_path.sha256
+		EOF
 
+	mkdir -p $ARTDIR/snapshots
 	cd $ARTDIR/snapshots
-	if [[ ! -z $BRANCH ]]; then
-		local snap_dep=$stem.${BRANCH}${VARIANT}.tgz
-		ln -sf ../$fq_dep $snap_dep
-		ln -sf ../$fq_dep.sha256 $snap_dep.sha256
+	if [[ -n $BRANCH ]]; then
+		local snap_package=$stem.${BRANCH}${VARIANT}.tgz
+		runn ln -sf ../$fq_package $snap_package
+		runn ln -sf ../$fq_package.sha256 $snap_package.sha256
 	fi
-	
+
 	cd $ROOT
 }
 
 #----------------------------------------------------------------------------------------------
 
 prepare_symbols_dep() {
-	if [[ ! -f $PRODUCT_LIB.debug ]]; then return 0; fi
-	echo "Preparing debug symbols dependencies ..."
-	echo $BINDIR > $ARTDIR/debug.dir
-	echo $PRODUCT_LIB.debug > $ARTDIR/debug.files
+	if [[ ! -f $MODULE.debug ]]; then return 0; fi
+	echo "# Preparing debug symbols dependencies ..."
+	dirname "$(realpath "$MODULE")" > "$ARTDIR/debug.dir"
+	echo "$(basename "$(realpath "$MODULE")").debug" > "$ARTDIR/debug.files"
 	echo "" > $ARTDIR/debug.prefix
 	pack_deps debug
-	echo "Done."
+	echo "# Done."
 }
 
 #----------------------------------------------------------------------------------------------
 
-NUMVER=$(NUMERIC=1 $SBIN/getver)
-SEMVER=$($SBIN/getver)
+NUMVER="$(NUMERIC=1 $SBIN/getver)"
+SEMVER="$($SBIN/getver)"
 
-if [[ ! -z $VARIANT ]]; then
-	VARIANT=-${VARIANT}
+if [[ -n $VARIANT ]]; then
+	_VARIANT="-${VARIANT}"
+fi
+if [[ ! -z $RAMP_VARIANT ]]; then
+	_RAMP_VARIANT="-${RAMP_VARIANT}"
 fi
 
 #----------------------------------------------------------------------------------------------
@@ -207,34 +297,57 @@ if [[ $WITH_GITSHA == 1 ]]; then
 	GIT_COMMIT=$(git rev-parse --short HEAD)
 	BRANCH="${BRANCH}-${GIT_COMMIT}"
 fi
-export BRANCH
+
+#----------------------------------------------------------------------------------------------
+
+RELEASE_ramp=${PACKAGE_NAME}.$OS-$OSNICK-$ARCH.$SEMVER${VARIANT}.zip
+SNAPSHOT_ramp=${PACKAGE_NAME}.$OS-$OSNICK-$ARCH.${BRANCH}${VARIANT}.zip
+
+RELEASE_deps=
+SNAPSHOT_deps=
+for dep in $DEP_NAMES; do
+	RELEASE_deps+=" ${PACKAGE_NAME}.${dep}.$OS-$OSNICK-$ARCH.$SEMVER${VARIANT}.tgz"
+	SNAPSHOT_deps+=" ${PACKAGE_NAME}.${dep}.$OS-$OSNICK-$ARCH.${BRANCH}${VARIANT}.tgz"
+done
 
 #----------------------------------------------------------------------------------------------
 
 if [[ $JUST_PRINT == 1 ]]; then
 	if [[ $RAMP == 1 ]]; then
-		echo "${PACKAGE_NAME}.${OS}-${OSNICK}-${ARCH}.${SEMVER}${VARIANT}.zip"
+		[[ $RELEASE == 1 ]] && echo $RELEASE_ramp
+		[[ $SNAPSHOT == 1 ]] && echo $SNAPSHOT_ramp
 	fi
 	if [[ $DEPS == 1 ]]; then
-		for dep in $DEPNAMES; do
-			echo "${PACKAGE_NAME}.${dep}.${OS}-${OSNICK}-${ARCH}.${SEMVER}${VARIANT}.tgz"
-		done
+		[[ $RELEASE == 1 ]] && echo $RELEASE_deps
+		[[ $SNAPSHOT == 1 ]] && echo $SNAPSHOT_deps
 	fi
 	exit 0
 fi
 
 #----------------------------------------------------------------------------------------------
 
+mkdir -p $ARTDIR
+
 if [[ $DEPS == 1 ]]; then
-	echo "Building dependencies ..."
+	# set up `debug` dep
+	dirname "$(realpath "$MODULE")" > "$ARTDIR/debug.dir"
+	echo "$(basename "$(realpath "$MODULE")").debug" > "$ARTDIR/debug.files"
+	echo "" > $ARTDIR/debug.prefix
+
+	echo "# Building dependencies ..."
 
 	[[ $SYM == 1 ]] && prepare_symbols_dep
 
-	for dep in $DEPNAMES; do
-			echo "$dep ..."
-			pack_deps $dep
+	for dep in $DEP_NAMES; do
+		echo "# $dep ..."
+		pack_deps $dep
 	done
+	echo "# Done."
 fi
+
+#----------------------------------------------------------------------------------------------
+
+cd $ROOT
 
 if [[ $RAMP == 1 ]]; then
 	if ! command -v redis-server > /dev/null; then
@@ -242,14 +355,21 @@ if [[ $RAMP == 1 ]]; then
 		exit 1
 	fi
 
-	echo "Building RAMP files ..."
-	pack_ramp
-	echo "Done."
+	echo "# Building RAMP $RAMP_VARIANT files ..."
+
+	[[ -z $MODULE ]] && { eprint "Nothing to pack. Aborting."; exit 1; }
+	[[ ! -f $MODULE ]] && { eprint "$MODULE does not exist. Aborting."; exit 1; }
+	MODULE=$(realpath $MODULE)
+
+	[[ $RELEASE == 1 ]] && SNAPSHOT=0 pack_ramp
+	[[ $SNAPSHOT == 1 ]] && pack_ramp
+	
+	echo "# Done."
 fi
 
 if [[ $VERBOSE == 1 ]]; then
-	echo "Artifacts:"
-	du -ah --apparent-size $ARTDIR
+	echo "# Artifacts:"
+	$OP du -ah --apparent-size $ARTDIR
 fi
 
 exit 0

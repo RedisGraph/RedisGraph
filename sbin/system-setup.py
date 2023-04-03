@@ -25,18 +25,16 @@ class RedisGraphSetup(paella.Setup):
 
     def debian_compat(self):
         self.install("locales")
-        if self.platform.is_arm():
-            self.run("%s/bin/getgcc --modern" % READIES)
-        else:
-            self.run("%s/bin/getgcc" % READIES)
+        self.run("%s/bin/getgcc --modern" % READIES)
         self.install("peg")
         if self.platform.is_arm():
             self.install("python3-dev")
         self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
-        self.pip_install("-r tests/fuzz/requirements.txt")
+        self.pip_install("-r tests/fuzz/requirements.txt --use-pep517")
 
     def redhat_compat(self):
         self.install("redhat-lsb-core")
+        self.install("which")
         if not self.platform.is_arm():
             self.install_linux_gnu_tar()
         if self.osnick == 'ol8':
@@ -56,7 +54,7 @@ class RedisGraphSetup(paella.Setup):
         self.run("brew install libomp")
         self.install("redis")
         self.install_peg()
-        self.pip_install("-r tests/fuzz/requirements.txt")
+        self.pip_install("-r tests/fuzz/requirements.txt --use-pep517")
 
     def alpine(self):
         self.install("automake make autoconf libtool m4")
@@ -79,8 +77,6 @@ class RedisGraphSetup(paella.Setup):
         if not self.no_rmpytools:
             self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40".format(PYTHON=self.python, READIES=READIES))
             self.pip_install("-r tests/requirements.txt")
-
-        self.run("%s/bin/getpy2" % READIES) # for RediSearch build
 
     def install_peg(self):
         self.run(r"""

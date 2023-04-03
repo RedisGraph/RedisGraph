@@ -25,7 +25,7 @@ void reconf_handler(Config_Option_Field type) {
 				ThreadPools_SetMaxPendingWork(max_queued_queries);
 			}
 			break;
-		
+
 		//----------------------------------------------------------------------
 		// query mem capacity
 		//----------------------------------------------------------------------
@@ -42,7 +42,7 @@ void reconf_handler(Config_Option_Field type) {
         //----------------------------------------------------------------------
         // all other options
         //----------------------------------------------------------------------
-        default : 
+        default:
 			return;
     }
 }

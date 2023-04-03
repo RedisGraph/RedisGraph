@@ -44,8 +44,10 @@ inline void AST_AnnotationCtxCollection_SetNamedPathsCtx(AST_AnnotationCtxCollec
 
 void AST_AnnotationCtxCollection_Free(AST_AnnotationCtxCollection *anotCtxCollection) {
 	if(anotCtxCollection) {
-		if(anotCtxCollection->named_paths_ctx) cypher_ast_annotation_context_free(
-				anotCtxCollection->named_paths_ctx);
+		if(anotCtxCollection->named_paths_ctx) {
+			cypher_ast_annotation_context_free(anotCtxCollection->named_paths_ctx);
+			anotCtxCollection->named_paths_ctx = NULL;
+		}
 		cypher_ast_annotation_context_free(anotCtxCollection->to_string_ctx);
 		rm_free(anotCtxCollection);
 	}
