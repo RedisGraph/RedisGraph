@@ -9,7 +9,6 @@ class testEffects():
     # enable effects replication
     def effects_enable(self):
         self.master.execute_command("GRAPH.CONFIG", "SET", "EFFECTS_THRESHOLD", '0')
-        self.replica.execute_command("GRAPH.CONFIG", "SET", "EFFECTS_THRESHOLD", '0')
 
     # disable effects replication
     def effects_disable(self):

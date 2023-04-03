@@ -96,6 +96,7 @@ static bool _should_replicate_effects(void)
 	// compute average change time
 	double exec_time = QueryCtx_GetExecutionTime();   // query execution time
 	uint n = UndoLog_Length(*QueryCtx_GetUndoLog());  // number of modifications
+	ASSERT(n > 0);
 	double avg_mod_time = exec_time / n;              // avg modification time
 
 	avg_mod_time *= 1000; // convert from ms to μs microseconds
