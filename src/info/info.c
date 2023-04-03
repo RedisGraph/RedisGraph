@@ -24,50 +24,6 @@
 
 #define INITIAL_QUERY_INFO_CAPACITY 100
 
-// This specifies the unlocking destructor for the ScopedRwlock object.
-// It is convenient to use when there are multiple branches of code which lead
-// to an exit from the function, to avoid writing the unlocking code if the
-// locking primitive is locked. It also reduces possible mistakes when the
-// unlock is forgotten to be done as it is done automatically when this is used.
-#define SCOPED_RWLOCK __attribute__ ((__cleanup__(_rwlock_cleanup)))
-
-static bool _lock_rwlock(pthread_rwlock_t *, const bool);
-static bool _unlock_rwlock(pthread_rwlock_t *);
-
-// An rwlock wrapper to be used with the SCOPED_RWLOCK macro.
-typedef struct ScopedRwlock {
-    pthread_rwlock_t *lock;
-    bool is_locked;
-    bool is_write;
-} ScopedRwlock;
-
-static ScopedRwlock ScopedRwlock_New
-(
-    pthread_rwlock_t *lock,
-    const bool is_write
-) {
-    ASSERT(lock);
-
-    const ScopedRwlock scoped = {
-        .lock = lock,
-        .is_write = is_write,
-        .is_locked = lock ? _lock_rwlock(lock, is_write) : false
-    };
-
-    return scoped;
-}
-
-// The cleanup function to be used by the `SCOPED_RWLOCK` macro for automatically
-// unlocking an rwlock.
-static void _rwlock_cleanup
-(
-    ScopedRwlock *scoped_lock
-) {
-    if (scoped_lock && scoped_lock->lock && scoped_lock->is_locked) {
-        ASSERT(_unlock_rwlock(scoped_lock->lock));
-    }
-}
-
 static CircularBufferNRG finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
@@ -182,40 +138,7 @@ void FinishedQueryInfo_Free(const FinishedQueryInfo query_info) {
 }
 
 static void _add_finished_query(const FinishedQueryInfo info) {
-    ScopedRwlock lock SCOPED_RWLOCK = ScopedRwlock_New(
-        &finished_queries_rwlock,
-        true);
-
-    ASSERT(lock.is_locked);
-    if (unlikely(!lock.is_locked)) {
-        return;
-    }
-
-    if (unlikely(!finished_queries)) {
-        return;
-    }
-
     CircularBufferNRG_Add(finished_queries, (const void*)&info);
-}
-
-static bool _lock_rwlock
-(
-    pthread_rwlock_t *lock,
-    const bool is_write
-) {
-    REQUIRE_ARG_OR_RETURN(lock, false);
-
-    if (is_write) {
-        return !pthread_rwlock_wrlock(lock);
-    }
-
-    return !pthread_rwlock_rdlock(lock);
-}
-
-static bool _unlock_rwlock(pthread_rwlock_t *lock) {
-    ASSERT(lock != NULL);
-
-    return !pthread_rwlock_unlock(lock);
 }
 
 QueryInfoIterator QueryInfoIterator_NewStartingAt
@@ -309,63 +232,21 @@ bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *iterator) {
     return QueryInfoIterator_Length(iterator) > 0;
 }
 
-static bool _Info_LockEverything(Info *info, const bool is_write) {
-	ASSERT(info     != NULL);
-    ASSERT(iterator != NULL);
-    return _lock_rwlock(&info->mutex, !is_write);
+static bool _Info_LockEverything
+(
+	Info *info
+) {
+	ASSERT(info != NULL);
+
+	return !pthread_mutex_lock(&info->mutex);
 }
 
-static bool _Info_UnlockEverything(Info *info) {
-    REQUIRE_ARG_OR_RETURN(info, false);
-    return _unlock_rwlock(&info->mutex);
-}
-
-static bool _Info_LockWaitingQueries(Info *info, const bool is_write) {
-    REQUIRE_ARG_OR_RETURN(info, false);
-    return _lock_rwlock(&info->waiting_queries_rwlock, is_write);
-}
-
-static bool _Info_UnlockWaitingQueries(Info *info) {
-    REQUIRE_ARG_OR_RETURN(info, false);
-    return _unlock_rwlock(&info->waiting_queries_rwlock);
-}
-
-static void _Info_WLockWaitingQueries
+static bool _Info_UnlockEverything
 (
 	Info *info
 ) {
     ASSERT(info != NULL);
-
-	int res = pthread_rwlock_wrlock(&info->waiting_queries_rwlock);
-	ASSERT(res == 0);
-}
-
-static void _InfoRLockWaitingQueries
-(
-	Info *info
-) {
-    ASSERT(info != NULL);
-
-	int res = pthread_rwlock_rdlock(&info->waiting_queries_rwlock);
-	ASSERT(res == 0);
-}
-
-static void _Info_UnlockWaitingQueries
-(
-	Info *info
-) {
-    ASSERT(info != NULL);
-	// TODO: assert lock is acquired
-    _unlock_rwlock(&info->waiting_queries_rwlock);
-}
-
-// fake hash function
-// hash of key is simply key
-static uint64_t nop_hash
-(
-	const void *key
-) {
-	return ((uint64_t)key);
+    return pthread_mutex_unlock(&info->mutex);
 }
 
 Info *Info_New(void) {
@@ -380,15 +261,12 @@ Info *Info_New(void) {
     info->waiting_queries = HashTableCreate(&dt);
 
     // initialize working_queries array
-    info->working_queries = array_newlen(QueryInfo*, thread_count);
+    info->working_queries = rm_malloc(sizeof(QueryInfo) * thread_count);
 
     _FinishedQueryCounters_Reset(&info->counters);
 	memset(info->working_queries, 0, sizeof(QueryInfo) * thread_count);
 
-    int res = pthread_rwlock_init(&info->waiting_queries_rwlock, NULL);
-    ASSERT(res == 0);
-
-    res = pthread_rwlock_init(&info->mutex, NULL);
+    int res = pthread_mutex_init(&info->mutex, NULL);
     ASSERT(res == 0);
 
     return info;
@@ -401,17 +279,21 @@ void Info_AddWaiting
     Info *info,    // info
     QueryInfo *qi  // query info of the query starting to wait
 ) {
-    // lock the waiting queries
-    bool res = _Info_LockWaitingQueries(info, true);
-    ASSERT(res != NULL);
-    // add the query to the waiting dict
-    HashTableAdd(info->waiting_queries, qi, qi);
-    // set the stage to waiting
-    qi->stage = QueryStage_WAITING;
     // start the stage-timer
     TIMER_RESTART(qi->stage_timer);
-    // unlock waiting queries
-    res = _Info_UnlockWaitingQueries(info);
+
+    // set the stage to waiting
+    qi->stage = QueryStage_WAITING;
+
+    // acquire mutex
+    bool res = _Info_LockEverything(info);
+    ASSERT(res != NULL);
+
+    // add the query to the waiting dict
+    HashTableAdd(info->waiting_queries, qi, qi);
+
+    // release mutex
+    res = _Info_UnlockEverything(info);
     ASSERT(res != NULL);
 }
 
@@ -425,61 +307,36 @@ void Info_IndicateQueryStartedExecution
     ASSERT(ctx  != NULL);
     ASSERT(info != NULL);
 
-    ASSERT(_Info_LockEverything(info, true) != NULL);
-    ASSERT(_Info_LockWaitingQueries(info, true) != NULL);
+    const int tid = ThreadPools_GetThreadID();
 
     // update waiting time
     QueryInfo_UpdateWaitingTime(qi);
     QueryInfo_ResetStageTimer(qi);
 
-    // remove from waiting_queries (TODO: add case that the query isn't found --> error)
-    HashTableDelete(info->waiting_queries, (void *)qi);
+    bool res = _Info_LockEverything(info);
+	ASSERT(res == true);
+
+	//--------------------------------------------------------------------------
+	// remove query info from waiting-list
+	//--------------------------------------------------------------------------
+
+    // remove from waiting_queries
+    int dict_res = HashTableDelete(info->waiting_queries, (void *)qi);
+	ASSERT(dict_res == NULLDICT_OK);
 
     // set the stage
     qi->stage = QueryStage_EXECUTING;
 
-    const int thread_id = ThreadPools_GetThreadID();
+	//--------------------------------------------------------------------------
+	// add query info to executing list
+	//--------------------------------------------------------------------------
 
     // add to working queries array
-    QueryInfo *working_q_info = array_elem(info->working_queries, thread_id);
-    memcpy(working_q_info, &qi, sizeof(QueryInfo));
+	info->working_queries[tid] = *qi;
 
-    ASSERT(_Info_UnlockWaitingQueries(info) != NULL);
-    ASSERT(_Info_UnlockEverything(info) != NULL);
-}
-
-
-void Info_Free
-(
-	Info *info
-) {
-    ASSERT(info != NULL);
-
-    array_free(&info->working_queries);
-
-    HashTableRelease(info->waiting_queries);
-
-    int res = pthread_rwlock_destroy(&info->waiting_queries_rwlock);
-    ASSERT(res == 0);
-
-    res = pthread_rwlock_destroy(&info->mutex);
-    ASSERT(res == 0);
-}
-
-static bool _Info_MoveQueryInfoBetweenStorages
-(
-    QueryInfoStorage *from,
-    QueryInfoStorage *to,
-    const uint64_t index
-) {
-    REQUIRE_ARG_OR_RETURN(from, false);
-    REQUIRE_ARG_OR_RETURN(to, false);
-    QueryInfo *from_element = array_elem(*from, index);
-    QueryInfo *info = array_elem(*to, index);
-    memcpy(info, from_element, sizeof(QueryInfo));
-    memset(array_elem(*from, index), 0, sizeof(QueryInfo));
-
-    return true;
+	// release mutex
+    res = _Info_UnlockEverything(info);
+	ASSERT(res == true);
 }
 
 // transitions a query from executing to waiting
@@ -506,58 +363,40 @@ void Info_executing_to_waiting
     HashTableAdd(info->waiting_queries, qi, qi);
 }
 
+// indicates that the query has finished the execution and has started
+// reporting the results back to the client
 void Info_IndicateQueryStartedReporting
 (
-    Info *info,
-    const struct QueryCtx *context
+    Info *info  // info
 ) {
-    REQUIRE_ARG(info);
-    REQUIRE_ARG(context);
-
-    // This effectively moves the query info object from the executing queue
-    // to the reporting queue, recording the time spent executing.
+    ASSERT(info != NULL);
 
     const int thread_id = ThreadPools_GetThreadID();
-    QueryInfo *query_info = array_elem(
-        info->working_queries,
-        thread_id);
-    ASSERT(query_info && QueryInfo_GetQueryContext(query_info) == context);
-    if (!query_info || QueryInfo_GetQueryContext(query_info) != context) {
-        REQUIRE_TRUE(_Info_UnlockEverything(info));
-        return;
-    }
+    QueryInfo *qi = info->working_queries + tid;
+    ASSERT(qi != NULL);
+
     query_info->stage = QueryStage_REPORTING;
-    QueryInfo_UpdateExecutionTime(query_info);
-    QueryInfo_ResetStageTimer(query_info);
+    QueryInfo_UpdateExecutionTime(qi);
+    QueryInfo_ResetStageTimer(qi);
 }
 
 void Info_IndicateQueryFinishedReporting
 (
-    Info *info,
-    const struct QueryCtx *context
+    Info *info
 ) {
-    REQUIRE_ARG(info);
-    REQUIRE_ARG(context);
-    REQUIRE_TRUE(_Info_LockEverything(info, true));
+    ASSERT(info != NULL);
+    bool res = _Info_LockEverything(info);
+	ASSERT(res == true);
 
-    // This effectively removes the query info object from the reporting queue.
+    const int tid = ThreadPools_GetThreadID();
+    QueryInfo *qi = info->working_queries + tid;
+	ASSERT(qi->stage == QueryStage_REPORTING);
 
-    const int thread_id = ThreadPools_GetThreadID();
-    QueryInfo *query_info = array_elem(
-        info->working_queries,
-        thread_id);
-    const bool is_ours
-        = query_info && QueryInfo_GetQueryContext(query_info) == context
-        && query_info->stage == QueryStage_REPORTING;
-    ASSERT(is_ours);
-    if (!is_ours) {
-        REQUIRE_TRUE(_Info_UnlockEverything(info));
-        return;
-    }
+	// update stage to finished
     query_info->stage = QueryStage_FINISHED;
     QueryInfo_UpdateReportingTime(query_info);
-    QueryInfo_ResetStageTimer(query_info);
-    // Statistics_RecordReportDuration(&info->statistics, QueryInfo_GetReportingTime(*query_info));
+
+	// TODO: remove FinishedQueryInfo, use only QueryInfo
     FinishedQueryInfo finished = FinishedQueryInfo_FromQueryInfo(*query_info);
     const millis_t total_duration = _FinishedQueryInfo_GetTotalDuration(finished);
     // Statistics_RecordTotalDuration(&info->statistics, total_duration);
@@ -597,7 +436,7 @@ uint64_t Info_GetWaitingQueriesCount(Info *info) {
 uint64_t Info_GetExecutingQueriesCount(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
 
-    REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), 0);
+    REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info), 0);
 
     QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries);
     uint64_t count = 0;
@@ -617,7 +456,7 @@ uint64_t Info_GetExecutingQueriesCount(Info *info) {
 uint64_t Info_GetReportingQueriesCount(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
 
-    REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info, true), 0);
+    REQUIRE_TRUE_OR_RETURN(_Info_LockEverything(info), 0);
 
     QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries);
     uint64_t count = 0;
@@ -636,7 +475,7 @@ uint64_t Info_GetReportingQueriesCount(Info *info) {
 
 millis_t Info_GetMaxQueryWaitTime(Info *info) {
     REQUIRE_ARG_OR_RETURN(info, 0);
-    _Info_LockEverything(info, false);
+    _Info_LockEverything(info);
 
     millis_t max_time = 0;
     QueryInfo *query = NULL;
@@ -681,7 +520,7 @@ FinishedQueryCounters Info_GetFinishedQueryCounters(const Info info) {
 }
 
 bool Info_Lock(Info *info) {
-    return _Info_LockEverything(info, false);
+    return _Info_LockEverything(info);
 }
 
 bool Info_Unlock(Info *info) {
@@ -779,3 +618,20 @@ void Info_ViewAllFinishedQueries
 
     CircularBufferNRG_ViewAll(finished_queries, callback, user_data);
 }
+
+void Info_Free
+(
+	Info *info
+) {
+    ASSERT(info != NULL);
+
+    rm_free(info->working_queries);
+
+    HashTableRelease(info->waiting_queries);
+
+    res = pthread_mutex_destroy(&info->mutex);
+    ASSERT(res == 0);
+
+	rm_free(info);
+}
+

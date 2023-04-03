@@ -65,7 +65,6 @@ typedef struct FinishedQueryCounters {
 // information about a graph
 typedef struct Info {
     dict *waiting_queries;                     // waiting queries
-    pthread_rwlock_t waiting_queries_rwlock;  // lock for waiting queries
     QueryInfoStorage working_queries;         // executing and reporting queries
     atomic_uint_fast64_t max_query_time;      // slowest query time
     FinishedQueryCounters counters;           // counters with states
@@ -101,12 +100,11 @@ void Info_executing_to_waiting
     QueryInfo *qi   // query info
 );
 
-// Indicates that the query has finished the execution and has started
-// reporting the results back to the client.
+// indicates that the query has finished the execution and has started
+// reporting the results back to the client
 void Info_IndicateQueryStartedReporting
 (
-    Info *,
-    const QueryCtx *
+    Info *info  // info
 );
 
 // Indicates that the query has finished reporting the results and is no longer
@@ -156,12 +154,6 @@ void Info_ViewAllFinishedQueries
     CircularBufferNRG_ReadAllCallback callback,
     void *user_data
 );
-// free the info structure's content
-void Info_Free
-(
-	Info *info
-);
-
 // returns the total number of queries recorded
 uint64_t FinishedQueryCounters_GetTotalCount
 (
@@ -201,4 +193,10 @@ QueryInfo* QueryInfoIterator_Get(QueryInfoIterator *);
 uint32_t QueryInfoIterator_Length(const QueryInfoIterator *);
 // Returns true if the iterator has no more elements to iterate over.
 bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *);
+
+// free the info structure's content
+void Info_Free
+(
+	Info *info
+);
 
