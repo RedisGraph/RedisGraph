@@ -8,11 +8,13 @@
 #include "../func_desc.h"
 #include "../../errors.h"
 #include "../../util/arr.h"
-#include "../../util/rmalloc.h"
 #include "../../util/uuid.h"
+#include "utf8proc/utf8proc.h"
+#include "../../util/rmalloc.h"
 #include "../../util/strutil.h"
-#include "../../util/json_encoder.h"
 #include "../../datatypes/array.h"
+#include "../../util/json_encoder.h"
+#include "../deps/oniguruma/src/oniguruma.h"
 
 // toString supports only integer, float, string, boolean, point, duration, 
 // date, time, localtime, localdatetime or datetime values
@@ -35,9 +37,19 @@ SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
 		// No need to truncate this string based on the requested length
 		return SI_DuplicateStringVal(argv[0].stringval);
 	}
-	char *left_str = rm_malloc((newlen + 1) * sizeof(char));
-	strncpy(left_str, argv[0].stringval, newlen * sizeof(char));
-	left_str[newlen] = '\0';
+
+	// determine new string byte size
+	utf8proc_int32_t c;
+	int64_t newlen_bytes = 0;
+	const char *str = argv[0].stringval;
+	for (int i = 0; i < newlen; i++) {
+		newlen_bytes += utf8proc_iterate((const utf8proc_uint8_t *)(str+newlen_bytes), -1, &c);
+	}
+
+	char *left_str = rm_malloc((newlen_bytes + 1) * sizeof(char));
+ 	strncpy(left_str, str, newlen_bytes * sizeof(char));
+ 	left_str[newlen_bytes] = '\0';
+
 	return SI_TransferStringVal(left_str);
 }
 
@@ -67,13 +79,21 @@ SIValue AR_RIGHT(SIValue *argv, int argc, void *private_data) {
 		return SI_NullVal();
 	}
 
-	int64_t start = strlen(argv[0].stringval) - newlen;
+	const char *str = argv[0].stringval;
+	int64_t start   = str_length(str) - newlen;
 
 	if(start <= 0) {
 		// No need to truncate this string based on the requested length
-		return SI_DuplicateStringVal(argv[0].stringval);
+		return SI_DuplicateStringVal(str);
 	}
-	return SI_DuplicateStringVal(argv[0].stringval + start);
+
+	utf8proc_int32_t c;
+	int64_t start_bytes = 0;
+	for (int i = 0; i < start; i++) {
+		start_bytes += utf8proc_iterate((const utf8proc_uint8_t *)(str+start_bytes), -1, &c);
+	}
+
+	return SI_DuplicateStringVal(str + start_bytes);
 }
 
 // returns the original string with trailing whitespace removed.
@@ -107,12 +127,16 @@ SIValue AR_REVERSE(SIValue *argv, int argc, void *private_data) {
 		size_t str_len = strlen(str);
 		char *reverse = rm_malloc((str_len + 1) * sizeof(char));
 
-		int i = str_len - 1;
-		int j = 0;
-		while(i >= 0) {
-			reverse[j++] = str[i--];
+		char *reverse_i = reverse + str_len;
+		utf8proc_int32_t c;
+		utf8proc_ssize_t w;
+		while(str[0] != 0) {
+			w = utf8proc_iterate((const utf8proc_uint8_t *)str, -1, &c);
+			str += w;
+			reverse_i -= w;
+			utf8proc_encode_char(c, (utf8proc_uint8_t *)reverse_i);
 		}
-		reverse[j] = '\0';
+		reverse[str_len] = '\0';
 		return SI_TransferStringVal(reverse);
 	} else {
 		SIValue reverse = SI_CloneValue(value);
@@ -134,17 +158,20 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 	*/
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-	const char *original = argv[0].stringval;
-	const int64_t original_len = strlen(original);
-	const int64_t start = argv[1].longval;
 	int64_t length;
+	const char   *original     = argv[0].stringval;
+	const int64_t original_len = strlen(original);
+	const int64_t start        = argv[1].longval;
 
 	/* Make sure start doesn't overreach. */
 	if(start < 0) {
 		ErrorCtx_SetError("start must be a non-negative integer");
 		return SI_NullVal();
 	}
-	if(start >= original_len) return SI_ConstStringVal("");
+
+	if(start >= original_len) {
+		return SI_ConstStringVal("");
+	}
 
 	const int64_t suffix_len = original_len - start;
 	if(argc == 2) {
@@ -160,20 +187,255 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc, void *private_data) {
 		length = MIN(length, suffix_len);
 	}
 
-	char *substring = rm_malloc((length + 1) * sizeof(char));
-	strncpy(substring, original + start, length);
-	substring[length] = '\0';
+	utf8proc_int32_t c;
+	// find the start position to copy from
+	const char *start_p = original;
+	for (int i = 0; i < start; i++) {
+		start_p += utf8proc_iterate((const utf8proc_uint8_t *)start_p, -1, &c);
+	}
+
+	// find the end position
+	const char *end_p = start_p;
+	for (int i = 0; i < length; i++) {
+		end_p += utf8proc_iterate((const utf8proc_uint8_t *)end_p, -1, &c);
+	}
+
+	int len = end_p - start_p;
+	char *substring = rm_malloc((len + 1) * sizeof(char));
+	strncpy(substring, start_p, len);
+	substring[len] = '\0';
 
 	return SI_TransferStringVal(substring);
+}
+
+// given a list of strings and an optional delimiter
+// return a concatenation of all the strings using the given delimiter
+// string.join(list, delimiter = '') -> string
+SIValue AR_JOIN(SIValue *argv, int argc, void *private_data) {
+	SIValue list = argv[0];
+	if(SI_TYPE(list) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	char *delimiter = "";
+	if(argc == 2) {
+		delimiter = argv[1].stringval;
+	}
+
+	uint32_t count = SIArray_Length(list);
+
+	size_t delimeter_len = strlen(delimiter);
+	uint str_len = delimeter_len * (count - 1);
+	for(uint i = 0; i < count; i++) {
+		SIValue str = SIArray_Get(list, i);
+		if(SI_TYPE(str) != T_STRING) {
+			// all elements in the list should be string.
+			Error_SITypeMismatch(str, T_STRING);
+			return SI_NullVal();
+		}
+
+		str_len += strlen(str.stringval);
+	}
+
+	int cur_len = 0;
+	char *res = rm_malloc(str_len + 1);
+	for(uint i = 0; i < count - 1; i++) {
+		SIValue str = SIArray_Get(list, i);
+		memcpy(res + cur_len, str.stringval, strlen(str.stringval));
+		cur_len += strlen(str.stringval);
+		memcpy(res + cur_len, delimiter, delimeter_len);
+		cur_len += delimeter_len;
+	}
+	SIValue str = SIArray_Get(list, count - 1);
+	memcpy(res + cur_len, str.stringval, strlen(str.stringval));
+	res[str_len] = '\0';
+
+	return SI_TransferStringVal(res);
+}
+
+typedef struct {
+	SIValue *list;
+	const char *str;
+} match_regex_scan_cb_args;
+
+static int match_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
+	match_regex_scan_cb_args *args = (match_regex_scan_cb_args *)arg;
+	SIValue *list = args->list;
+	const char *str = args->str;
+	SIValue subList = SIArray_New(region->num_regs);
+	assert(region->num_regs > 0);
+
+	for (int i = 0; i < region->num_regs; i++) {
+		int substr_len = region->end[i] - region->beg[i];
+		char *substr = rm_strndup(str + region->beg[i], substr_len);
+		SIArray_Append(&subList, SI_TransferStringVal(substr));
+		rm_free(substr);
+	}
+
+	SIArray_Append(list, subList);
+	SIValue_Free(subList);
+	return 0;
+}
+
+// given a string and a regular expression,
+// return an array of all matches and matching regions
+// string.matchRegEx(str, regex) -> array(array(string))
+SIValue AR_MATCHREGEX(SIValue *argv, int argc, void *private_data) {
+	SIValue list = SIArray_New(0);
+	if(SI_TYPE(argv[0]) == T_NULL || SI_TYPE(argv[1]) == T_NULL) {
+		return list;
+	}
+
+	regex_t *regex;
+	OnigErrorInfo einfo;
+	OnigRegion *region    = onig_region_new();
+	const char *str       = argv[0].stringval;
+	const char *regex_str = argv[1].stringval;
+
+	int rv = onig_new(&regex, (const UChar *)regex_str, 
+		(const UChar *)(regex_str + strlen(regex_str)), ONIG_OPTION_DEFAULT,
+		ONIG_ENCODING_UTF8, ONIG_SYNTAX_JAVA, &einfo);
+	if(rv != ONIG_NORMAL) {
+		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
+		onig_error_code_to_str((UChar* )s, rv, &einfo);
+		ErrorCtx_SetError("Invalid regex, err=%s", s);
+		onig_free(regex);
+		onig_region_free(region, 1);
+		SIValue_Free(list);
+		return SI_NullVal();
+	}
+
+	match_regex_scan_cb_args args = {
+		.list = &list,
+		.str = str
+	};
+
+	rv = onig_scan(regex, (const UChar *)str,
+		(const UChar *)(str + strlen(str)), region, ONIG_OPTION_DEFAULT,
+		match_regex_scan_cb, &args);
+	if(rv < 0) {
+		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
+		onig_error_code_to_str((OnigUChar* )s, rv);
+		ErrorCtx_SetError("Invalid regex, err=%s", s);
+		onig_free(regex);
+		onig_region_free(region, 1);
+		SIValue_Free(list);
+		return SI_NullVal();
+	}
+
+	onig_free(regex);
+	onig_region_free(region, 1);
+
+	return list;
+}
+
+typedef struct {
+	char *res;
+	uint32_t res_len;
+	const char *str;
+	uint32_t str_ind; // current index in str
+	const char *replacement;
+	uint32_t replacement_len;
+} replace_regex_scan_cb_args;
+
+static int replace_regex_scan_cb(int n, int pos, OnigRegion *region, void *arg) {
+	replace_regex_scan_cb_args *args = (replace_regex_scan_cb_args *)arg;
+	const char *str = args->str;
+	assert(region->num_regs > 0);
+
+	// reallocate new str size
+	int str_copy_len = region->beg[0] - args->str_ind;
+	int str_size = args->res_len + str_copy_len + args->replacement_len + 1;
+	args->res = rm_realloc(args->res, str_size);
+
+	// copy the string between the last match and the current match
+	memcpy(args->res + args->res_len, str + args->str_ind, str_copy_len);
+	args->str_ind = region->end[0];
+	args->res_len += str_copy_len;
+
+	// copy the replacement string
+	memcpy(args->res + args->res_len, args->replacement, args->replacement_len);
+	args->res_len += args->replacement_len;
+
+	args->res[args->res_len] = '\0';
+
+	return 0;
+}
+
+// given a string and a regular expression,
+// return a string after replacing each regex match with a given replacement.
+// string.replaceRegEx(str, regex, replacement) -> string
+SIValue AR_REPLACEREGEX(SIValue *argv, int argc, void *private_data) {
+	if(SI_TYPE(argv[0]) == T_NULL || SI_TYPE(argv[1]) == T_NULL) {
+		return SI_NullVal();
+	}
+
+	char       *replacement = "";
+	const char *str         = argv[0].stringval;
+	const char *regex_str   = argv[1].stringval;
+
+	if(argc == 3) {
+		if(SI_TYPE(argv[2]) == T_NULL) {
+			return SI_NullVal();
+		}
+
+		replacement = argv[2].stringval;
+	}
+
+	regex_t *regex;
+	OnigErrorInfo einfo;
+	OnigRegion *region = onig_region_new();
+
+	int rv = onig_new(&regex, (const UChar *)regex_str, 
+		(const UChar *)(regex_str + strlen(regex_str)), ONIG_OPTION_DEFAULT,
+		ONIG_ENCODING_UTF8, ONIG_SYNTAX_JAVA, &einfo);
+	if(rv != ONIG_NORMAL) {
+		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
+		onig_error_code_to_str((UChar* )s, rv, &einfo);
+		ErrorCtx_SetError("Invalid regex, err=%s", s);
+		onig_free(regex);
+		onig_region_free(region, 1);
+		return SI_NullVal();
+	}
+
+	replace_regex_scan_cb_args args = {
+		.res = NULL,
+		.res_len = 0,
+		.str = str,
+		.str_ind = 0,
+		.replacement = replacement,
+		.replacement_len = strlen(replacement)
+	};
+
+	rv = onig_scan(regex, (const UChar *)str,
+		(const UChar *)(str + strlen(str)), region, ONIG_OPTION_DEFAULT,
+		replace_regex_scan_cb, &args);
+	if(rv < 0) {
+		char s[ONIG_MAX_ERROR_MESSAGE_LEN];
+		onig_error_code_to_str((OnigUChar* )s, rv);
+		ErrorCtx_SetError("Invalid regex, err=%s", s);
+		onig_free(regex);
+		onig_region_free(region, 1);
+		return SI_NullVal();
+	}
+
+	onig_free(regex);
+	onig_region_free(region, 1);
+
+	// copy the remaining string
+	int str_copy_len = strlen(str) - args.str_ind;
+	args.res = rm_realloc(args.res, (args.res_len + str_copy_len + 1)*sizeof(char));
+	memcpy(args.res + args.res_len, str + args.str_ind, str_copy_len*sizeof(char));
+	args.res[args.res_len + str_copy_len] = '\0';
+
+	return SI_TransferStringVal(args.res);
 }
 
 // returns the original string in lowercase.
 SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	size_t lower_len = strlen(original);
-	char *lower = rm_malloc((lower_len + 1) * sizeof(char));
-	str_tolower(original, lower, &lower_len);
+	char *lower = str_tolower(original);
 	return SI_TransferStringVal(lower);
 }
 
@@ -181,9 +443,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc, void *private_data) {
 SIValue AR_TOUPPER(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	size_t upper_len = strlen(original);
-	char *upper = rm_malloc((upper_len + 1) * sizeof(char));
-	str_toupper(original, upper, &upper_len);
+	char *upper = str_toupper(original);
 	return SI_TransferStringVal(upper);
 }
 
@@ -296,6 +556,12 @@ SIValue AR_REPLACE(SIValue *argv, int argc, void *private_data) {
 	const char *ptr  = str;
 	const char **arr = array_new(const char *, 0);
 
+	// if any parameter is not a valid utf8 string return the original string
+	if(!str_utf8_validate(old_string) || !str_utf8_validate(new_string) ||
+		!str_utf8_validate(str)) {
+		return SI_DuplicateStringVal(str);
+	}
+
 	while(ptr <= str + str_len) {
 		// find pointer to next substring
 		ptr = strstr(ptr, old_string);
@@ -365,41 +631,56 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 		return SI_NullVal();
 	}
 
-	char       *str       = argv[0].stringval;
-	const char *delimiter = argv[1].stringval;
-	SIValue     tokens    = SIArray_New(1);
+	char       *str           = argv[0].stringval;
+	const char *delimiter     = argv[1].stringval;
+	size_t      str_len       = strlen(str);
+	size_t      delimiter_len = strlen(delimiter);
+	SIValue     tokens        = SIArray_New(1);
 
-	if(strlen(delimiter) == 0) {
+	if(delimiter_len == 0) {
 		if(strlen(str) == 0) {
 			SIArray_Append(&tokens, SI_ConstStringVal(""));
 		} else {
-			char token[2];
-			token[1] = '\0';
-			while(str[0] != '\0') {
-				token[0] = str[0];
-				SIArray_Append(&tokens, SI_ConstStringVal(token));
-				str++;
+			utf8proc_int32_t c;
+			utf8proc_uint8_t token[5];
+			const utf8proc_uint8_t *str_i = (const utf8proc_uint8_t *)str;
+			while(str_i[0] != 0) {
+				str_i += utf8proc_iterate(str_i, -1, &c);
+				int i  = utf8proc_encode_char(utf8proc_tolower(c), token);
+				token[i] = '\0';
+				SIArray_Append(&tokens, SI_ConstStringVal((const char *)token));
 			}
 		}
+	} else if(str_len == 0) {
+		SIArray_Append(&tokens, SI_ConstStringVal(""));
 	} else {
-		// strtok should work on a mutable copy
-		str = rm_strdup(str);
-		
-		char *token  = strtok(str, delimiter);
-
-		if(!token) {
-			SIArray_Append(&tokens, argv[0]);
-			rm_free(str);
-			return tokens;
-		}
-
-		while(token) {
-			SIValue si_token = SI_ConstStringVal(token);
+		size_t rest_len   = str_len;
+		const char *start = str;
+		bool delimiter_found = false;
+		while(rest_len >= delimiter_len) {
+			// find bytes length from start to delimiter
+			int len = 0;
+			delimiter_found = false;
+			while(len <= rest_len - delimiter_len) {
+				if(strncmp(start + len, delimiter, delimiter_len) == 0) {
+					delimiter_found = true;
+					break;
+				}
+				len++;
+			}
+			if(!delimiter_found) {
+				break;
+			}
+			SIValue si_token = SI_TransferStringVal(rm_strndup(start, len));
 			SIArray_Append(&tokens, si_token);
-			token = strtok(NULL, delimiter);
+			SIValue_Free(si_token);
+			start += len + delimiter_len;
+			rest_len -= len + delimiter_len;
 		}
-		
-		rm_free(str);
+		if(rest_len > 0 || delimiter_found) {
+			SIValue si_token = SI_ConstStringVal(start);
+			SIArray_Append(&tokens, si_token);
+		}
 	}
 
 	return tokens;
@@ -457,6 +738,28 @@ void Register_StringFuncs() {
 	array_append(types, T_INT64);
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("substring", AR_SUBSTRING, 2, 3, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, (T_ARRAY | T_NULL));
+	array_append(types, T_STRING);
+	ret_type = T_STRING | T_NULL;
+	func_desc = AR_FuncDescNew("string.join", AR_JOIN, 1, 2, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, (T_STRING | T_NULL));
+	array_append(types, (T_STRING | T_NULL));
+	ret_type = T_ARRAY | T_NULL;
+	func_desc = AR_FuncDescNew("string.matchRegEx", AR_MATCHREGEX, 2, 2, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 3);
+	array_append(types, (T_STRING | T_NULL));
+	array_append(types, (T_STRING | T_NULL));
+	array_append(types, (T_STRING | T_NULL));
+	ret_type = T_STRING | T_NULL;
+	func_desc = AR_FuncDescNew("string.replaceRegEx", AR_REPLACEREGEX, 2, 3, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

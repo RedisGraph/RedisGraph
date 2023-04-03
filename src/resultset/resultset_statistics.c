@@ -52,6 +52,8 @@ void ResultSetStat_emit
 	// compute required space for resultset statistics
 	if(stats->index_creation)            resultset_size++;
 	if(stats->index_deletion)            resultset_size++;
+	if(stats->constraint_creation)       resultset_size++;
+	if(stats->constraint_deletion)       resultset_size++;
 	if(stats->labels_added          > 0) resultset_size++;
 	if(stats->nodes_created         > 0) resultset_size++;
 	if(stats->nodes_deleted         > 0) resultset_size++;
@@ -113,6 +115,16 @@ void ResultSetStat_emit
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
+	if(stats->constraint_creation) {
+		buflen = sprintf(buff, "Constraints created: %d", stats->constraints_created);
+		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
+	}
+
+	if(stats->constraint_deletion) {
+		buflen = sprintf(buff, "Constraints deleted: %d", stats->constraints_deleted);
+		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
+	}
+
 	buflen = sprintf(buff, "Cached execution: %d", stats->cached ? 1 : 0);
 	RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 
@@ -128,6 +140,10 @@ void ResultSetStat_Clear
 ) {
 	ASSERT(stats != NULL);
 
+	stats->index_creation = false;
+	stats->index_deletion = false;
+	stats->constraint_creation = false;
+	stats->constraint_deletion = false;
 	stats->labels_added          = 0;
 	stats->nodes_deleted         = 0;
 	stats->nodes_created         = 0;
@@ -135,6 +151,8 @@ void ResultSetStat_Clear
 	stats->labels_removed        = 0;
 	stats->indices_created       = 0;
 	stats->indices_deleted       = 0;
+	stats->constraints_created   = 0;
+	stats->constraints_deleted   = 0;
 	stats->properties_removed    = 0;
 	stats->relationships_created = 0;
 	stats->relationships_deleted = 0;

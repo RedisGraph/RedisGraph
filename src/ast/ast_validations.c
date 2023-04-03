@@ -10,6 +10,7 @@
 #include "astnode.h"
 #include "../errors.h"
 #include "ast_shared.h"
+#include "../util/arr.h"
 #include "ast_visitor.h"
 #include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
@@ -47,26 +48,61 @@ static bool _ValidateAllShortestPaths
 	// if we found allShortestPaths in invalid parent return true
 	if(t == CYPHER_AST_SHORTEST_PATH &&
 	   !cypher_ast_shortest_path_is_single(root)) {
-		return true;
+		return false;
 	}
 
 	// allShortestPaths is invalid in the MATCH predicate
 	if(t == CYPHER_AST_MATCH) {
 		const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(root);
-		return predicate != NULL && _ValidateAllShortestPaths(predicate);
+		return predicate == NULL || _ValidateAllShortestPaths(predicate);
 	}
 
 	// recursively traverse all children
 	uint nchildren = cypher_astnode_nchildren(root);
 	for(uint i = 0; i < nchildren; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-		bool res = _ValidateAllShortestPaths(child);
-		if(res) {
-			return true;
+		if(!_ValidateAllShortestPaths(child)) {
+			return false;
 		}
 	}
 
-	return false;
+	return true;
+}
+
+// validate that shortestPaths is in a supported place
+static bool _ValidateShortestPaths
+(
+	const cypher_astnode_t *root // root to validate
+) {
+	ASSERT(root != NULL);
+
+	cypher_astnode_type_t t = cypher_astnode_type(root);
+	// if we found allShortestPaths in invalid parent return true
+	if(t == CYPHER_AST_SHORTEST_PATH &&
+	   cypher_ast_shortest_path_is_single(root)) {
+		return false;
+	}
+
+	// shortestPaths is invalid in the MATCH pattern
+	if(t == CYPHER_AST_MATCH) {
+		const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(root);
+		return _ValidateShortestPaths(pattern);
+	}
+
+	if(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN) {
+		return true;
+	}
+
+	// recursively traverse all children
+	uint nchildren = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < nchildren; i ++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+		if(!_ValidateShortestPaths(child)) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 // get aliases of a WITH clause
@@ -849,14 +885,23 @@ static VISITOR_STRATEGY _Validate_shortest_path
 		return VISITOR_CONTINUE;
 	}
 
-	if(vctx->clause != CYPHER_AST_MATCH) {
-		return VISITOR_RECURSE;
-	}
-
 	if(cypher_ast_shortest_path_is_single(n)) {
-		// MATCH (a), (b), p = shortestPath((a)-[*]->(b)) RETURN p
-		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
-		return VISITOR_BREAK;
+		const cypher_astnode_t *path = cypher_ast_shortest_path_get_path(n);
+		int elements = cypher_ast_pattern_path_nelements(path);
+		const cypher_astnode_t *start = cypher_ast_node_pattern_get_identifier(cypher_ast_pattern_path_get_element(path, 0));
+		const cypher_astnode_t *end = cypher_ast_node_pattern_get_identifier(cypher_ast_pattern_path_get_element(path, elements - 1));
+		if(start == NULL || end == NULL) {
+			ErrorCtx_SetError("A shortestPath requires bound nodes");
+			return VISITOR_BREAK;
+		}
+		const char *start_id = cypher_ast_identifier_get_name(start);
+		const char *end_id = cypher_ast_identifier_get_name(end);
+		if(raxFind(vctx->defined_identifiers, (unsigned char *)start_id, strlen(start_id)) == raxNotFound ||
+			raxFind(vctx->defined_identifiers, (unsigned char *)end_id, strlen(end_id)) == raxNotFound) {
+			ErrorCtx_SetError("A shortestPath requires bound nodes");
+			return VISITOR_BREAK;
+		}
+		return VISITOR_RECURSE;
 	} else {
 		// MATCH (a), (b), p = allShortestPaths((a)-[*2..]->(b)) RETURN p
 		// validate rel pattern range doesn't contains a minimum > 1
@@ -1437,6 +1482,11 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 		// set the clause of the context
 		vctx->clause = CYPHER_AST_FOREACH;
 
+		// visit FOREACH array expression
+		const cypher_astnode_t *list_node =
+			cypher_ast_foreach_get_expression(n);
+		AST_Visitor_visit(list_node, visitor);
+
 		// introduce loop variable to bound vars
 		const cypher_astnode_t *identifier_node =
 			cypher_ast_foreach_get_identifier(n);
@@ -1446,10 +1496,6 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 
 		raxInsert(vctx->defined_identifiers, (unsigned char *) identifier,
 				  strlen(identifier), NULL, NULL);
-
-		// visit FOREACH array expression
-		const cypher_astnode_t *exp = cypher_ast_foreach_get_expression(n);
-		AST_Visitor_visit(exp, visitor);
 
 		// visit FOREACH loop body clauses
 		uint nclauses = cypher_ast_foreach_nclauses(n);
@@ -1930,9 +1976,13 @@ AST_Validation AST_Validate_Query
 	}
 
 	// validate positions of allShortestPaths
-	bool invalid = _ValidateAllShortestPaths(body);
-	if(invalid) {
+	if(!_ValidateAllShortestPaths(body)) {
 		ErrorCtx_SetError("RedisGraph support allShortestPaths only in match clauses");
+		return AST_INVALID;
+	}
+
+	if(!_ValidateShortestPaths(body)) {
+		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
 		return AST_INVALID;
 	}
 

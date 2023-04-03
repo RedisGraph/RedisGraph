@@ -19,7 +19,7 @@ ADD . /build
 RUN ./deps/readies/bin/getbash
 {% endif %}
 RUN ./deps/readies/bin/getupdates
-RUN ./sbin/setup
+RUN VERBOSE=1 ./sbin/setup
 
 RUN make
 

@@ -176,11 +176,11 @@ static inline void _buildProjectionOps(ExecutionPlan *plan,
 		_combine_projection_arrays(&projections, order_exps);
 	}
 
-	// Our fundamental operation will be a projection or aggregation.
+	// our fundamental operation will be a projection or aggregation
 	if(aggregate) {
-		// An aggregate op's caching policy depends on whether its results will be sorted.
-		bool sorting_after_aggregation = (order_exps != NULL);
-		op = NewAggregateOp(plan, projections, sorting_after_aggregation);
+		// an aggregate op's caching policy depends on
+		// whether its results will be sorted
+		op = NewAggregateOp(plan, projections);
 	} else {
 		op = NewProjectOp(plan, projections);
 	}

@@ -338,7 +338,7 @@ static void _AST_MapForeachClauseReferences
 	const cypher_astnode_t *exp = cypher_ast_foreach_get_expression(foreach_clause);
 	_AST_MapExpression(ast, exp);
 
-	// process each cluase within FOREACH body
+	// process each clause within FOREACH body
 	uint nclauses = cypher_ast_foreach_nclauses(foreach_clause);
 	for(uint i = 0; i < nclauses; i++) {
 		const cypher_astnode_t *clause = cypher_ast_foreach_get_clause(

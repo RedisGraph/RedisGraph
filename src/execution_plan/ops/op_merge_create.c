@@ -34,7 +34,7 @@ static void _IncrementalHashEntity(XXH64_state_t *state, const char **labels,
 		res = XXH64_update(state, &_set->attr_count, sizeof(_set->attr_count));
 		ASSERT(res != XXH_ERROR);
 
-		for(int i = 0; i < _set->attr_count; i++) {
+		for (uint16_t i = 0; i < _set->attr_count; ++i) {
 			Attribute *a = _set->attributes + i;
 
 			// update hash with attribute ID
@@ -74,6 +74,9 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
 	NewPendingCreationsContainer(&op->pending, nodes, edges); // Prepare all creation variables.
 	op->handoff_mode = false;
 	op->records = array_new(Record, 32);
+
+	// insert one NULL value to terminate execution of the op
+	array_append(op->records, NULL);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", MergeCreateInit, MergeCreateConsume,
@@ -218,9 +221,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r, GraphContext *gc) {
 
 // Return mode, emit a populated Record.
 static Record _handoff(OpMergeCreate *op) {
-	Record r = NULL;
-	if(array_len(op->records)) r = array_pop(op->records);
-	return r;
+	return array_pop(op->records);
 }
 
 static Record MergeCreateConsume(OpBase *opBase) {
@@ -286,7 +287,7 @@ static void MergeCreateFree(OpBase *ctx) {
 
 	if(op->records) {
 		uint rec_count = array_len(op->records);
-		for(uint i = 0; i < rec_count; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 1; i < rec_count; i++) OpBase_DeleteRecord(op->records[i]);
 		array_free(op->records);
 		op->records = NULL;
 	}
