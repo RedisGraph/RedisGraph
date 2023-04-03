@@ -426,8 +426,8 @@ SIValue AR_REPLACEREGEX(SIValue *argv, int argc, void *private_data) {
 
 	// copy the remaining string
 	int str_copy_len = strlen(str) - args.str_ind;
-	args.res = rm_realloc(args.res, (args.res_len + str_copy_len + 1)*sizeof(char));
-	memcpy(args.res + args.res_len, str + args.str_ind, str_copy_len*sizeof(char));
+	args.res = rm_realloc(args.res, (args.res_len + str_copy_len + 1) * sizeof(char));
+	memcpy(args.res + args.res_len, str + args.str_ind, str_copy_len * sizeof(char));
 	args.res[args.res_len + str_copy_len] = '\0';
 
 	return SI_TransferStringVal(args.res);
@@ -737,7 +737,7 @@ S1	| a | 1 | 0 |
 
 implementation of the Levenshtein distance algorithm
 using Wagner–Fischer algorithm
-Wagner–Fischer algorithm is comutative iff insertion and deletion have the same weights
+Wagner–Fischer algorithm is commutative if insertion and deletion have the same weights
 as you can see from the example above. */
 static double levenshtein_distance(
 	const char *_S1,
@@ -755,7 +755,7 @@ static double levenshtein_distance(
 	S2 = str_toInt32(_S2, _len2, &len2);
 
 	// dynamically allocate the array since it might be large
-	double *distance_array = (double *)rm_malloc((len2+1)*sizeof(double));
+	double *distance_array = (double *)rm_malloc((len2+1) * sizeof(double));
 	distance_array[0] = 0;
 
 	// initialize the first row
@@ -792,7 +792,7 @@ static double levenshtein_distance(
 
 // implementation of the Damerau Levenshtein distance algorithm
 // (Optimal string alignment distance)
-// the algorithm is comutative iff insertion and deletion have same weights
+// the algorithm is commutative if insertion and deletion have same weights
 static double damerau_levenshtein_distance_osa (
 	const char *_S1,
 	const char *_S2,
@@ -804,7 +804,7 @@ static double damerau_levenshtein_distance_osa (
 	double transpositionWeight
 ) {
 
-	int r,c;
+	int r, c;
 	size_t len1, len2;
 	int32_t *S1, *S2;
 	S1 = str_toInt32(_S1, _len1, &len1);
@@ -826,7 +826,7 @@ static double damerau_levenshtein_distance_osa (
 
 	// build the matrix - always keep the 3 last rows calculated in the matrix
 	int prev_row = 0;
-	for(int i = 1, r = 1; i <= len1; i++, prev_row = r, r = i%3) {
+	for(int i = 1, r = 1; i <= len1; i++, prev_row = r, r = i % 3) {
 		// initialize the first element in the row
 		distance_array[r][0] = distance_array[prev_row][0] + deletionWeight;
 
@@ -859,7 +859,7 @@ static double damerau_levenshtein_distance_osa (
 }
 
 // implementation of the Damerau Levenshtein distance algorithm
-// the algorithm is comutative iff insertion and deletion have same weights
+// the algorithm is commutative if insertion and deletion have same weights
 // see good (but partially wrong) explanation here: https://www.lemoda.net/text-fuzzy/damerau-levenshtein/
 // and here: https://en.wikipedia.org/wiki/Levenshtein_distance
 static double damerau_levenshtein_distance (
@@ -873,7 +873,7 @@ static double damerau_levenshtein_distance (
 	double transpositionWeight
 ) {
 
-	int r,c;
+	int r, c;
 	size_t len1, len2;
 	int32_t *S1, *S2;
 	S1 = str_toInt32(_S1, _len1, &len1);
@@ -1082,7 +1082,7 @@ static double jaro_similarity_Int32
 	}
 
 	if(len2 == 0) {
-		// both stings are empty
+		// both strings are empty
 		return 1.0;
 	} else if(len2 == 1) {
 		return S1[0] == S2[0] ? 1 : 0;
@@ -1092,7 +1092,7 @@ static double jaro_similarity_Int32
     // is allowed
 	size_t range = MAX(0, (len2 / 2 - 1));
 	bool *matchIndexes = (bool*)rm_calloc(len2, sizeof(bool));
-	char *v1 = (char*)rm_malloc(len1*sizeof(char));
+	char *v1 = (char*)rm_malloc(len1 * sizeof(char));
 	size_t n_match = 0;
 	size_t i, j;
 
@@ -1137,7 +1137,7 @@ static double jaro_similarity_Int32
 
 	// return the Jaro similarity
 	return ((double)n_match/len1 + (double)n_match/len2 + 
-	(n_match - ((double)n_transpositions/2))/n_match)/3;
+		(n_match - ((double)n_transpositions/2))/n_match)/3;
 }
 
 static double jaro_similarity
@@ -1148,7 +1148,7 @@ static double jaro_similarity
 	size_t _len2
 ) {
 	if(_len1 == 0 && _len2 == 0) {
-		// both stings are empty
+		// both strings are empty
 		return 1.0;
 	}
 

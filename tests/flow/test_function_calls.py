@@ -2593,7 +2593,6 @@ class testFunctionCallsFlow(FlowTestsBase):
         expected_result = [[['😉'], ['😉']]]
         query = """RETURN string.matchRegEx('a😉b丁c😉', '😉')"""
         actual_result = graph.query(query)
-        print(actual_result)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
         # proof for Avi that I need to change the parser
@@ -2960,14 +2959,14 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.lev_test('x', 'ax', 5.0, 5.0)
 
         # Test Lev deletions
-        self.lev_test('', 'z', 1.0, 1.0, 7.5)
-        self.lev_test('z', '', 7.5, 1.0, 7.5)
-        self.lev_test('xyz', 'zzxz', 3.0, 1.0, 7.5)
-        self.lev_test('zzxzzz', 'xyz', 23.5, 1.0, 7.5)
+        self.lev_test('az', 'z', 1.2, DeletionWeight=1.2)
+        self.lev_test('z', '', 7.5, DeletionWeight=7.5)
+        self.lev_test('xyz', 'zzxz', 3.0, InsertionWeight=1.0, DeletionWeight=7.5)
+        self.lev_test('zzxzzz', 'xyz', 23.5, InsertionWeight=1.0, DeletionWeight=7.5)
 
         # Test Lev substitutions
-        self.lev_test('a', 'z', 1.2, SubstitutionWeight=1.2)
-        self.lev_test('z', 'a', 0.1, SubstitutionWeight=0.1)
+        self.lev_test('a', 'z', 2, SubstitutionWeight=2)
+        self.lev_test('z', 'a', 0, SubstitutionWeight=0)
         self.lev_test('a', '', 1, SubstitutionWeight=1.2)
         self.lev_test('', 'a', 1, SubstitutionWeight=1.2)
         self.lev_test('asdf', 'zzzz', 4.8, SubstitutionWeight=1.2)
@@ -3005,7 +3004,6 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.dlevOSA_test("こにんち", "こんにちは", 2.0)
         self.dlevOSA_test("🙂😄🙂😄", "😄🙂😄🙂", 2.0)
         self.dlevOSA_test("a", "b", 1.0, 100, 100, 1, 100)
-        self.dlevOSA_test("ab", "ba", 200.0, 100, 100, 100, 200)
         self.dlevOSA_test("ab", "ba", 200.0, 100, 100, 100, 200)
         self.dlevOSA_test("a", "aa", 1.0, 1, 100, 100, 100)
         self.dlevOSA_test("aa", "a", 1.0, 100, 1, 100, 100)
@@ -3058,6 +3056,11 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.dlev_test('a', 'aa', 1.0, 1.0, 100.0, 100.0, 100.0)
 
         ## Test Hamming distance ##
+        expected_result = [0.0]
+        query = """RETURN string.distance('', '', 'Ham')"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
         expected_result = [0.0]
         query = """RETURN string.distance('ab', 'ab', 'Ham')"""
         actual_result = graph.query(query)
@@ -3151,17 +3154,58 @@ class testFunctionCallsFlow(FlowTestsBase):
         except ResponseError as e:
             self.env.assertContains("ArgumentError: string.distance(), threshold value is out of bounds", str(e))
 
+        try:
+            query = """RETURN string.distance("frog", "fog", 'JaroW', {ScaleFactor : 0.0/0.0})"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: string.distance(), scaleFactor value is nan", str(e))
+
+        try:
+            query = """RETURN string.distance("frog", "fog", 'JaroW', {threshold : 0.0/0.0})"""
+            graph.query(query)
+            self.env.assertTrue(False)
+        except ResponseError as e:
+            self.env.assertContains("ArgumentError: string.distance(), threshold value is nan", str(e))    
+
+        # self.jaro_test('', '', 0.0)
         self.jaro_test('al', 'al', 0.0)
         self.jaro_test('al', 'ab', 0.333333333333333)
+        self.jaro_test('martha', 'marhta', 0.0555555555555555)
+        self.jaro_test("jones", "johnson", 0.20952380952381, 1e-15)
+        self.jaro_test("abcvwxyz", "cabvwxyz", 0.0625)
+        self.jaro_test("SHACKLEFORD", "SHACKELFORD", 0.0303030303030303)
+        self.jaro_test("dwayne", "duane", 0.177777777777778, 1e-15)
+        self.jaro_test("dixon", "dicksonx", 0.233333333333333, 1e-15)
+        self.jaro_test("fvie", "ten", 1.0, 0)
+        self.jaro_test("foo", "foo ", 0.0833333333333334, 1e-15)
+        self.jaro_test("foo", "  foo", 0.488888888888889, 1e-15)
+        self.jaro_test("foo", "foo  ", 0.133333333333333, 1e-15)
+        self.jaro_test("", "a", 1.0, 0)
+        self.jaro_test("aaappp", "", 1.0, 0)
+        self.jaro_test("frog", "fog", 0.0833333333333334, 1e-15)
+        self.jaro_test("fly", "ant", 1.0, 0)
+        self.jaro_test("elephant", "hippo", 0.5583333333333333, 1e-15)
+        self.jaro_test("hippo", "zzzzzzzz", 1.0, 0)
+        self.jaro_test("hello", "hallo", 0.133333333333333, 0)
+        self.jaro_test("ABC Corporation", "ABC Corp", 0.155555555555556, 1e-15)
+        self.jaro_test("D N H Enterprises Inc", "D &amp; H Enterprises, Inc.", 0.177292768959436, 1e-15)
+        self.jaro_test("My Gym Children's Fitness Center", "My Gym. Childrens Fitness", 0.0966666666666667, 1e-15)
+        self.jaro_test("PENNSYLVANIA", "PENNCISYLVNIA", 0.16996891996892, 1e-15)
+        self.jaro_test("zac ephron", "zac efron", 0.103703703703704, 1e-15)
+        self.jaro_test("zac ephron", "kai ephron", 0.1333333333333333, 1e-15)
+        self.jaro_test("brittney spears", "britney spears", 0.0222222222222221, 1e-15)
+        self.jaro_test("brittney spears", "brittney startzman", 0.177777777777778, 1e-15)
 
+        self.jarow_test('', '', 0, 0)
         self.jarow_test('al', 'al', 0.0)
         self.jarow_test('martha', 'marhta', 0.03888888888888886, 0.0000000000000001)
         self.jarow_test("jones", "johnson", 0.16761904761904767, 1e-15)
         self.jarow_test("abcvwxyz", "cabvwxyz", 0.0625)
+        self.jarow_test("SHACKLEFORD", "SHACKELFORD", 0.0181818181818182)
         self.jarow_test("dwayne", "duane", 0.15999999999999992, 1e-15)
         self.jarow_test("dixon", "dicksonx", 0.18666666666666676, 1e-15)
         self.jarow_test("fvie", "ten", 1.0, 0)
-        self.jarow_test("", "", 0, 0)
         self.jarow_test("foo", "foo", 0, 0)
         self.jarow_test("foo", "foo", 0, 0, 0.25)
         self.jarow_test("foo", "foo ", 0.05833333333333335, 1e-15)
