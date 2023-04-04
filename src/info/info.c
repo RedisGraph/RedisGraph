@@ -246,7 +246,7 @@ static bool _Info_UnlockEverything
 	Info *info
 ) {
     ASSERT(info != NULL);
-    return pthread_mutex_unlock(&info->mutex);
+    return !pthread_mutex_unlock(&info->mutex);
 }
 
 Info *Info_New(void) {
@@ -274,7 +274,7 @@ Info *Info_New(void) {
 
 // add a query to the waiting list for the first time (from dispatcher)
 // at this stage, no time has been previously accumulated
-void Info_AddWaiting
+void Info_AddToWaiting
 (
     Info *info,    // info
     QueryInfo *qi  // query info of the query starting to wait
@@ -371,11 +371,11 @@ void Info_IndicateQueryStartedReporting
 ) {
     ASSERT(info != NULL);
 
-    const int thread_id = ThreadPools_GetThreadID();
+    const int tid = ThreadPools_GetThreadID();
     QueryInfo *qi = info->working_queries + tid;
     ASSERT(qi != NULL);
 
-    query_info->stage = QueryStage_REPORTING;
+    qi->stage = QueryStage_REPORTING;
     QueryInfo_UpdateExecutionTime(qi);
     QueryInfo_ResetStageTimer(qi);
 }
@@ -393,16 +393,17 @@ void Info_IndicateQueryFinishedReporting
 	ASSERT(qi->stage == QueryStage_REPORTING);
 
 	// update stage to finished
-    query_info->stage = QueryStage_FINISHED;
-    QueryInfo_UpdateReportingTime(query_info);
+    qi->stage = QueryStage_FINISHED;
+    QueryInfo_UpdateReportingTime(qi);
 
 	// TODO: remove FinishedQueryInfo, use only QueryInfo
-    FinishedQueryInfo finished = FinishedQueryInfo_FromQueryInfo(*query_info);
+    FinishedQueryInfo finished = FinishedQueryInfo_FromQueryInfo(*qi);
     const millis_t total_duration = _FinishedQueryInfo_GetTotalDuration(finished);
     // Statistics_RecordTotalDuration(&info->statistics, total_duration);
     _add_finished_query(finished);
-    memset(array_elem(info->working_queries, thread_id), 0, sizeof(QueryInfo));
-    REQUIRE_TRUE(_Info_UnlockEverything(info));
+    memset(array_elem(info->working_queries, tid), 0, sizeof(QueryInfo));
+    res = _Info_UnlockEverything(info);
+    ASSERT(res == true);
 }
 
 uint64_t Info_GetTotalQueriesCount(Info *info) {
@@ -629,7 +630,7 @@ void Info_Free
 
     HashTableRelease(info->waiting_queries);
 
-    res = pthread_mutex_destroy(&info->mutex);
+    int res = pthread_mutex_destroy(&info->mutex);
     ASSERT(res == 0);
 
 	rm_free(info);

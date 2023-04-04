@@ -423,6 +423,10 @@ void _query(bool profile, void *args) {
 	GraphContext   *gc          = CommandCtx_GetGraphContext(command_ctx);
 	ExecutionCtx   *exec_ctx    = NULL;
 
+	// set the query context to the query context value (already allocated)
+	QueryCtx *query_ctx = command_ctx->query_ctx;
+	QueryCtx_SetTLS(query_ctx);
+
 	CommandCtx_TrackCtx(command_ctx);
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 	QueryCtx_BeginTimer(); // start query timing

@@ -77,7 +77,7 @@ Info *Info_New(void);
 
 // add a query to the waiting list for the first time (from dispatcher)
 // at this stage, no time has been previously accumulated
-void Info_AddWaiting
+void Info_AddToWaiting
 (
     Info *info,    // info
     QueryInfo *qi  // query info of the query starting to wait

@@ -243,8 +243,10 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 				REDISMODULE_CTX_FLAGS_LOADING)));
 	ExecutorThread exec_thread = main_thread ? EXEC_THREAD_MAIN : EXEC_THREAD_READER;
 
-	// create the query context for this query
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	// initialize the query context
+	QueryCtx *query_ctx = rm_calloc(1, sizeof(QueryCtx));
+	query_ctx->undo_log = UndoLog_New();
+	query_ctx->qi = QueryInfo_New();
 
 	Command_Handler handler = get_command_handler(cmd);
 	if(exec_thread == EXEC_THREAD_MAIN) {
@@ -265,7 +267,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		// indicate that the query has started waiting
 		QueryInfo *qi = query_ctx->qi;
 		qi->received_ts = CommandCtx_GetReceivedTimestamp(context);
-		Info_AddWaiting(gc->info, qi);
+		Info_AddToWaiting(gc->info, qi);
 
 		if(ThreadPools_AddWorkReader(handler, context, false) ==
 				THPOOL_QUEUE_FULL) {
