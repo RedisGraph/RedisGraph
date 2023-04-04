@@ -33,7 +33,7 @@ typedef struct QueryCtx QueryCtx;
 // duplicate typedef from the circular buffer
 typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data,
                                                   const void *item);
-typedef QueryInfo* QueryInfoStorage;
+typedef QueryInfo** QueryInfoStorage;
 
 // an abstraction for iteration over QueryInfo objects
 typedef struct QueryInfoIterator {
@@ -41,16 +41,6 @@ typedef struct QueryInfoIterator {
     uint64_t current_index;
     bool has_started; // true if at least one Next*/Get* was called
 } QueryInfoIterator;
-
-// holds a successfull query info
-typedef struct FinishedQueryInfo {
-    uint64_t received_ts;         // query received timestamp
-    millis_t wait_duration;       // waiting time
-    millis_t execution_duration;  // executing time
-    millis_t report_duration;     // reporting time
-    char *query_string;           // query string
-    char *graph_name;             // graph name
-} FinishedQueryInfo;
 
 // holds query statistics per graph
 typedef struct FinishedQueryCounters {
@@ -107,25 +97,40 @@ void Info_IndicateQueryStartedReporting
     Info *info  // info
 );
 
-// Indicates that the query has finished reporting the results and is no longer
-// required to be stored and kept track of.
+// indicates that the query has finished reporting the results and is no longer
+// required to be stored and kept track of
 void Info_IndicateQueryFinishedReporting
 (
-    Info *,
-    const QueryCtx *
+    Info *info
 );
-// Return the total number of queries currently queued or being executed.
-// Requires a pointer to mutable, for it changes the state of the locks.
-uint64_t Info_GetTotalQueriesCount(Info *);
-// Return the number of queries currently waiting to be executed.
-// Requires a pointer to mutable, for it changes the state of the locks.
-uint64_t Info_GetWaitingQueriesCount(Info *);
-// Return the number of queries being currently executed.
-// Requires a pointer to mutable, for it changes the state of the locks.
-uint64_t Info_GetExecutingQueriesCount(Info *);
-// Return the number of queries currently reporting results back.
-// Requires a pointer to mutable, for it changes the state of the locks.
-uint64_t Info_GetReportingQueriesCount(Info *);
+
+// return the number of queries currently waiting to be executed
+// requires a pointer to mutable, for it changes the state of the locks
+uint64_t Info_GetWaitingQueriesCount
+(
+	Info *info
+);
+
+// return the number of queries being currently executed
+// requires a pointer to mutable, for it changes the state of the locks
+uint64_t Info_GetExecutingQueriesCount
+(
+	Info *info
+);
+
+// return the number of queries currently reporting results back
+// requires a pointer to mutable, for it changes the state of the locks
+uint64_t Info_GetReportingQueriesCount
+(
+	Info *info
+);
+
+// return the total number of queries currently queued or being executed
+uint64_t Info_GetTotalQueriesCount
+(
+	Info *info
+);
+
 // Return the maximum registered time a query was spent waiting, executing and
 // reporting the results.
 // Requires a pointer to mutable, for it changes the state of the locks.
@@ -169,30 +174,6 @@ void FinishedQueryCounters_Add
 
 FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info);
 void FinishedQueryInfo_Free(const FinishedQueryInfo query_info);
-
-// Returns a new iterator over the provided storage starting with the
-// provided index. The created iterator doesn't have to be freed.
-QueryInfoIterator QueryInfoIterator_NewStartingAt
-(
-    const QueryInfoStorage,
-    const uint64_t
-);
-// Returns a new iterator over the provided storage starting from the beginning.
-QueryInfoIterator QueryInfoIterator_New(const QueryInfoStorage);
-// Returns a pointer to the next element from the current, NULL if the end has
-// been reached.
-QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *);
-// Returns a pointer to the next valid element from the current, NULL if the end
-// has been reached.
-QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *);
-// Returns a pointer to the underlying storage being iterated over.
-const QueryInfoStorage QueryInfoIterator_GetStorage(QueryInfoIterator *);
-// Returns current element being pointed at by the iterator.
-QueryInfo* QueryInfoIterator_Get(QueryInfoIterator *);
-// Returns the number of elements which are still to be iterated over.
-uint32_t QueryInfoIterator_Length(const QueryInfoIterator *);
-// Returns true if the iterator has no more elements to iterate over.
-bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *);
 
 // free the info structure's content
 void Info_Free

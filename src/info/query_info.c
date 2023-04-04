@@ -8,6 +8,30 @@
 #include "../util/simple_timer.h"
 #include "../graph/graphcontext.h"
 
+// resets the stage timer and returns the milliseconds it had recorded before
+// having been reset
+static void QueryInfo_ResetStageTimer
+(
+	QueryInfo *qi
+) {
+    ASSERT(qi != NULL);
+
+    TIMER_RESTART(qi->stage_timer);
+}
+
+// returns the number of milliseconds the timer has counted
+// this function does not reset the timer
+static millis_t QueryInfo_GetCountedMilliseconds
+(
+	QueryInfo *qi
+) {
+    ASSERT(qi != NULL);
+
+    (millis_t) ms = TIMER_GET_ELAPSED_MILLISECONDS(qi->stage_timer);
+    QueryInfo_ResetStageTimer(qi);
+	return ms;
+}
+
 // creates a new, empty query info object
 QueryInfo *QueryInfo_New(void) {
     QueryInfo *qi = rm_calloc(1, sizeof(QueryInfo));
@@ -83,7 +107,7 @@ void QueryInfo_UpdateWaitingTime
 ) {
     ASSERT(qi != NULL);
 
-    qi->wait_duration = QueryInfo_GetCountedMilliseconds(qi);
+    qi->wait_duration += QueryInfo_GetCountedMilliseconds(qi);
 }
 
 // reads the stage timer and updates the execution time with it.
@@ -93,7 +117,7 @@ void QueryInfo_UpdateExecutionTime
 ) {
     ASSERT(qi);
 
-    qi->execution_duration = QueryInfo_GetCountedMilliseconds(qi);
+    qi->execution_duration += QueryInfo_GetCountedMilliseconds(qi);
 }
 
 // reads the stage timer and updates the reporting time with it
@@ -103,33 +127,6 @@ void QueryInfo_UpdateReportingTime
 ) {
     ASSERT(qi != NULL);
 
-    qi->report_duration = QueryInfo_GetCountedMilliseconds(qi);
-}
-
-// returns the number of milliseconds the timer has counted
-// this function does not reset the timer
-millis_t QueryInfo_GetCountedMilliseconds
-(
-	QueryInfo *qi
-) {
-    ASSERT(qi != NULL);
-
-    return (millis_t)TIMER_GET_ELAPSED_MILLISECONDS(qi->stage_timer);
-}
-
-// resets the stage timer and returns the milliseconds it had recorded before
-// having been reset
-millis_t QueryInfo_ResetStageTimer
-(
-	QueryInfo *qi
-) {
-    ASSERT(qi != NULL);
-
-    const millis_t milliseconds_spent
-        = (millis_t)TIMER_GET_ELAPSED_MILLISECONDS(qi->stage_timer);
-
-    TIMER_RESTART(qi->stage_timer);
-
-    return milliseconds_spent;
+    qi->report_duration += QueryInfo_GetCountedMilliseconds(qi);
 }
 

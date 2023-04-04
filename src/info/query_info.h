@@ -20,12 +20,14 @@ typedef enum QueryStage {
 
 // holds necessary per-query info
 typedef struct QueryInfo {
+    char *graph_name;            // graph name
+    char *query_string;          // query string
     uint64_t received_ts;        // query received timestamp
     millis_t wait_duration;      // waiting time
     millis_t execution_duration; // executing time
     millis_t report_duration;    // reporting time
-    QueryStage stage;            // query stage
     simple_timer_t stage_timer;  // timer
+    QueryStage stage;            // query stage
 } QueryInfo;
 
 // creates a new, empty query info object
@@ -77,20 +79,6 @@ void QueryInfo_UpdateExecutionTime
 
 // reads the stage timer and updates the reporting time with it
 void QueryInfo_UpdateReportingTime
-(
-	QueryInfo *qi
-);
-
-// returns the number of milliseconds the timer has counted
-// this function does not reset the timer
-millis_t QueryInfo_GetCountedMilliseconds
-(
-	QueryInfo *qi
-);
-
-// resets the stage timer and returns the milliseconds it had recorded before
-// having been reset
-millis_t QueryInfo_ResetStageTimer
 (
 	QueryInfo *qi
 );

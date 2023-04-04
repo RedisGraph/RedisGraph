@@ -88,20 +88,6 @@ typedef struct ViewFinishedQueriesCallbackData {
     bool is_compact_mode;
 } ViewFinishedQueriesCallbackData;
 
-// The same structure is used for the replies for the finished and non-finished
-// queries. The objects of this structure should have a very limited lifetime,
-// as it uses pointers to a data it doesn't own.
-typedef struct CommonQueryInfo {
-    uint64_t received_at_ms;
-    QueryStage stage;
-    char *graph_name;
-    char *query_string;
-    millis_t wait_duration;
-    millis_t execution_duration;
-    millis_t report_duration;
-    // TODO memory
-} CommonQueryInfo;
-
 static bool _is_cmd_info_enabled() {
     bool cmd_info_enabled = false;
     return Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled;
