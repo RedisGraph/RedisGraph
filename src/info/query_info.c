@@ -120,3 +120,22 @@ void QueryInfo_UpdateReportingTime
     qi->report_duration += QueryInfo_GetCountedMilliseconds(qi);
 }
 
+// clone a QueryInfo
+QueryInfo *QueryInfo_Clone
+(
+    QueryInfo *qi
+) {
+    QueryInfo *clone = rm_calloc(1, sizeof(QueryInfo));
+    if(qi->graph_name != NULL) {
+        clone->graph_name = strdup(qi->graph_name);
+    }
+    if(qi->query_string != NULL) {
+        clone->query_string = strdup(qi->query_string);
+    }
+    clone->received_ts = qi->received_ts;
+    clone->wait_duration = qi->wait_duration;
+    clone->execution_duration = qi->execution_duration;
+    clone->report_duration = qi->report_duration;
+    clone->stage = qi->stage;
+    // clone timer will isn't relevant, stays {0}
+}

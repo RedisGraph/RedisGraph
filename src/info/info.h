@@ -160,6 +160,15 @@ bool Info_Unlock
     Info *info
 );
 
+// stores clones of queries of a certain state among the waiting and the
+// executing stages in storage
+void Info_GetQueries
+(
+    Info *info,                 // info
+    QueryStage stage,           // wanted stage
+    QueryInfoStorage **storage  // result container
+);
+
 // returns a pointer to the underlying storage for all the waiting queries.
 // Must be accessed within the Info_Lock and Info_Unlock
 QueryInfoStorage* Info_GetWaitingQueriesStorage
@@ -169,7 +178,11 @@ QueryInfoStorage* Info_GetWaitingQueriesStorage
 
 // Returns a pointer to the underlying working queries storage per thread.
 // Must be accessed within the Info_Lock and Info_Unlock.
-QueryInfoStorage* Info_GetWorkingQueriesStorage(Info *info);
+QueryInfoStorage* Info_GetWorkingQueriesStorage
+(
+    Info *info
+);
+
 // Resizes the finished queries storage.
 void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count);
 // Views the circular buffer of finished queries.

@@ -562,10 +562,51 @@ dict* Info_GetWaitingQueries(Info *info) {
     return info->waiting_queries;
 }
 
-QueryInfoStorage* Info_GetWorkingQueriesStorage(Info *info) {
-    ASSERT(info != NULL);
-    return &info->working_queries;
+// stores clones of queries of a certain state among the waiting and the
+// executing stages in storage
+void Info_GetQueries
+(
+    Info *info,                 // info
+    QueryStage stage,           // wanted stage
+    QueryInfoStorage **storage  // result container
+) {
+    QueryInfoStorage *st = *storage;
+
+    _Info_LockEverything(info);
+
+    // get the number of queries to traverse and copy (executing may be lower)
+    uint n_queries = stage == QueryStage_WAITING ?
+        HashTableElemCount(info->waiting_queries) :
+        ThreadPools_ThreadCount + 1;
+
+    //--------------------------------------------------------------------------
+    // waiting queries
+    //--------------------------------------------------------------------------
+    QueryInfo *qi;
+    dictIterator *it = HashTableGetIterator(info->waiting_queries);
+    while((qi = (QueryInfo*)HashTableNext(it)) != NULL) {
+		array_append(st, QueryInfo_Clone(qi));
+    }
+
+    //--------------------------------------------------------------------------
+    // executing queries
+    //--------------------------------------------------------------------------
+    for(uint i = 0; i < n_queries; i++) {
+        // append a clone of the current query to st
+        if(info->working_queries[i] != NULL) {
+            array_append(st, QueryInfo_Clone(info->working_queries[i]));
+        }
+    }
+
+    _Info_UnlockEverything(info);
 }
+
+// // returns a pointer to the underlying working queries storage per thread.
+// // Must be accessed within the Info_Lock and Info_Unlock
+// QueryInfoStorage* Info_GetWorkingQueriesStorage(Info *info) {
+//     ASSERT(info != NULL);
+//     return &info->working_queries;
+// }
 
 static void _FinishedQueryInfoClone
 (

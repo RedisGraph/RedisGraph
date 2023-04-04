@@ -474,7 +474,7 @@ static int _parse_and_reply_info_queries_prev
 // which have their timer ticking but the counted value not yet updated as it
 // hasn't moved to the new stage.
 static void _update_query_stage_timer(const QueryStage stage, QueryInfo *info) {
-    ASSERT(info);
+    ASSERT(info != NULL);
     if (!info) {
         return;
     }
@@ -511,7 +511,7 @@ static int _reply_graph_query_info_storage
 (
     RedisModuleCtx *ctx,
     const QueryStage query_stage,
-    const QueryInfoStorage *storage,
+    const QueryInfoStorage storage,
     const bool is_compact_mode,
     const uint64_t max_count,
     uint64_t *iterated
@@ -521,21 +521,24 @@ static int _reply_graph_query_info_storage
         return REDISMODULE_ERR;
     }
 
-    QueryInfoIterator iterator = QueryInfoIterator_New(storage);
+    QueryInfo *qi;
+    uint n_queries = array_len(storage);
     uint64_t actual_elements_count = 0;
-    QueryInfo *info = NULL;
-    while ((info = QueryInfoIterator_NextValid(&iterator)) != NULL) {
+
+    for(uint i = 0; i < n_queries; i++) {
+        qi = storage[i];
         if (actual_elements_count >= max_count) {
             break;
-        } else if (info->stage != query_stage) {
+        } else if (qi->stage != query_stage) {
             continue;
         }
-        _update_query_stage_timer(query_stage, info);
+
+        _update_query_stage_timer(query_stage, qi);
         ++actual_elements_count;
         REDISMODULE_ASSERT(_reply_graph_query_info(
             ctx,
             is_compact_mode,
-            _CommonQueryInfo_FromUnfinished(*info, query_stage)));
+            _CommonQueryInfo_FromUnfinished(*qi, query_stage)));
     }
 
     if (iterated) {
@@ -563,28 +566,17 @@ static int _reply_with_graph_queries_of_stage
 
     Info *info = &gc->info;
     uint64_t iterated = 0;
-    Info_Lock(info);
 
-    QueryInfoStorage *storage = NULL;
-    switch (query_stage) {
-        case QueryStage_WAITING: {
-            storage = Info_GetWaitingQueriesStorage(info);
-            break;
-        }
-        case QueryStage_EXECUTING: case QueryStage_REPORTING: {
-            storage = Info_GetWorkingQueriesStorage(info);
-            break;
-        }
-        default: Info_Unlock(info); return REDISMODULE_ERR;
-    }
+    QueryInfoStorage *storage = array_new(QueryInfo *, 0);
+    Info_GetQueries(info, query_stage, &storage);
+
     if (_reply_graph_query_info_storage(
         ctx,
         query_stage,
-        storage,
+        *storage,
         is_compact_mode,
         max_count,
         &iterated)) {
-        Info_Unlock(info);
         return REDISMODULE_ERR;
     }
 
@@ -592,7 +584,6 @@ static int _reply_with_graph_queries_of_stage
         *printed_count = iterated;
     }
 
-    Info_Unlock(info);
     return REDISMODULE_OK;
 }
 

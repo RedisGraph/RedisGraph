@@ -83,3 +83,8 @@ void QueryInfo_UpdateReportingTime
 	QueryInfo *qi
 );
 
+// clone a QueryInfo
+QueryInfo *QueryInfo_Clone
+(
+    QueryInfo *qi
+);
