@@ -134,20 +134,46 @@ uint64_t Info_GetTotalQueriesCount
 // Return the maximum registered time a query was spent waiting, executing and
 // reporting the results.
 // Requires a pointer to mutable, for it changes the state of the locks.
-millis_t Info_GetMaxQueryWaitTime(Info *);
-// Incremenents the corresponding query type counter. The passed parameters
+millis_t Info_GetMaxQueryWaitTime
+(
+    Info *info
+);
+
+// Increments the corresponding query type counter. The passed parameters
 // define the kind of query and its finish status.
-void Info_IncrementNumberOfQueries(Info *, const QueryExecutionTypeFlag, const QueryExecutionStatus);
+void Info_IncrementNumberOfQueries
+(
+    Info *info,
+    const QueryExecutionTypeFlag,
+    const QueryExecutionStatus
+);
+
 // Returns the finished query counters from the passed info object.
-FinishedQueryCounters Info_GetFinishedQueryCounters(const Info);
+FinishedQueryCounters Info_GetFinishedQueryCounters
+(
+    const Info
+);
+
 // Locks the info object for external reading. Only one concurrent read is
 // allowed at the same time.
-bool Info_Lock(Info *);
+bool Info_Lock
+(
+    Info *info
+);
+
 // Unlocks the info object from exclusive external reading.
-bool Info_Unlock(Info *);
-// Returns a pointer to the underlying storage for all the waiting queries.
-// Must be accessed within the Info_Lock and Info_Unlock.
-QueryInfoStorage* Info_GetWaitingQueriesStorage(Info *info);
+bool Info_Unlock
+(
+    Info *info
+);
+
+// returns a pointer to the underlying storage for all the waiting queries.
+// Must be accessed within the Info_Lock and Info_Unlock
+QueryInfoStorage* Info_GetWaitingQueriesStorage
+(
+    Info *info
+);
+
 // Returns a pointer to the underlying working queries storage per thread.
 // Must be accessed within the Info_Lock and Info_Unlock.
 QueryInfoStorage* Info_GetWorkingQueriesStorage(Info *info);

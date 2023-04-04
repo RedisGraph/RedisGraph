@@ -70,12 +70,14 @@ static void _FinishedQueryCounters_Reset
 	counters->ro_succeeded_n     = 0;
 }
 
+// Increments the corresponding query type counter. The passed parameters
+// define the kind of query and its finish status.
 static void _FinishedQueryCounters_Increment(
     FinishedQueryCounters *counters,
     const QueryExecutionTypeFlag flags,
     const QueryExecutionStatus status
 ) {
-    REQUIRE_ARG(counters);
+    ASSERT(counters != NULL);
 
     if (CHECK_FLAG(flags, QueryExecutionTypeFlag_WRITE)) {
         if (status == QueryExecutionStatus_FAILURE) {
@@ -485,40 +487,55 @@ uint64_t Info_GetTotalQueriesCount
     return waiting + executing + reporting;
 }
 
-millis_t Info_GetMaxQueryWaitTime(Info *info) {
-    REQUIRE_ARG_OR_RETURN(info, 0);
-    _Info_LockEverything(info);
+// Return the maximum registered time a query was spent waiting, executing and
+// reporting the results.
+// Requires a pointer to mutable, for it changes the state of the locks.
+millis_t Info_GetMaxQueryWaitTime
+(
+    Info *info
+) {
+    ASSERT(info != NULL);
+
+    uint64_t count = 0;
+    uint n = ThreadPools_ThreadCount() + 1;
+
+    bool res = _Info_LockEverything(info);
+    ASSERT(res == true);
 
     millis_t max_time = 0;
     QueryInfo *query = NULL;
-    {
-        dictIterator *it = HashTableGetIterator(info->waiting_queries);
-        dictEntry *entry;
-		while((entry  = HashTableNext(it)) != NULL) {
-            max_time = MAX(max_time, QueryInfo_GetWaitingTime((const QueryInfo *)entry));
-        }
-        ASSERT(_Info_UnlockWaitingQueries(info) != NULL);
-        HashTableReleaseIterator(it);
+    dictIterator *it = HashTableGetIterator(info->waiting_queries);
+    dictEntry *entry;
+    while((entry  = HashTableNext(it)) != NULL) {
+        max_time = MAX(max_time,
+            QueryInfo_GetWaitingTime((const QueryInfo *)entry));
     }
-    {
-        QueryInfoIterator iterator = QueryInfoIterator_New(&info->working_queries);
-        while ((query = QueryInfoIterator_NextValid(&iterator)) != NULL) {
-            max_time = MAX(max_time, QueryInfo_GetWaitingTime((const QueryInfo *)query));
-        }
-    }
+
+    HashTableReleaseIterator(it);
+
+	for(uint i = 0; i < n; i++) {
+		QueryInfo *qi = info->working_queries[i];
+        max_time = MAX(max_time,
+            QueryInfo_GetWaitingTime((const QueryInfo *) qi));
+	}
+
+    res = _Info_UnlockEverything(info);
+    ASSERT(res == true);
 
     _Info_UnlockEverything(info);
 
     return max_time;
 }
 
+// Increments the corresponding query type counter. The passed parameters
+// define the kind of query and its finish status.
 void Info_IncrementNumberOfQueries
 (
     Info *info,
     const QueryExecutionTypeFlag flags,
     const QueryExecutionStatus status
 ) {
-    REQUIRE_ARG(info);
+    ASSERT(info != NULL);
 
     _FinishedQueryCounters_Increment(
         &info->counters,
@@ -527,14 +544,23 @@ void Info_IncrementNumberOfQueries
     );
 }
 
-FinishedQueryCounters Info_GetFinishedQueryCounters(const Info info) {
+FinishedQueryCounters Info_GetFinishedQueryCounters
+(
+    const Info info
+) {
     return info.counters;
 }
 
-bool Info_Lock(Info *info) {
+// locks the info object for external reading. Only one concurrent read is
+// allowed at the same time
+bool Info_Lock
+(
+    Info *info
+) {
     return _Info_LockEverything(info);
 }
 
+// unlocks the info object from exclusive external reading
 bool Info_Unlock(Info *info) {
     return _Info_UnlockEverything(info);
 }

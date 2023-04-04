@@ -492,12 +492,13 @@ static CommonQueryInfo _CommonQueryInfo_FromUnfinished
     const QueryInfo unfinished,
     const QueryStage stage
 ) {
+    QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+    GraphContext *gc = query_ctx->gc;
     const CommonQueryInfo info = {
         .received_at_ms = unfinished.received_ts,
         .stage = stage,
-        // TODO: We removed the queryCtx from QueryInfo --> no graph_name or query_string (bring it back?)
-        // .graph_name = (char *)unfinished.context->gc->graph_name,
-        // .query_string = (char *)unfinished.context->query_data.query,
+        .graph_name = (char *)gc->graph_name,
+        .query_string = (char *)query_ctx->query_data.query,
         .wait_duration = unfinished.wait_duration,
         .execution_duration = unfinished.execution_duration,
         .report_duration = unfinished.report_duration

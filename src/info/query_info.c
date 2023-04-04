@@ -67,16 +67,6 @@ millis_t QueryInfo_GetWaitingTime
 ) {
 	ASSERT(qi != NULL);
 
-    return qi->wait_duration;
-}
-
-// returns the time the query spent waiting
-millis_t QueryInfo_GetWaitingTime
-(
-	const QueryInfo *qi
-) {
-	ASSERT(qi != NULL);
-
     return qi->execution_duration;
 }
 
