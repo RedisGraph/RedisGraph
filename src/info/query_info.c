@@ -67,7 +67,7 @@ millis_t QueryInfo_GetWaitingTime
 ) {
 	ASSERT(qi != NULL);
 
-    return qi->execution_duration;
+    return qi->wait_duration;
 }
 
 // returns the time the query spent executing

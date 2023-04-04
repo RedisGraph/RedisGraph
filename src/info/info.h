@@ -131,27 +131,20 @@ uint64_t Info_GetTotalQueriesCount
 	Info *info
 );
 
-// Return the maximum registered time a query was spent waiting, executing and
-// reporting the results.
-// Requires a pointer to mutable, for it changes the state of the locks.
+// return the maximum registered time a query was spent waiting
+// taking into account all currently waiting, executing and reporting queries
 millis_t Info_GetMaxQueryWaitTime
 (
     Info *info
 );
 
-// Increments the corresponding query type counter. The passed parameters
-// define the kind of query and its finish status.
+// increments the corresponding query type counter
+// the passed parameters define the kind of query and its finish status
 void Info_IncrementNumberOfQueries
 (
     Info *info,
     const QueryExecutionTypeFlag,
     const QueryExecutionStatus
-);
-
-// Returns the finished query counters from the passed info object.
-FinishedQueryCounters Info_GetFinishedQueryCounters
-(
-    const Info
 );
 
 // Locks the info object for external reading. Only one concurrent read is

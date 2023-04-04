@@ -70,35 +70,42 @@ static void _FinishedQueryCounters_Reset
 	counters->ro_succeeded_n     = 0;
 }
 
-// Increments the corresponding query type counter. The passed parameters
-// define the kind of query and its finish status.
-static void _FinishedQueryCounters_Increment(
+// increments the corresponding query type counter
+// the passed parameters define the kind of query and its finish status
+static void _FinishedQueryCounters_Increment
+(
     FinishedQueryCounters *counters,
     const QueryExecutionTypeFlag flags,
     const QueryExecutionStatus status
 ) {
     ASSERT(counters != NULL);
 
+	// write query
     if (CHECK_FLAG(flags, QueryExecutionTypeFlag_WRITE)) {
+		// write query encountered error
         if (status == QueryExecutionStatus_FAILURE) {
             ++counters->write_failed_n;
+		// write query timedout
         } else if (status == QueryExecutionStatus_TIMEDOUT) {
             ++counters->write_timedout_n;
         } else {
+		// write query succeeded
             ++counters->write_succeeded_n;
         }
-
-        return;
+		return;
     } else {
+		// read query
+		// read query encountered error
         if (status == QueryExecutionStatus_FAILURE) {
             ++counters->ro_failed_n;
+		// read query timedout
         } else if (status == QueryExecutionStatus_TIMEDOUT) {
             ++counters->ro_timedout_n;
         } else {
+			// read query succeeded
             ++counters->ro_succeeded_n;
         }
-
-        return;
+		return;
     }
 
     ASSERT(false && "Handle unknown flag.");
@@ -487,48 +494,44 @@ uint64_t Info_GetTotalQueriesCount
     return waiting + executing + reporting;
 }
 
-// Return the maximum registered time a query was spent waiting, executing and
-// reporting the results.
-// Requires a pointer to mutable, for it changes the state of the locks.
+// return the maximum registered time a query was spent waiting
+// taking into account all currently waiting, executing and reporting queries
 millis_t Info_GetMaxQueryWaitTime
 (
     Info *info
 ) {
     ASSERT(info != NULL);
 
-    uint64_t count = 0;
-    uint n = ThreadPools_ThreadCount() + 1;
+	uint n = ThreadPools_ThreadCount() + 1;
+	QueryInfo *qi = NULL;
+	millis_t max_time = 0;
 
     bool res = _Info_LockEverything(info);
     ASSERT(res == true);
 
-    millis_t max_time = 0;
-    QueryInfo *query = NULL;
     dictIterator *it = HashTableGetIterator(info->waiting_queries);
-    dictEntry *entry;
-    while((entry  = HashTableNext(it)) != NULL) {
-        max_time = MAX(max_time,
-            QueryInfo_GetWaitingTime((const QueryInfo *)entry));
+    while((qi = (QueryInfo*)HashTableNext(it)) != NULL) {
+		QueryInfo_UpdateWaitingTime(qi);
+        max_time = MAX(max_time, QueryInfo_GetWaitingTime(qi));
     }
 
     HashTableReleaseIterator(it);
 
 	for(uint i = 0; i < n; i++) {
-		QueryInfo *qi = info->working_queries[i];
-        max_time = MAX(max_time,
-            QueryInfo_GetWaitingTime((const QueryInfo *) qi));
+		qi = info->working_queries[i];
+		if(qi != NULL) {
+			max_time = MAX(max_time, QueryInfo_GetWaitingTime(qi));
+		}
 	}
 
     res = _Info_UnlockEverything(info);
     ASSERT(res == true);
 
-    _Info_UnlockEverything(info);
-
     return max_time;
 }
 
-// Increments the corresponding query type counter. The passed parameters
-// define the kind of query and its finish status.
+// increments the corresponding query type counter
+// the passed parameters define the kind of query and its finish status
 void Info_IncrementNumberOfQueries
 (
     Info *info,
@@ -537,18 +540,7 @@ void Info_IncrementNumberOfQueries
 ) {
     ASSERT(info != NULL);
 
-    _FinishedQueryCounters_Increment(
-        &info->counters,
-        flags,
-        status
-    );
-}
-
-FinishedQueryCounters Info_GetFinishedQueryCounters
-(
-    const Info info
-) {
-    return info.counters;
+    _FinishedQueryCounters_Increment(&info->counters, flags, status);
 }
 
 // locks the info object for external reading. Only one concurrent read is
