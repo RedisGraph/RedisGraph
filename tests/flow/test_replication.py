@@ -136,7 +136,7 @@ class testReplication(FlowTestsBase):
         env.assertEquals(replica_result, result)
 
         # remove label
-        q = "MATCH (s:L {id:2}) REMOVE s:L RETURN s"
+        q = "MATCH (s:L {id:2}) REMOVE s:L"
         result = src.query(q)
         env.assertEqual(result.labels_removed, 1)
 
