@@ -84,6 +84,8 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 	int relation_id = EDGE_GET_RELATION_ID(e, g);
 
 	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
+	ASSERT(s != NULL);
+
 	Schema_AddEdgeToIndices(s, e);
 }
 

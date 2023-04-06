@@ -309,10 +309,18 @@ static void ApplyUpdateEdge
 	//    attribute value
 	//--------------------------------------------------------------------------
 	
+	bool res;
+	Edge e;                // edge to delete
+	Node s;                // edge src node
+	Node t;                // edge dest node
 	SIValue v;             // updated value
 	uint props_set;        // number of attributes updated
 	uint props_removed;    // number of attributes removed
 	Attribute_ID attr_id;  // entity ID
+
+	NodeID     s_id = INVALID_ENTITY_ID;       // edge src node ID
+	NodeID     t_id = INVALID_ENTITY_ID;       // edge dest node ID
+	RelationID r_id = GRAPH_UNKNOWN_RELATION;  // edge rel-type
 
 	Graph *g = gc->g;
 	EntityID id = INVALID_ENTITY_ID;
@@ -328,25 +336,22 @@ static void ApplyUpdateEdge
 	// read relation ID
 	//--------------------------------------------------------------------------
 
-	RelationID r;
-	fread_assert(&r, sizeof(RelationID), stream);
-	ASSERT(r >= 0);
+	fread_assert(&r_id, sizeof(RelationID), stream);
+	ASSERT(r_id >= 0);
 
 	//--------------------------------------------------------------------------
 	// read src ID
 	//--------------------------------------------------------------------------
 
-	NodeID s;
-	fread_assert(&s, sizeof(NodeID), stream);
-	ASSERT(s != INVALID_ENTITY_ID);
+	fread_assert(&s_id, sizeof(NodeID), stream);
+	ASSERT(s_id != INVALID_ENTITY_ID);
 
 	//--------------------------------------------------------------------------
 	// read dest ID
 	//--------------------------------------------------------------------------
 
-	NodeID d;
-	fread_assert(&d, sizeof(NodeID), stream);
-	ASSERT(d != INVALID_ENTITY_ID);
+	fread_assert(&t_id, sizeof(NodeID), stream);
+	ASSERT(t_id != INVALID_ENTITY_ID);
 
 	//--------------------------------------------------------------------------
 	// read attribute ID
@@ -366,12 +371,18 @@ static void ApplyUpdateEdge
 	// fetch updated entity
 	//--------------------------------------------------------------------------
 
-	Edge e = GE_NEW_LABELED_EDGE("", r);
-	int  res = Graph_GetEdge(g, id, &e);
+	// get src node, dest node and edge from the graph
+	res = Graph_GetNode(g, s_id, &s);
+	ASSERT(res != 0);
+	res = Graph_GetNode(g, t_id, &t);
+	ASSERT(res != 0);
+	res = Graph_GetEdge(g, id, &e);
+	ASSERT(res != 0);
 
-	// make sure entity was found
-	UNUSED(res);
-	ASSERT(res == true);
+	// set edge relation, src and destination node
+	Edge_SetSrcNode(&e, &s);
+	Edge_SetDestNode(&e, &t);
+	Edge_SetRelationID(&e, r_id);
 
 	// construct update attribute-set
 	AttributeSet set = NULL;

@@ -9,6 +9,36 @@
 #include "../query_ctx.h"
 #include "../undo_log/undo_log.h"
 
+// write attributes to stream
+static void WriteAttributeSet
+(
+	FILE *stream,             // stream to write attributes into
+	const AttributeSet attrs  // attribute set to write to stream
+) {
+	//--------------------------------------------------------------------------
+	// write attribute count
+	//--------------------------------------------------------------------------
+
+	ushort attr_count = ATTRIBUTE_SET_COUNT(attrs);
+	fwrite_assert(&attr_count, sizeof(attr_count), stream);
+
+	//--------------------------------------------------------------------------
+	// write attributes
+	//--------------------------------------------------------------------------
+
+	for(ushort i = 0; i < attr_count; i++) {
+		// get current attribute name and value
+		Attribute_ID attr_id;
+		SIValue attr = AttributeSet_GetIdx(attrs, i, &attr_id);
+
+		// write attribute ID
+		fwrite_assert(&attr_id, sizeof(Attribute_ID), stream);
+
+		// write attribute value
+		SIValue_ToBinary(stream, &attr);
+	}
+}
+
 // convert UndoNodeDelete into a NodeDelete effect
 static void EffectFromUndoNodeDelete
 (
@@ -31,7 +61,7 @@ static void EffectFromUndoNodeDelete
 	fwrite_assert(&t, sizeof(t), stream); 
 
 	// write node ID
-	fwrite_assert(&_op->id, sizeof(EntityID), stream); 
+	fwrite_assert(&_op->id, sizeof(_op->id), stream);
 }
 
 // convert UndoEdgeDelete into a EdgeDelete effect
@@ -139,36 +169,6 @@ static void EffectFromUndoAttrAdd
 	Attribute_ID attr_id = _op->attribute_id;
 	const char *attr_name = GraphContext_GetAttributeString(gc, attr_id);
 	fwrite_string(attr_name, stream);
-}
-
-// write attributes to stream
-static void WriteAttributeSet
-(
-	FILE *stream,             // stream to write attributes into
-	const AttributeSet attrs  // attribute set to write to stream
-) {
-	//--------------------------------------------------------------------------
-	// write attribute count
-	//--------------------------------------------------------------------------
-
-	ushort attr_count = ATTRIBUTE_SET_COUNT(attrs);
-	fwrite_assert(&attr_count, sizeof(attr_count), stream);
-
-	//--------------------------------------------------------------------------
-	// write attributes
-	//--------------------------------------------------------------------------
-
-	for(ushort i = 0; i < attr_count; i++) {
-		// get current attribute name and value
-		Attribute_ID attr_id;
-		SIValue attr = AttributeSet_GetIdx(attrs, i, &attr_id);
-
-		// write attribute ID
-		fwrite_assert(&attr_id, sizeof(Attribute_ID), stream);
-
-		// write attribute value
-		SIValue_ToBinary(stream, &attr);
-	}
 }
 
 // convert UndoCreateNodeOp into a CreateNode effect
