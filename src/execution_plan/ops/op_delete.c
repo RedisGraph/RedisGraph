@@ -115,13 +115,13 @@ static void _DeleteEntities
 
 			// delete edges
 			if(edge_count > 0) {
-				DeleteEdges(gc, distinct_edges, edge_count);
+				DeleteEdges(gc, distinct_edges, edge_count, true);
 				edge_deleted = edge_count;
 			}
 
 			// delete nodes
 			if(node_count > 0) {
-				DeleteNodes(gc, distinct_nodes, node_count);
+				DeleteNodes(gc, distinct_nodes, node_count, true);
 				node_deleted = node_count;
 			}
 
