@@ -119,20 +119,14 @@ class testReplication(FlowTestsBase):
 
         # make sure node count on both primary and replica is the same
         q = "MATCH (n) RETURN count(n)"
-        print(f"q: {q}")
         result = src.query(q, read_only=True).result_set
         replica_result = replica.query(q, read_only=True).result_set
-        print(f"result: {result}")
-        print(f"replica_result: {replica_result}")
         env.assertEquals(replica_result, result)
 
         # make sure nodes are in sync
         q = "MATCH (n) RETURN n ORDER BY n"
-        print(f"q: {q}")
         result = src.query(q, read_only=True).result_set
         replica_result = replica.query(q, read_only=True).result_set
-        print(f"result: {result}")
-        print(f"replica_result: {replica_result}")
         env.assertEquals(replica_result, result)
 
         # remove label
@@ -144,11 +138,8 @@ class testReplication(FlowTestsBase):
         source_con.execute_command("WAIT", "1", "0")
 
         q = "MATCH (s:L {id:2}) RETURN s"
-        print(f"q: {q}")
         result = src.query(q, read_only=True).result_set
         replica_result = replica.query(q, read_only=True).result_set
-        print(f"result: {result}")
-        print(f"replica_result: {replica_result}")
         env.assertEqual(len(result), 0)
         env.assertEquals(replica_result, result)
 
@@ -161,11 +152,8 @@ class testReplication(FlowTestsBase):
         source_con.execute_command("WAIT", "1", "0")
 
         q = "MATCH (s {id:2}) RETURN s"
-        print(f"q: {q}")
         result = src.query(q, read_only=True).result_set
         replica_result = replica.query(q, read_only=True).result_set
-        print(f"result: {result}")
-        print(f"replica_result: {replica_result}")
         env.assertEqual(len(result), 0)
         env.assertEquals(replica_result, result)
 
