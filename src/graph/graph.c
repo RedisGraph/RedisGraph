@@ -100,7 +100,7 @@ static void _CollectEdgesFromEntry
 	const Graph *g,
 	NodeID src,
 	NodeID dest,
-	int r,
+	RelationID r,
 	EdgeID edgeId,
 	Edge **edges
 ) {
@@ -496,9 +496,9 @@ size_t Graph_UncompactedNodeCount(const Graph *g) {
 uint64_t Graph_LabeledNodeCount
 (
 	const Graph *g,
-	int label_idx
+	LabelID label
 ) {
-	return GraphStatistics_NodeCount(&g->stats, label_idx);
+	return GraphStatistics_NodeCount(&g->stats, label);
 }
 
 size_t Graph_EdgeCount(const Graph *g) {
@@ -506,8 +506,12 @@ size_t Graph_EdgeCount(const Graph *g) {
 	return g->edges->itemCount;
 }
 
-uint64_t Graph_RelationEdgeCount(const Graph *g, int relation_idx) {
-	return GraphStatistics_EdgeCount(&g->stats, relation_idx);
+uint64_t Graph_RelationEdgeCount
+(
+	const Graph *g,
+	RelationID relation
+) {
+	return GraphStatistics_EdgeCount(&g->stats, relation);
 }
 
 uint Graph_DeletedEdgeCount(const Graph *g) {
@@ -564,7 +568,7 @@ bool Graph_GetEdge
 	return (e->attributes != NULL);
 }
 
-int Graph_GetEdgeRelation
+RelationID Graph_GetEdgeRelation
 (
 	const Graph *g,
 	Edge *e
@@ -573,10 +577,10 @@ int Graph_GetEdgeRelation
 	ASSERT(e);
 
 	GrB_Info info;
-	int     rel         =  GRAPH_NO_RELATION;
-	EdgeID  id          =  ENTITY_GET_ID(e);
-	NodeID  srcNodeID   =  Edge_GetSrcNodeID(e);
-	NodeID  destNodeID  =  Edge_GetDestNodeID(e);
+	RelationID rel        = GRAPH_NO_RELATION;
+	EdgeID     id         = ENTITY_GET_ID(e);
+	NodeID     srcNodeID  = Edge_GetSrcNodeID(e);
+	NodeID     destNodeID = Edge_GetDestNodeID(e);
 
 	// search for relation mapping matrix M, where M[dest,src] == edge ID
 	uint n = array_len(g->relations);
@@ -619,7 +623,7 @@ void Graph_GetEdgesConnectingNodes
 	const Graph *g,
 	NodeID srcID,
 	NodeID destID,
-	int r,
+	RelationID r,
 	Edge **edges
 ) {
 	ASSERT(g);
@@ -794,7 +798,7 @@ void Graph_CreateEdge
 	Graph *g,
 	NodeID src,
 	NodeID dest,
-	int r,
+	RelationID r,
 	Edge *e
 ) {
 	ASSERT(g != NULL);
@@ -824,11 +828,11 @@ void Graph_CreateEdge
 // to/from given node N, depending on given direction
 void Graph_GetNodeEdges
 (
-	const Graph *g,      // graph to collect edges from
-	const Node *n,       // either source or destination node
-	GRAPH_EDGE_DIR dir,  // edge direction ->, <-, <->
-	int edgeType,        // relationship type
-	Edge **edges         // [output] array of edges
+	const Graph *g,       // graph to collect edges from
+	const Node *n,        // either source or destination node
+	GRAPH_EDGE_DIR dir,   // edge direction ->, <-, <->
+	RelationID edgeType,  // relationship type
+	Edge **edges          // [output] array of edges
 ) {
 	ASSERT(g);
 	ASSERT(n);
@@ -914,7 +918,7 @@ uint64_t Graph_GetNodeDegree
 	const Graph *g,      // graph to inquery
 	const Node *n,       // node to get degree of
 	GRAPH_EDGE_DIR dir,  // incoming/outgoing/both
-	int edgeType         // relation type
+	RelationID edgeType  // relation type
 ) {
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);
@@ -1057,10 +1061,10 @@ void Graph_DeleteEdges
 (
 	Graph *g,
 	Edge *edges,
-	uint64_t count
+	uint64_t n
 ) {
 	ASSERT(g != NULL);
-	ASSERT(count > 0);
+	ASSERT(n > 0);
 	ASSERT(edges != NULL);
 
 	uint64_t    x;
@@ -1072,7 +1076,7 @@ void Graph_DeleteEdges
 	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
 	Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 
-	for (uint i = 0; i < count; i++) {
+	for (uint i = 0; i < n; i++) {
 		Edge       *e         =  edges + i;
 		int         r         =  Edge_GetRelationID(e);
 		NodeID      src_id    =  Edge_GetSrcNodeID(e);
@@ -1180,7 +1184,7 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
 	return DataBlock_Scan(g->edges);
 }
 
-int Graph_AddLabel
+LabelID Graph_AddLabel
 (
 	Graph *g
 ) {
@@ -1196,29 +1200,30 @@ int Graph_AddLabel
 	// adding a new label, update the stats structures to support it
 	GraphStatistics_IntroduceLabel(&g->stats);
 
-	int labelID = Graph_LabelTypeCount(g) - 1;
-	return labelID;
+	LabelID l = Graph_LabelTypeCount(g) - 1;
+	return l;
 }
 
 void Graph_RemoveLabel
 (
 	Graph *g,
-	int label_id
+	LabelID label_id
 ) {
 	ASSERT(g != NULL);
 	ASSERT(label_id == Graph_LabelTypeCount(g) - 1);
+
 	#ifdef RG_DEBUG
 	GrB_Index nvals;
 	GrB_Info info = RG_Matrix_nvals(&nvals, g->labels[label_id]);
 	ASSERT(info == GrB_SUCCESS);
 	ASSERT(nvals == 0);
 	#endif
+
 	RG_Matrix_free(&g->labels[label_id]);
 	g->labels = array_del(g->labels, label_id);
 }
 
-
-int Graph_AddRelationType
+RelationID Graph_AddRelationType
 (
 	Graph *g
 ) {
@@ -1234,7 +1239,7 @@ int Graph_AddRelationType
 	// adding a new relationship type, update the stats structures to support it
 	GraphStatistics_IntroduceRelationship(&g->stats);
 
-	int relationID = Graph_RelationTypeCount(g) - 1;
+	RelationID relationID = Graph_RelationTypeCount(g) - 1;
 	return relationID;
 }
 
@@ -1258,23 +1263,24 @@ void Graph_RemoveRelation
 RG_Matrix Graph_GetLabelMatrix
 (
 	const Graph *g,
-	int label_idx
+	LabelID label_idx
 ) {
 	ASSERT(g != NULL);
-	ASSERT(label_idx < (int)array_len(g->labels));
+	ASSERT(label_idx < Graph_LabelTypeCount(g));
 
 	// return zero matrix if label_idx is out of range
 	if(label_idx < 0) return Graph_GetZeroMatrix(g);
 
 	RG_Matrix m = g->labels[label_idx];
 	g->SynchronizeMatrix(g, m);
+
 	return m;
 }
 
 RG_Matrix Graph_GetRelationMatrix
 (
 	const Graph *g,
-	int relation_idx,
+	RelationID relation_idx,
 	bool transposed
 ) {
 	ASSERT(g);
@@ -1309,7 +1315,7 @@ RG_Matrix Graph_GetAdjacencyMatrix
 bool Graph_RelationshipContainsMultiEdge
 (
 	const Graph *g,
-	int r,
+	RelationID r,
 	bool transpose
 ) {
 	ASSERT(Graph_RelationTypeCount(g) > r);

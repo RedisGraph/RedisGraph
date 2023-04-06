@@ -14,6 +14,7 @@ GRAPH_ID = "replication"
 # read queries shouldn't be replicated.
 
 class testReplication(FlowTestsBase):
+
     def __init__(self):
         # skip test if we're running under Valgrind
         if VALGRIND or SANITIZER != "":
@@ -40,58 +41,62 @@ class testReplication(FlowTestsBase):
         # create a simple graph
         #-----------------------------------------------------------------------
 
-        origin = Graph(source_con, GRAPH_ID)
+        src = Graph(source_con, GRAPH_ID)
         replica = Graph(replica_con, GRAPH_ID)
 
         s = Node(label='L', properties={'id': 0, 'name': 'abcd', 'height' : 178})
         t = Node(label='L', properties={'id': 1, 'name': 'efgh', 'height' : 178})
         e = Edge(s, 'R', t)
 
-        origin.add_node(s)
-        origin.add_node(t)
-        origin.add_edge(e)
-        origin.flush()
+        src.add_node(s)
+        src.add_node(t)
+        src.add_edge(e)
+        src.flush()
 
         #-----------------------------------------------------------------------
         # create indices
         #-----------------------------------------------------------------------
 
         # create index
-        create_node_exact_match_index(origin, 'L', 'id', sync=True)
+        create_node_exact_match_index(src, 'L', 'id')
 
         # create full-text index
-        create_fulltext_index(origin, 'L', 'name', sync=True)
+        create_fulltext_index(src, 'L', 'name')
 
         # add fields to existing index
-        create_fulltext_index(origin, 'L', 'title', 'desc', sync=True)
+        create_fulltext_index(src, 'L', 'title', 'desc', sync=True)
 
         # create full-text index with index config
         q = "CALL db.idx.fulltext.createNodeIndex({label: 'L1', language: 'german', stopwords: ['a', 'b'] }, 'title', 'desc')"
-        origin.query(q)
+        src.query(q)
 
         #-----------------------------------------------------------------------
         # create constraints
         #-----------------------------------------------------------------------
 
         # create node unique constraint
-        create_unique_node_constraint(origin, "L", "id", sync=True)
+        create_unique_node_constraint(src, "L", "id")
 
         # add another unique constraint
-        create_unique_node_constraint(origin, "L", "id", "name", sync=True)
+        create_unique_node_constraint(src, "L", "id", "name", sync=True)
 
         # add a unique constraint which is destined to fail
-        origin.query("CREATE (:Actor {age: 10, name: 'jerry'}), (:Actor {age: 10, name: 'jerry'})")
-        create_unique_node_constraint(origin, "Actor", "age", sync=True)
-        c = get_constraint(origin, "UNIQUE", "LABEL", "Actor", "age")
+        result = src.query("CREATE (:Actor {age: 10, name: 'jerry'}), (:Actor {age: 10, name: 'jerry'})")
+        self.env.assertEquals(result.nodes_created, 2)
+
+        create_unique_node_constraint(src, "Actor", "age", sync=True)
+        c = get_constraint(src, "UNIQUE", "LABEL", "Actor", "age")
         self.env.assertEquals(c.status, "FAILED")
 
         # update entity
         q = "MATCH (n:L {id:1}) SET n.id = 2"
-        origin.query(q)
+        result = src.query(q)
+        self.env.assertEquals(result.properties_set, 1)
 
         # delete entity
         q = "MATCH (n:L {id:0}) DELETE n"
-        origin.query(q)
+        result = src.query(q)
+        self.env.assertEquals(result.nodes_deleted, 1)
 
         # the WAIT command forces master slave sync to complete
         source_con.execute_command("WAIT", "1", "0")
@@ -101,100 +106,101 @@ class testReplication(FlowTestsBase):
 
         # make sure index is available on replica
         q = "MATCH (s:L {id:2}) RETURN s.name"
-        plan = origin.execution_plan(q)
+        plan = src.execution_plan(q)
         replica_plan = replica.execution_plan(q)
         env.assertIn("Index Scan", plan)
         env.assertEquals(replica_plan, plan)
 
         # issue query on both source and replica
         # make sure results are the same
-        result = origin.query(q).result_set
+        result = src.query(q, read_only=True).result_set
         replica_result = replica.query(q, read_only=True).result_set
         env.assertEquals(replica_result, result)
 
         # make sure node count on both primary and replica is the same
         q = "MATCH (n) RETURN count(n)"
-        result = origin.query(q).result_set
+        result = src.query(q, read_only=True).result_set
         replica_result = replica.query(q, read_only=True).result_set
         env.assertEquals(replica_result, result)
 
         # make sure nodes are in sync
         q = "MATCH (n) RETURN n ORDER BY n"
-        result = origin.query(q).result_set
+        result = src.query(q, read_only=True).result_set
         replica_result = replica.query(q, read_only=True).result_set
         env.assertEquals(replica_result, result)
 
         # remove label
-        q = "MATCH (s:L {id:2}) REMOVE s:L RETURN s"
-        result = origin.query(q)
+        q = "MATCH (s:L {id:2}) REMOVE s:L"
+        result = src.query(q)
         env.assertEqual(result.labels_removed, 1)
 
         # the WAIT command forces master slave sync to complete
         source_con.execute_command("WAIT", "1", "0")
 
         q = "MATCH (s:L {id:2}) RETURN s"
-        result = origin.query(q).result_set
+        result = src.query(q, read_only=True).result_set
         replica_result = replica.query(q, read_only=True).result_set
-        env.assertEquals(replica_result, result)
         env.assertEqual(len(result), 0)
+        env.assertEquals(replica_result, result)
 
         # remove property
         q = "MATCH (s {id:2}) SET s.id = NULL RETURN s"
-        result = origin.query(q)
+        result = src.query(q)
         env.assertEqual(result.properties_removed, 1)
 
         # the WAIT command forces master slave sync to complete
         source_con.execute_command("WAIT", "1", "0")
 
         q = "MATCH (s {id:2}) RETURN s"
-        result = origin.query(q).result_set
+        result = src.query(q, read_only=True).result_set
         replica_result = replica.query(q, read_only=True).result_set
-        env.assertEquals(replica_result, result)
         env.assertEqual(len(result), 0)
+        env.assertEquals(replica_result, result)
 
         # make sure both primary and replica have the same set of indexes
         q = "CALL db.indexes() YIELD type, label, properties, language, stopwords, entitytype"
-        result = origin.query(q).result_set
+        result = src.query(q, read_only=True).result_set
         replica_result = replica.query(q, read_only=True).result_set
         env.assertEquals(replica_result, result)
 
         # drop fulltext index
         q = "CALL db.idx.fulltext.drop('L')"
-        origin.query(q)
+        result = src.query(q)
+        env.assertEquals(result.indices_deleted, 1)
 
         # the WAIT command forces master slave sync to complete
         source_con.execute_command("WAIT", "1", "0")
 
         # make sure both primary and replica have the same set of indexes
         q = "CALL db.indexes() YIELD type, label, properties, language, stopwords, entitytype"
-        result = origin.query(q).result_set
+        result = src.query(q, read_only=True).result_set
         replica_result = replica.query(q, read_only=True).result_set
         env.assertEquals(replica_result, result)
 
         # make sure both primary and replica have the same set of constraints
-        origin_result = list_constraints(origin)
+        origin_result = list_constraints(src)
         replica_result = list_constraints(replica)
         env.assertEquals(replica_result, origin_result)
 
         # drop constraint
-        drop_unique_node_constraint(origin, "L", "id")
+        drop_unique_node_constraint(src, "L", "id")
 
         # the WAIT command forces master slave sync to complete
         source_con.execute_command("WAIT", "1", "0")
 
         # make sure both primary and replica have the same set of constraints
-        origin_result = list_constraints(origin)
+        origin_result = list_constraints(src)
         replica_result = list_constraints(replica)
         env.assertEquals(replica_result, origin_result)
 
         # drop failed constraint
-        drop_unique_node_constraint(origin, "Actor", "age")
+        drop_unique_node_constraint(src, "Actor", "age")
 
         # the WAIT command forces master slave sync to complete
         source_con.execute_command("WAIT", "1", "0")
 
         # make sure both primary and replica have the same set of constraints
-        origin_result = list_constraints(origin)
+        origin_result = list_constraints(src)
         replica_result = list_constraints(replica)
         env.assertEquals(replica_result, origin_result)
 

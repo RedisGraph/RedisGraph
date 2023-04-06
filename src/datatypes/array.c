@@ -180,6 +180,69 @@ XXH64_hash_t SIArray_HashCode(SIValue siarray) {
 	return hashCode;
 }
 
+// returns the number of bytes required for a binary representation of `arr`
+size_t SIArray_BinarySize
+(
+	const SIValue *arr  // array
+) {
+	// format:
+	// number of elements
+	// elements
+
+	size_t    n         = sizeof(uint32_t);
+	SIValue   *elements = arr->array;
+	uint32_t  len       = array_len(elements);
+
+	for (uint32_t i = 0; i < len; i++) {
+		n += SIValue_BinarySize(elements + i);
+	}
+
+	return n;
+}
+
+// writes a binary representation of `v` into `stream`
+void SIArray_ToBinary
+(
+	FILE *stream,       // stream to populate
+	const SIValue *arr  // array
+) {
+	// format:
+	// number of elements
+	// elements
+
+	SIValue *elements = arr->array;
+	uint32_t len = array_len(elements);
+
+	// write number of elements
+	fwrite_assert(&len, sizeof(uint32_t), stream);
+
+	// write each element
+	for (uint32_t i = 0; i < len; i++) {
+		SIValue_ToBinary(stream, elements + i);
+	}
+}
+
+// creates an array from its binary representation
+// this is the reverse of SIArray_ToBinary
+// x = SIArray_FromBinary(SIArray_ToBinary(y));
+// x == y
+SIValue SIArray_FromBinary
+(
+	FILE *stream  // stream containing binary representation of an array
+) {
+	// read number of elements
+	uint32_t n;
+	fread_assert(&n, sizeof(uint32_t), stream);
+
+	SIValue arr = SIArray_New(n);
+
+	for(uint32_t i = 0; i < n; i++) {
+		array_append(arr.array, SIValue_FromBinary(stream));
+	}
+
+	return arr;
+}
+
 void SIArray_Free(SIValue siarray) {
 	uint arrayLen = SIArray_Length(siarray);
 	for(uint i = 0; i < arrayLen; i++) {
