@@ -202,6 +202,8 @@ static void ApplyLabels
 	ASSERT(lbl_count > 0);
 
 	// TODO: move to LabelID
+	uint n_add_labels          = 0;
+	uint n_remove_labels       = 0;
 	const char **add_labels    = NULL;
 	const char **remove_labels = NULL;
 	const char *lbl[lbl_count];
@@ -209,8 +211,10 @@ static void ApplyLabels
 	// assign lbl to the appropriate array
 	if(add) {
 		add_labels = lbl;
+		n_add_labels = lbl_count;
 	} else {
 		remove_labels = lbl;
+		n_remove_labels = lbl_count;
 	}
 
 	//--------------------------------------------------------------------------
@@ -231,8 +235,8 @@ static void ApplyLabels
 
 	uint labels_added_count;
 	uint labels_removed_count;
-	UpdateNodeLabels(gc, &n, add_labels, remove_labels, &labels_added_count,
-			&labels_removed_count, false);
+	UpdateNodeLabels(gc, &n, add_labels, remove_labels, n_add_labels,
+			n_remove_labels, &labels_added_count, &labels_removed_count, false);
 }
 
 static void ApplyAddSchema
@@ -578,43 +582,33 @@ void Effects_Apply
 		EffectType t = ReadEffectType(stream);
 		switch(t) {
 			case EFFECT_DELETE_NODE:
-				printf("EFFECT_DELETE_NODE\n");
 				ApplyDeleteNode(stream, gc);
 				break;
 			case EFFECT_DELETE_EDGE:
-				printf("EFFECT_DELETE_EDGE\n");
 				ApplyDeleteEdge(stream, gc);
 				break;
 			case EFFECT_UPDATE_NODE:
-				printf("EFFECT_UPDATE_NODE\n");
 				ApplyUpdateNode(stream, gc);
 				break;
 			case EFFECT_UPDATE_EDGE:
-				printf("EFFECT_UPDATE_EDGE\n");
 				ApplyUpdateEdge(stream, gc);
 				break;
 			case EFFECT_CREATE_NODE:    
-				printf("EFFECT_CREATE_NODE\n");
 				ApplyCreateNode(stream, gc);
 				break;
 			case EFFECT_CREATE_EDGE:
-				printf("EFFECT_CREATE_EDGE\n");
 				ApplyCreateEdge(stream, gc);
 				break;
 			case EFFECT_SET_LABELS:
-				printf("EFFECT_SET_LABELS\n");
 				ApplyLabels(stream, gc, true);
 				break;
 			case EFFECT_REMOVE_LABELS: 
-				printf("EFFECT_REMOVE_LABELS\n");
 				ApplyLabels(stream, gc, false);
 				break;
 			case EFFECT_ADD_SCHEMA:
-				printf("EFFECT_ADD_SCHEMA\n");
 				ApplyAddSchema(stream, gc);
 				break;
 			case EFFECT_ADD_ATTRIBUTE:
-				printf("EFFECT_ADD_ATTRIBUTE\n");
 				ApplyAddAttribute(stream, gc);
 				break;
 			default:

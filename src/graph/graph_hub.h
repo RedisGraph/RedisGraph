@@ -91,8 +91,10 @@ void UpdateNodeLabels
 	Node *node,                  // the node to be updated
 	const char **add_labels,     // labels to add to the node
 	const char **remove_labels,  // labels to add to the node
-	uint *labels_added_count,    // number of labels added (out param)
-	uint *labels_removed_count,  // number of labels removed (out param)
+	uint n_add_labels,           // number of labels to add
+	uint n_remove_labels,        // number of labels to remove
+	uint *n_labels_added,        // number of labels added (out param)
+	uint *n_labels_removed,      // number of labels removed (out param)
 	bool log                     // log this operation in undo-log
 );
 

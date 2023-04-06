@@ -94,6 +94,9 @@ class testEffects():
         self.master_graph = Graph(self.master, GRAPH_ID)
         self.replica_graph = Graph(self.replica, GRAPH_ID)
 
+        # wait for replica and master to sync
+        self.master.wait(1, 0)
+
         self.effects_enable()
 
         self.monitor_thread = threading.Thread(target=self.monitor_thread)

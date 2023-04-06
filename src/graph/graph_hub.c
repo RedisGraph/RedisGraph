@@ -315,8 +315,10 @@ void UpdateNodeLabels
 	Node *node,                  // the node to be updated
 	const char **add_labels,     // labels to add to the node
 	const char **remove_labels,  // labels to add to the node
-	uint *labels_added_count,    // number of labels added (out param)
-	uint *labels_removed_count,  // number of labels removed (out param)
+	uint n_add_labels,           // number of labels to add
+	uint n_remove_labels,        // number of labels to remove
+	uint *n_labels_added,        // number of labels added (out param)
+	uint *n_labels_removed,      // number of labels removed (out param)
 	bool log                     // log this operation in undo-log
 ) {
 	ASSERT(gc   != NULL);
@@ -327,14 +329,21 @@ void UpdateNodeLabels
 		return;
 	}
 
+	// if add_labels is specified its count must be > 0
+	ASSERT((add_labels != NULL && n_add_labels > 0) ||
+		   (add_labels == NULL && n_add_labels == 0));
+
+	// if remove_labels is specified its count must be > 0
+	ASSERT((remove_labels != NULL && n_remove_labels > 0) ||
+		   (remove_labels == NULL && n_remove_labels == 0));
+
 	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
 
 	if(add_labels != NULL) {
-		uint label_count = array_len(add_labels);
-		int add_labels_ids[label_count];
+		int add_labels_ids[n_add_labels];
 		uint add_labels_index = 0;
 
-		for (uint i = 0; i < label_count; i++) {
+		for (uint i = 0; i < n_add_labels; i++) {
 			const char *label = add_labels[i];
 			// get or create label matrix
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
@@ -361,7 +370,7 @@ void UpdateNodeLabels
 		}
 
 		if(add_labels_index > 0) {
-			*labels_added_count = add_labels_index;
+			*n_labels_added = add_labels_index;
 
 			// update node's labels
 			Graph_LabelNode(gc->g, node->id ,add_labels_ids, add_labels_index);
@@ -373,11 +382,10 @@ void UpdateNodeLabels
 	}
 
 	if(remove_labels != NULL) {
-		uint label_count = array_len(remove_labels);
-		int remove_labels_ids[label_count];
+		int remove_labels_ids[n_remove_labels];
 		uint remove_labels_index = 0;
 
-		for (uint i = 0; i < label_count; i++) {
+		for (uint i = 0; i < n_remove_labels; i++) {
 			const char *label = remove_labels[i];
 
 			// label removal
@@ -395,7 +403,7 @@ void UpdateNodeLabels
 		}
 
 		if(remove_labels_index > 0) {
-			*labels_removed_count = remove_labels_index;
+			*n_labels_removed = remove_labels_index;
 
 			// update node's labels
 			Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node),

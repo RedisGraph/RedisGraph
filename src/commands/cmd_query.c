@@ -438,7 +438,6 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 
 void _query(bool profile, void *args) {
 	CommandCtx     *command_ctx = (CommandCtx *)args;
-	printf("_query: %s\n", command_ctx->query);
 	RedisModuleCtx *ctx         = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext   *gc          = CommandCtx_GetGraphContext(command_ctx);
 	ExecutionCtx   *exec_ctx    = NULL;

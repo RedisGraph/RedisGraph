@@ -78,7 +78,9 @@ void CommitUpdates
 
 		if(type == ENTITY_NODE) {
 			UpdateNodeLabels(gc, (Node*)update->ge, update->add_labels,
-				update->remove_labels, &_labels_added, &_labels_removed, true);
+				update->remove_labels, array_len(update->add_labels),
+				array_len(update->remove_labels), &_labels_added,
+				&_labels_removed, true);
 		}
 
 		labels_added       += _labels_added;
