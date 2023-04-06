@@ -101,227 +101,6 @@ static void EffectFromUndoEdgeDelete
 	fwrite_assert(&_op->destNodeID, sizeof(_op->destNodeID), stream); 
 }
 
-// convert UndoAddSchema into a AddSchema effect
-static void EffectFromUndoSchemaAdd
-(
-	FILE *stream,     // effects stream
-	const UndoOp *op  // undo operation to convert
-) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	//    effect type
-	//    schema type
-	//    schema name
-	//--------------------------------------------------------------------------
-	
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	const UndoAddSchemaOp *_op = (const UndoAddSchemaOp *)op;
-	Schema *schema = GraphContext_GetSchemaByID(gc, _op->schema_id, _op->t);
-	ASSERT(schema != NULL);
-
-	//--------------------------------------------------------------------------
-	// write effect type
-	//--------------------------------------------------------------------------
-
-	EffectType t = EFFECT_ADD_SCHEMA;
-	fwrite_assert(&t, sizeof(EffectType), stream); 
-
-	//--------------------------------------------------------------------------
-	// write schema type
-	//--------------------------------------------------------------------------
-
-	fwrite_assert(&_op->t, sizeof(_op->t), stream); 
-
-	//--------------------------------------------------------------------------
-	// write schema name
-	//--------------------------------------------------------------------------
-
-	const char *schema_name = Schema_GetName(schema);
-	fwrite_string(schema_name, stream);
-}
-
-// convert UndoAttrAdd into a AddAttr effect
-static void EffectFromUndoAttrAdd
-(
-	FILE *stream,     // effects stream
-	const UndoOp *op  // undo operation to convert
-) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	// effect type
-	// attribute name
-	//--------------------------------------------------------------------------
-
-	const UndoAddAttributeOp *_op = (const UndoAddAttributeOp*)op;
-
-	//--------------------------------------------------------------------------
-	// write effect type
-	//--------------------------------------------------------------------------
-
-	EffectType t = EFFECT_ADD_ATTRIBUTE;
-	fwrite_assert(&t, sizeof(EffectType), stream); 
-
-	//--------------------------------------------------------------------------
-	// write attribute name
-	//--------------------------------------------------------------------------
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID attr_id = _op->attribute_id;
-	const char *attr_name = GraphContext_GetAttributeString(gc, attr_id);
-	fwrite_string(attr_name, stream);
-}
-
-// convert UndoCreateNodeOp into a CreateNode effect
-static void EffectFromUndoNodeCreate
-(
-	FILE *stream,      // effects stream
-	const UndoOp *op   // undo operation to convert
-) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	// effect type
-	// label count
-	// labels
-	// attribute count
-	// attributes (id,value) pair
-	//--------------------------------------------------------------------------
-	
-	Graph        *g  = QueryCtx_GetGraph();
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-
-	const UndoCreateOp *_op = (const UndoCreateOp*)op;
-	const Node *n = &_op->n;
-
-	//--------------------------------------------------------------------------
-	// write effect type
-	//--------------------------------------------------------------------------
-
-	EffectType et = EFFECT_CREATE_NODE;
-	fwrite_assert(&et, sizeof(EffectType), stream); 
-
-	//--------------------------------------------------------------------------
-	// write label count
-	//--------------------------------------------------------------------------
-
-	ushort lbl_count;
-	NODE_GET_LABELS(g, n, lbl_count);
-	fwrite_assert(&lbl_count, sizeof(lbl_count), stream);
-
-	//--------------------------------------------------------------------------
-	// write labels
-	//--------------------------------------------------------------------------
-
-	for(ushort i = 0; i < lbl_count; i++) {
-		fwrite_assert(labels + i, sizeof(LabelID), stream);
-	}
-
-	//--------------------------------------------------------------------------
-	// write attribute set
-	//--------------------------------------------------------------------------
-
-	const AttributeSet attrs = GraphEntity_GetAttributes((const GraphEntity*)n);
-	WriteAttributeSet(stream, attrs);
-}
-
-// convert UndoCreateEdgeOp into a CreateEdge effect
-static void EffectFromUndoEdgeCreate
-(
-	FILE *stream,     // effects stream
-	const UndoOp *op  // undo operation to convert
-) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	// effect type
-	// relationship count
-	// relationships
-	// src node ID
-	// dest node ID
-	// attribute count
-	// attributes (id,value) pair
-	//--------------------------------------------------------------------------
-	
-	Graph *g = QueryCtx_GetGraph();
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	const UndoCreateOp *_op = (const UndoCreateOp*)op;
-	const Edge *e = &_op->e;
-
-	//--------------------------------------------------------------------------
-	// write effect type
-	//--------------------------------------------------------------------------
-
-	EffectType et = EFFECT_CREATE_EDGE;
-	fwrite_assert(&et, sizeof(EffectType), stream); 
-
-	//--------------------------------------------------------------------------
-	// write relationship type
-	//--------------------------------------------------------------------------
-
-	ushort rel_count = 1;
-	fwrite_assert(&rel_count, sizeof(rel_count), stream);
-
-	RelationID rel_id = Edge_GetRelationID(e);
-	fwrite_assert(&rel_id, sizeof(RelationID), stream);
-
-	//--------------------------------------------------------------------------
-	// write src node ID
-	//--------------------------------------------------------------------------
-	
-	NodeID src_id = Edge_GetSrcNodeID(e);
-	fwrite_assert(&src_id, sizeof(NodeID), stream);
-
-	//--------------------------------------------------------------------------
-	// write dest node ID
-	//--------------------------------------------------------------------------
-
-	NodeID dest_id = Edge_GetDestNodeID(e);
-	fwrite_assert(&dest_id, sizeof(NodeID), stream);
-
-	//--------------------------------------------------------------------------
-	// write attribute set 
-	//--------------------------------------------------------------------------
-
-	const AttributeSet attrs = GraphEntity_GetAttributes((const GraphEntity*)e);
-	WriteAttributeSet(stream, attrs);
-}
-
-// convert UndoUpdate into a Update effect
-static void EffectFromUndoSetRemoveLabels
-(
-	FILE *stream,     // effects stream
-	const UndoOp *op, // undo operation to convert
-	EffectType t      // effect type SET/REMOVE LABELS
-) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	//    effect type
-	//    node ID
-	//    labels count
-	//    label IDs
-	//--------------------------------------------------------------------------
-	
-	ASSERT(t == EFFECT_SET_LABELS || t == EFFECT_REMOVE_LABELS);
-
-	const UndoLabelsOp *_op = (const UndoLabelsOp*)op;
-	ushort lbl_count = _op->labels_count;
-
-	// write effect type
-	fwrite_assert(&t, sizeof(EffectType), stream); 
-
-	// write node ID
-	const Node *n = &_op->node;
-	EntityID id = ENTITY_GET_ID(n);
-	fwrite_assert(&id, sizeof(id), stream); 
-	
-	// write labels count
-	fwrite_assert(&lbl_count, sizeof(lbl_count), stream); 
-	
-	// write label IDs
-	for(ushort i = 0; i < lbl_count; i++) {
-		LabelID lbl = _op->label_ids[i];
-		fwrite_assert(&lbl, sizeof(lbl), stream);
-	}
-}
-
 // convert UndoUpdate into a Update effect
 static void EffectFromNodeUpdate
 (
@@ -462,6 +241,221 @@ static void EffectFromUndoUpdate
 	} else {
 		EffectFromEdgeUpdate(stream, _op);
 	}
+}
+
+// convert UndoCreateNodeOp into a CreateNode effect
+static void EffectFromUndoNodeCreate
+(
+	FILE *stream,      // effects stream
+	const UndoOp *op   // undo operation to convert
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	// effect type
+	// label count
+	// labels
+	// attribute count
+	// attributes (id,value) pair
+	//--------------------------------------------------------------------------
+	
+	Graph *g = QueryCtx_GetGraph();
+	const UndoCreateOp *_op = (const UndoCreateOp*)op;
+	const Node *n = &_op->n;
+
+	//--------------------------------------------------------------------------
+	// write effect type
+	//--------------------------------------------------------------------------
+
+	EffectType et = EFFECT_CREATE_NODE;
+	fwrite_assert(&et, sizeof(EffectType), stream); 
+
+	//--------------------------------------------------------------------------
+	// write label count
+	//--------------------------------------------------------------------------
+
+	ushort lbl_count;
+	NODE_GET_LABELS(g, n, lbl_count);
+	fwrite_assert(&lbl_count, sizeof(lbl_count), stream);
+
+	//--------------------------------------------------------------------------
+	// write labels
+	//--------------------------------------------------------------------------
+
+	if(lbl_count > 0) {
+		fwrite_assert(labels, sizeof(LabelID) * lbl_count, stream);
+	}
+
+	//--------------------------------------------------------------------------
+	// write attribute set
+	//--------------------------------------------------------------------------
+
+	const AttributeSet attrs = GraphEntity_GetAttributes((const GraphEntity*)n);
+	WriteAttributeSet(stream, attrs);
+}
+
+// convert UndoCreateEdgeOp into a CreateEdge effect
+static void EffectFromUndoEdgeCreate
+(
+	FILE *stream,     // effects stream
+	const UndoOp *op  // undo operation to convert
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	// effect type
+	// relationship count
+	// relationships
+	// src node ID
+	// dest node ID
+	// attribute count
+	// attributes (id,value) pair
+	//--------------------------------------------------------------------------
+	
+	Graph *g = QueryCtx_GetGraph();
+	const UndoCreateOp *_op = (const UndoCreateOp*)op;
+	const Edge *e = &_op->e;
+
+	//--------------------------------------------------------------------------
+	// write effect type
+	//--------------------------------------------------------------------------
+
+	EffectType et = EFFECT_CREATE_EDGE;
+	fwrite_assert(&et, sizeof(EffectType), stream); 
+
+	//--------------------------------------------------------------------------
+	// write relationship type
+	//--------------------------------------------------------------------------
+
+	ushort rel_count = 1;
+	fwrite_assert(&rel_count, sizeof(rel_count), stream);
+
+	RelationID rel_id = Edge_GetRelationID(e);
+	fwrite_assert(&rel_id, sizeof(RelationID), stream);
+
+	//--------------------------------------------------------------------------
+	// write src node ID
+	//--------------------------------------------------------------------------
+	
+	NodeID src_id = Edge_GetSrcNodeID(e);
+	fwrite_assert(&src_id, sizeof(NodeID), stream);
+
+	//--------------------------------------------------------------------------
+	// write dest node ID
+	//--------------------------------------------------------------------------
+
+	NodeID dest_id = Edge_GetDestNodeID(e);
+	fwrite_assert(&dest_id, sizeof(NodeID), stream);
+
+	//--------------------------------------------------------------------------
+	// write attribute set 
+	//--------------------------------------------------------------------------
+
+	const AttributeSet attrs = GraphEntity_GetAttributes((const GraphEntity*)e);
+	WriteAttributeSet(stream, attrs);
+}
+
+// convert UndoAttrAdd into a AddAttr effect
+static void EffectFromUndoAttrAdd
+(
+	FILE *stream,     // effects stream
+	const UndoOp *op  // undo operation to convert
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	// effect type
+	// attribute name
+	//--------------------------------------------------------------------------
+
+	const UndoAddAttributeOp *_op = (const UndoAddAttributeOp*)op;
+
+	//--------------------------------------------------------------------------
+	// write effect type
+	//--------------------------------------------------------------------------
+
+	EffectType t = EFFECT_ADD_ATTRIBUTE;
+	fwrite_assert(&t, sizeof(EffectType), stream);
+
+	//--------------------------------------------------------------------------
+	// write attribute name
+	//--------------------------------------------------------------------------
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Attribute_ID attr_id = _op->attribute_id;
+	const char *attr_name = GraphContext_GetAttributeString(gc, attr_id);
+	fwrite_string(attr_name, stream);
+}
+
+// convert UndoUpdate into a Update effect
+static void EffectFromUndoSetRemoveLabels
+(
+	FILE *stream,     // effects stream
+	const UndoOp *op, // undo operation to convert
+	EffectType t      // effect type SET/REMOVE LABELS
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    node ID
+	//    labels count
+	//    label IDs
+	//--------------------------------------------------------------------------
+	
+	ASSERT(t == EFFECT_SET_LABELS || t == EFFECT_REMOVE_LABELS);
+
+	const UndoLabelsOp *_op = (const UndoLabelsOp*)op;
+	ushort lbl_count = _op->labels_count;
+
+	// write effect type
+	fwrite_assert(&t, sizeof(EffectType), stream); 
+
+	// write node ID
+	const Node *n = &_op->node;
+	EntityID id = ENTITY_GET_ID(n);
+	fwrite_assert(&id, sizeof(id), stream); 
+	
+	// write labels count
+	fwrite_assert(&lbl_count, sizeof(lbl_count), stream); 
+	
+	// write label IDs
+	fwrite_assert(_op->label_ids, sizeof(LabelID) * lbl_count, stream);
+}
+
+// convert UndoAddSchema into a AddSchema effect
+static void EffectFromUndoSchemaAdd
+(
+	FILE *stream,     // effects stream
+	const UndoOp *op  // undo operation to convert
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    schema type
+	//    schema name
+	//--------------------------------------------------------------------------
+	
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	const UndoAddSchemaOp *_op = (const UndoAddSchemaOp *)op;
+	Schema *schema = GraphContext_GetSchemaByID(gc, _op->schema_id, _op->t);
+	ASSERT(schema != NULL);
+
+	//--------------------------------------------------------------------------
+	// write effect type
+	//--------------------------------------------------------------------------
+
+	EffectType t = EFFECT_ADD_SCHEMA;
+	fwrite_assert(&t, sizeof(EffectType), stream);
+
+	//--------------------------------------------------------------------------
+	// write schema type
+	//--------------------------------------------------------------------------
+
+	fwrite_assert(&_op->t, sizeof(_op->t), stream);
+
+	//--------------------------------------------------------------------------
+	// write schema name
+	//--------------------------------------------------------------------------
+
+	const char *schema_name = Schema_GetName(schema);
+	fwrite_string(schema_name, stream);
 }
 
 // convert undo-operation into an effect

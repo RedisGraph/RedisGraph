@@ -447,9 +447,15 @@ Attribute_ID GraphContext_FindOrAddAttribute
 	return (uintptr_t)attribute_id;
 }
 
-const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id) {
+const char *GraphContext_GetAttributeString
+(
+	GraphContext *gc,
+	Attribute_ID id
+) {
+	ASSERT(gc != NULL);
+	ASSERT(id >= 0 && id < array_len(gc->string_mapping));
+
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
-	ASSERT(id < array_len(gc->string_mapping));
 	const char *name = gc->string_mapping[id];
 	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 	return name;
