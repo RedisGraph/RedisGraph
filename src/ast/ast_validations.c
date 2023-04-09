@@ -354,49 +354,49 @@ static VISITOR_STRATEGY _Validate_list_comprehension
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	if(start) {
-		const cypher_astnode_t *id = cypher_ast_list_comprehension_get_identifier(n);
-		const char *identifier = cypher_ast_identifier_get_name(id);
-		bool is_new = (raxFind(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier)) == raxNotFound);
+	// we enter ONLY when start=true, so no check is needed
 
-		// Introduce local identifier if it is not yet introduced
-		if(is_new) {
-			raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
-		}
+	const cypher_astnode_t *id = cypher_ast_list_comprehension_get_identifier(n);
+	const char *identifier = cypher_ast_identifier_get_name(id);
+	bool is_new = (raxFind(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier)) == raxNotFound);
 
-		// Visit expression-children
-		// Visit expression
-		const cypher_astnode_t *exp = cypher_ast_list_comprehension_get_expression(n);
-		if(exp) {
-			AST_Visitor_visit(exp, visitor);
-			if(ErrorCtx_EncounteredError()) {
-				return VISITOR_BREAK;
-			}
-		}
+	// Introduce local identifier if it is not yet introduced
+	if(is_new) {
+		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+	}
 
-		// Visit predicate
-		const cypher_astnode_t *pred = cypher_ast_list_comprehension_get_predicate(n);
-		if(pred) {
-			AST_Visitor_visit(pred, visitor);
-			if(ErrorCtx_EncounteredError()) {
-				return VISITOR_BREAK;
-			}
+	// Visit expression-children
+	// Visit expression
+	const cypher_astnode_t *exp = cypher_ast_list_comprehension_get_expression(n);
+	if(exp) {
+		AST_Visitor_visit(exp, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
 		}
+	}
 
-		// Visit eval
-		const cypher_astnode_t *eval = cypher_ast_list_comprehension_get_eval(n);
-		if(eval) {
-			AST_Visitor_visit(eval, visitor);
-			if(ErrorCtx_EncounteredError()) {
-				return VISITOR_BREAK;
-			}
+	// Visit predicate
+	const cypher_astnode_t *pred = cypher_ast_list_comprehension_get_predicate(n);
+	if(pred) {
+		AST_Visitor_visit(pred, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
 		}
+	}
 
-		// list comprehension identifier is no longer bound, remove it from bound vars
-		// if it was introduced
-		if(is_new) {
-			raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
+	// Visit eval
+	const cypher_astnode_t *eval = cypher_ast_list_comprehension_get_eval(n);
+	if(eval) {
+		AST_Visitor_visit(eval, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
 		}
+	}
+
+	// list comprehension identifier is no longer bound, remove it from bound vars
+	// if it was introduced
+	if(is_new) {
+		raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
 	}
 
 	// do not traverse children
@@ -412,56 +412,56 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	if(start) {
-		const cypher_astnode_t *id = cypher_ast_pattern_comprehension_get_identifier(n);
-		bool is_new;
-		const char *identifier;
-		if(id) {
-			identifier = cypher_ast_identifier_get_name(id);
-			is_new = (raxFind(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier)) == raxNotFound);
-		}
-		else {
-			is_new = false;
-		}
+	// we enter ONLY when start=true, so no check is needed
 
-		// Introduce local identifier if it is not yet introduced
-		if(is_new) {
-			raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
-		}
+	const cypher_astnode_t *id = cypher_ast_pattern_comprehension_get_identifier(n);
+	bool is_new;
+	const char *identifier;
+	if(id) {
+		identifier = cypher_ast_identifier_get_name(id);
+		is_new = (raxFind(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier)) == raxNotFound);
+	}
+	else {
+		is_new = false;
+	}
 
-		// Visit expression-children
-		// Visit pattern
-		const cypher_astnode_t *pattern = cypher_ast_pattern_comprehension_get_pattern(n);
-		if(pattern) {
-			AST_Visitor_visit(pattern, visitor);
-			if(ErrorCtx_EncounteredError()) {
-				return VISITOR_BREAK;
-			}
-		}
+	// Introduce local identifier if it is not yet introduced
+	if(is_new) {
+		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+	}
 
-		// Visit predicate
-		const cypher_astnode_t *pred = cypher_ast_pattern_comprehension_get_predicate(n);
-		if(pred) {
-			AST_Visitor_visit(pred, visitor);
-			if(ErrorCtx_EncounteredError()) {
-				return VISITOR_BREAK;
-			}
+	// Visit expression-children
+	// Visit pattern
+	const cypher_astnode_t *pattern = cypher_ast_pattern_comprehension_get_pattern(n);
+	if(pattern) {
+		AST_Visitor_visit(pattern, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
 		}
+	}
 
-		// Visit eval
-		const cypher_astnode_t *eval = cypher_ast_pattern_comprehension_get_eval(n);
-		if(eval) {
-			AST_Visitor_visit(eval, visitor);
-			if(ErrorCtx_EncounteredError()) {
-				return VISITOR_BREAK;
-			}
+	// Visit predicate
+	const cypher_astnode_t *pred = cypher_ast_pattern_comprehension_get_predicate(n);
+	if(pred) {
+		AST_Visitor_visit(pred, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
 		}
+	}
 
-		// pattern comprehension identifier is no longer bound, remove it from bound vars
-		// if it was introduced
-		if(is_new) {
-			raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
+	// Visit eval
+	const cypher_astnode_t *eval = cypher_ast_pattern_comprehension_get_eval(n);
+	if(eval) {
+		AST_Visitor_visit(eval, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
 		}
+	}
+
+	// pattern comprehension identifier is no longer bound, remove it from bound vars
+	// if it was introduced
+	if(is_new) {
+		raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
 	}
 
 	// do not traverse children
@@ -498,15 +498,15 @@ static VISITOR_STRATEGY _Validate_map
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	if(start) {
-		// traverse the entries of the map
-		uint nentries = cypher_ast_map_nentries(n);
-		for (uint i = 0; i < nentries; i++) {
-			const cypher_astnode_t *exp = cypher_ast_map_get_value(n, i);
-			AST_Visitor_visit(exp, visitor);
-			if(ErrorCtx_EncounteredError()) {
-				return VISITOR_BREAK;
-			}
+	// we enter ONLY when start=true, so no check is needed
+
+	// traverse the entries of the map
+	uint nentries = cypher_ast_map_nentries(n);
+	for (uint i = 0; i < nentries; i++) {
+		const cypher_astnode_t *exp = cypher_ast_map_get_value(n, i);
+		AST_Visitor_visit(exp, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
 		}
 	}
 
@@ -523,12 +523,12 @@ static VISITOR_STRATEGY _Validate_projection
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	if(start) {
-		const cypher_astnode_t *exp = cypher_ast_projection_get_expression(n);
-		AST_Visitor_visit(exp, visitor);
-		if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
-		}
+	// we enter ONLY when start=true, so no check is needed
+
+	const cypher_astnode_t *exp = cypher_ast_projection_get_expression(n);
+	AST_Visitor_visit(exp, visitor);
+	if(ErrorCtx_EncounteredError()) {
+		return VISITOR_BREAK;
 	}
 
 	// do not traverse children
@@ -1167,10 +1167,6 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	if(!start) {
-		return VISITOR_CONTINUE;
-	}
-
 	vctx->clause = cypher_astnode_type(n);
 
 	if(_Validate_LIMIT_SKIP_Modifiers(cypher_ast_with_get_limit(n),
@@ -1402,63 +1398,62 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 ) {
 	validations_ctx *vctx = visitor->ctx;
 
-	// first (and only) traversal
-	if(start) {
-		// build a new environment of bounded vars from the current one to be
-		// used in the traversal of the visitor in the clauses of the FOREACH
-		// clause - as they are local to the FOREACH clause
-		rax *orig_env = vctx->defined_identifiers;
-		rax *scoped_env = raxClone(orig_env);
-		vctx->defined_identifiers = scoped_env;
+	// we enter ONLY when start=true, so no check is needed
 
-		// set the clause of the context
-		vctx->clause = CYPHER_AST_FOREACH;
+	// build a new environment of bounded vars from the current one to be
+	// used in the traversal of the visitor in the clauses of the FOREACH
+	// clause - as they are local to the FOREACH clause
+	rax *orig_env = vctx->defined_identifiers;
+	rax *scoped_env = raxClone(orig_env);
+	vctx->defined_identifiers = scoped_env;
 
-		// visit FOREACH array expression
-		const cypher_astnode_t *list_node =
-			cypher_ast_foreach_get_expression(n);
-		AST_Visitor_visit(list_node, visitor);
+	// set the clause of the context
+	vctx->clause = CYPHER_AST_FOREACH;
 
-		// introduce loop variable to bound vars
-		const cypher_astnode_t *identifier_node =
-			cypher_ast_foreach_get_identifier(n);
+	// visit FOREACH array expression
+	const cypher_astnode_t *list_node =
+		cypher_ast_foreach_get_expression(n);
+	AST_Visitor_visit(list_node, visitor);
 
-		const char *identifier =
-			cypher_ast_identifier_get_name(identifier_node);
+	// introduce loop variable to bound vars
+	const cypher_astnode_t *identifier_node =
+		cypher_ast_foreach_get_identifier(n);
 
-		raxInsert(vctx->defined_identifiers, (unsigned char *) identifier,
-				  strlen(identifier), NULL, NULL);
+	const char *identifier =
+		cypher_ast_identifier_get_name(identifier_node);
 
-		// visit FOREACH loop body clauses
-		uint nclauses = cypher_ast_foreach_nclauses(n);
-		for(uint i = 0; i < nclauses; i++) {
-			const cypher_astnode_t *clause = cypher_ast_foreach_get_clause(n, i);
-			// make sure it is an updating clause
-			cypher_astnode_type_t child_clause_type =
-				cypher_astnode_type(clause);
-			if(child_clause_type != CYPHER_AST_CREATE  &&
-			   child_clause_type != CYPHER_AST_SET     &&
-			   child_clause_type != CYPHER_AST_REMOVE  &&
-			   child_clause_type != CYPHER_AST_MERGE   &&
-			   child_clause_type != CYPHER_AST_DELETE  &&
-			   child_clause_type != CYPHER_AST_FOREACH
-			) {
-				ErrorCtx_SetError("Error: Only updating clauses may reside in FOREACH");
-				break;
-			}
+	raxInsert(vctx->defined_identifiers, (unsigned char *) identifier,
+				strlen(identifier), NULL, NULL);
 
-			// visit the clause
-			AST_Visitor_visit(clause, visitor);
+	// visit FOREACH loop body clauses
+	uint nclauses = cypher_ast_foreach_nclauses(n);
+	for(uint i = 0; i < nclauses; i++) {
+		const cypher_astnode_t *clause = cypher_ast_foreach_get_clause(n, i);
+		// make sure it is an updating clause
+		cypher_astnode_type_t child_clause_type =
+			cypher_astnode_type(clause);
+		if(child_clause_type != CYPHER_AST_CREATE  &&
+			child_clause_type != CYPHER_AST_SET     &&
+			child_clause_type != CYPHER_AST_REMOVE  &&
+			child_clause_type != CYPHER_AST_MERGE   &&
+			child_clause_type != CYPHER_AST_DELETE  &&
+			child_clause_type != CYPHER_AST_FOREACH
+		) {
+			ErrorCtx_SetError("Error: Only updating clauses may reside in FOREACH");
+			break;
 		}
 
-		// restore original environment of bounded vars
-		vctx->defined_identifiers = orig_env;
-		raxFree(scoped_env);
+		// visit the clause
+		AST_Visitor_visit(clause, visitor);
+	}
 
-		// check for errors
-		if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
-		}
+	// restore original environment of bounded vars
+	vctx->defined_identifiers = orig_env;
+	raxFree(scoped_env);
+
+	// check for errors
+	if(ErrorCtx_EncounteredError()) {
+		return VISITOR_BREAK;
 	}
 
 	// do not traverse children
