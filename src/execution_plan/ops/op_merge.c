@@ -263,19 +263,6 @@ static Record _handoff
 	return r;
 }
 
-// fake hash function
-// hash of key is simply key
-static uint64_t nop_hash
-(
-	const void *key
-) {
-	return ((uint64_t)key);
-}
-
-// hashtable callbacks
-static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
-	NULL, NULL, NULL};
-
 static Record MergeConsume
 (
 	OpBase *opBase
@@ -379,8 +366,8 @@ static Record MergeConsume
 	}
 	OpBase_PropagateReset(op->match_stream);
 
-	op->node_pending_updates = HashTableCreate(&dt);
-	op->edge_pending_updates = HashTableCreate(&dt);
+	op->node_pending_updates = HashTableCreate(NULL);
+	op->edge_pending_updates = HashTableCreate(NULL);
 
 	// if we are setting properties with ON MATCH, compute all pending updates
 	if(op->on_match && match_count > 0) {

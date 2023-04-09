@@ -67,6 +67,17 @@ typedef struct dictType {
 #define DICTHT_SIZE(exp) ((exp) == -1 ? 0 : (unsigned long)1<<(exp))
 #define DICTHT_SIZE_MASK(exp) ((exp) == -1 ? 0 : (DICTHT_SIZE(exp))-1)
 
+// fake hash function
+// hash of key is simply key
+static uint64_t nop_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+#define DEFAULT_DICT_TYPE {nop_hash, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
+
 struct dict {
     dictType *type;
 

@@ -78,6 +78,7 @@ static int _HashTableExpandIfNeeded(dict *d);
 static signed char _dictNextExp(unsigned long size);
 static long _dictKeyIndex(dict *d, const void *key, uint64_t hash, dictEntry **existing);
 static int _dictInit(dict *d, dictType *type);
+static dictType default_dt = DEFAULT_DICT_TYPE;
 
 /* -------------------------- hash functions -------------------------------- */
 
@@ -125,6 +126,10 @@ dict *HashTableCreate
 	dictType *type
 )
 {
+    if(type == NULL) {
+        type = &default_dt;
+    }
+
     size_t metasize = type->dictMetadataBytes ? type->dictMetadataBytes() : 0;
     dict *d = malloc(sizeof(*d) + metasize);
     if (metasize) {

@@ -53,26 +53,13 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	return (OpBase *)op;
 }
 
-// fake hash function
-// hash of key is simply key
-static uint64_t nop_hash
-(
-	const void *key
-) {
-	return ((uint64_t)key);
-}
-
-// hashtable callbacks
-static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
-	NULL, NULL, NULL};
-
 static OpResult UpdateInit(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
 
 	op->stats         =  QueryCtx_GetResultSetStatistics();
 	op->records       =  array_new(Record, 64);
-	op->node_updates  =  HashTableCreate(&dt);
-	op->edge_updates  =  HashTableCreate(&dt);
+	op->node_updates  =  HashTableCreate(NULL);
+	op->edge_updates  =  HashTableCreate(NULL);
 
 	return OP_OK;
 }

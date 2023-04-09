@@ -17,15 +17,6 @@ static OpResult AggregateReset(OpBase *opBase);
 static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void AggregateFree(OpBase *opBase);
 
-// fake hash function
-// hash of key is simply key
-static uint64_t nop_hash
-(
-	const void *key
-) {
-	return ((uint64_t)key);
-}
-
 // hashtable entry free callback
 void freeCallback
 (
@@ -34,10 +25,6 @@ void freeCallback
 ) {
 	Group_Free((Group*)val);
 }
-
-// hashtable callbacks
-static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, freeCallback, NULL,
-	NULL, NULL, NULL};
 
 // migrate each expression projected by this operation to either
 // the array of keys or the array of aggregate functions as appropriate
@@ -229,7 +216,7 @@ OpBase *NewAggregateOp
 ) {
 	OpAggregate *op = rm_malloc(sizeof(OpAggregate));
 
-	op->groups               = HashTableCreate(&dt);
+	op->groups               = HashTableCreate(NULL);
 	op->group_iter           = NULL;
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL,
@@ -336,7 +323,7 @@ static OpResult AggregateReset
 	unsigned long elem_count = HashTableElemCount(op->groups);
 	HashTableRelease(op->groups);
 
-	op->groups = HashTableCreate(&dt);
+	op->groups = HashTableCreate(NULL);
 
 	// expand hashtable to previous element count
 	int res = HashTableExpand(op->groups, elem_count);
