@@ -8,8 +8,8 @@
 
 // convert from string representation to an enum
 GRAPH_Commands CommandFromString(const char *cmd_name) {
-	if (!strcasecmp(cmd_name, "graph.INFO"))     return CMD_INFO;
-	if (!strcasecmp(cmd_name, "graph.BULK"))     return CMD_BULK_INSERT;
+	if (!strcasecmp(cmd_name, "graph.EFFECT")) return CMD_EFFECT;
+  if (!strcasecmp(cmd_name, "graph.INFO"))     return CMD_INFO;
 	if (!strcasecmp(cmd_name, "graph.LIST"))     return CMD_LIST;
 	if (!strcasecmp(cmd_name, "graph.QUERY"))    return CMD_QUERY;
 	if (!strcasecmp(cmd_name, "graph.DEBUG"))    return CMD_DEBUG;
@@ -19,6 +19,7 @@ GRAPH_Commands CommandFromString(const char *cmd_name) {
 	if (!strcasecmp(cmd_name, "graph.EXPLAIN"))  return CMD_EXPLAIN;
 	if (!strcasecmp(cmd_name, "graph.SLOWLOG"))  return CMD_SLOWLOG;
 	if (!strcasecmp(cmd_name, "graph.RO_QUERY")) return CMD_RO_QUERY;
+  if (!strcasecmp(cmd_name, "graph.BULK"))     return CMD_BULK_INSERT;
 
 	// we shouldn't reach this point
 	ASSERT(false);

@@ -319,6 +319,67 @@ void Constraint_DecPendingChanges
 	c->pending_changes--;
 }
 
+// replicate constraint to both persistency and replicas
+void Constraint_Replicate
+(
+	RedisModuleCtx *ctx,           // redis module context
+	const Constraint c,            // constraint to replicate
+	const struct GraphContext *gc  // graph context
+) {
+	// CREATE <key> UNIQUE/MANDATORY [NODE label / RELATIONSHIP type] PROPERTIES prop_count prop0, prop1...
+
+	// command format
+	// 1. c - CREATE
+	// 2. c - graph_name
+	// 3. c - constraint type
+	// 4. c - entity type NODE/RELATIONSHIP
+	// 5. c - label
+	// 6. c - PROPERTIES
+	// 7. l - #props
+	// 8. v - [prop0, prop1, ...]
+	char *fmt = "cccccclv";
+
+	// graph name
+	GraphContext *_gc = (GraphContext*)gc;
+	const char *graph_name = GraphContext_GetName(_gc);
+
+	// constraint type
+	const char *c_type = (Constraint_GetType(c) == CT_UNIQUE) // constraint type
+		? "UNIQUE"
+		: "MANDATORY";
+
+	// entity type
+	char *et;
+	SchemaType st;
+	if(Constraint_GetEntityType(c) == GETYPE_NODE) {
+		et = "NODE";
+		st = SCHEMA_NODE;
+	} else {
+		et = "RELATIONSHIP";
+		st = SCHEMA_EDGE;
+	}
+
+	// label
+	Schema *s = GraphContext_GetSchemaByID(_gc, Constraint_GetSchemaID(c), st);
+	const char *label = Schema_GetName(s);
+
+	// properties
+	RedisModuleString *attrs[c->n_attr];
+	for(uint i = 0; i < c->n_attr; i++) {
+		const char *attr = c->attr_names[i];
+		attrs[i] = RedisModule_CreateString(ctx, attr, strlen(attr));
+	}
+
+	// replicate
+	RedisModule_Replicate(ctx, "GRAPH.CONSTRAINT", fmt, "CREATE", graph_name,
+			c_type, et, label, "PROPERTIES", c->n_attr, attrs, (size_t)c->n_attr);
+
+	// free strings
+	for(uint i = 0; i < c->n_attr; i++) {
+		RedisModule_FreeString(ctx, attrs[i]);
+	}
+}
+
 // tries to enforce constraint
 void Constraint_Enforce
 (

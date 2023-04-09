@@ -61,6 +61,10 @@
 // The GRAPH.INFO QUERIES maximum element count
 #define CMD_INFO_MAX_QUERIES_COUNT_OPTION_NAME "MAX_INFO_QUERIES"
 
+// effects replication threshold
+#define EFFECTS_THRESHOLD "EFFECTS_THRESHOLD"
+
+
 //------------------------------------------------------------------------------
 // Configuration defaults
 //------------------------------------------------------------------------------
@@ -88,6 +92,7 @@ typedef struct {
 	int64_t delta_max_pending_changes; // number of pending changed befor RG_Matrix flushed
 	Config_on_change cb;               // callback function which being called when config param changed
 	bool cmd_info_on;                  // If true, the GRAPH.INFO is enabled.
+  uint64_t effects_threshold;         // replicate via effects when runtime exceeds threshold
 	uint32_t max_info_queries_count;   // Maximum number of query info elements.
 } RG_Config;
 
@@ -414,6 +419,20 @@ static void Config_cmd_info_max_queries_set
 	} else {
 		config.max_info_queries_count = count;
 	}
+
+//------------------------------------------------------------------------------
+// effects threshold
+//------------------------------------------------------------------------------
+
+static void Config_effects_threshold_set
+(
+	uint64_t threshold
+) {
+	config.effects_threshold = threshold;
+}
+
+static uint64_t Config_effects_threshold_get (void) {
+	return config.effects_threshold;
 }
 
 bool Config_Contains_field
@@ -453,6 +472,8 @@ bool Config_Contains_field
 		f = Config_CMD_INFO;
 	} else if(!(strcasecmp(field_str, CMD_INFO_MAX_QUERIES_COUNT_OPTION_NAME))) {
 		f = Config_CMD_INFO_MAX_QUERY_COUNT;
+	} else if (!(strcasecmp(field_str, EFFECTS_THRESHOLD))) {
+		f = Config_EFFECTS_THRESHOLD;
 	} else {
 		return false;
 	}
@@ -525,6 +546,10 @@ const char *Config_Field_name
 
 		case Config_CMD_INFO_MAX_QUERY_COUNT:
 			name = CMD_INFO_MAX_QUERIES_COUNT_OPTION_NAME;
+      break;
+
+		case Config_EFFECTS_THRESHOLD:
+			name = EFFECTS_THRESHOLD;
 			break;
 
 		//----------------------------------------------------------------------
@@ -591,6 +616,9 @@ static void _Config_SetToDefaults(void) {
 
 	// GRAPH.INFO maximum queries count.
 	config.max_info_queries_count = CMD_INFO_QUERIES_MAX_COUNT_DEFAULT;
+
+	// replicate effects if avg change time μs > effects_threshold μs
+	config.effects_threshold = 300 ;
 }
 
 int Config_Init
@@ -881,6 +909,21 @@ bool Config_Option_get
 
 			ASSERT(count != NULL);
 			(*count) = Config_cmd_info_max_queries_get();
+      }
+      break;
+
+		//----------------------------------------------------------------------
+		// effects threshold
+		//----------------------------------------------------------------------
+
+		case Config_EFFECTS_THRESHOLD: {
+			va_start(ap, field);
+			uint64_t *effects_threshold = va_arg(ap, uint64_t *);
+			va_end(ap);
+
+			ASSERT(effects_threshold != NULL);
+			(*effects_threshold) = Config_effects_threshold_get();
+
 		}
 		break;
 
@@ -1108,6 +1151,18 @@ bool Config_Option_set
 
 			// A downcast from <long long> to <uint32_t>.
 			Config_cmd_info_max_queries_set(count);
+      }
+  		break;
+
+		// effects threshold
+		//----------------------------------------------------------------------
+				
+		case Config_EFFECTS_THRESHOLD: {
+			long long threshold;
+			if(!_Config_ParseNonNegativeInteger(val, &threshold)) {
+				return false;
+			}
+			Config_effects_threshold_set(threshold);
 		}
 		break;
 

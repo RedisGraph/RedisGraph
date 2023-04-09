@@ -15,6 +15,7 @@
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
 #include "../index/indexer.h"
+#include "../effects/effects.h"
 #include "../util/cache/cache.h"
 #include "../util/thpool/pools.h"
 #include "../configuration/config.h"
@@ -60,7 +61,47 @@ static void inline GraphQueryCtx_Free
 	rm_free(ctx);
 }
 
-static bool abort_and_check_timeout
+// checks if we should replicate command to replicas via
+// the original GRAPH.QUERY command
+// or via a set of effects GRAPH.EFFECT
+// we would prefer to use effects when the number of effects is relatively small
+// compared to query's execution time
+static bool _should_replicate_effects(void)
+{
+	// GRAPH.EFFECT will be used to replicate a query when
+	// the average modification time > configuted replicate effects threshold
+	//
+	// for example:
+	// a query which ran for 10ms and performed 5 changes
+	// the average change time is 10/5 = 2ms
+	// if 2ms > configured replicate effects threshold
+	// then the query will be replicated via GRAPH.EFFECT
+	//
+	// on the other hand if a query ran for 1ms and performed 4 changes
+	// the average change timw is 1/4 = 0.25ms
+	// 0.25 < configured replicate effects threshold
+	// then the query will be replicate via GRAPH.QUERY
+
+	//--------------------------------------------------------------------------
+	// consult with configuration
+	//--------------------------------------------------------------------------
+
+	uint64_t effects_threshold;
+	Config_Option_get(Config_EFFECTS_THRESHOLD, &effects_threshold);
+
+	// compute average change time
+	double exec_time = QueryCtx_GetExecutionTime();   // query execution time
+	uint n = UndoLog_Length(*QueryCtx_GetUndoLog());  // number of modifications
+	ASSERT(n > 0);
+	double avg_mod_time = exec_time / n;              // avg modification time
+
+	avg_mod_time *= 1000; // convert from ms to μs microseconds
+
+	// use GRAPH.EFFECT when avg_mod_time > effects_threshold
+	return (avg_mod_time > (double)effects_threshold);
+}
+
+static void abort_and_check_timeout
 (
 	GraphQueryCtx *gq_ctx,
 	ExecutionPlan *plan
@@ -347,17 +388,33 @@ static void _ExecuteQuery(void *args) {
 
 	// in case of an error, rollback any modifications
 	if(ErrorCtx_EncounteredError()) {
-		UndoLog_Rollback(query_ctx->undo_log);
+		UndoLog_Rollback(*QueryCtx_GetUndoLog());
 		// clear resultset statistics, avoiding commnad being replicated
 		ResultSet_Clear(result_set);
 		if (query_ctx->status != QueryExecutionStatus_TIMEDOUT) {
 			query_ctx->status = QueryExecutionStatus_FAILURE;
 		}
-	}
+	} else {
+		// replicate if graph was modified
+		if(ResultSetStat_IndicateModification(&result_set->stats)) {
+			// determine rather or not to replicate via effects
+			if(UndoLog_Length(*QueryCtx_GetUndoLog()) > 0 &&
+			   _should_replicate_effects()) {
+				// compute effects buffer
+				size_t effects_len = 0;
+				u_char *effects = Effects_FromUndoLog(*QueryCtx_GetUndoLog(),
+						&effects_len);
+				ASSERT(effects_len > 0 && effects != NULL);
 
-	// replicate command if graph was modified
-	if(ResultSetStat_IndicateModification(&result_set->stats)) {
-		QueryCtx_Replicate(query_ctx);
+				// replicate effects
+				RedisModule_Replicate(rm_ctx, "GRAPH.EFFECT", "cb!",
+						GraphContext_GetName(gc), effects, effects_len);
+				rm_free(effects);
+			} else {
+				// replicate original query
+				QueryCtx_Replicate(query_ctx);
+			}
+		}	
 	}
 
 	QueryCtx_UnlockCommit();

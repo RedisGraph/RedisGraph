@@ -15,18 +15,19 @@
 //------------------------------------------------------------------------------
 
 typedef enum {
-	CMD_UNKNOWN        = 0,
-	CMD_QUERY          = 1,
-	CMD_RO_QUERY       = 2,
-	CMD_DELETE         = 3,
-	CMD_CONFIG         = 4,
-	CMD_EXPLAIN        = 5,
-	CMD_PROFILE        = 6,
-	CMD_BULK_INSERT    = 7,
-	CMD_SLOWLOG        = 8,
-	CMD_LIST           = 9,
-	CMD_DEBUG          = 10,
-	CMD_INFO           = 11,
+	CMD_UNKNOWN     = 0,
+	CMD_QUERY       = 1,
+	CMD_RO_QUERY    = 2,
+	CMD_DELETE      = 3,
+	CMD_CONFIG      = 4,
+	CMD_EXPLAIN     = 5,
+	CMD_PROFILE     = 6,
+	CMD_BULK_INSERT = 7,
+	CMD_SLOWLOG     = 8,
+	CMD_LIST        = 9,
+	CMD_DEBUG       = 10,
+	CMD_INFO        = 11,
+	CMD_EFFECT      = 12
 } GRAPH_Commands;
 
 //------------------------------------------------------------------------------
@@ -43,6 +44,7 @@ int Graph_List(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Info(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Debug(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+int Graph_Effect(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Slowlog(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
