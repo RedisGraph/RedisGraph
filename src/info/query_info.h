@@ -88,3 +88,16 @@ QueryInfo *QueryInfo_Clone
 (
     QueryInfo *qi
 );
+
+// QueryInfo deleter callback
+void QueryInfoDeleter
+(
+    void *user_data,
+    void *info
+);
+
+// free a QueryInfo
+void QueryInfo_Free
+(
+    QueryInfo *qi
+);

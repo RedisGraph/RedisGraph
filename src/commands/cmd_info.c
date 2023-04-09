@@ -282,22 +282,6 @@ static InfoQueriesFlag _parse_info_queries_flags_from_args
     return flags;
 }
 
-static CommonQueryInfo _CommonQueryInfo_FromFinished
-(
-    const FinishedQueryInfo finished
-) {
-    const CommonQueryInfo info = {
-        .received_at_ms = finished.received_ts,
-        .stage = QueryStage_FINISHED,
-        .graph_name = (char *)finished.graph_name,
-        .query_string = (char *)finished.query_string,
-        .wait_duration = finished.wait_duration,
-        .execution_duration = finished.execution_duration,
-        .report_duration = finished.report_duration
-    };
-    return info;
-}
-
 // Replies with the query information, which is relevant either to the already
 // finished queries or currently working.
 // This is a part of the "GRAPH.INFO QUERIES" reply.
@@ -305,7 +289,7 @@ static int _reply_graph_query_info
 (
     RedisModuleCtx *ctx,
     const bool is_compact_mode,
-    const CommonQueryInfo info
+    const QueryInfo info
 ) {
     ASSERT(ctx);
     if (!ctx) {
@@ -376,8 +360,8 @@ static int _reply_graph_query_info
 static bool _reply_finished_queries(void *user_data, const void *item) {
     ViewFinishedQueriesCallbackData *data
         = (ViewFinishedQueriesCallbackData*)user_data;
-    const FinishedQueryInfo *finished
-        = (FinishedQueryInfo*)item;
+    const QueryInfo *finished
+        = (QueryInfo *)item;
 
     ASSERT(data);
     ASSERT(item);
@@ -386,7 +370,7 @@ static bool _reply_finished_queries(void *user_data, const void *item) {
         return true;
     }
 
-    const CommonQueryInfo info = _CommonQueryInfo_FromFinished(*finished);
+    const QueryInfo info = *finished;
 
     REDISMODULE_ASSERT(_reply_graph_query_info(data->ctx, data->is_compact_mode, info))
 
@@ -487,25 +471,6 @@ static void _update_query_stage_timer(const QueryStage stage, QueryInfo *info) {
     }
 }
 
-static CommonQueryInfo _CommonQueryInfo_FromUnfinished
-(
-    const QueryInfo unfinished,
-    const QueryStage stage
-) {
-    QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-    GraphContext *gc = query_ctx->gc;
-    const CommonQueryInfo info = {
-        .received_at_ms = unfinished.received_ts,
-        .stage = stage,
-        .graph_name = (char *)gc->graph_name,
-        .query_string = (char *)query_ctx->query_data.query,
-        .wait_duration = unfinished.wait_duration,
-        .execution_duration = unfinished.execution_duration,
-        .report_duration = unfinished.report_duration
-    };
-    return info;
-}
-
 // Replies with the information from the QueryInfo storage.
 static int _reply_graph_query_info_storage
 (
@@ -538,7 +503,7 @@ static int _reply_graph_query_info_storage
         REDISMODULE_ASSERT(_reply_graph_query_info(
             ctx,
             is_compact_mode,
-            _CommonQueryInfo_FromUnfinished(*qi, query_stage)));
+            *qi));
     }
 
     if (iterated) {

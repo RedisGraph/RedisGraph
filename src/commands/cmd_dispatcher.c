@@ -267,6 +267,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		// indicate that the query has started waiting
 		QueryInfo *qi = query_ctx->qi;
 		qi->received_ts = CommandCtx_GetReceivedTimestamp(context);
+		qi->graph_name = gc->graph_name;
+		qi->query_string = context->query;
 		Info_AddToWaiting(gc->info, qi);
 
 		if(ThreadPools_AddWorkReader(handler, context, false) ==

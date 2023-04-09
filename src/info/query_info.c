@@ -139,3 +139,30 @@ QueryInfo *QueryInfo_Clone
     clone->stage = qi->stage;
     // clone timer will isn't relevant, stays {0}
 }
+
+// QueryInfo deleter callback
+void QueryInfoDeleter
+(
+    void *user_data,
+    void *info
+) {
+    UNUSED(user_data);
+    ASSERT(info);
+    if (info) {
+        QueryInfo *qi = (QueryInfo *)info;
+        QueryInfo_Free(qi);
+    }
+}
+
+// free a QueryInfo
+void QueryInfo_Free
+(
+    QueryInfo *qi
+) {
+    if (qi->query_string) {
+        free(qi->query_string);
+    }
+    if (qi->graph_name) {
+        free(qi->graph_name);
+    }
+}

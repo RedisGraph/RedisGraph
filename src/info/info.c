@@ -27,6 +27,10 @@
 static CircularBufferNRG finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
+// forward declaration
+void QueryInfoDeleter(void *user_data, void *info);
+QueryInfo *QueryInfo_Clone(QueryInfo *qi);
+
 // returns the total number of queries recorded
 uint64_t FinishedQueryCounters_GetTotalCount
 (
@@ -111,123 +115,17 @@ static void _FinishedQueryCounters_Increment
     ASSERT(false && "Handle unknown flag.");
 }
 
-millis_t _FinishedQueryInfo_GetTotalDuration(const FinishedQueryInfo info) {
-    return info.execution_duration
-         + info.report_duration
-         + info.wait_duration;
-}
-
-void FinishedQueryInfo_Free(const FinishedQueryInfo query_info) {
-    if (query_info.query_string) {
-        free(query_info.query_string);
-    }
-    if (query_info.graph_name) {
-        free(query_info.graph_name);
-    }
-}
-
 static void _add_finished_query
 (
 	const QueryInfo *qi
 ) {
-    bool res = _Info_LockEverything(info);
-	ASSERT(res == true);
+    int res = pthread_rwlock_wrlock(&finished_queries_rwlock);
+	ASSERT(res == 0);
 
     CircularBufferNRG_Add(finished_queries, (const void*)qi);
 
-    res = _Info_UnlockEverything(info);
-	ASSERT(res == true);
-}
-
-QueryInfoIterator QueryInfoIterator_NewStartingAt
-(
-    const QueryInfoStorage storage,
-    const uint64_t index
-) {
-    ASSERT(storage && "Storage has to be provided.");
-    const uint64_t length = array_len(storage);
-    const bool is_index_valid = index < length;
-    if (length > 0) {
-        ASSERT(is_index_valid && "Index is going out of bounds.");
-        if (!storage || !is_index_valid) {
-            const QueryInfoIterator iterator = {
-                .storage = NULL,
-                .current_index = 0,
-                .has_started = false
-            };
-            return iterator;
-        }
-    }
-
-    const QueryInfoIterator iterator = {
-        .storage = storage,
-        .current_index = index,
-        .has_started = false
-    };
-    return iterator;
-}
-
-QueryInfoIterator QueryInfoIterator_New(const QueryInfoStorage storage) {
-    return QueryInfoIterator_NewStartingAt(storage, 0);
-}
-
-QueryInfo* QueryInfoIterator_Next(QueryInfoIterator *iterator) {
-    ASSERT(iterator != NULL);
-
-    const uint64_t length = array_len(iterator->storage);
-    if (iterator->current_index >= length) {
-        return NULL;
-    }
-
-    if (!iterator->has_started) {
-        return QueryInfoIterator_Get(iterator);
-    }
-
-    const uint64_t next_index = iterator->current_index + 1;
-    const bool is_index_valid = next_index < length;
-
-    if (!is_index_valid) {
-        return NULL;
-    }
-
-    iterator->current_index = next_index;
-    return QueryInfoIterator_Get(iterator);
-}
-
-QueryInfo* QueryInfoIterator_NextValid(QueryInfoIterator *iterator) {
-    QueryInfo *next = QueryInfoIterator_Next(iterator);
-
-    // while (next && !next->ctx) {     // Make sure this change is valid
-    while (next) {
-        next = QueryInfoIterator_Next(iterator);
-    }
-
-    return next;
-}
-
-const QueryInfoStorage QueryInfoIterator_GetStorage
-(
-    QueryInfoIterator *iterator
-) {
-    REQUIRE_ARG_OR_RETURN(iterator, NULL);
-    ASSERT(iterator != NULL);
-
-    return iterator->storage;
-}
-
-QueryInfo* QueryInfoIterator_Get(QueryInfoIterator *iterator) {
-    ASSERT(iterator != NULL);
-    iterator->has_started = true;
-    return array_elem(iterator->storage, iterator->current_index);
-}
-
-uint32_t QueryInfoIterator_Length(const QueryInfoIterator *iterator) {
-    ASSERT(iterator != NULL);
-    return array_len(iterator->storage) - iterator->current_index;
-}
-
-bool QueryInfoIterator_IsExhausted(const QueryInfoIterator *iterator) {
-    return QueryInfoIterator_Length(iterator) > 0;
+    res = pthread_rwlock_unlock(&finished_queries_rwlock);
+	ASSERT(res == 0);
 }
 
 static bool _Info_LockEverything
@@ -601,57 +499,19 @@ void Info_GetQueries
     _Info_UnlockEverything(info);
 }
 
-// // returns a pointer to the underlying working queries storage per thread.
-// // Must be accessed within the Info_Lock and Info_Unlock
-// QueryInfoStorage* Info_GetWorkingQueriesStorage(Info *info) {
-//     ASSERT(info != NULL);
-//     return &info->working_queries;
-// }
-
-static void _FinishedQueryInfoClone
-(
-    const void *item_to_clone,
-    void *destination_item,
-    void *user_data
-) {
-    ASSERT(item_to_clone);
-    ASSERT(destination_item);
-    UNUSED(user_data);
-
-    FinishedQueryInfo *source = (FinishedQueryInfo*)item_to_clone;
-    FinishedQueryInfo *destination = (FinishedQueryInfo*)destination_item;
-
-    *destination = *source;
-
-    if (destination->query_string) {
-        destination->query_string = strdup(destination->query_string);
-    }
-
-    if (destination->graph_name) {
-        destination->graph_name = strdup(destination->graph_name);
-    }
-}
-
 void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count) {
-    ScopedRwlock lock SCOPED_RWLOCK = ScopedRwlock_New(
-        &finished_queries_rwlock,
-        true
-    );
-
-    ASSERT(lock.is_locked);
-    if (!lock.is_locked) {
-        return;
-    }
+    int res = pthread_rwlock_wrlock(&finished_queries_rwlock);
+    ASSERT(res == 0);
 
     if (!finished_queries) {
-        finished_queries = CircularBufferNRG_New(sizeof(FinishedQueryInfo), count);
+        finished_queries = CircularBufferNRG_New(sizeof(QueryInfo), count);
         CircularBufferNRG_SetDeleter(
             finished_queries,
-            _FinishedQueryInfoDeleter,
+            QueryInfoDeleter,
             NULL);
         CircularBufferNRG_SetItemClone(
             finished_queries,
-            _FinishedQueryInfoClone,
+            QueryInfo_Clone,
             NULL
         );
     } else {
@@ -669,14 +529,8 @@ void Info_ViewAllFinishedQueries
         return;
     }
 
-    ScopedRwlock lock SCOPED_RWLOCK = ScopedRwlock_New(
-        &finished_queries_rwlock,
-        false);
-
-    ASSERT(lock.is_locked);
-    if (!lock.is_locked) {
-        return;
-    }
+    int res = pthread_rwlock_rdlock(&finished_queries_rwlock);
+    ASSERT(res == 0);
 
     CircularBufferNRG_ViewAll(finished_queries, callback, user_data);
 }

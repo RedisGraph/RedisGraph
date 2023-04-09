@@ -35,13 +35,6 @@ typedef bool (*CircularBufferNRG_ReadAllCallback)(void *user_data,
                                                   const void *item);
 typedef QueryInfo** QueryInfoStorage;
 
-// an abstraction for iteration over QueryInfo objects
-typedef struct QueryInfoIterator {
-    const QueryInfoStorage storage;
-    uint64_t current_index;
-    bool has_started; // true if at least one Next*/Get* was called
-} QueryInfoIterator;
-
 // holds query statistics per graph
 typedef struct FinishedQueryCounters {
     atomic_uint_fast64_t ro_succeeded_n;     // # read-only queries succeeded
@@ -203,9 +196,6 @@ void FinishedQueryCounters_Add
     FinishedQueryCounters *lhs,
     const FinishedQueryCounters rhs
 );
-
-FinishedQueryInfo FinishedQueryInfo_FromQueryInfo(const QueryInfo info);
-void FinishedQueryInfo_Free(const FinishedQueryInfo query_info);
 
 // free the info structure's content
 void Info_Free
