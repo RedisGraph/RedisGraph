@@ -230,7 +230,7 @@ void Info_IndicateQueryStartedExecution
 	//--------------------------------------------------------------------------
 
     // add to working queries array
-	info->working_queries[tid] = *qi;
+	info->working_queries[tid] = qi;
 }
 
 // transitions a query from executing to waiting
@@ -323,7 +323,7 @@ uint64_t Info_GetWaitingQueriesCount
 
     const uint64_t count = HashTableElemCount(info->waiting_queries);
 
-    res = _Info_UnlockWaitingQueries(info);
+    res = _Info_UnlockEverything(info);
 	ASSERT(res == true);
 
     return count;
@@ -472,7 +472,7 @@ void Info_GetQueries
 
     _Info_LockEverything(info);
 
-    // get the number of queries to traverse and copy (executing may be lower)
+    // get the number of queries to traverse and copy (waiting or executing)
     uint n_queries = stage == QueryStage_WAITING ?
         HashTableElemCount(info->waiting_queries) :
         ThreadPools_ThreadCount + 1;
