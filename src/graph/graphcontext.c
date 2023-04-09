@@ -335,7 +335,12 @@ Schema *GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t)
 	return schemas[id];
 }
 
-Schema *GraphContext_GetSchema(const GraphContext *gc, const char *label, SchemaType t) {
+Schema *GraphContext_GetSchema
+(
+	const GraphContext *gc,
+	const char *label,
+	SchemaType t
+) {
 	int id = _GraphContext_GetLabelID(gc, label, t);
 	return GraphContext_GetSchemaByID(gc, id, t);
 }
@@ -442,9 +447,15 @@ Attribute_ID GraphContext_FindOrAddAttribute
 	return (uintptr_t)attribute_id;
 }
 
-const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id) {
+const char *GraphContext_GetAttributeString
+(
+	GraphContext *gc,
+	Attribute_ID id
+) {
+	ASSERT(gc != NULL);
+	ASSERT(id >= 0 && id < array_len(gc->string_mapping));
+
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
-	ASSERT(id < array_len(gc->string_mapping));
 	const char *name = gc->string_mapping[id];
 	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 	return name;
