@@ -656,3 +656,29 @@ class testForeachFlow():
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("n not defined", str(e))
+
+    def test15_accumulate_updates(self):
+        """Tests that updates in between cycles of body execution are treated
+        correctly"""
+
+        # clear db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create a node with property `v` initialized with value 1
+        res = graph.query("CREATE (:N {v: 1})")
+        self.env.assertEquals(res.nodes_created, 1)
+
+        query = """
+        CYPHER li=[0, 1, 2, 3]
+        MATCH (n)
+        FOREACH(x in $li |
+            SET n.v = n.v + x
+        )
+        RETURN n
+        """
+
+        res = graph.query(query)
+        # check that the `v` property of the node is now 1 + 0 + 1 + 2 + 3 = 7
+        self.env.assertEquals(res.result_set[0][0],
+            Node(label='N', properties={'v': 7}))
