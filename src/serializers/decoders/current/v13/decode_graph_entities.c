@@ -80,14 +80,16 @@ static void _RdbLoadEntity
 	// #properties N
 	// (name, value type, value) X N
 
-	uint64_t propCount = RedisModule_LoadUnsigned(rdb);
+	uint64_t n = RedisModule_LoadUnsigned(rdb);
+	SIValue vals[n];
+	Attribute_ID ids[n];
 
-	for(int i = 0; i < propCount; i++) {
-		Attribute_ID attr_id = RedisModule_LoadUnsigned(rdb);
-		SIValue attr_value = _RdbLoadSIValue(rdb);
-		GraphEntity_AddProperty(e, attr_id, attr_value);
-		SIValue_Free(attr_value);
+	for(int i = 0; i < n; i++) {
+		ids[i]  = RedisModule_LoadUnsigned(rdb);
+		vals[i] = _RdbLoadSIValue(rdb);
 	}
+
+	AttributeSet_AddNoClone(e->attributes, ids, vals, n, false);
 }
 
 void RdbLoadNodes_v13

@@ -9,6 +9,7 @@
 #include "../query_ctx.h"
 #include "../index/index.h"
 #include "redisearch_api.h"
+#include "../src/datatypes/point.h"
 #include "../graph/entities/attribute_set.h"
 
 #include <stdatomic.h>
@@ -19,6 +20,7 @@ struct _UniqueConstraint {
 	ConstraintType t;                       // constraint type
 	Constraint_EnforcementCB enforce;       // enforcement function
 	Constraint_SetPrivateDataCB set_pdata;  // set private data
+	Constraint_GetPrivateDataCB get_pdata;  // get private data
 	int schema_id;                          // enforced schema ID
 	Attribute_ID *attrs;                    // enforced attributes
 	const char **attr_names;                // enforced attribute names
@@ -37,27 +39,32 @@ static const char *_edge_violation_err_msg =
 	"unique constraint violation, on edge of relationship-type %s";
 
 // sets constraint private data
-// if c->pdata == prev then c->pdata = pdata
 static void _SetPrivateData
 (
 	Constraint c,  // constraint to update
-	void *prev,    // previous private data
-	void *pdata    // new private data
+	void *pdata    // private data
 ) {
 	ASSERT(c != NULL);
 	ASSERT(pdata != NULL);
 
 	UniqueConstraint _c = (UniqueConstraint)c;
+	_c->idx = (Index)pdata;
+}
 
-	// update index only if 'prev' == current idx
-	if(_c->idx == prev) {
-		_c->idx = (Index)pdata;
-	}
+// gets constraint private data
+static void* _GetPrivateData
+(
+	Constraint c
+) {
+	ASSERT(c != NULL);
+
+	UniqueConstraint _c = (UniqueConstraint)c;
+	return _c->idx;
 }
 
 // enforces unique constraint on given entity
 // returns true if entity confirms with constraint false otherwise
-static bool _EnforceUniqueEntity
+bool EnforceUniqueEntity
 (
 	const Constraint c,    // constraint to enforce
 	const GraphEntity *e,  // enforced entity
@@ -116,10 +123,17 @@ static bool _EnforceUniqueEntity
 			node = RediSearch_CreateTagNode(rs_idx, field);
 			RSQNode *child = RediSearch_CreateTagTokenNode(rs_idx, v->stringval);
 			RediSearch_QueryNodeAddChild(node, child);
-		} else {
-			ASSERT(t & SI_NUMERIC || t == T_BOOL);
+		} else if(t & (SI_NUMERIC | T_BOOL)) {
 			double d = SI_GET_NUMERIC((*v));
 			node = RediSearch_CreateNumericNode(rs_idx, field, d, d, true, true);
+		} else {
+			// ASSERT(t == T_POINT);
+			// double lat = (double)Point_lat(*v);
+			// double lon = (double)Point_lon(*v);
+			// node = RediSearch_CreateGeoNode(rs_idx, field, lat, lon, 0, RS_GEO_DISTANCE_M);
+			// TODO: RediSearch exact match for point.
+			holds = true;
+			goto cleanup;
 		}
 
 		ASSERT(node != NULL);
@@ -146,14 +160,31 @@ static bool _EnforceUniqueEntity
 	// constraint holds if there are no duplicates, a single index match
 	iter = RediSearch_GetResultsIterator(root, rs_idx);
 	if(Constraint_GetEntityType(c) == GETYPE_NODE) {
+		// first call, expecting to find 'e' in the index
 		const EntityID *id =
 			(EntityID*)RediSearch_ResultsIteratorNext(iter, rs_idx, NULL);
-		holds = (*id == ENTITY_GET_ID(e));
+
+		ASSERT(id != NULL);
+
+		if(*id != ENTITY_GET_ID(e)) {
+			holds = false;
+			goto cleanup;
+		}
 	} else {
+		// first call, expecting to find 'e' in the index
 		const EdgeIndexKey *id =
 			(EdgeIndexKey*)RediSearch_ResultsIteratorNext(iter, rs_idx, NULL);
-		holds = (id->edge_id == ENTITY_GET_ID(e));
+
+		ASSERT(id != NULL);
+
+		if(id->edge_id != ENTITY_GET_ID(e)) {
+			holds = false;
+			goto cleanup;
+		}
 	}
+
+	// second call, holds if no value is returned
+	holds = RediSearch_ResultsIteratorNext(iter, rs_idx, NULL) == NULL;
 
 cleanup:
 	if(iter != NULL) {
@@ -205,8 +236,9 @@ Constraint Constraint_UniqueNew
 	c->idx             = idx;
 	c->n_attr          = n_fields;
 	c->status          = CT_PENDING;
-	c->enforce         = _EnforceUniqueEntity;
+	c->enforce         = EnforceUniqueEntity;
 	c->set_pdata       = _SetPrivateData;
+	c->get_pdata       = _GetPrivateData;
 	c->schema_id       = schema_id;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 

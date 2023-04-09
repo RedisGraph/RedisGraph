@@ -64,6 +64,7 @@ The following table summarizes which configuration parameters can be set at modu
 | [RESULTSET_SIZE](#resultset_size)                            | :white_check_mark: | :white_check_mark:   |
 | [QUERY_MEM_CAPACITY](#query_mem_capacity)                    | :white_check_mark: | :white_check_mark:   |
 | [VKEY_MAX_ENTITY_COUNT](#vkey_max_entity_count)              | :white_check_mark: | :white_check_mark:   |
+| [EFFECTS_THRESHOLD](#effects_threshold)                      | :white_check_mark: | :white_check_mark:   |
 
 ---
 
@@ -306,3 +307,22 @@ Retrieve all paths in a graph with a timeout of 500 milliseconds.
 ```
 GRAPH.QUERY wikipedia "MATCH p=()-[*]->() RETURN p" TIMEOUT 500
 ```
+
+---
+
+### EFFECTS_THRESHOLD
+
+Replicate modification via effect when average modification time > `EFFECTS_THRESHOLD`
+
+#### Default
+
+`EFFECTS_THRESHOLD` is 300 μs.
+
+#### Example
+
+Assume `MATCH (n) WHERE n.id < 100 SET n.v = n.v + 1` updated 5 nodes
+and the query total execution time is 5ms, the average modification time is:
+total execution time / number of changes:  5ms / 5 = 1ms.
+if the average modification time is greater then `EFFECTS_THRESHOLD` the query
+will be replicated to both replicas and AOF as a graph effect otherwise the original
+query will be replicated.
