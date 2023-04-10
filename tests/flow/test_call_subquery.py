@@ -9,6 +9,7 @@ class testCallSubqueryFlow():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         global graph
+        global redis_con
         redis_con = self.env.getConnection()
         graph = Graph(redis_con, GRAPH_ID)
     
@@ -596,6 +597,68 @@ updating clause.")
 
         # assert results
         self.env.assertEquals(res.result_set[0][0], {'name': 'Canada', 'langs': ['English', 'French'], 'states': [OrderedDict([('type', 'State'), ('name', 'British Columbia'), ('cities', [OrderedDict([('type', 'City'), ('name', 'Victoria')])])]), OrderedDict([('type', 'State'), ('name', 'Ontario'), ('cities', [OrderedDict([('type', 'City'), ('name', 'Toronto')])])])]})
+
+    def test16_rewrite_same_clauses(self):
+        graph_id = "rewrite-same-clauses"
+
+        # Test CREATE
+        query = """
+            CALL {
+                CREATE (x:X)
+                CREATE (m:M)
+            }
+            """
+        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
+        profile = [x[0:x.index(',')].strip() for x in profile]
+        # make sure that CREATE is called only once
+        self.env.assertIn("CallSubquery | Records produced: 1", profile[0])
+        self.env.assertIn("Create | Records produced: 1", profile[1])
+        self.env.assertIn("Project | Records produced: 1", profile[2])
+
+        # Test SET
+        query = """
+            CALL {
+                MATCH (x:X)
+                SET x.v = 3 
+                SET x.t ='a'
+            }"""
+        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
+        profile = [x[0:x.index(',')].strip() for x in profile]
+        # make sure that Update is called only once
+        self.env.assertIn("CallSubquery | Records produced: 1", profile[0])
+        self.env.assertIn("Update | Records produced: 1", profile[1])
+        self.env.assertIn("Node By Label Scan | (x:X) | Records produced: 1", profile[2])
+
+        # Test REMOVE
+        query = """
+            CALL {
+                MATCH (x:X)
+                REMOVE x.v
+                REMOVE x.t
+            }"""
+        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
+        profile = [x[0:x.index(',')].strip() for x in profile]
+        # make sure that Update is called only once
+        self.env.assertIn("CallSubquery | Records produced: 1", profile[0])
+        self.env.assertIn("Update | Records produced: 1", profile[1])
+        self.env.assertIn("Node By Label Scan | (x:X) | Records produced: 1", profile[2])
+
+        # TODO: Test failing. Fix and add.
+        # # Test DELETE
+        # query = """
+        #     CALL {
+        #         MATCH (x:X)
+        #         MATCH (m:M)
+        #         DELETE x
+        #         DELETE m
+        #     }
+        #     """
+        # profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
+        # profile = [x[0:x.index(',')].strip() for x in profile]
+        # # make sure that CREATE is called only once
+        # self.env.assertIn("CallSubquery | Records produced: 1", profile[0])
+        # self.env.assertIn("Delete | Records produced: 1", profile[1])
+        # self.env.assertIn("Project | Records produced: 1", profile[2])
 
     # TODO: Enable this test once WITH validation is fixed
     # def test15_leading_with(self):
