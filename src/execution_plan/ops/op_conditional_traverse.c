@@ -160,7 +160,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		for(op->record_count = 0; op->record_count < op->record_cap; op->record_count++) {
 			Record childRecord = OpBase_Consume(child);
 			// If the Record is NULL, the child has been depleted.
-			if(!childRecord) {
+			if(childRecord == NULL) {
 				// mark depleted flag, so this op will not consume more records
 				op->depleted = true;
 				break;

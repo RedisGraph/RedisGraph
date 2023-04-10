@@ -576,6 +576,26 @@ updating clause.")
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
 
+    # TODO: Test failing. Fix and add.
+    # def test15_complex(self):
+    #     """A more complex test, using more data and inner Call {} calls"""
+
+    #     # clean db
+    #     self.env.flush()
+    #     graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+    #     # create data
+    #     graph.query("CREATE (english: Language {name: 'English'}), (spanish: Language {name: 'Spanish'}), (french: Language {name: 'French'}), (coastal: Property {name: 'Coastal'}), (usa: Country {name: 'USA', extra_data: 'foo'}), (cali: State {name: 'California'}), (sacramento: City {name: 'Sacramento', extra_data: 'bar'}), (ny: State {name: 'New York'}), (nyc: City {name: 'New York City'}), (sacramento) - [:CITY_IN_STATE] -> (cali) - [:STATE_IN_COUNTRY] -> (usa), (cali) - [:HAS_STATE_PROP] -> (coastal), (nyc) - [:CITY_IN_STATE] -> (ny) - [:STATE_IN_COUNTRY] -> (usa), (ny) - [:HAS_STATE_PROP] -> (coastal), (nyc) - [:HAS_CITY_PROP] -> (coastal), (canada: Country {name: 'Canada'}), (ontario: State {name: 'Ontario', extra_data: 'baz'}), (toronto: City {name: 'Toronto'}), (bc: State {name: 'British Columbia'}), (victoria: City {name: 'Victoria'}), (toronto) - [:CITY_IN_STATE] -> (ontario) - [:STATE_IN_COUNTRY] -> (canada), (victoria) - [:CITY_IN_STATE] -> (bc) - [:STATE_IN_COUNTRY] -> (canada), (bc) - [:HAS_STATE_PROP] -> (coastal), (victoria) - [:HAS_CITY_PROP] -> (coastal), (canada) - [:OFFICIAL_LANGUAGE] -> (english), (canada) - [:OFFICIAL_LANGUAGE] -> (french), (mexico: Country {name: 'Mexico'}), (coahuila: State {name: 'Coahuila'}), (saltillo: City {name: 'Saltillo'}), (jalisco: State {name: 'Jalisco'}), (guadalajara: City {name: 'Guadalajara'}), (saltillo) - [:CITY_IN_STATE] -> (coahuila) - [:STATE_IN_COUNTRY] -> (mexico), (guadalajara) - [:CITY_IN_STATE] -> (jalisco) - [:STATE_IN_COUNTRY] -> (mexico), (jalisco) - [:HAS_STATE_PROP] -> (coastal), (mexico) - [:OFFICIAL_LANGUAGE] -> (spanish)")
+
+    #     query = """
+    #     MATCH (c:City)-[:CITY_IN_STATE]->(state)-[:STATE_IN_COUNTRY]->(country)-[:OFFICIAL_LANGUAGE]->({name: 'English'}) WITH collect(distinct country) as counties UNWIND counties as country MATCH (country)-[:OFFICIAL_LANGUAGE]->(lang) WITH country, collect(distinct lang.name) as langs MATCH (country)<-[:STATE_IN_COUNTRY]->(state) CALL { WITH state MATCH (state)<-[:CITY_IN_STATE]-(city:City) CALL { WITH city RETURN {type: labels(city)[0], name: city.name} as cityDetails} WITH state, collect(cityDetails) as citiesDetails RETURN {type: labels(state)[0], name:state.name, cities:citiesDetails} as stateDetails } WITH country,langs, collect(stateDetails) as statesDetails RETURN {name: country.name, langs: langs, states: statesDetails}
+    #     """
+
+    #     res = graph.query(query)
+
+    #     # assert results
+    #     self.env.assertEquals(res.result_set[0][0], Node(properties={'name': "Canada", 'langs': ["French", "English"], 'states': [{'name': "British Columbia", 'cities': [{'name': "Victoria", 'type': "City"}], 'type': "State"}, {'name': "Ontario", 'cities': [{'name': "Toronto", 'type': "City"}], 'type': "State"}]}))
+
     # TODO: Enable this test once WITH validation is fixed
     # def test15_leading_with(self):
     #     res = graph.query(
