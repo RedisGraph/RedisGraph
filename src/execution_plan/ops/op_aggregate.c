@@ -336,7 +336,7 @@ static OpResult AggregateReset
 	unsigned long elem_count = HashTableElemCount(op->groups);
 	HashTableRelease(op->groups);
 
-	op->groups = HashTableCreate(NULL);
+	op->groups = HashTableCreate(&dt);
 
 	// expand hashtable to previous element count
 	int res = HashTableExpand(op->groups, elem_count);
