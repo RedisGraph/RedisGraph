@@ -17,6 +17,13 @@
 #include "execution_plan_build/execution_plan_construct.h"
 
 #include <setjmp.h>
+#if defined ( __MACH__ ) && defined ( __APPLE__ )
+#include <machine/endian.h>
+#define _htobe64 htonll
+#else
+#include <endian.h>
+#define _htobe64 htobe64
+#endif
 
 // Allocate a new ExecutionPlan segment.
 inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
@@ -512,59 +519,84 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 			QueryGraph_Free(plan->connected_components[i]);
 		}
 		array_free(plan->connected_components);
-		plan->connected_components = NULL;
 	}
 
-	QueryGraph_Free(plan->query_graph);
-	plan->query_graph = NULL;
-	if(plan->record_map) {
+	if(plan->query_graph) {
+		QueryGraph_Free(plan->query_graph);
+	}
+	if(plan->record_map != NULL) {
 		raxFree(plan->record_map);
-		plan->record_map = NULL;
 	}
-	if(plan->record_pool) {
+	if(plan->record_pool != NULL) {
 		ObjectPool_Free(plan->record_pool);
-		plan->record_map = NULL;
 	}
-	if(plan->ast_segment) {
+	if(plan->ast_segment != NULL) {
 		AST_Free(plan->ast_segment);
-		plan->ast_segment = NULL;
 	}
 	rm_free(plan);
 }
 
-// Free an op tree and its associated ExecutionPlan segments.
-static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
-	if(op == NULL) return NULL;
-	ExecutionPlan *child_plan = NULL;
-	ExecutionPlan *prev_child_plan = NULL;
-	// Store a reference to the current plan.
-	ExecutionPlan *current_plan = (ExecutionPlan *)op->plan;
+// free an op tree
+static void _ExecutionPlan_FreeOpTree(OpBase *op) {
+	if(op == NULL) {
+		return;
+	}
+
 	for(uint i = 0; i < op->childCount; i ++) {
-		child_plan = _ExecutionPlan_FreeOpTree(op->children[i]);
-		// In most cases all children will share the same plan, but if they don't
-		// (for an operation like UNION) then free the now-obsolete previous child plan.
-		if(prev_child_plan != child_plan && prev_child_plan != current_plan) {
-			_ExecutionPlan_FreeInternals(prev_child_plan);
-			prev_child_plan = child_plan;
-		}
+		_ExecutionPlan_FreeOpTree(op->children[i]);
 	}
 
 	// Free this op.
 	OpBase_Free(op);
-
-	// Free each ExecutionPlan segment once all ops associated with it have been freed.
-	if(current_plan != child_plan) _ExecutionPlan_FreeInternals(child_plan);
-
-	return current_plan;
 }
 
-void ExecutionPlan_Free(ExecutionPlan *plan) {
-	if(plan == NULL) return;
+// collect all ExecutionPlans from the given operation tree
+static void _ExecutionPlan_AggregatePlansFromOps
+(
+	OpBase *opBase,     // operation to aggregate plans from
+	rax *plans          // plans map to insert to
+) {
+	ASSERT(plans != NULL);
 
-	// Free all ops and ExecutionPlan segments.
+	if(opBase == NULL) {
+		return;
+	}
+
+	// add the plan if it doesn't exist already
+	static_assert(sizeof(opBase->plan) == sizeof(uint64_t), "pointer size is not 64 bits");
+	const uint64_t plan_ptr_be = _htobe64((uint64_t)opBase->plan);
+	raxTryInsert(plans, (unsigned char *)&plan_ptr_be, sizeof(uint64_t), (void *)opBase->plan, NULL);
+
+	for(uint i = 0; i < opBase->childCount; i++) {
+		_ExecutionPlan_AggregatePlansFromOps(opBase->children[i], plans);
+	}
+}
+
+// free the execution plans and all of the operations
+void ExecutionPlan_Free(ExecutionPlan *plan) {
+	if(plan == NULL) {
+		return;
+	}
+
+	// traverse the execution-plan graph (DAG -> no endless cycles), while
+	// aggregating the different execution-plans
+	rax *plans = raxNew();
+	const uint64_t plan_ptr_be = _htobe64((uint64_t)plan);
+	raxInsert(plans, (unsigned char *)&plan_ptr_be, sizeof(uint64_t), plan, NULL);
+	_ExecutionPlan_AggregatePlansFromOps(plan->root, plans);
+
+	// free the operations of the plans (all plans)
 	_ExecutionPlan_FreeOpTree(plan->root);
 
-	// Free the final ExecutionPlan segment.
-	_ExecutionPlan_FreeInternals(plan);
-}
+	// free the plan internals
+	raxIterator it;
+	raxStart(&it, plans);
+	raxSeek(&it, "^", NULL, 0);
 
+	while(raxNext(&it)) {
+		_ExecutionPlan_FreeInternals(it.data);
+	}
+
+	raxStop(&it);
+	raxFree(plans);
+}
