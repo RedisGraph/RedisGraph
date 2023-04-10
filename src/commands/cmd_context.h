@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../info/info.h"
+#include "../graph/graphcontext.h"
 #include "cypher-parser.h"
 #include "../redismodule.h"
 #include "../util/simple_timer.h"

@@ -419,6 +419,7 @@ static void Config_cmd_info_max_queries_set
 	} else {
 		config.max_info_queries_count = count;
 	}
+}
 
 //------------------------------------------------------------------------------
 // effects threshold

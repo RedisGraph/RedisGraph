@@ -212,7 +212,6 @@ static void _UndoLog_Rollback_Create_Node
 			ATTRIBUTE_SET_COUNT(*n->attributes),
 			GETYPE_NODE
 		);
-		Graph_DeleteNode(ctx->gc->g, n);
 	}
 
 	Graph_DeleteNodes(ctx->gc->g, nodes, node_count);

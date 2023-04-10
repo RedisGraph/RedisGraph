@@ -65,7 +65,7 @@ void Graph_Explain(void *args) {
 	ExecutionPlan_Print(plan, ctx); // Print the execution plan.
 
 cleanup:
-	Info_IncrementNumberOfQueries(&gc->info, query_ctx->flags, query_ctx->status);
+	Info_IncrementNumberOfQueries(gc->info, query_ctx->flags, query_ctx->status);
 	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
 	if(lock_acquired) Graph_ReleaseLock(gc->g);
 	ExecutionCtx_Free(exec_ctx);

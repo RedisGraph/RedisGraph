@@ -89,6 +89,14 @@ QueryInfo *QueryInfo_Clone
     QueryInfo *qi
 );
 
+// used as a callback for the circular buffer
+void QueryInfo_CloneTo
+(
+    const void *item_to_clone,
+    void *destination_item,
+    void *user_data
+);
+
 // QueryInfo deleter callback
 void QueryInfoDeleter
 (

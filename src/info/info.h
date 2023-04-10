@@ -159,7 +159,7 @@ void Info_GetQueries
 (
     Info *info,                 // info
     QueryStage stage,           // wanted stage
-    QueryInfoStorage **storage  // result container
+    QueryInfoStorage *storage  // result container
 );
 
 // returns a pointer to the underlying storage for all the waiting queries.

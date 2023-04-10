@@ -114,10 +114,10 @@ static bool _collect_queries_info_from_graph
         return false;
     }
 
-    const uint64_t waiting_queries_count = Info_GetWaitingQueriesCount(&gc->info);
-    const uint64_t executing_queries_count = Info_GetExecutingQueriesCount(&gc->info);
-    const uint64_t reporting_queries_count = Info_GetReportingQueriesCount(&gc->info);
-    const uint64_t max_query_wait_time = Info_GetMaxQueryWaitTime(&gc->info);
+    const uint64_t waiting_queries_count = Info_GetWaitingQueriesCount(gc->info);
+    const uint64_t executing_queries_count = Info_GetExecutingQueriesCount(gc->info);
+    const uint64_t reporting_queries_count = Info_GetReportingQueriesCount(gc->info);
+    const uint64_t max_query_wait_time = Info_GetMaxQueryWaitTime(gc->info);
 
     CHECKED_ADD_OR_RETURN(
         global_info->total_waiting_queries_count,
@@ -306,7 +306,7 @@ static int _reply_graph_query_info
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         RECEIVED_TIMESTAMP_KEY_NAME,
-        info.received_at_ms
+        info.received_ts
     ));
 
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
@@ -529,16 +529,16 @@ static int _reply_with_graph_queries_of_stage
         return REDISMODULE_ERR;
     }
 
-    Info *info = &gc->info;
+    Info *info = gc->info;
     uint64_t iterated = 0;
 
-    QueryInfoStorage *storage = array_new(QueryInfo *, 0);
+    QueryInfoStorage storage = array_new(QueryInfo *, 0);
     Info_GetQueries(info, query_stage, &storage);
 
     if (_reply_graph_query_info_storage(
         ctx,
         query_stage,
-        *storage,
+        storage,
         is_compact_mode,
         max_count,
         &iterated)) {

@@ -43,15 +43,6 @@
 #define DICT_OK 0
 #define DICT_ERR 1
 
-// fake hash function
-// hash of key is simply key
-static inline uint64_t nop_hash
-(
-	const void *key
-) {
-	return ((uint64_t)key);
-}
-
 typedef struct dictEntry dictEntry; /* opaque */
 
 typedef struct dict dict;

@@ -101,7 +101,7 @@ static bool _should_replicate_effects(void)
 	return (avg_mod_time > (double)effects_threshold);
 }
 
-static void abort_and_check_timeout
+static bool abort_and_check_timeout
 (
 	GraphQueryCtx *gq_ctx,
 	ExecutionPlan *plan
@@ -130,7 +130,7 @@ static void _info_indicate_query_finished
 		return;
 	}
 
-	Info *info = &gq_ctx->graph_ctx->info;
+	Info *info = gq_ctx->graph_ctx->info;
 
 	Info_IncrementNumberOfQueries(info, gq_ctx->query_ctx->flags, gq_ctx->query_ctx->status);
 }
@@ -359,15 +359,9 @@ static void _ExecuteQuery(void *args) {
 			}
 
 			if(!ErrorCtx_EncounteredError()) {
-				Info_IndicateQueryStartedReporting(
-					&gq_ctx->graph_ctx->info,
-					gq_ctx->query_ctx
-				);
+				Info_IndicateQueryStartedReporting(gq_ctx->graph_ctx->info);
 				ExecutionPlan_Print(plan, rm_ctx);
-				Info_IndicateQueryFinishedReporting(
-					&gq_ctx->graph_ctx->info,
-					gq_ctx->query_ctx
-				);
+				Info_IndicateQueryFinishedReporting(gq_ctx->graph_ctx->info);
 			}
 		}
 		else {
@@ -422,15 +416,9 @@ static void _ExecuteQuery(void *args) {
 	if(!profile || ErrorCtx_EncounteredError()) {
 		// if we encountered an error, ResultSet_Reply will emit the error
 		// send result-set back to client
-		Info_IndicateQueryStartedReporting(
-			&gq_ctx->graph_ctx->info,
-			gq_ctx->query_ctx
-		);
+		Info_IndicateQueryStartedReporting(gq_ctx->graph_ctx->info);
 		ResultSet_Reply(result_set);
-		Info_IndicateQueryFinishedReporting(
-			&gq_ctx->graph_ctx->info,
-			gq_ctx->query_ctx
-		);
+		Info_IndicateQueryFinishedReporting(gq_ctx->graph_ctx->info);
 	}
 
 	if(readonly) Graph_ReleaseLock(gc->g); // release read lock

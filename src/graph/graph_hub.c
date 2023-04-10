@@ -181,13 +181,13 @@ void DeleteNodes
 				UndoLog_DeleteNode(undo_log, n);
 			}
 
-	GraphContext_DecreasePropertyNamesCount(
-		gc,
-		ATTRIBUTE_SET_COUNT(*n->attributes),
-		GETYPE_NODE);
-	Graph_DeleteNode(gc->g, n);
-		if(has_indices) {
-			_DeleteNodeFromIndices(gc, n);
+			GraphContext_DecreasePropertyNamesCount(
+			gc,
+			ATTRIBUTE_SET_COUNT(*n->attributes),
+			GETYPE_NODE);
+			if(has_indices) {
+				_DeleteNodeFromIndices(gc, n);
+			}
 		}
 	}
 
@@ -220,11 +220,6 @@ void DeleteEdges
 				_DeleteEdgeFromIndices(gc, edges + i);
 			}
 		}
-
-		GraphContext_DecreasePropertyNamesCount(
-			gc,
-			ATTRIBUTE_SET_COUNT(*e->attributes),
-			GETYPE_EDGE);
 	}
 
 	Graph_DeleteEdges(gc->g, edges, n);

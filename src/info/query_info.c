@@ -27,7 +27,7 @@ static millis_t QueryInfo_GetCountedMilliseconds
 ) {
     ASSERT(qi != NULL);
 
-    (millis_t) ms = TIMER_GET_ELAPSED_MILLISECONDS(qi->stage_timer);
+    millis_t ms = TIMER_GET_ELAPSED_MILLISECONDS(qi->stage_timer);
     QueryInfo_ResetStageTimer(qi);
 	return ms;
 }
@@ -138,6 +138,31 @@ QueryInfo *QueryInfo_Clone
     clone->report_duration = qi->report_duration;
     clone->stage = qi->stage;
     // clone timer will isn't relevant, stays {0}
+}
+
+// used as a callback for the circular buffer
+void QueryInfo_CloneTo
+(
+    const void *item_to_clone,
+    void *destination_item,
+    void *user_data
+) {
+    ASSERT(item_to_clone);
+    ASSERT(destination_item);
+    UNUSED(user_data);
+
+    QueryInfo *source = (QueryInfo*)item_to_clone;
+    QueryInfo *destination = (QueryInfo*)destination_item;
+
+    *destination = *source;
+
+    if (destination->query_string) {
+        destination->query_string = strdup(destination->query_string);
+    }
+
+    if (destination->graph_name) {
+        destination->graph_name = strdup(destination->graph_name);
+    }
 }
 
 // QueryInfo deleter callback

@@ -14,6 +14,7 @@
 #include "info.h"
 #include "util/arr.h"
 #include "util/num.h"
+#include "../util/dict.h"
 #include "../query_ctx.h"
 #include "util/thpool/pools.h"
 // #include "hdr/hdr_histogram.h"
@@ -30,6 +31,8 @@ static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 // forward declaration
 void QueryInfoDeleter(void *user_data, void *info);
 QueryInfo *QueryInfo_Clone(QueryInfo *qi);
+void QueryInfo_CloneTo(const void *item_to_clone, void *destination_item,
+    void *user_data);
 
 // returns the total number of queries recorded
 uint64_t FinishedQueryCounters_GetTotalCount
@@ -50,7 +53,7 @@ void FinishedQueryCounters_Add
     FinishedQueryCounters *lhs,
     const FinishedQueryCounters rhs
 ) {
-    REQUIRE_ARG(lhs);
+    ASSERT(lhs != NULL);
 
     lhs->ro_failed_n += rhs.ro_failed_n;
     lhs->ro_failed_n += rhs.ro_failed_n;
@@ -145,6 +148,15 @@ static bool _Info_UnlockEverything
     return !pthread_mutex_unlock(&info->mutex);
 }
 
+// fake hash function
+// hash of key is simply key
+static uint64_t _nop_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
 Info *Info_New(void) {
     // HACK: compensate for the main thread
     const uint64_t thread_count = ThreadPools_ThreadCount() + 1;
@@ -152,7 +164,7 @@ Info *Info_New(void) {
 	Info *info = rm_malloc(sizeof(Info));
 
     // initialize hashmap for the waiting queries (keys are QueryInfo *)
-    static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
+    static dictType dt = { _nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
 	NULL, NULL, NULL};
     info->waiting_queries = HashTableCreate(&dt);
 
@@ -182,14 +194,14 @@ void Info_AddToWaiting
 
     // acquire mutex
     bool res = _Info_LockEverything(info);
-    ASSERT(res != NULL);
+    ASSERT((void *)res != NULL);
 
     // add the query to the waiting dict
     HashTableAdd(info->waiting_queries, qi, qi);
 
     // release mutex
     res = _Info_UnlockEverything(info);
-    ASSERT(res != NULL);
+    ASSERT((void *)res != NULL);
 }
 
 // remove a query from the waiting_queries, insert it to the executing queue,
@@ -199,7 +211,7 @@ void Info_IndicateQueryStartedExecution
     Info *info,    // info
     QueryInfo *qi  // query info that is starting the execution stage
 ) {
-    ASSERT(ctx  != NULL);
+    ASSERT(qi != NULL);
     ASSERT(info != NULL);
 
     const int tid = ThreadPools_GetThreadID();
@@ -216,7 +228,7 @@ void Info_IndicateQueryStartedExecution
 
     // remove from waiting_queries
     int dict_res = HashTableDelete(info->waiting_queries, (void *)qi);
-	ASSERT(dict_res == NULLDICT_OK);
+	ASSERT(dict_res == DICT_OK);
 
 	// release mutex
     res = _Info_UnlockEverything(info);
@@ -258,14 +270,14 @@ void Info_executing_to_waiting
 
     // acquire mutex
     bool res = _Info_LockEverything(info);
-    ASSERT(res != NULL);
+    ASSERT(res == true);
 
     // add the query to the waiting dict
     HashTableAdd(info->waiting_queries, qi, qi);
 
     // release mutex
     res = _Info_UnlockEverything(info);
-    ASSERT(res != NULL);
+    ASSERT(res == true);
 }
 
 // indicates that the query has finished the execution and has started
@@ -466,16 +478,16 @@ void Info_GetQueries
 (
     Info *info,                 // info
     QueryStage stage,           // wanted stage
-    QueryInfoStorage **storage  // result container
+    QueryInfoStorage *storage  // result container
 ) {
-    QueryInfoStorage *st = *storage;
+    QueryInfoStorage st = *storage;
 
     _Info_LockEverything(info);
 
     // get the number of queries to traverse and copy (waiting or executing)
-    uint n_queries = stage == QueryStage_WAITING ?
+    uint n_queries = (stage == QueryStage_WAITING ?
         HashTableElemCount(info->waiting_queries) :
-        ThreadPools_ThreadCount + 1;
+        ThreadPools_ThreadCount() + 1);
 
     //--------------------------------------------------------------------------
     // waiting queries
@@ -511,7 +523,7 @@ void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count) {
             NULL);
         CircularBufferNRG_SetItemClone(
             finished_queries,
-            QueryInfo_Clone,
+            QueryInfo_CloneTo,
             NULL
         );
     } else {

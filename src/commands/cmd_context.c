@@ -4,8 +4,8 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "cmd_context.h"
 #include "RG.h"
+#include "cmd_context.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/pools.h"
