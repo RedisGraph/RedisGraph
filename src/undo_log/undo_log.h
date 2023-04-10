@@ -38,32 +38,36 @@ typedef enum {
 //------------------------------------------------------------------------------
 
 // undo node/edge creation
-typedef struct {
+typedef struct UndoCreateOp UndoCreateOp;
+struct UndoCreateOp {
 	union {
 		Node n;
 		Edge e;
 	};
-} UndoCreateOp;
+};
 
 // undo node deletion
-typedef struct {
+typedef struct UndoDeleteNodeOp UndoDeleteNodeOp;
+struct UndoDeleteNodeOp {
 	EntityID id;
 	AttributeSet set;
 	LabelID *labels;   // labels attached to deleted entity
 	uint label_count;  // number of labels attached to deleted entity
-} UndoDeleteNodeOp;
+};
 
 // undo edge deletion
-typedef struct {
+typedef struct UndoDeleteEdgeOp UndoDeleteEdgeOp;
+struct UndoDeleteEdgeOp {
 	EntityID id;
 	int relationID;             // Relation ID
 	NodeID srcNodeID;           // Source node ID
 	NodeID destNodeID;          // Destination node ID
 	AttributeSet set;
-} UndoDeleteEdgeOp;
+};
 
 // undo graph entity update
-typedef struct {
+typedef struct UndoUpdateOp UndoUpdateOp;
+struct UndoUpdateOp {
 	union {
 		Node n;
 		Edge e;
@@ -72,21 +76,23 @@ typedef struct {
 	AttributeSet set;             // old attribute set
 } UndoUpdateOp;
 
-typedef struct {
+typedef struct UndoLabelsOp UndoLabelsOp;
+struct UndoLabelsOp {
 	Node node;
-	int* label_lds;
-	size_t labels_count;
-} UndoLabelsOp;
+	LabelID* label_ids;
+	ushort labels_count;
+};
 
-
-typedef struct {
+typedef struct UndoAddSchemaOp UndoAddSchemaOp;
+struct UndoAddSchemaOp {
 	int schema_id;
 	SchemaType t;
-} UndoAddSchemaOp;
+};
 
-typedef struct {
+typedef struct UndoAddAttributeOp UndoAddAttributeOp;
+struct UndoAddAttributeOp {
 	Attribute_ID attribute_id;
-} UndoAddAttributeOp;
+};
 
 // Undo operation
 typedef struct {
@@ -107,6 +113,12 @@ typedef UndoOp *UndoLog;
 
 // create a new undo-log
 UndoLog UndoLog_New(void);
+
+// returns number of entries in log
+uint UndoLog_Length
+(
+	const UndoLog log  // log to query
+);
 
 //------------------------------------------------------------------------------
 // UndoLog add operations
@@ -182,11 +194,22 @@ void UndoLog_AddAttribute
 	Attribute_ID attribute_id    // id of the attribute
 );
 
-
 // rollback all modifications tracked by this undo log
 void UndoLog_Rollback
 (
 	UndoLog log
+);
+
+// clears undo-log from all entries
+void UndoLog_Clear
+(
+	UndoLog log  // log to clear
+);
+
+// free undo-operation
+void UndoLog_FreeOp
+(
+	UndoOp *op  // operation to free
 );
 
 // free UndoLog

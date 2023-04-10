@@ -84,6 +84,8 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 	int relation_id = EDGE_GET_RELATION_ID(e, g);
 
 	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
+	ASSERT(s != NULL);
+
 	Schema_AddEdgeToIndices(s, e);
 }
 
@@ -93,10 +95,11 @@ uint CreateNode
 	Node *n,
 	LabelID *labels,
 	uint label_count,
-	AttributeSet set
+	AttributeSet set,
+	bool log
 ) {
+	ASSERT(n  != NULL);
 	ASSERT(gc != NULL);
-	ASSERT(n != NULL);
 
 	Graph_CreateNode(gc->g, n, labels, label_count);
 	*n->attributes = set;
@@ -109,8 +112,10 @@ uint CreateNode
 	}
 
 	// add node creation operation to undo log
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_CreateNode(&query_ctx->undo_log, n);
+	if(log == true) {
+		UndoLog *undo_log = QueryCtx_GetUndoLog();
+		UndoLog_CreateNode(undo_log, n);
+	}
 
 	return ATTRIBUTE_SET_COUNT(set);
 }
@@ -121,74 +126,93 @@ uint CreateEdge
 	Edge *e,
 	NodeID src,
 	NodeID dst,
-	int r,
-	AttributeSet set
+	RelationID r,
+	AttributeSet set,
+	bool log
 ) {
+	ASSERT(e  != NULL);
 	ASSERT(gc != NULL);
-	ASSERT(e != NULL);
 
 	Graph_CreateEdge(gc->g, src, dst, r, e);
 	*e->attributes = set;
 
-	Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
+	Schema *s = GraphContext_GetSchemaByID(gc, r, SCHEMA_EDGE);
 	// all schemas have been created in the edge blueprint loop or earlier
 	ASSERT(s != NULL);
 	Schema_AddEdgeToIndices(s, e);
 
 	// add edge creation operation to undo log
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_CreateEdge(&query_ctx->undo_log, e);
+	if(log == true) {
+		UndoLog *undo_log = QueryCtx_GetUndoLog();
+		UndoLog_CreateEdge(undo_log, e);
+	}
 
 	return ATTRIBUTE_SET_COUNT(set);
 }
 
+// delete a node
+// remove the node from the relevant indexes
+// add node deletion operation to undo-log
+// return 1 on success, 0 otherwise
 void DeleteNodes
 (
 	GraphContext *gc,
 	Node *nodes,
-	uint count
+	uint n,
+	bool log
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(nodes != NULL);
 
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
 	bool has_indices = GraphContext_HasIndices(gc);
 
-	for(uint i = 0; i < count; i++) {
-		Node *n = nodes + i;
-		// add node deletion operation to undo log
-		UndoLog_DeleteNode(&query_ctx->undo_log, n);
+	if(log == true || has_indices) {
+		for(uint i = 0; i < n; i++) {
+			Node *n = nodes + i;
 
-		if(has_indices) {
-			_DeleteNodeFromIndices(gc, n);
+			if(log == true) {
+				// add node deletion operation to undo log
+				UndoLog_DeleteNode(undo_log, n);
+			}
+
+			if(has_indices == true) {
+				_DeleteNodeFromIndices(gc, n);
+			}
 		}
 	}
 
-	Graph_DeleteNodes(gc->g, nodes, count);
+	Graph_DeleteNodes(gc->g, nodes, n);
 }
 
 void DeleteEdges
 (
 	GraphContext *gc,
 	Edge *edges,
-	uint64_t count
+	uint64_t n,
+	bool log
 ) {
 	ASSERT(gc != NULL);
-	ASSERT(count > 0);
+	ASSERT(n > 0);
 	ASSERT(edges != NULL);
 
 	// add edge deletion operation to undo log
 	bool has_indecise = GraphContext_HasIndices(gc);
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	for (uint i = 0; i < count; i++) {
-		UndoLog_DeleteEdge(&query_ctx->undo_log, edges + i);
+	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
 
-		if(has_indecise) {
-			_DeleteEdgeFromIndices(gc, edges + i);
+	if(has_indecise == true || log == true) {
+		for (uint i = 0; i < n; i++) {
+			if(log == true) {
+				UndoLog_DeleteEdge(undo_log, edges + i);
+			}
+
+			if(has_indecise == true) {
+				_DeleteEdgeFromIndices(gc, edges + i);
+			}
 		}
 	}
 
-	Graph_DeleteEdges(gc->g, edges, count);
+	Graph_DeleteEdges(gc->g, edges, n);
 }
 
 // updates a graph entity attribute set. Returns as out params the number
@@ -200,7 +224,7 @@ void UpdateEntityProperties
 	const AttributeSet set,       // new attributes
 	GraphEntityType entity_type,  // entity type
 	uint *props_set_count,        // number of attributes set
-	uint *props_removed_count     // number of attributes removed
+	uint *props_removed_count,    // number of attributes removed
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(ge != NULL);
@@ -240,10 +264,12 @@ void UpdateEntityProperties
 
 	*ge->attributes = set;
 
-	if(entity_type == GETYPE_NODE) {
-		_AddNodeToIndices(gc, (Node *)ge);
-	} else {
-		_AddEdgeToIndices(gc, (Edge *)ge);
+	if(set_props + removed_props > 0) {
+		if(entity_type == GETYPE_NODE) {
+			_AddNodeToIndices(gc, (Node *)ge);
+		} else {
+			_AddEdgeToIndices(gc, (Edge *)ge);
+		}
 	}
 
 	*props_set_count = set_props;
@@ -256,8 +282,11 @@ void UpdateNodeLabels
 	Node *node,                  // the node to be updated
 	const char **add_labels,     // labels to add to the node
 	const char **remove_labels,  // labels to add to the node
-	uint *labels_added_count,    // number of labels added (out param)
-	uint *labels_removed_count   // number of labels removed (out param)
+	uint n_add_labels,           // number of labels to add
+	uint n_remove_labels,        // number of labels to remove
+	uint *n_labels_added,        // number of labels added (out param)
+	uint *n_labels_removed,      // number of labels removed (out param)
+	bool log                     // log this operation in undo-log
 ) {
 	ASSERT(gc   != NULL);
 	ASSERT(node != NULL);
@@ -267,20 +296,27 @@ void UpdateNodeLabels
 		return;
 	}
 
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	// if add_labels is specified its count must be > 0
+	ASSERT((add_labels != NULL && n_add_labels > 0) ||
+		   (add_labels == NULL && n_add_labels == 0));
+
+	// if remove_labels is specified its count must be > 0
+	ASSERT((remove_labels != NULL && n_remove_labels > 0) ||
+		   (remove_labels == NULL && n_remove_labels == 0));
+
+	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
 
 	if(add_labels != NULL) {
-		uint label_count = array_len(add_labels);
-		int add_labels_ids[label_count];
+		int add_labels_ids[n_add_labels];
 		uint add_labels_index = 0;
 
-		for (uint i = 0; i < label_count; i++) {
+		for (uint i = 0; i < n_add_labels; i++) {
 			const char *label = add_labels[i];
 			// get or create label matrix
 			const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			bool schema_created = false;
 			if(s == NULL) {
-				s = AddSchema(gc, label, SCHEMA_NODE);
+				s = AddSchema(gc, label, SCHEMA_NODE, log);
 				schema_created = true;
 			}
 
@@ -288,7 +324,8 @@ void UpdateNodeLabels
 			bool node_labeled = Graph_IsNodeLabeled(gc->g, node->id, schema_id);
 
 			if(!node_labeled) {
-				// sync matrix, make sure label matrix is of the right dimensions
+				// sync matrix
+				// make sure label matrix is of the right dimensions
 				if(schema_created) {
 					RG_Matrix m = Graph_GetLabelMatrix(gc->g, schema_id);
 				}
@@ -300,20 +337,22 @@ void UpdateNodeLabels
 		}
 
 		if(add_labels_index > 0) {
-			*labels_added_count = add_labels_index;
+			*n_labels_added = add_labels_index;
 
 			// update node's labels
 			Graph_LabelNode(gc->g, node->id ,add_labels_ids, add_labels_index);
-			UndoLog_AddLabels(&query_ctx->undo_log, node, add_labels_ids, add_labels_index);
+			if(log == true) {
+				UndoLog_AddLabels(undo_log, node, add_labels_ids,
+						add_labels_index);
+			}
 		}
 	}
 
 	if(remove_labels != NULL) {
-		uint label_count = array_len(remove_labels);
-		int remove_labels_ids[label_count];
+		int remove_labels_ids[n_remove_labels];
 		uint remove_labels_index = 0;
 
-		for (uint i = 0; i < label_count; i++) {
+		for (uint i = 0; i < n_remove_labels; i++) {
 			const char *label = remove_labels[i];
 
 			// label removal
@@ -331,45 +370,53 @@ void UpdateNodeLabels
 		}
 
 		if(remove_labels_index > 0) {
-			*labels_removed_count = remove_labels_index;
+			*n_labels_removed = remove_labels_index;
 
 			// update node's labels
-			Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node), remove_labels_ids,
-					remove_labels_index);
-			UndoLog_RemoveLabels(&query_ctx->undo_log, node, remove_labels_ids, remove_labels_index);
+			Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node),
+					remove_labels_ids, remove_labels_index);
+			if(log == true) {
+				UndoLog_RemoveLabels(undo_log, node, remove_labels_ids,
+						remove_labels_index);
+			}
 		}
 	}
 }
 
-
 Schema *AddSchema
 (
-	GraphContext *gc,             // graph context to add the schema
-	const char *label,            // schema label
-	SchemaType t                  // schema type (node/edge)
+	GraphContext *gc,   // graph context to add the schema
+	const char *label,  // schema label
+	SchemaType t,       // schema type (node/edge)
+	bool log            // should operation be logged in the undo-log      
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
 	Schema *s = GraphContext_AddSchema(gc, label, t);
-	UndoLog_AddSchema(&query_ctx->undo_log, s->id, s->type);
+
+	if(log == true) {
+		UndoLog *undo_log = QueryCtx_GetUndoLog();
+		UndoLog_AddSchema(undo_log, s->id, s->type);
+	}
+
 	return s;
 }
 
 Attribute_ID FindOrAddAttribute
 (
-	GraphContext *gc,     // graph context to add the attribute
-	const char *attribute // attribute name
+	GraphContext *gc,       // graph context to add the attribute
+	const char *attribute,  // attribute name
+	bool log                // should operation be logged in the undo-log
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(attribute != NULL);
 
 	bool created;
 	Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attribute, &created);
-	// In case there was an append, the latest id should be tracked
-	if(created) {
-		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-		UndoLog_AddAttribute(&query_ctx->undo_log, attr_id);
+	// in case there was an append, the latest id should be tracked
+	if(created == true && log == true) {
+		UndoLog *undo_log = QueryCtx_GetUndoLog();
+		UndoLog_AddAttribute(undo_log, attr_id);
 	}
 	return attr_id;
 }
