@@ -111,8 +111,8 @@ static void EffectFromNodeUpdate
 	// effect format:
 	//    effect type
 	//    entity ID
-	//    attribute id
-	//    attribute value
+	//    attribute count (=n)
+	//    attributes (id,value) pair
 	//--------------------------------------------------------------------------
 	
 	// entity type node
@@ -132,23 +132,10 @@ static void EffectFromNodeUpdate
 	fwrite_assert(&ENTITY_GET_ID(n), sizeof(EntityID), stream);
 
 	//--------------------------------------------------------------------------
-	// write attribute ID
+	// write attribute attribute set
 	//--------------------------------------------------------------------------
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	fwrite_assert(&op->attr_id, sizeof(Attribute_ID), stream);
-
-	//--------------------------------------------------------------------------
-	// write attribute value
-	//--------------------------------------------------------------------------
-
-	SIValue *v = GraphEntity_GetProperty((GraphEntity*)n, op->attr_id);
-	if(v == ATTRIBUTE_NOTFOUND) {
-		// attribute been deleted
-		*v = SI_NullVal();
-	}
-
-	SIValue_ToBinary(stream, v);
+	AttributeSet set = GraphEntity_GetAttributes((GraphEntity *)n);
+	WriteAttributeSet(stream, set);
 }
 
 // convert UndoUpdate into a Update effect
@@ -164,8 +151,11 @@ static void EffectFromEdgeUpdate
 	//    relation ID
 	//    src ID
 	//    dest ID
-	//    attribute id
-	//    attribute value
+	//    attribute count (=n)
+	//    attribute 1
+	//    attribute 2
+	//    attribute ...
+	//    attribute n
 	//--------------------------------------------------------------------------
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -209,22 +199,11 @@ static void EffectFromEdgeUpdate
 	fwrite_assert(&d, sizeof(NodeID), stream);
 
 	//--------------------------------------------------------------------------
-	// write attribute ID
+	// write attribute set
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&op->attr_id, sizeof(Attribute_ID), stream);
-
-	//--------------------------------------------------------------------------
-	// write attribute value
-	//--------------------------------------------------------------------------
-
-	SIValue *v = GraphEntity_GetProperty((GraphEntity*)e, op->attr_id);
-	if(v == ATTRIBUTE_NOTFOUND) {
-		// attribute been deleted
-		*v = SI_NullVal();
-	}
-
-	SIValue_ToBinary(stream, v);
+	AttributeSet set = GraphEntity_GetAttributes((GraphEntity *)e);
+	WriteAttributeSet(stream, set);
 }
 
 // convert UndoUpdate into a Update effect

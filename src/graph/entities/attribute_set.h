@@ -49,6 +49,12 @@ SIValue AttributeSet_GetIdx
 	Attribute_ID *attr_id    // attribute identifier
 );
 
+// retrieves the amount of attributes in an attribute set
+uint AttributeSet_GetCount
+(
+	const AttributeSet set  // attribute set
+);
+
 // adds an attribute to the set without cloning the SIValue
 void AttributeSet_AddNoClone
 (

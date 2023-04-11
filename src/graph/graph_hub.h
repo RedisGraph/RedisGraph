@@ -76,10 +76,8 @@ void UpdateEntityProperties
 	const AttributeSet set,       // attributes to update
 	GraphEntityType entity_type,  // the entity type (node/edge)
 	uint *props_set_count,        // number of properties set (out param)
-	uint *props_removed_count,    // number of properties removed (out param)
-	bool log                      // log update in undo-log
+	uint *props_removed_count     // number of properties removed (out param)
 );
-
 
 // this function sets the labels given in the rax "labels" to the given node
 // creates the label matrix if not exists

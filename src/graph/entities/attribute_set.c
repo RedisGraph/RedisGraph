@@ -112,6 +112,14 @@ SIValue AttributeSet_GetIdx
 	return attr->value;
 }
 
+// retrieves the amount of attributes in an attribute set
+uint AttributeSet_GetCount
+(
+	const AttributeSet set  // attribute set
+) {
+	return set->attr_count;
+}
+
 static AttributeSet AttributeSet_AddPrepare
 (
 	AttributeSet *set,  // set to update

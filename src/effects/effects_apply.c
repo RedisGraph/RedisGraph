@@ -305,8 +305,8 @@ static void ApplyUpdateEdge
 	//    relation ID
 	//    src ID
 	//    dest ID
-	//    attribute id
-	//    attribute value
+	//    attribute set count
+	//    attributes (id,value) pair
 	//--------------------------------------------------------------------------
 	
 	bool res;
@@ -354,18 +354,10 @@ static void ApplyUpdateEdge
 	ASSERT(t_id != INVALID_ENTITY_ID);
 
 	//--------------------------------------------------------------------------
-	// read attribute ID
+	// read attribute set
 	//--------------------------------------------------------------------------
 
-	fread_assert(&attr_id, sizeof(Attribute_ID), stream);
-	ASSERT(attr_id != ATTRIBUTE_ID_ALL && attr_id != ATTRIBUTE_ID_NONE);
-
-	//--------------------------------------------------------------------------
-	// read attribute value
-	//--------------------------------------------------------------------------
-
-	v = SIValue_FromBinary(stream);
-	ASSERT(SI_TYPE(v) & (SI_VALID_PROPERTY_VALUE | T_NULL));
+	AttributeSet set = ReadAttributeSet(stream);
 
 	//--------------------------------------------------------------------------
 	// fetch updated entity
@@ -384,16 +376,12 @@ static void ApplyUpdateEdge
 	Edge_SetDestNode(&e, &t);
 	Edge_SetRelationID(&e, r_id);
 
-	// construct update attribute-set
-	AttributeSet set = NULL;
-	AttributeSet_AddNoClone(&set, &attr_id, &v, 1, true);
-
+	//--------------------------------------------------------------------------
 	// perform update
-	UpdateEntityProperties(gc, (GraphEntity*)&e, set, GETYPE_EDGE, &props_set,
-			&props_removed, false);
+	//--------------------------------------------------------------------------
 
-	// clean up
-	AttributeSet_Free(&set);
+	UpdateEntityProperties(gc, (GraphEntity*)&e, set, GETYPE_EDGE, &props_set,
+			&props_removed);
 }
 
 // process UpdateNode effect
@@ -405,8 +393,8 @@ static void ApplyUpdateNode
 	//--------------------------------------------------------------------------
 	// effect format:
 	//    entity ID
-	//    attribute ID
-	//    attribute value
+	//    attribute set count
+	//    attributes (id,value) pair
 	//--------------------------------------------------------------------------
 
 	SIValue v;             // updated value
@@ -424,16 +412,10 @@ static void ApplyUpdateNode
 	fread_assert(&id, sizeof(EntityID), stream);
 
 	//--------------------------------------------------------------------------
-	// read attribute ID
+	// read attribute set
 	//--------------------------------------------------------------------------
 
-	fread_assert(&attr_id, sizeof(Attribute_ID), stream);
-
-	//--------------------------------------------------------------------------
-	// read attribute value
-	//--------------------------------------------------------------------------
-
-	v = SIValue_FromBinary(stream);
+	AttributeSet set = ReadAttributeSet(stream);
 
 	//--------------------------------------------------------------------------
 	// fetch updated entity
@@ -446,16 +428,12 @@ static void ApplyUpdateNode
 	UNUSED(res);
 	ASSERT(res == true);
 
-	// construct update attribute-set
-	AttributeSet set = NULL;
-	AttributeSet_AddNoClone(&set, &attr_id, &v, 1, true);
-
+	//--------------------------------------------------------------------------
 	// perform update
-	UpdateEntityProperties(gc, (GraphEntity*)&n, set, GETYPE_NODE, &props_set,
-			&props_removed, false);
+	//--------------------------------------------------------------------------
 
-	// clean up
-	AttributeSet_Free(&set);
+	UpdateEntityProperties(gc, (GraphEntity*)&n, set, GETYPE_NODE, &props_set,
+			&props_removed);
 }
 
 // process DeleteNode effect

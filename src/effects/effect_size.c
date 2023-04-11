@@ -8,6 +8,7 @@
 #include "effects.h"
 #include "../query_ctx.h"
 #include "../undo_log/undo_log.h"
+#include "../graph/entities/attribute_set.h"
 
 static size_t ComputeCreateNodeSize
 (
@@ -208,23 +209,32 @@ static size_t ComputeEdgeUpdateSize
 	//    relation ID
 	//    src ID
 	//    dest ID
-	//    attribute id
-	//    attribute value
+	//    attribute count (=n)
+	//    attributes (id,value) pair
 	//--------------------------------------------------------------------------
 
 	const Edge *e = &op->e;
 
 	// get updated value
-	SIValue *v = GraphEntity_GetProperty((GraphEntity*)e, op->attr_id);
+	AttributeSet set = GraphEntity_GetAttributes((GraphEntity *)e);
+	ushort attr_count = ATTRIBUTE_SET_COUNT(set);
 
 	// compute effect byte size
-	size_t s = sizeof(EffectType)                +  // effect type
-			   sizeof(EntityID)                  +  // edge ID
-			   sizeof(RelationID)                +  // relation ID
-			   sizeof(NodeID)                    +  // src node ID
-			   sizeof(NodeID)                    +  // dest node ID
-			   sizeof(Attribute_ID)              +  // attribute ID
-			   SIValue_BinarySize(v);               // attribute value
+	size_t s = sizeof(EffectType)                +   // effect type
+			   sizeof(EntityID)                  +   // edge ID
+			   sizeof(RelationID)                +   // relation ID
+			   sizeof(NodeID)                    +   // src node ID
+			   sizeof(NodeID)                    +   // dest node ID
+			   sizeof(ushort)                     +  // attribute count
+			   attr_count * sizeof(Attribute_ID);    // attribute IDs
+
+	// compute attribute-set size
+	for(ushort i = 0; i < attr_count; i++) {
+		// compute attribute size
+		Attribute_ID attr_id;
+		SIValue attr = AttributeSet_GetIdx(set, i, &attr_id);
+		s += SIValue_BinarySize(&attr);  // attribute value
+	}
 
 	return s;
 }
@@ -238,20 +248,30 @@ static size_t ComputeNodeUpdateSize
 	// effect format:
 	//    effect type
 	//    entity ID
-	//    attribute id
-	//    attribute value
+	//    attribute count (=n)
+	//    attribute (id, value) pairs
 	//--------------------------------------------------------------------------
 
 	const Node *n = &op->n;
 	
-	// get updated value
-	SIValue *v = GraphEntity_GetProperty((GraphEntity*)n, op->attr_id);
+	// get updated attribute set
+	// SIValue *v = GraphEntity_GetProperty((GraphEntity*)n, op->attr_id);
+	AttributeSet set = GraphEntity_GetAttributes((GraphEntity *)n);
+	ushort attr_count = ATTRIBUTE_SET_COUNT(set);
 
 	// compute effect byte size
-	size_t s = sizeof(EffectType)                +  // effect type
-			   sizeof(NodeID)                    +  // node ID
-			   sizeof(Attribute_ID)              +  // attribute ID
-			   SIValue_BinarySize(v);               // attribute value
+	size_t s = sizeof(EffectType)                +              // effect type
+			   sizeof(NodeID)                    +              // node ID
+			   sizeof(uint16_t)                  +              // attribute cnt
+			   attr_count * sizeof(Attribute_ID);    // attribute IDs
+
+	// compute attribute-set size
+	for(ushort i = 0; i < attr_count; i++) {
+		// compute attribute size
+		Attribute_ID attr_id;
+		SIValue attr = AttributeSet_GetIdx(set, i, &attr_id);
+		s += SIValue_BinarySize(&attr);  // attribute value
+	}
 
 	return s;
 }

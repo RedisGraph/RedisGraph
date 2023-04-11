@@ -224,7 +224,7 @@ void UpdateEntityProperties
 	const AttributeSet set,       // new attributes
 	GraphEntityType entity_type,  // entity type
 	uint *props_set_count,        // number of attributes set
-	uint *props_removed_count,    // number of attributes removed
+	uint *props_removed_count    // number of attributes removed
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(ge != NULL);

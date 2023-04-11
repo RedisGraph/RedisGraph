@@ -74,7 +74,7 @@ struct UndoUpdateOp {
 	};
 	GraphEntityType entity_type;  // node/edge
 	AttributeSet set;             // old attribute set
-} UndoUpdateOp;
+};
 
 typedef struct UndoLabelsOp UndoLabelsOp;
 struct UndoLabelsOp {

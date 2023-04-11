@@ -272,7 +272,7 @@ void EvalEntityUpdates
 				break;
 			}
 
-			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute);
+			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
 			AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v);
 			SIValue_Free(v);
 			continue;
@@ -315,7 +315,7 @@ void EvalEntityUpdates
 					break;
 				}
 
-				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval);
+				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval, true);
 				AttributeSet_Set_Allow_Null(&update->attributes, attr_id, value);
 			}
 
