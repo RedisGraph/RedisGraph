@@ -48,7 +48,7 @@ CommandCtx *CommandCtx_New
 	TIMER_ASSIGN(context->timer, timer);
 	context->received_timestamp = received_timestamp;
 	context->should_track_info  = should_track_info;
-	context->query_ctx          = NULL;
+	context->query_ctx          = query_ctx;
 
 	if(cmd_name) {
 		// Make a copy of command name.

@@ -314,6 +314,11 @@ static void _ExecuteQuery(void *args) {
 	if (command_ctx->thread == EXEC_THREAD_WRITER) {
 		QueryCtx_SetTLS(query_ctx);
 		CommandCtx_TrackCtx(command_ctx);
+
+		// set the stage of the query
+		Info *info = gc->info;
+		QueryInfo *qi = query_ctx->qi;
+		Info_IndicateQueryStartedExecution(info, qi);
 	}
 
 	// instantiate the query ResultSet

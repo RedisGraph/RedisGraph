@@ -529,6 +529,9 @@ void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count) {
     } else {
         CircularBufferNRG_SetCapacity(&finished_queries, count);
     }
+
+    res = pthread_rwlock_unlock(&finished_queries_rwlock);
+    ASSERT(res == 0);
 }
 
 void Info_ViewAllFinishedQueries
