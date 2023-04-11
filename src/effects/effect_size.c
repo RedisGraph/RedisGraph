@@ -225,7 +225,7 @@ static size_t ComputeEdgeUpdateSize
 			   sizeof(RelationID)                +   // relation ID
 			   sizeof(NodeID)                    +   // src node ID
 			   sizeof(NodeID)                    +   // dest node ID
-			   sizeof(ushort)                     +  // attribute count
+			   sizeof(ushort)                    +   // attribute count
 			   attr_count * sizeof(Attribute_ID);    // attribute IDs
 
 	// compute attribute-set size
@@ -260,10 +260,10 @@ static size_t ComputeNodeUpdateSize
 	ushort attr_count = ATTRIBUTE_SET_COUNT(set);
 
 	// compute effect byte size
-	size_t s = sizeof(EffectType)                +              // effect type
-			   sizeof(NodeID)                    +              // node ID
-			   sizeof(uint16_t)                  +              // attribute cnt
-			   attr_count * sizeof(Attribute_ID);    // attribute IDs
+	size_t s = sizeof(EffectType)                +  // effect type
+			   sizeof(NodeID)                    +  // node ID
+			   sizeof(uint16_t)                  +  // attribute cnt
+			   attr_count * sizeof(Attribute_ID);   // attribute IDs
 
 	// compute attribute-set size
 	for(ushort i = 0; i < attr_count; i++) {

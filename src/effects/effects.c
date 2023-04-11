@@ -152,10 +152,7 @@ static void EffectFromEdgeUpdate
 	//    src ID
 	//    dest ID
 	//    attribute count (=n)
-	//    attribute 1
-	//    attribute 2
-	//    attribute ...
-	//    attribute n
+	//    attributes (id,value) pair
 	//--------------------------------------------------------------------------
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
