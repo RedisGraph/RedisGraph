@@ -13,6 +13,7 @@
 #include "../util/rmalloc.h"
 #include "../ast/ast_shared.h"
 #include "../datatypes/array.h"
+#include "../arithmetic/arithmetic_expression_construct.h"
 
 // forward declarations
 void _FilterTree_DeMorgan
@@ -1147,6 +1148,46 @@ void FilterTree_Print
 		return;
 	}
 	_FilterTree_Print(root, 0);
+}
+
+void FilterTree_ToString
+(
+	const FT_FilterNode *root,
+	sds *buff
+) {
+	ASSERT(root && buff && *buff);
+
+	char *exp = NULL;
+	char *left = NULL;
+	char *right = NULL;
+
+	if(root == NULL) return;
+
+	switch(root->t) {
+		case FT_N_EXP:
+			AR_EXP_ToString(root->exp.exp, &exp);
+			*buff = sdscatprintf(*buff, "%s",  exp);
+			rm_free(exp);
+			break;
+		case FT_N_PRED:
+			AR_EXP_ToString(root->pred.lhs, &left);
+			AR_EXP_ToString(root->pred.rhs, &right);
+			*buff = sdscatprintf(*buff, "%s %s %s", left, ASTOpToSymbolString(root->pred.op), right);
+			rm_free(left);
+			rm_free(right);
+			break;
+		case FT_N_COND:
+			*buff = sdscatprintf(*buff, "(");
+			FilterTree_ToString(LeftChild(root), buff);
+			*buff = sdscatprintf(*buff, " %s ", ASTOpToSymbolString(root->cond.op));
+			FilterTree_ToString(RightChild(root), buff);
+			*buff = sdscatprintf(*buff, ")");
+			break;
+		default:
+			ASSERT(false);
+			break;
+	}
+	
 }
 
 void FilterTree_Free

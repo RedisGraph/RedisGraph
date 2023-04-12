@@ -28,7 +28,7 @@ class testProfile(FlowTestsBase):
 
         self.env.assertIn("Results | Records produced: 2", profile)
         self.env.assertIn("Project | Records produced: 2", profile)
-        self.env.assertIn("Filter | Records produced: 2", profile)
+        self.env.assertIn("Filter | p.v > 1 | Records produced: 2", profile)
         self.env.assertIn("Node By Label Scan | (p:Person) | Records produced: 3", profile)
 
     def test02_profile_after_op_reset(self):
@@ -39,3 +39,27 @@ class testProfile(FlowTestsBase):
         self.env.assertIn("Update | Records produced: 0", profile)
         self.env.assertIn("Conditional Variable Length Traverse | (a)-[@anon_1*1..INF]->(@anon_0) | Records produced: 0", profile)
         self.env.assertIn("Node By Label Scan | (a:L) | Records produced: 0", profile)
+
+    # TODO: Test under development
+    # def test03_profile_filter_information(self):
+    #     query = """
+    #             MATCH (a:Actor)-[r:ACTED_IN]-(m:Movie)
+    #                 WHERE a.name = 'Mark Hamill'
+    #                     AND (a.name STARTS WITH 'M' OR a.name CONTAINS 'H')
+    #             RETURN a.name, m.title
+    #             """
+
+    #     query = """
+    #             WITH 'Ham' AS text
+    #             MATCH (a:Actor)-[r:ACTED_IN]-(m:Movie)
+    #                 WHERE a.name = 'Mark Hamill'
+    #                     AND (a.name STARTS WITH 'M' OR a.name CONTAINS text)
+    #             RETURN a.name, m.title
+    #             """
+        
+    #     query = """
+    #             MATCH (a:Actor)-[r:ACTED_IN]-(m:Movie)
+    #                 WHERE a.name = 'Mark Hamill'
+    #                     AND (a.id%2=1)+1 >= 1
+    #             RETURN a"
+    #             """

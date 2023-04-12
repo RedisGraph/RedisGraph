@@ -225,7 +225,7 @@ class testWithClause(FlowTestsBase):
         self.env.assertEqual(actual_result.result_set, expected)
         # Verify that the Filter op appears directly above the Apply operation in the ExecutionPlan.
         plan = redis_graph.execution_plan(query)
-        self.env.assertTrue(re.search('Filter\s+Apply', plan))
+        self.env.assertTrue(re.search('Filter | b.fakeprop = true\s+Apply', plan))
 
         # Verify that filters on projected aliases do not get placed before the projection op.
         query = """UNWIND [1] AS a WITH a AS b, 'projected' AS a WHERE a = 1 RETURN a"""
@@ -233,13 +233,13 @@ class testWithClause(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected = [] # No results should be returned
         self.env.assertEqual(actual_result.result_set, expected)
-        self.env.assertTrue(re.search('Filter\s+Project', plan))
+        self.env.assertTrue(re.search('Filter | a = 1\s+Project', plan))
 
         query = """UNWIND [1] AS a WITH a AS b, 'projected' AS a WHERE a = 'projected' RETURN a"""
         plan = redis_graph.execution_plan(query)
         actual_result = redis_graph.query(query)
         expected = [['projected']] # The projected string should be returned
-        self.env.assertTrue(re.search('Filter\s+Project', plan))
+        self.env.assertTrue(re.search('Filter | a = \'projected\'\s+Project', plan))
 
     def test11_valid_order_by_aliases(self):
         # Verify that ORDER BY aliases match previously defined references

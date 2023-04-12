@@ -8,6 +8,7 @@
 
 #include <stddef.h>
 #include "../redismodule.h"
+#include "../util/sds/sds.h"
 #include "../ast/ast_shared.h"
 #include "../../deps/rax/rax.h"
 #include "../execution_plan/record.h"
@@ -221,3 +222,9 @@ void FilterTree_Free
 	FT_FilterNode *root
 );
 
+// gets a string representation of given filter tree
+void FilterTree_ToString
+(
+	const FT_FilterNode *root,
+	sds *buff
+);

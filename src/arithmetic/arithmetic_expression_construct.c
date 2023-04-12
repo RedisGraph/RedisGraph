@@ -57,6 +57,18 @@ static inline const char *_ASTOpToString(AST_Operator op) {
 	return OpName[op];
 }
 
+// The OpSymbol array is strictly parallel with the AST_Operator enum.
+static const char *OpSymbol[OP_COUNT] = {
+	"UNKNOWN", "NULL", "OR", "XOR", "AND", "NOT", "=", "!=", "<", ">", "<=",  ">=",
+	"+", "-", "*", "/", "%", "^", "CONTAINS", "STARTS WITH",
+	"ENDS WITH", "IN", "IS NULL", "IS NOT NULL", "XNOR"
+};
+
+const char *ASTOpToSymbolString(AST_Operator op) {
+	ASSERT(op < OP_COUNT);
+	return OpSymbol[op];
+}
+
 static AR_ExpNode *AR_EXP_NewOpNodeFromAST(AST_Operator op, uint child_count) {
 	const char *func_name = _ASTOpToString(op);
 	return AR_EXP_NewOpNode(func_name, true, child_count);

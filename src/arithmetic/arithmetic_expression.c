@@ -857,12 +857,16 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 		char binary_op = 0;
 
 		const char *func_name = AR_EXP_GetFuncName(root);
-		if(strcmp(func_name, "ADD") == 0) binary_op = '+';
-		else if(strcmp(func_name, "SUB") == 0) binary_op = '-';
-		else if(strcmp(func_name, "MUL") == 0) binary_op = '*';
-		else if(strcmp(func_name, "DIV") == 0)  binary_op = '/';
+		if(strcasecmp(func_name, "EQ") == 0)  binary_op = '=';
+		else if(strcasecmp(func_name, "ADD") == 0) binary_op = '+';
+		else if(strcasecmp(func_name, "SUB") == 0) binary_op = '-';
+		else if(strcasecmp(func_name, "MUL") == 0) binary_op = '*';
+		else if(strcasecmp(func_name, "DIV") == 0) binary_op = '/';
+		else if(strcasecmp(func_name, "MOD") == 0) binary_op = '%';
+		else if(strcasecmp(func_name, "POW") == 0) binary_op = '^';
 
 		if(binary_op) {
+			*bytes_written += sprintf((*str + *bytes_written), "(");
 			_AR_EXP_ToString(root->op.children[0], str, str_size, bytes_written);
 
 			/* Make sure there are at least 64 bytes in str. */
@@ -872,30 +876,49 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 			}
 
 			*bytes_written += sprintf((*str + *bytes_written), " %c ", binary_op);
-
 			_AR_EXP_ToString(root->op.children[1], str, str_size, bytes_written);
+			*bytes_written += sprintf((*str + *bytes_written), ")");
 		} else {
-			/* Operation isn't necessarily a binary operation, use function call representation. */
-			*bytes_written += sprintf((*str + *bytes_written), "%s(", AR_EXP_GetFuncName(root));
-
-			for(int i = 0; i < root->op.child_count ; i++) {
-				_AR_EXP_ToString(root->op.children[i], str, str_size, bytes_written);
+			if(strcmp(func_name, "property") == 0) {
+				// For property operation don't use the function call representation
+				// to get a more readable string, like: a.prop
 
 				/* Make sure there are at least 64 bytes in str. */
 				if((*str_size - strlen(*str)) < 64) {
 					*str_size += 128;
 					*str = rm_realloc(*str, sizeof(char) * *str_size);
 				}
-				if(i < (root->op.child_count - 1)) {
-					*bytes_written += sprintf((*str + *bytes_written), ",");
+				_AR_EXP_ToString(root->op.children[0], str, str_size, bytes_written);
+				*bytes_written += sprintf((*str + *bytes_written), ".");
+				SIValue_ToString(root->op.children[1]->operand.constant, str, str_size, bytes_written);
+			} else {
+				/* Operation isn't necessarily a binary operation, use function call representation. */
+				*bytes_written += sprintf((*str + *bytes_written), "%s(", func_name);
+				for(int i = 0; i < root->op.child_count ; i++) {
+					_AR_EXP_ToString(root->op.children[i], str, str_size, bytes_written);
+
+					/* Make sure there are at least 64 bytes in str. */
+					if((*str_size - strlen(*str)) < 64) {
+						*str_size += 128;
+						*str = rm_realloc(*str, sizeof(char) * *str_size);
+					}
+					if(i < (root->op.child_count - 1)) {
+						*bytes_written += sprintf((*str + *bytes_written), ", ");
+					}
 				}
+				*bytes_written += sprintf((*str + *bytes_written), ")");
 			}
-			*bytes_written += sprintf((*str + *bytes_written), ")");
 		}
 	} else {
 		// Concat Operand node.
 		if(root->operand.type == AR_EXP_CONSTANT) {
+			if(root->operand.constant.type == T_STRING) {
+				*bytes_written += sprintf((*str + *bytes_written), "'");
+			}
 			SIValue_ToString(root->operand.constant, str, str_size, bytes_written);
+			if(root->operand.constant.type == T_STRING) {
+				*bytes_written += sprintf((*str + *bytes_written), "'");
+			}
 		} else {
 			*bytes_written += sprintf((*str + *bytes_written), "%s", root->operand.variadic.entity_alias);
 		}
