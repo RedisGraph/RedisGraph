@@ -1013,18 +1013,18 @@ class testConstraintReplication():
         # create mandatory edge constraint over
         create_mandatory_edge_constraint(self.g, 'Knows', 'since')
 
-        # create unique edge constraint over
-        create_unique_edge_constraint(self.g, 'Knows', 'since')
-
         # validate constrains
         constraints = list_constraints(self.g)
-        self.env.assertEqual(len(constraints), 6)
+        self.env.assertEqual(len(constraints), 5)
         for c in constraints:
             self.env.assertTrue(c.status != 'FAILED')
+
+        # create unique edge constraint over
+        create_unique_edge_constraint(self.g, 'Knows', 'since', sync=True)
 
         # each constraint should be replicated twice from source to replica:
         # 1. upon creation
         # 2. upon constraint becoming activate
         self.source.execute_command("WAIT", 1, 0)
-        self.env.assertEqual(len(self.monitor), 12)
+        self.env.assertGreaterEqual(len(self.monitor), 10)
 

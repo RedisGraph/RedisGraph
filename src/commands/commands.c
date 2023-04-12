@@ -17,6 +17,7 @@ GRAPH_Commands CommandFromString(const char *cmd_name) {
 	if (!strcasecmp(cmd_name, "graph.SLOWLOG")) return CMD_SLOWLOG;
 	if (!strcasecmp(cmd_name, "graph.CONFIG")) return CMD_CONFIG;
 	if (!strcasecmp(cmd_name, "graph.LIST")) return CMD_LIST;
+	if (!strcasecmp(cmd_name, "graph.EFFECT")) return CMD_EFFECT;
 
 	// we shouldn't reach this point
 	ASSERT(false);

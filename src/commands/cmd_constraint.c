@@ -263,7 +263,7 @@ static bool _Constraint_Create
 
 	Attribute_ID attr_ids[n];
 	for(uint i = 0; i < n; i++) {
-		attr_ids[i] = FindOrAddAttribute(gc, props[i]);
+		attr_ids[i] = FindOrAddAttribute(gc, props[i], true);
 	}
 
 	//--------------------------------------------------------------------------
@@ -304,7 +304,7 @@ static bool _Constraint_Create
 	SchemaType st = (et == GETYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
 	Schema *s = GraphContext_GetSchema(gc, lbl, st);
 	if(s == NULL) {
-		s = AddSchema(gc, lbl, st);
+		s = AddSchema(gc, lbl, st, true);
 	}
 	int s_id = Schema_GetID(s);
 
@@ -351,8 +351,8 @@ cleanup:
 
 	// operation failed perform clean up
 	if(res == false) {
-		UndoLog undolog = QueryCtx_GetUndoLog();
-		UndoLog_Rollback(undolog);
+		UndoLog *undolog = QueryCtx_GetUndoLog();
+		UndoLog_Rollback(*undolog);
 	}
 
 	// release graph R/W lock
