@@ -16,6 +16,7 @@ static void ArgumentFree(OpBase *opBase);
 OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables) {
 	Argument *op = rm_malloc(sizeof(Argument));
 	op->r = NULL;
+	op->reset = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ARGUMENT, "Argument", NULL,
@@ -47,13 +48,17 @@ static OpResult ArgumentReset(OpBase *opBase) {
 		OpBase_DeleteRecord(arg->r);
 		arg->r = NULL;
 	}
+	if(arg->reset) arg->r = OpBase_CloneRecord(arg->reset);
 
 	return OP_OK;
 }
 
 void Argument_AddRecord(Argument *arg, Record r) {
-	ASSERT(!arg->r && "tried to insert into a populated Argument op");
+	if(arg->r) OpBase_DeleteRecord(arg->r);
 	arg->r = r;
+	// update the Record to populate in the event of an ArgumentReset
+	if(arg->reset) OpBase_DeleteRecord(arg->reset);
+	arg->reset = OpBase_CloneRecord(r);
 }
 
 static inline OpBase *ArgumentClone(const ExecutionPlan *plan, const OpBase *opBase) {
@@ -66,6 +71,10 @@ static void ArgumentFree(OpBase *opBase) {
 	if(arg->r) {
 		OpBase_DeleteRecord(arg->r);
 		arg->r = NULL;
+	}
+	if(arg->reset) {
+		OpBase_DeleteRecord(arg->reset);
+		arg->reset = NULL;
 	}
 }
 

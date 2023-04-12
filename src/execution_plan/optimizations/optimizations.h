@@ -20,11 +20,12 @@ void orderExpressions(
 );
 
 void compactFilters(ExecutionPlan *plan);
+void migrateArguments(ExecutionPlan *plan);
 void reduceScans(ExecutionPlan *plan);
 void utilizeIndices(ExecutionPlan *plan);
 void seekByID(ExecutionPlan *plan);
 void filterVariableLengthEdges(ExecutionPlan *plan);
-void reduceCartesianProductStreamCount(ExecutionPlan *plan);
+void reduceCartesianProduct(ExecutionPlan *plan);
 void applyJoin(ExecutionPlan *plan);
 void reduceFilters(ExecutionPlan *plan);
 void reduceTraversal(ExecutionPlan *plan);
