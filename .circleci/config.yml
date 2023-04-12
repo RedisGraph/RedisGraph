@@ -124,6 +124,8 @@ commands:
             rm -f tests/tck/logs/*.{aof,rdb}
           when: always
       - store_artifacts:
+          path: tests/unit/logs
+      - store_artifacts:
           path: tests/flow/logs
       - store_artifacts:
           path: tests/tck/logs
@@ -745,7 +747,7 @@ workflows:
             parameters:
               redis_version: ["6.0", "6.2", "7", "unstable"]
       - valgrind-test:
-          <<: *on-integ-branch-cron
+          name: nightly-valgrind
       - fuzzer:
           name: nightly-fuzzer
 

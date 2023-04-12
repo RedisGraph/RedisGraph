@@ -75,7 +75,7 @@ void Edge_SetDestNode
 void Edge_SetRelationID
 (
 	Edge *e,
-	int relationID
+	RelationID relationID
 ) {
 	ASSERT(e);
 	e->relationID = relationID;

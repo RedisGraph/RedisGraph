@@ -6,7 +6,7 @@ def _wait_on_index(graph, label, t):
     RETURN count(1)"""
 
     while True:
-        result = graph.query(q)
+        result = graph.query(q, read_only=True)
         if result.result_set[0][0] == 0:
             break
 
@@ -31,7 +31,7 @@ def list_indicies(graph, label=None, t=None):
             q += f" WHERE type = '{t}'"
         q += " RETURN type, label, properties, language, stopwords, entitytype, info, status"
 
-    return graph.query(q)
+    return graph.query(q, read_only=True)
 
 def create_node_exact_match_index(graph, label, *properties, sync=False):
     q = f"CREATE INDEX for (n:{label}) on (" + ','.join(map('n.{0}'.format, properties)) + ")"
@@ -58,14 +58,15 @@ def drop_fulltext_index(graph, label):
 # validate index is being populated
 def index_under_construction(graph, label, t):
     params = {'lbl': label, 'typ': t}
-    res = graph.query("CALL db.indexes() YIELD type, label, status WHERE label = $lbl AND type = $typ RETURN status", params)
+    q = "CALL db.indexes() YIELD type, label, status WHERE label = $lbl AND type = $typ RETURN status"
+    res = graph.query(q, params, read_only=True)
     return "UNDER CONSTRUCTION" in res.result_set[0][0]
 
 # wait for all graph indices to by operational
 def wait_for_indices_to_sync(graph):
     q = "CALL db.indexes() YIELD status WHERE status <> 'OPERATIONAL' RETURN count(1)"
     while True:
-        result = graph.query(q)
+        result = graph.query(q, read_only=True)
         if result.result_set[0][0] == 0:
             break
         time.sleep(0.5) # sleep 500ms
