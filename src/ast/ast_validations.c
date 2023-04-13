@@ -1567,7 +1567,6 @@ static AST_Validation _ValidateQueryTermination
 	   type != CYPHER_AST_SET      &&
 	   type != CYPHER_AST_REMOVE   &&
 	   type != CYPHER_AST_CALL     &&
-	   type != CYPHER_AST_REMOVE   &&
 	   type != CYPHER_AST_FOREACH
 	  ) {
 		ErrorCtx_SetError("Query cannot conclude with %s (must be RETURN or an update clause)",

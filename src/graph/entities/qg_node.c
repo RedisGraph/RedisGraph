@@ -117,7 +117,8 @@ int QGNode_GetLabelID
 	return labelId;
 }
 
-bool QGNode_IsLabelIdxOptional
+// returns whether the 'idx' label is optional
+bool QGNode_IsLabelOptional
 (
 	const QGNode *n,
 	uint idx

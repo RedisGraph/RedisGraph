@@ -16,13 +16,13 @@
 struct QGEdge;
 
 typedef struct {
-	int *labelsID;                    // labels ID array
-	bool *optional;                   // array holding true for optional labels
-	const char *alias;                // user-provided alias associated with this node
-	const char **labels;              // labels string array
-	bool highly_connected;            // node degree > 2
-	struct QGEdge **outgoing_edges;   // array of outgoing edges (ME)->(DEST)
-	struct QGEdge **incoming_edges;   // array of incoming edges (ME)<-(SRC)
+	int *labelsID;                   // labels ID array
+	bool *optional;                  // labels[i] is optional => optional[i]=true
+	const char *alias;               // user-provided alias associated with this node
+	const char **labels;             // labels string array
+	bool highly_connected;           // node degree > 2
+	struct QGEdge **outgoing_edges;  // array of outgoing edges (ME)->(DEST)
+	struct QGEdge **incoming_edges;  // array of incoming edges (ME)<-(SRC)
 } QGNode;
 
 // creates a new node
@@ -63,7 +63,7 @@ int QGNode_GetLabelID
 );
 
 // returns whether the 'idx' label is optional
-bool QGNode_IsLabelIdxOptional
+bool QGNode_IsLabelOptional
 (
 	const QGNode *n,
 	uint idx

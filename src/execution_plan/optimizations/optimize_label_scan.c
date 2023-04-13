@@ -68,7 +68,7 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 
 	for(uint i = 0; i < label_count; i++) {
 		// don't consider optional labels
-		if (QGNode_IsLabelIdxOptional(qn, i)) {
+		if (QGNode_IsLabelOptional(qn, i)) {
 			continue;
 		}
 		uint64_t nnz;
