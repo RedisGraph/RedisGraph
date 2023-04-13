@@ -1,9 +1,18 @@
 from common import *
 from collections import Counter
 from collections import OrderedDict
+from execution_plan_util import locate_operation
+from execution_plan_util import count_operation
 
 graph = None
 GRAPH_ID = "G"
+
+def _check_subquery_compression(plan: ExecutionPlan, operation_name: str):
+    callsubquery = locate_operation(plan.structured_plan, "CallSubquery")
+    if (callsubquery):
+        return (count_operation(callsubquery, operation_name) == 1)
+    else:
+        return False;
 
 class testCallSubqueryFlow():
     def __init__(self):
@@ -599,7 +608,6 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0], {'name': 'Canada', 'langs': ['English', 'French'], 'states': [OrderedDict([('type', 'State'), ('name', 'British Columbia'), ('cities', [OrderedDict([('type', 'City'), ('name', 'Victoria')])])]), OrderedDict([('type', 'State'), ('name', 'Ontario'), ('cities', [OrderedDict([('type', 'City'), ('name', 'Toronto')])])])]})
 
     def test16_rewrite_same_clauses(self):
-        graph_id = "rewrite-same-clauses"
 
         # Test CREATE
         query = """
@@ -608,12 +616,9 @@ updating clause.")
                 CREATE (m:M)
             }
             """
-        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
-        profile = [x[0:x.index(',')].strip() for x in profile]
+        plan = graph.explain(query)
         # make sure that CREATE is called only once
-        self.env.assertIn("CallSubquery | Records produced: 1", profile[0])
-        self.env.assertIn("Create | Records produced: 1", profile[1])
-        self.env.assertIn("Project | Records produced: 1", profile[2])
+        self.env.assertTrue(_check_subquery_compression(plan, "Create"))
 
         # Test SET
         query = """
@@ -622,12 +627,9 @@ updating clause.")
                 SET x.v = 3 
                 SET x.t ='a'
             }"""
-        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
-        profile = [x[0:x.index(',')].strip() for x in profile]
+        plan = graph.explain(query)
         # make sure that Update is called only once
-        self.env.assertIn("CallSubquery | Records produced: 1", profile[0])
-        self.env.assertIn("Update | Records produced: 1", profile[1])
-        self.env.assertIn("Node By Label Scan | (x:X) | Records produced: 1", profile[2])
+        self.env.assertTrue(_check_subquery_compression(plan, "Update"))
 
         # Test REMOVE
         query = """
@@ -636,12 +638,9 @@ updating clause.")
                 REMOVE x.v
                 REMOVE x.t
             }"""
-        profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
-        profile = [x[0:x.index(',')].strip() for x in profile]
+        plan = graph.explain(query)
         # make sure that Update is called only once
-        self.env.assertIn("CallSubquery | Records produced: 1", profile[0])
-        self.env.assertIn("Update | Records produced: 1", profile[1])
-        self.env.assertIn("Node By Label Scan | (x:X) | Records produced: 1", profile[2])
+        self.env.assertTrue(_check_subquery_compression(plan, "Update"))
 
         # TODO: Test failing. Fix and add.
         # # Test DELETE
@@ -653,12 +652,9 @@ updating clause.")
         #         DELETE m
         #     }
         #     """
-        # profile = redis_con.execute_command("GRAPH.PROFILE", graph_id, query)
-        # profile = [x[0:x.index(',')].strip() for x in profile]
-        # # make sure that CREATE is called only once
-        # self.env.assertIn("CallSubquery | Records produced: 1", profile[0])
-        # self.env.assertIn("Delete | Records produced: 1", profile[1])
-        # self.env.assertIn("Project | Records produced: 1", profile[2])
+        # plan = graph.explain(query)
+        # # make sure that DELETE is called only once
+        # self.env.assertTrue(_check_subquery_compression(plan, "Update"))
 
     # TODO: Enable this test once WITH validation is fixed
     # def test15_leading_with(self):
