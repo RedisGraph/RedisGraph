@@ -81,7 +81,7 @@ rax *QueryCtx_GetParams(void);
 /* Retrieve the Graph object. */
 Graph *QueryCtx_GetGraph(void);
 // Retrieve undo log
-UndoLog QueryCtx_GetUndoLog(void);
+UndoLog *QueryCtx_GetUndoLog(void);
 /* Retrieve the GraphCtx. */
 GraphContext *QueryCtx_GetGraphCtx(void);
 /* Retrieve the Redis module context. */

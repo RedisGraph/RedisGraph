@@ -119,7 +119,7 @@ Graph *Graph_New
 );
 
 // creates a new label matrix, returns id given to label
-int Graph_AddLabel
+LabelID Graph_AddLabel
 (
 	Graph *g
 );
@@ -128,7 +128,7 @@ int Graph_AddLabel
 void Graph_RemoveLabel
 (
 	Graph *g,
-	int label_id
+	LabelID label_id
 );
 
 // label node with each label in 'lbls'
@@ -158,7 +158,7 @@ bool Graph_IsNodeLabeled
 );
 
 // creates a new relation matrix, returns id given to relation
-int Graph_AddRelationType
+RelationID Graph_AddRelationType
 (
 	Graph *g
 );
@@ -201,7 +201,7 @@ void Graph_CreateEdge
 	Graph *g,           // graph on which to operate
 	NodeID src,         // source node ID
 	NodeID dest,        // destination node ID
-	int r,              // edge type
+	RelationID r,       // edge type
 	Edge *e
 );
 
@@ -218,7 +218,7 @@ void Graph_DeleteEdges
 (
 	Graph *g,
 	Edge *edges,
-	uint64_t count
+	uint64_t n
 );
 
 // update entity attribute with new value
@@ -317,9 +317,9 @@ int Graph_LabelTypeCount
 // false otherwise
 bool Graph_RelationshipContainsMultiEdge
 (
-	const Graph *g, // Graph containing matrix to inspect
-	int r,          // Relationship ID
-	bool transpose  // false for R, true for transpose R
+	const Graph *g,  // Graph containing matrix to inspect
+	RelationID r,    // Relationship ID
+	bool transpose   // false for R, true for transpose R
 );
 
 // retrieves node with given id from graph,
@@ -342,7 +342,7 @@ bool Graph_GetEdge
 
 // retrieves edge relation type
 // returns GRAPH_NO_RELATION if edge has no relation type
-int Graph_GetEdgeRelation
+RelationID Graph_GetEdgeRelation
 (
 	const Graph *g,
 	Edge *e
@@ -356,7 +356,7 @@ void Graph_GetEdgesConnectingNodes
 	const Graph *g,     // Graph to get edges from.
 	NodeID srcID,       // Source node of edge
 	NodeID destID,      // Destination node of edge
-	int r,              // Edge type.
+	RelationID r,       // Edge type.
 	Edge **edges        // array_t of edges connecting src to dest of type r.
 );
 
@@ -366,7 +366,7 @@ void Graph_GetNodeEdges
 	const Graph *g,         // graph to get edges from
 	const Node *n,          // node to extract edges from
 	GRAPH_EDGE_DIR dir,     // edge direction
-	int edgeType,           // relation type
+	RelationID edgeType,    // relation type
 	Edge **edges            // array_t incoming/outgoing edges
 );
 
@@ -376,7 +376,7 @@ uint64_t Graph_GetNodeDegree
 	const Graph *g,      // graph to inquery
 	const Node *n,       // node to get degree of
 	GRAPH_EDGE_DIR dir,  // incoming/outgoing/both
-	int edgeType         // relation type
+	RelationID edgeType  // relation type
 );
 
 // populate array of node's label IDs, return number of labels on node.

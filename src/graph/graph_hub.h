@@ -18,11 +18,12 @@
 // return the # of attributes set
 uint CreateNode
 (
-	GraphContext *gc, // graph context to create the node
-	Node *n,          // output node created
-	LabelID *labels,  // node labels
-	uint label_count, // labels count
-	AttributeSet set  // node attributes
+	GraphContext *gc,  // graph context to create the node
+	Node *n,           // output node created
+	LabelID *labels,   // node labels
+	uint label_count,  // labels count
+	AttributeSet set,  // node attributes
+	bool log           // log operation in undo-log
 );
 
 // create an edge
@@ -32,12 +33,13 @@ uint CreateNode
 // return the # of attributes set
 uint CreateEdge
 (
-	GraphContext *gc, // graph context to create the edge
-	Edge *e,          // output edge created
-	NodeID src,       // edge source
-	NodeID dst,       // edge destination
-	int r,            // edge relation type
-	AttributeSet set  // edge attributes
+	GraphContext *gc,  // graph context to create the edge
+	Edge *e,           // output edge created
+	NodeID src,        // edge source
+	NodeID dst,        // edge destination
+	RelationID r,      // edge relation type
+	AttributeSet set,  // edge attributes
+	bool log           // log operation in undo-log
 );
 
 // delete nodes
@@ -47,7 +49,8 @@ void DeleteNodes
 (
 	GraphContext *gc,  // graph context to delete the node
 	Node *nodes,       // nodes to be deleted
-	uint count         // number of nodes to delete
+	uint n,            // number of nodes to delete
+	bool log           // log operations in undo-log
 );
 
 // delete an edge
@@ -58,7 +61,8 @@ void DeleteEdges
 (
 	GraphContext *gc,  // graph context to delete the edge
 	Edge *edges,       // the edge to be deleted
-	uint64_t count     // number of edges to delete
+	uint64_t n,        // number of edges to delete
+	bool log           // log operations in undo-log
 );
 
 // update an entity(node/edge)
@@ -72,7 +76,8 @@ void UpdateEntityProperties
 	const AttributeSet set,       // attributes to update
 	GraphEntityType entity_type,  // the entity type (node/edge)
 	uint *props_set_count,        // number of properties set (out param)
-	uint *props_removed_count     // number of properties removed (out param)
+	uint *props_removed_count,    // number of properties removed (out param)
+	bool log                      // log update in undo-log
 );
 
 
@@ -86,23 +91,29 @@ void UpdateNodeLabels
 	Node *node,                  // the node to be updated
 	const char **add_labels,     // labels to add to the node
 	const char **remove_labels,  // labels to add to the node
-	uint *labels_added_count,    // number of labels added (out param)
-	uint *labels_removed_count   // number of labels removed (out param)
+	uint n_add_labels,           // number of labels to add
+	uint n_remove_labels,        // number of labels to remove
+	uint *n_labels_added,        // number of labels added (out param)
+	uint *n_labels_removed,      // number of labels removed (out param)
+	bool log                     // log this operation in undo-log
 );
 
 // Adds a schema to the graph. The schema is tracked by the undo log
 // so in case of error it will be deleted.
 Schema *AddSchema
 (
-	GraphContext *gc,             // graph context to add the schema
-	const char *label,            // schema label
-	SchemaType t                  // schema type (node/edge)
+	GraphContext *gc,   // graph context to add the schema
+	const char *label,  // schema label
+	SchemaType t,       // schema type (node/edge)
+	bool log            // should operation be logged in the undo-log      
 );
 
 // Find or adding attribute. If there is a need to add an attribute to the graph
 // the attribute is tracked by the undo log so in case of error it will be deleted.
 Attribute_ID FindOrAddAttribute
 (
-	GraphContext *gc,             // graph context to add the attribute
-	const char *attribute         // attribute name
+	GraphContext *gc,       // graph context to add the attribute
+	const char *attribute,  // attribute name
+	bool log                // should operation be logged in the undo-log
 );
+
