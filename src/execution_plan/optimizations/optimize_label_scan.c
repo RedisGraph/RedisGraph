@@ -51,7 +51,6 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	}
 	
 	label_count = QGNode_LabelCount(qn);
-	ASSERT(label_count > 1);
 
 	// node has multiple labels
 	// find label with minimum entities

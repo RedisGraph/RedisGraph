@@ -3,6 +3,7 @@ from common import *
 graph = None
 redis_con = None
 people = ["Roi", "Alon", "Ailon", "Boaz"]
+GRAPH_ID = "g"
 
 
 class testOptimizationsPlan(FlowTestsBase):
@@ -11,7 +12,7 @@ class testOptimizationsPlan(FlowTestsBase):
         global graph
         global redis_con
         redis_con = self.env.getConnection()
-        graph = Graph(redis_con, "g")
+        graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -482,6 +483,7 @@ class testOptimizationsPlan(FlowTestsBase):
     def test30_optimize_mandatory_labels_order_only(self):
         # clean db
         self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
 
         # create a node with label N
         query = """CREATE (n:N {v: 1})"""
@@ -497,12 +499,16 @@ class testOptimizationsPlan(FlowTestsBase):
         self.env.assertEquals(res.result_set, [[1]])
 
         # create nodes so there are two nodes with label N, and one with label Q.
-        graph.query("CREATE (:N), (:Q)")
+        graph.query("CREATE (:N:Q {v: 2})")
 
         # The most tempting label to start traversing from is Z, as there are
         # no nodes of label Z, but it is optional, so the second most tempting
         # label (Q) must be traversed first (order swapped with N)
-        plan = graph.execution_plan("""MATCH (n:N) MATCH (n:Q) OPTIONAL MATCH
-                                        (n:Z) RETURN n""")
+        query = """MATCH (n:N) MATCH (n:Q) OPTIONAL MATCH (n:Z) RETURN n"""
+        plan = graph.execution_plan(query)
         self.env.assertIn("Node By Label Scan | (n:Q)", plan)
         self.env.assertIn("Conditional Traverse | (n:N)->(n:N)", plan)
+
+        # assert correctness of the results
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], Node(label=['N', 'Q'], properties={'v': 2}))
