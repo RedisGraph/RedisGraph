@@ -1528,6 +1528,7 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 		}
 	}
 
+	// do not traverse children
 	return !ErrorCtx_EncounteredError() ? VISITOR_CONTINUE : VISITOR_BREAK;
 }
 
