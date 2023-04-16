@@ -58,7 +58,6 @@ typedef struct RedisModuleCtx RedisModuleCtx;
 int module_reply_map
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const long key_value_count
 );
 
@@ -67,7 +66,6 @@ int module_reply_map
 void module_reply_map_set_postponed_length
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const long length
 );
 
@@ -76,7 +74,6 @@ void module_reply_map_set_postponed_length
 int module_reply_key_value_number
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const char *key,
     const long long value
 );
@@ -86,7 +83,6 @@ int module_reply_key_value_number
 int module_reply_key_value_numbers
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const char *key,
     const long long *values,
     const size_t length
@@ -97,7 +93,6 @@ int module_reply_key_value_numbers
 int module_reply_key_value_string
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const char *key,
     const char *value
 );
@@ -125,7 +120,6 @@ int module_reply_bool(
 //
 typedef struct ReplyRecorder {
     RedisModuleCtx *context;
-    bool is_compact_mode;
     uint64_t element_count;
 } ReplyRecorder;
 
@@ -134,8 +128,7 @@ typedef struct ReplyRecorder {
 int ReplyRecorder_New
 (
     ReplyRecorder *recorder,
-    RedisModuleCtx *ctx,
-    const bool is_compact_mode
+    RedisModuleCtx *ctx
 );
 
 // Adds a new number to the reply set.

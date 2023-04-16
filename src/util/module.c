@@ -49,12 +49,9 @@ static int module_reply_map_resp2
 int module_reply_map
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const long key_value_count
 ) {
-    if (is_compact_mode) {
-        REDISMODULE_ASSERT(RedisModule_ReplyWithArray(ctx, key_value_count));
-    } else if (module_reply_map_resp3(ctx, key_value_count) == REDISMODULE_ERR) {
+    if(module_reply_map_resp3(ctx, key_value_count) == REDISMODULE_ERR) {
         REDISMODULE_ASSERT(module_reply_map_resp2(ctx, key_value_count));
     }
 
@@ -82,7 +79,6 @@ static bool module_reply_map_set_postponed_length_resp3
 void module_reply_map_set_postponed_length
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const long length
 ) {
     ASSERT(ctx);
@@ -92,9 +88,7 @@ void module_reply_map_set_postponed_length
         return;
     }
 
-    if (is_compact_mode) {
-        RedisModule_ReplySetArrayLength(ctx, length);
-    } else if (!module_reply_map_set_postponed_length_resp3(ctx, length)) {
+    if(!module_reply_map_set_postponed_length_resp3(ctx, length)) {
         // In RESP2 the map is emulated via an array having twice the
         // size, as we need to store keys and values as separate array
         // entries.
@@ -105,7 +99,6 @@ void module_reply_map_set_postponed_length
 int module_reply_key_value_number
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const char *key,
     const long long value
 ) {
@@ -116,9 +109,7 @@ int module_reply_key_value_number
         return REDISMODULE_ERR;
     }
 
-    if (!is_compact_mode) {
-        REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, key));
-    }
+    REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, key));
 
     REDISMODULE_ASSERT(RedisModule_ReplyWithLongLong(ctx, value));
 
@@ -128,7 +119,6 @@ int module_reply_key_value_number
 int module_reply_key_value_numbers
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const char *key,
     const long long *values,
     const size_t length
@@ -144,9 +134,7 @@ int module_reply_key_value_numbers
         return REDISMODULE_OK;
     }
 
-    if (!is_compact_mode) {
-        REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, key));
-    }
+    REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, key));
 
     REDISMODULE_ASSERT(RedisModule_ReplyWithArray(ctx, length));
     for (size_t i = 0; i < length; ++i) {
@@ -159,7 +147,6 @@ int module_reply_key_value_numbers
 int module_reply_key_value_string
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const char *key,
     const char *value
 ) {
@@ -171,9 +158,7 @@ int module_reply_key_value_string
         return REDISMODULE_ERR;
     }
 
-    if (!is_compact_mode) {
-        REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, key));
-    }
+    REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, key));
 
     REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, value));
 
@@ -225,8 +210,7 @@ int module_reply_bool(
 int ReplyRecorder_New
 (
     ReplyRecorder *recorder,
-    RedisModuleCtx *ctx,
-    const bool is_compact_mode
+    RedisModuleCtx *ctx
 ) {
     ASSERT(recorder && ctx && "Recorder and ctx should be passed.");
     if (!recorder || !ctx) {
@@ -234,12 +218,10 @@ int ReplyRecorder_New
     }
 
     recorder->context = ctx;
-    recorder->is_compact_mode = is_compact_mode;
     recorder->element_count = 0;
 
     REDISMODULE_ASSERT(module_reply_map(
         ctx,
-        is_compact_mode,
         REDISMODULE_POSTPONED_LEN
     ));
 
@@ -258,7 +240,6 @@ int ReplyRecorder_AddNumber
     }
     REDISMODULE_ASSERT(module_reply_key_value_number(
         recorder->context,
-        recorder->is_compact_mode,
         key,
         value
     ));
@@ -280,7 +261,6 @@ int ReplyRecorder_AddString
     }
     REDISMODULE_ASSERT(module_reply_key_value_string(
         recorder->context,
-        recorder->is_compact_mode,
         key,
         value
     ));
@@ -304,7 +284,6 @@ int ReplyRecorder_AddNumbers
 
     REDISMODULE_ASSERT(module_reply_key_value_numbers(
         recorder->context,
-        recorder->is_compact_mode,
         key,
         values,
         values_count
@@ -318,7 +297,6 @@ int ReplyRecorder_AddNumbers
 void ReplyRecorder_Finish(const ReplyRecorder recorder) {
     module_reply_map_set_postponed_length(
         recorder.context,
-        recorder.is_compact_mode,
         recorder.element_count
     );
 }

@@ -85,7 +85,6 @@ typedef struct ViewFinishedQueriesCallbackData {
     uint64_t max_count;
     uint64_t actual_elements_count;
     int status;
-    bool is_compact_mode;
 } ViewFinishedQueriesCallbackData;
 
 static bool _is_cmd_info_enabled() {
@@ -176,7 +175,6 @@ static bool _collect_global_info
 static int _reply_global_info
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const GlobalInfo global_info
 ) {
     ASSERT(ctx);
@@ -185,7 +183,7 @@ static int _reply_global_info
     }
 
     ReplyRecorder recorder REPLY_AUTO_FINISH;
-    REDISMODULE_ASSERT(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
+    REDISMODULE_ASSERT(ReplyRecorder_New(&recorder, ctx));
 
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
@@ -218,8 +216,7 @@ static int _reply_global_info
 // This is a part of the "GRAPH.INFO QUERIES" information.
 static int _reply_with_queries_info_global
 (
-    RedisModuleCtx *ctx,
-    const bool is_compact_mode
+    RedisModuleCtx *ctx
 ) {
     ASSERT(ctx);
     if (!ctx) {
@@ -231,16 +228,10 @@ static int _reply_with_queries_info_global
         return REDISMODULE_ERR;
     }
 
-    if (!is_compact_mode) {
-        REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, GLOBAL_INFO_KEY_NAME));
-    }
-    REDISMODULE_ASSERT(_reply_global_info(ctx, is_compact_mode, global_info));
+    REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, GLOBAL_INFO_KEY_NAME));
+    REDISMODULE_ASSERT(_reply_global_info(ctx, global_info));
 
     return REDISMODULE_OK;
-}
-
-static bool _is_compact_mode(const char *arg) {
-    return !strcasecmp(arg, COMPACT_MODE_OPTION);
 }
 
 static bool _is_queries_cmd(const char *cmd) {
@@ -288,7 +279,6 @@ static InfoQueriesFlag _parse_info_queries_flags_from_args
 static int _reply_graph_query_info
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const QueryInfo info
 ) {
     ASSERT(ctx);
@@ -302,7 +292,7 @@ static int _reply_graph_query_info
         + info.report_duration;
 
     ReplyRecorder recorder REPLY_AUTO_FINISH;
-    REDISMODULE_ASSERT(ReplyRecorder_New(&recorder, ctx, is_compact_mode));
+    REDISMODULE_ASSERT(ReplyRecorder_New(&recorder, ctx));
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         RECEIVED_TIMESTAMP_KEY_NAME,
@@ -372,7 +362,7 @@ static bool _reply_finished_queries(void *user_data, const void *item) {
 
     const QueryInfo info = *finished;
 
-    REDISMODULE_ASSERT(_reply_graph_query_info(data->ctx, data->is_compact_mode, info))
+    REDISMODULE_ASSERT(_reply_graph_query_info(data->ctx, info))
 
     if (++data->actual_elements_count >= data->max_count) {
         return true;
@@ -386,7 +376,6 @@ static bool _reply_finished_queries(void *user_data, const void *item) {
 static int _reply_with_queries_info_prev
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const uint64_t max_count,
     uint64_t *actual_element_count
 ) {
@@ -397,7 +386,6 @@ static int _reply_with_queries_info_prev
 
     ViewFinishedQueriesCallbackData user_data = {
         .ctx = ctx,
-        .is_compact_mode = is_compact_mode,
         .max_count = max_count,
         .status = REDISMODULE_OK,
         .actual_elements_count = 0
@@ -418,7 +406,6 @@ static int _parse_and_reply_info_queries_prev
     RedisModuleCtx *ctx,
     const RedisModuleString **argv,
     const int argc,
-    const bool is_compact_mode,
     uint64_t *actual_element_count
 ) {
     ASSERT(ctx && argv && argc);
@@ -444,7 +431,6 @@ static int _parse_and_reply_info_queries_prev
     if (max_count > 0) {
         REDISMODULE_ASSERT(_reply_with_queries_info_prev(
             ctx,
-            is_compact_mode,
             max_count,
             actual_element_count
         ));
@@ -477,7 +463,6 @@ static int _reply_graph_query_info_storage
     RedisModuleCtx *ctx,
     const QueryStage query_stage,
     const QueryInfoStorage storage,
-    const bool is_compact_mode,
     const uint64_t max_count,
     uint64_t *iterated
 ) {
@@ -502,7 +487,6 @@ static int _reply_graph_query_info_storage
         ++actual_elements_count;
         REDISMODULE_ASSERT(_reply_graph_query_info(
             ctx,
-            is_compact_mode,
             *qi));
     }
 
@@ -518,7 +502,6 @@ static int _reply_graph_query_info_storage
 static int _reply_with_graph_queries_of_stage
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     GraphContext *gc,
     const QueryStage query_stage,
     const uint64_t max_count,
@@ -539,7 +522,6 @@ static int _reply_with_graph_queries_of_stage
         ctx,
         query_stage,
         storage,
-        is_compact_mode,
         max_count,
         &iterated)) {
         return REDISMODULE_ERR;
@@ -558,7 +540,6 @@ static int _reply_with_graph_queries_of_stage
 static int _reply_queries_from_all_graphs
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const QueryStage query_stage,
     const uint64_t max_count,
     uint64_t *printed_count
@@ -581,7 +562,6 @@ static int _reply_queries_from_all_graphs
         uint64_t queries_printed = 0;
         if (_reply_with_graph_queries_of_stage(
             ctx,
-            is_compact_mode,
             gc,
             query_stage,
             max_count,
@@ -603,7 +583,6 @@ static int _reply_queries_from_all_graphs
 static int _reply_graph_queries
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     const uint64_t max_elements_count,
     uint64_t *actual_elements_count_ptr
 ) {
@@ -621,7 +600,6 @@ static int _reply_graph_queries
 
     _reply_queries_from_all_graphs(
         ctx,
-        is_compact_mode,
         QueryStage_WAITING,
         current_limit,
         &count
@@ -636,7 +614,6 @@ static int _reply_graph_queries
 
     _reply_queries_from_all_graphs(
         ctx,
-        is_compact_mode,
         QueryStage_EXECUTING,
         current_limit,
         &count
@@ -651,7 +628,6 @@ static int _reply_graph_queries
 
     _reply_queries_from_all_graphs(
         ctx,
-        is_compact_mode,
         QueryStage_REPORTING,
         current_limit,
         &count
@@ -671,7 +647,6 @@ static int _reply_graph_queries
 static int _reply_with_queries_info_from_all_graphs
 (
     RedisModuleCtx *ctx,
-    const bool is_compact_mode,
     uint64_t *actual_elements_count
 ) {
     ASSERT(ctx);
@@ -683,7 +658,6 @@ static int _reply_with_queries_info_from_all_graphs
 
     REDISMODULE_ASSERT(_reply_graph_queries(
         ctx,
-        is_compact_mode,
         max_elements_count,
         actual_elements_count));
 
@@ -696,7 +670,6 @@ static int _reply_with_queries
     RedisModuleCtx *ctx,
     const RedisModuleString **argv,
     const int argc,
-    const bool is_compact_mode,
     uint8_t *top_level_count
 ) {
     ASSERT(ctx);
@@ -712,9 +685,7 @@ static int _reply_with_queries
         return REDISMODULE_OK;
     }
 
-    if (!is_compact_mode) {
-        REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, QUERIES_KEY_NAME));
-    }
+    REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, QUERIES_KEY_NAME));
 
     if (*top_level_count) {
         // We count the array below.
@@ -732,7 +703,6 @@ static int _reply_with_queries
             ctx,
             argv,
             argc,
-            is_compact_mode,
             &actual_element_count
         );
 
@@ -746,7 +716,6 @@ static int _reply_with_queries
         uint64_t element_count = 0;
         REDISMODULE_DO(_reply_with_queries_info_from_all_graphs(
             ctx,
-            is_compact_mode,
             &element_count
         ));
         actual_element_count += element_count;
@@ -763,8 +732,7 @@ static int _info_queries
 (
     RedisModuleCtx *ctx,
     const RedisModuleString **argv,
-    const int argc,
-    const bool is_compact_mode
+    const int argc
 ) {
     ASSERT(ctx);
     if (!ctx) {
@@ -776,22 +744,19 @@ static int _info_queries
 
     REDISMODULE_ASSERT(module_reply_map(
         ctx,
-        is_compact_mode,
         REDISMODULE_POSTPONED_LEN));
 
-    REDISMODULE_ASSERT(_reply_with_queries_info_global(ctx, is_compact_mode));
+    REDISMODULE_ASSERT(_reply_with_queries_info_global(ctx));
 
     const int ret = _reply_with_queries(
         ctx,
         argv,
         argc,
-        is_compact_mode,
         &top_level_count
     );
 
     module_reply_map_set_postponed_length(
         ctx,
-        is_compact_mode,
         top_level_count
     );
 
@@ -806,14 +771,13 @@ static bool _dispatch_subcommand
     const RedisModuleString **argv,
     const int argc,
     const char *subcommand_name,
-    int *result,
-    const bool is_compact_mode
+    int *result
 ) {
     ASSERT(ctx && result);
     ASSERT(subcommand_name != NULL && "Subcommand must be specified.");
 
     if (_is_queries_cmd(subcommand_name)) {
-        *result = _info_queries(ctx, argv + 1, argc - 1, is_compact_mode);
+        *result = _info_queries(ctx, argv + 1, argc - 1);
     } else {
         return false;
     }
@@ -845,16 +809,13 @@ int Graph_Info
 
     int result = REDISMODULE_ERR;
 
-    const char *arg = RedisModule_StringPtrLen(argv[argc - 1], NULL);
-    const bool is_compact_mode = _is_compact_mode(arg);
     const char *subcommand_name = RedisModule_StringPtrLen(argv[1], NULL);
     if (!_dispatch_subcommand(
         ctx,
         argv + 1,
-        is_compact_mode ? argc - 2 : argc - 1,
+        argc - 1,
         subcommand_name,
-        &result,
-        is_compact_mode)) {
+        &result)) {
         RedisModule_ReplyWithError(ctx, UNKNOWN_SUBCOMMAND_MESSAGE);
     }
 
