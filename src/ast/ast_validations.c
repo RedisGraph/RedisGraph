@@ -1190,7 +1190,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 		return VISITOR_BREAK;
 	}
 
-	// visit predicate and ORDER BY clauses
+	// visit predicate clause
 	const cypher_astnode_t *predicate = cypher_ast_with_get_predicate(n);
 	if(predicate) {
 		AST_Visitor_visit(predicate, visitor);
@@ -1199,6 +1199,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 		}
 	}
 
+	// visit ORDER BY clause
 	const cypher_astnode_t *order_by = cypher_ast_with_get_order_by(n);
 	if(order_by) {
 		AST_Visitor_visit(order_by, visitor);
@@ -1469,12 +1470,43 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	if(!start) {
-		return VISITOR_CONTINUE;
-	}
-
 	vctx->clause = cypher_astnode_type(n);
 	uint num_return_projections = cypher_ast_return_nprojections(n);
+
+	// visit LIMIT and SKIP
+	if(_Validate_LIMIT_SKIP_Modifiers(cypher_ast_return_get_limit(n), cypher_ast_return_get_skip(n))
+		== AST_INVALID) {
+			return VISITOR_BREAK;
+	}
+
+	if(!cypher_ast_return_has_include_existing(n)) {
+		// check for duplicate column names
+		rax           *rax          = raxNew();
+		const char   **columns      = AST_BuildReturnColumnNames(n);
+		uint           column_count = array_len(columns);
+
+		for (uint i = 0; i < column_count; i++) {
+			// column with same name is invalid
+			if(raxTryInsert(rax, (unsigned char *)columns[i], strlen(columns[i]), NULL, NULL) == 0) {
+				ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+				break;
+			}
+		}
+
+		raxFree(rax);
+		array_free(columns);
+	}
+
+	// manually traverse children. order by and predicate should be aware of the
+	// vars introduced in the with projections, but the projections should not
+	for(uint i = 0; i < cypher_ast_return_nprojections(n); i++) {
+		// visit the projection
+		const cypher_astnode_t *proj = cypher_ast_return_get_projection(n, i);
+		AST_Visitor_visit(proj, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
+		}
+	}
 
 	// introduce bound vars
 	for(uint i = 0; i < num_return_projections; i ++) {
@@ -1487,32 +1519,16 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
 
-	if(_Validate_LIMIT_SKIP_Modifiers(cypher_ast_return_get_limit(n), cypher_ast_return_get_skip(n))
-		== AST_INVALID) {
+	// visit ORDER BY clause
+	const cypher_astnode_t *order_by = cypher_ast_return_get_order_by(n);
+	if(order_by) {
+		AST_Visitor_visit(order_by, visitor);
+		if(ErrorCtx_EncounteredError()) {
 			return VISITOR_BREAK;
-	}
-
-	if(cypher_ast_return_has_include_existing(n)) {
-		return VISITOR_RECURSE;
-	}
-
-	// check for duplicate column names
-	rax           *rax          = raxNew();
-	const char   **columns      = AST_BuildReturnColumnNames(n);
-	uint           column_count = array_len(columns);
-
-	for (uint i = 0; i < column_count; i++) {
-		// column with same name is invalid
-		if(raxTryInsert(rax, (unsigned char *)columns[i], strlen(columns[i]), NULL, NULL) == 0) {
-			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
-			break;
 		}
 	}
 
-	raxFree(rax);
-	array_free(columns);
-
-	return !ErrorCtx_EncounteredError() ? VISITOR_RECURSE : VISITOR_BREAK;
+	return !ErrorCtx_EncounteredError() ? VISITOR_CONTINUE : VISITOR_BREAK;
 }
 
 // validate a MATCH clause

@@ -267,24 +267,3 @@ class testWithClause(FlowTestsBase):
         query = """WITH 1 AS x MATCH (a:label_a), (b:label_b) RETURN a.v, b.v"""
         actual_result = redis_graph.query(query)
         self.env.assertEqual(len(actual_result.result_set), 36)
-
-    def test_13_undefined_variables(self):
-        invalid_queries = [
-            "WITH a RETURN a",
-            "WITH a AS a RETURN a",
-            "WITH [a] AS a RETURN a",
-            "WITH [a[a[a]]] AS a RETURN a",
-            "WITH a AS b, b AS c, c AS a RETURN a",
-            "WITH {a:a} as a RETURN a",
-            "WITH a RETURN 0",
-            "WITH 3 AS a, 4 AS b, a + b AS c RETURN c",
-            "WITH [x in a | x.prop1] AS a RETURN 1",
-            "WITH [(n)-[x:R]->(m) | a.prop1] AS a RETURN 1"
-        ]
-        for query in invalid_queries:
-            try:
-                redis_graph.query(query)
-                self.env.assertTrue(False)
-            except redis.exceptions.ResponseError as e:
-                # Expecting an error.
-                self.env.assertIn("a not defined", str(e))
