@@ -594,5 +594,6 @@ void ExecutionPlan_Free
 		_ExecutionPlan_FreeInternals(curr_plan);
 	}
 
+	HashTableReleaseIterator(it);
 	HashTableRelease(plans);
 }
