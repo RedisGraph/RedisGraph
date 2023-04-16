@@ -61,6 +61,9 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	// don't perform the optimization on a plan where the first label is optional
 	bool optional;
 	QGNode_HasLabel(qn, scan->n.label, NULL,  &optional);
+
+	// TODO: Once we support separate QueryGraphs for separate `OPTIONAL MATCH`
+	// clauses, we can enforce an optimization on the optional labels as well
 	// if the label is optional, do not swap the order of traversal
 	if(optional) {
 		return;

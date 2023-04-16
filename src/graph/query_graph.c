@@ -12,7 +12,7 @@
 #include "../../deps/rax/rax.h"
 
 // sets node label(s)
-static void _QueryGraphSetNodeLabel
+static void _QueryGraphSetNodeLabels
 (
 	QGNode *n,
 	const cypher_astnode_t *ast_entity,
@@ -53,7 +53,7 @@ static void _QueryGraphAddNode
 		QueryGraph_AddNode(qg, n);
 	}
 
-	_QueryGraphSetNodeLabel(n, ast_entity, optional);
+	_QueryGraphSetNodeLabels(n, ast_entity, optional);
 }
 
 // adds edge to query graph
@@ -174,11 +174,11 @@ static void _QueryGraph_ExtractNode
 
 			QueryGraph_AddNode(graph, n);
 			// set node label information
-			_QueryGraphSetNodeLabel(n, ast_node, false);
+			_QueryGraphSetNodeLabels(n, ast_node, false);
 		}
 	} else {
 		// set node label information
-		_QueryGraphSetNodeLabel(n, ast_node, false);
+		_QueryGraphSetNodeLabels(n, ast_node, false);
 	}
 }
 
