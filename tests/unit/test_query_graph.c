@@ -42,6 +42,7 @@ void compare_nodes(const QGNode *a, const QGNode *b) {
 	TEST_ASSERT(a_lbl_count == b_lbl_count);
 	for(uint i = 0; i < a_lbl_count; i++) {
 		TEST_ASSERT(a->labelsID[i] == b->labelsID[i]);
+		TEST_ASSERT(a->optional[i] == b->optional[i]);
 	}
 	TEST_ASSERT(array_len(a->incoming_edges) == array_len(b->incoming_edges));
 	TEST_ASSERT(array_len(a->outgoing_edges) == array_len(b->outgoing_edges));
