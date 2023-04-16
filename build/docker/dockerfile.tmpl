@@ -55,7 +55,7 @@ RUN chown -R redis:redis /var/opt/redislabs
 COPY --from=builder /build/bin/artifacts/ /var/opt/redislabs/artifacts/
 {% endif %}
 
-{% if OSNICK == "xenial" and ARCH == "x64" %}
+{% if OSNICK == "xenial" and ARCH == "x64" and XENIAL_MODERN_OMP == "1" %}
 RUN apt-get install -qy ca-certificates wget
 RUN wget -P /tmp https://redismodules.s3.amazonaws.com/platform/xenial-x64/gcc-9-base_9.4.0-1ubuntu1~16.04_amd64.deb
 RUN wget -P /tmp https://redismodules.s3.amazonaws.com/platform/xenial-x64/libgomp1_9.4.0-1ubuntu1~16.04_amd64.deb
