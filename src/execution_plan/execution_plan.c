@@ -558,6 +558,7 @@ void ExecutionPlan_Free
 	// while collecting the different segments, and freeing the op tree
 	dict *plans = HashTableCreate(&dt);
 	OpBase **ops = array_new(OpBase *, 1);
+	OpBase **ordered_ops = array_new(OpBase *, 1);
 
 	OpBase *op = plan->root;
 	array_append(ops, op);
@@ -578,9 +579,14 @@ void ExecutionPlan_Free
 			}
 		}
 
-		// delete op
+		// free op
+		array_append(ordered_ops, op);
+	}
+	while(array_len(ordered_ops) > 0) {
+		op = array_pop(ordered_ops);
 		OpBase_Free(op);
 	}
+	array_free(ordered_ops);
 	array_free(ops);
 
 	// -------------------------------------------------------------------------
@@ -589,7 +595,7 @@ void ExecutionPlan_Free
 
 	dictIterator *it = HashTableGetIterator(plans);
 	ExecutionPlan *curr_plan;
-	while((entry = HashTableNext(it))) {
+	while((entry = HashTableNext(it)) != NULL) {
 		curr_plan = (ExecutionPlan *)HashTableGetVal(entry);
 		_ExecutionPlan_FreeInternals(curr_plan);
 	}
