@@ -567,7 +567,7 @@ void ExecutionPlan_Free
 		op = array_pop(ops);
 
 		// add the plan this op is affiliated with, if first met now
-		if((entry = HashTableAddRaw(plans, plan, NULL)) != NULL) {
+		if((entry = HashTableAddRaw(plans, (void *)op->plan, NULL)) != NULL) {
 			HashTableSetVal(plans, entry, (void *)op->plan);
 		}
 
