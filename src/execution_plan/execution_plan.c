@@ -16,14 +16,16 @@
 #include "execution_plan_build/execution_plan_modify.h"
 #include "execution_plan_build/execution_plan_construct.h"
 
-#include <setjmp.h>
-#if defined ( __MACH__ ) && defined ( __APPLE__ )
-#include <machine/endian.h>
-#define _htobe64 htonll
-#else
-#include <endian.h>
-#define _htobe64 htobe64
-#endif
+static uint64_t nop_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+// hashtable callbacks
+static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
+	NULL, NULL, NULL};
 
 // Allocate a new ExecutionPlan segment.
 inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
@@ -508,7 +510,10 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 // Execution plan free functions
 //------------------------------------------------------------------------------
 
-static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
+static void _ExecutionPlan_FreeInternals
+(
+	ExecutionPlan *plan
+) {
 	if(plan == NULL) return;
 
 	if(plan->connected_components) {
@@ -534,67 +539,60 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 	rm_free(plan);
 }
 
-// free an op tree
-static void _ExecutionPlan_FreeOpTree(OpBase *op) {
-	if(op == NULL) {
-		return;
-	}
-
-	for(uint i = 0; i < op->childCount; i ++) {
-		_ExecutionPlan_FreeOpTree(op->children[i]);
-	}
-
-	// Free this op.
-	OpBase_Free(op);
-}
-
-// collect all ExecutionPlans from the given operation tree
-static void _ExecutionPlan_AggregatePlansFromOps
-(
-	OpBase *opBase,     // operation to aggregate plans from
-	rax *plans          // plans map to insert to
-) {
-	ASSERT(plans != NULL);
-
-	if(opBase == NULL) {
-		return;
-	}
-
-	// add the plan if it doesn't exist already
-	static_assert(sizeof(opBase->plan) == sizeof(uint64_t), "pointer size is not 64 bits");
-	const uint64_t plan_ptr_be = _htobe64((uint64_t)opBase->plan);
-	raxTryInsert(plans, (unsigned char *)&plan_ptr_be, sizeof(uint64_t), (void *)opBase->plan, NULL);
-
-	for(uint i = 0; i < opBase->childCount; i++) {
-		_ExecutionPlan_AggregatePlansFromOps(opBase->children[i], plans);
-	}
-}
-
 // free the execution plans and all of the operations
-void ExecutionPlan_Free(ExecutionPlan *plan) {
-	if(plan == NULL) {
+void ExecutionPlan_Free
+(
+	ExecutionPlan *plan
+) {
+	ASSERT(plan != NULL);
+	if(plan->root == NULL) {
+		_ExecutionPlan_FreeInternals(plan);
 		return;
 	}
+
+	// -------------------------------------------------------------------------
+	// free op tree and collect execution-plans
+	// -------------------------------------------------------------------------
 
 	// traverse the execution-plan graph (DAG -> no endless cycles), while
-	// aggregating the different execution-plans
-	rax *plans = raxNew();
-	const uint64_t plan_ptr_be = _htobe64((uint64_t)plan);
-	raxInsert(plans, (unsigned char *)&plan_ptr_be, sizeof(uint64_t), plan, NULL);
-	_ExecutionPlan_AggregatePlansFromOps(plan->root, plans);
+	// while collecting the different segments, and freeing the op tree
+	dict *plans = HashTableCreate(&dt);
+	OpBase **ops = array_new(OpBase *, 1);
 
-	// free the operations of the plans (all plans)
-	_ExecutionPlan_FreeOpTree(plan->root);
+	OpBase *op = plan->root;
+	array_append(ops, op);
 
-	// free the plan internals
-	raxIterator it;
-	raxStart(&it, plans);
-	raxSeek(&it, "^", NULL, 0);
+	dictEntry *entry;
+	while(array_len(ops) > 0) {
+		op = array_pop(ops);
 
-	while(raxNext(&it)) {
-		_ExecutionPlan_FreeInternals(it.data);
+		// add the plan this op is affiliated with, if first met now
+		if((entry = HashTableAddRaw(plans, plan, NULL)) != NULL) {
+			HashTableSetVal(plans, entry, (void *)op->plan);
+		}
+
+		// add all direct children of op to ops
+		for(uint i = 0; i < op->childCount; i++) {
+			if(op->children[i] != NULL) {
+				array_append(ops, op->children[i]);
+			}
+		}
+
+		// delete op
+		OpBase_Free(op);
+	}
+	array_free(ops);
+
+	// -------------------------------------------------------------------------
+	// free internals of the plans
+	// -------------------------------------------------------------------------
+
+	dictIterator *it = HashTableGetIterator(plans);
+	ExecutionPlan *curr_plan;
+	while((entry = HashTableNext(it))) {
+		curr_plan = (ExecutionPlan *)HashTableGetVal(entry);
+		_ExecutionPlan_FreeInternals(curr_plan);
 	}
 
-	raxStop(&it);
-	raxFree(plans);
+	HashTableRelease(plans);
 }
