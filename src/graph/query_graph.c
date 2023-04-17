@@ -405,7 +405,7 @@ QueryGraph *BuildQueryGraph
 			uint  path_count           =  array_len(paths);
 			uint  shortest_path_count  =  array_len(shortest_paths);
 			bool only_shortest[path_count];
-			memset(only_shortest, 0, path_count);
+			memset(only_shortest, 0, path_count*sizeof(bool));
 
 			uint l = 0;  // index to paths array
 			uint k = 0;  // index to shortest paths array

@@ -82,6 +82,18 @@ static dictType default_dt = DEFAULT_DICT_TYPE;
 
 /* -------------------------- hash functions -------------------------------- */
 
+// identity hash function
+static uint64_t _id_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+// hashtable callbacks
+dictType def_dt = {_id_hash, NULL, NULL, NULL, NULL, NULL, NULL,
+	NULL, NULL, NULL};
+
 static uint8_t dict_hash_function_seed[16];
 
 void HashTableSetHashFunctionSeed(uint8_t *seed) {

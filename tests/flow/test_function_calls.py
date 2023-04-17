@@ -2714,3 +2714,28 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN string.replaceRegEx('bl😉a', '😉', '😀')"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+    def test93_overflow(self):
+        # Test integer overflow caused by string to long conversion
+        queries_with_errors = {
+            "RETURN 10000000000000000000000" : "Integer overflow '10000000000000000000000'",
+            "RETURN -10000000000000000000000" : "Integer overflow '-10000000000000000000000'",
+            "RETURN 9223372036854775808" : "Integer overflow '9223372036854775808'",
+            "RETURN -9223372036854775809" : "Integer overflow '-9223372036854775809'",
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)
+
+        # Test valid queries
+        query_to_expected_result = {
+            "RETURN 10^-324" : [[0]],
+            "RETURN pow(10,-324)" : [[0]],
+            "RETURN 10^+324" : [[float('inf')]],
+            "RETURN pow(10,324)" : [[float('inf')]],
+            "RETURN 0.5 + pow(10,-324)" : [[0.5]],
+            "RETURN pow(100,200), 5" : [[float('inf'), 5]],
+            "RETURN 9223372036854775807" : [[9223372036854775807]],
+            "RETURN -9223372036854775808" : [[-9223372036854775808]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
