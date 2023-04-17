@@ -135,8 +135,8 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 # select "true" to build both dynamic and static libraries:
-# set ( NOT NSTATIC true )
-# set ( NOT NSTATIC false )
+# set ( NSTATIC true )
+# set ( NSTATIC false )
 # or use cmake with -DNSTATIC=1
 
 if ( NOT NSTATIC )
