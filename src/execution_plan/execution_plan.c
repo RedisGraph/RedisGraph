@@ -563,7 +563,6 @@ void ExecutionPlan_Free
 	OpBase *op = plan->root;
 	array_append(to_visit, op);
 
-	dictEntry *entry;
 	while(array_len(to_visit) > 0) {
 		op = array_pop(to_visit);
 
@@ -591,8 +590,9 @@ void ExecutionPlan_Free
 	// free internals of the plans
 	// -------------------------------------------------------------------------
 
-	dictIterator *it = HashTableGetIterator(plans);
+	dictEntry *entry;
 	ExecutionPlan *curr_plan;
+	dictIterator *it = HashTableGetIterator(plans);
 	while((entry = HashTableNext(it)) != NULL) {
 		curr_plan = (ExecutionPlan *)HashTableGetVal(entry);
 		_ExecutionPlan_FreeInternals(curr_plan);
