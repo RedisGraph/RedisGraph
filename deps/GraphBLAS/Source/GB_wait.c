@@ -56,7 +56,6 @@
 #include "GB_jappend.h"
 #include "GB_atomics.h"
 
-GB_PUBLIC
 GrB_Info GB_wait                // finish all pending computations
 (
     GrB_Matrix A,               // matrix with pending computations

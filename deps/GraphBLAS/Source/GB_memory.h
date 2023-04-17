@@ -19,10 +19,10 @@ void GB_memoryUsage         // count # allocated blocks and their sizes
     int64_t *nallocs,       // # of allocated memory blocks
     size_t *mem_deep,       // # of bytes in blocks owned by this matrix
     size_t *mem_shallow,    // # of bytes in blocks owned by another matrix
-    const GrB_Matrix A      // matrix to query
+    const GrB_Matrix A,     // matrix to query
+    bool count_hyper_hash   // if true, include A->Y
 ) ;
 
-GB_PUBLIC
 void *GB_calloc_memory      // pointer to allocated block of memory
 (
     size_t nitems,          // number of items to allocate
@@ -32,7 +32,6 @@ void *GB_calloc_memory      // pointer to allocated block of memory
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 void *GB_malloc_memory      // pointer to allocated block of memory
 (
     size_t nitems,          // number of items to allocate
@@ -41,7 +40,6 @@ void *GB_malloc_memory      // pointer to allocated block of memory
     size_t *size_allocated  // # of bytes actually allocated
 ) ;
 
-GB_PUBLIC
 void *GB_realloc_memory     // pointer to reallocated block of memory, or
                             // to original block if the realloc failed.
 (
@@ -55,7 +53,6 @@ void *GB_realloc_memory     // pointer to reallocated block of memory, or
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 void GB_free_memory         // free memory, bypassing the free_pool
 (
     // input/output
@@ -64,7 +61,6 @@ void GB_free_memory         // free memory, bypassing the free_pool
     size_t size_allocated   // # of bytes actually allocated
 ) ;
 
-GB_PUBLIC
 void GB_dealloc_memory      // free memory, return to free_pool or free it
 (
     // input/output
@@ -73,7 +69,6 @@ void GB_dealloc_memory      // free memory, return to free_pool or free it
     size_t size_allocated   // # of bytes actually allocated
 ) ;
 
-GB_PUBLIC
 void GB_free_pool_finalize (void) ;
 
 void *GB_xalloc_memory      // return the newly-allocated space

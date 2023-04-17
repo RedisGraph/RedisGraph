@@ -224,6 +224,12 @@ end
 disable = sprintf ('GxB_NO_%s', upper (binop)) ;
 disable = [disable (sprintf (' || GxB_NO_%s', upper (fname)))] ;
 disable = [disable (sprintf (' || GxB_NO_%s_%s', upper (binop), upper (fname)))] ;
+if (isequal (ytype, 'GxB_FC32_t') && ...
+    (isequal (binop, 'first') || isequal (binop, 'second')))
+    % disable the FIRST_FC32 and SECOND_FC32 binary operators for
+    % MS Visual Studio 2019.  These files trigger a bug in the compiler.
+    disable = [disable ' || GB_COMPILER_MSC_2019_OR_NEWER'] ;
+end
 fprintf (f, 'define(`GB_disable'', `(%s)'')\n', disable) ;
 
 % ff = fopen ('temp.h', 'a') ;

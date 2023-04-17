@@ -158,9 +158,7 @@ typedef struct
 }
 GB_Global_struct ;
 
-GB_PUBLIC GB_Global_struct GB_Global ;
-
-GB_Global_struct GB_Global =
+static GB_Global_struct GB_Global =
 {
 
     // GraphBLAS mode
@@ -372,13 +370,11 @@ GrB_Mode GB_Global_mode_get (void)
 // GrB_init_called
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_GrB_init_called_set (bool GrB_init_called)
 { 
     GB_Global.GrB_init_called = GrB_init_called ;
 }
 
-GB_PUBLIC
 bool GB_Global_GrB_init_called_get (void)
 { 
     return (GB_Global.GrB_init_called) ;
@@ -393,7 +389,6 @@ bool GB_Global_GrB_init_called_get (void)
 // Once these two flags are set, they are saved in the GB_Global struct, and
 // can then be queried later by GB_Global_cpu_features_avx*.
 
-GB_PUBLIC
 void GB_Global_cpu_features_query (void)
 { 
     #if GBX86
@@ -453,13 +448,11 @@ void GB_Global_cpu_features_query (void)
     #endif
 }
 
-GB_PUBLIC
 bool GB_Global_cpu_features_avx2 (void)
 { 
     return (GB_Global.cpu_features_avx2) ;
 }
 
-GB_PUBLIC
 bool GB_Global_cpu_features_avx512f (void)
 { 
     return (GB_Global.cpu_features_avx512f) ;
@@ -469,13 +462,11 @@ bool GB_Global_cpu_features_avx512f (void)
 // nthreads_max
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_nthreads_max_set (int nthreads_max)
 { 
     GB_Global.nthreads_max = GB_IMAX (nthreads_max, 1) ;
 }
 
-GB_PUBLIC
 int GB_Global_nthreads_max_get (void)
 { 
     return (GB_Global.nthreads_max) ;
@@ -485,7 +476,6 @@ int GB_Global_nthreads_max_get (void)
 // OpenMP max_threads
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 int GB_Global_omp_get_max_threads (void)
 { 
     return (GB_OPENMP_MAX_THREADS) ;
@@ -495,14 +485,12 @@ int GB_Global_omp_get_max_threads (void)
 // chunk
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_chunk_set (double chunk)
 { 
     if (chunk <= GxB_DEFAULT) chunk = GB_CHUNK_DEFAULT ;
     GB_Global.chunk = fmax (chunk, 1) ;
 }
 
-GB_PUBLIC
 double GB_Global_chunk_get (void)
 { 
     return (GB_Global.chunk) ;
@@ -512,13 +500,11 @@ double GB_Global_chunk_get (void)
 // hyper_switch
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_hyper_switch_set (float hyper_switch)
 { 
     GB_Global.hyper_switch = hyper_switch ;
 }
 
-GB_PUBLIC
 float GB_Global_hyper_switch_get (void)
 { 
     return (GB_Global.hyper_switch) ;
@@ -528,7 +514,6 @@ float GB_Global_hyper_switch_get (void)
 // bitmap_switch
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_bitmap_switch_set (int k, float b)
 { 
     k = GB_IMAX (k, 0) ;
@@ -536,7 +521,6 @@ void GB_Global_bitmap_switch_set (int k, float b)
     GB_Global.bitmap_switch [k] = b ;
 }
 
-GB_PUBLIC
 float GB_Global_bitmap_switch_get (int k)
 { 
     k = GB_IMAX (k, 0) ;
@@ -544,7 +528,6 @@ float GB_Global_bitmap_switch_get (int k)
     return (GB_Global.bitmap_switch [k]) ;
 }
 
-GB_PUBLIC
 float GB_Global_bitmap_switch_matrix_get (int64_t vlen, int64_t vdim)
 { 
     int64_t d = GB_IMIN (vlen, vdim) ;
@@ -558,7 +541,6 @@ float GB_Global_bitmap_switch_matrix_get (int64_t vlen, int64_t vdim)
     return (GB_Global.bitmap_switch [7]) ;
 }
 
-GB_PUBLIC
 void GB_Global_bitmap_switch_default (void)
 { 
     GB_Global.bitmap_switch [0] = GB_BITSWITCH_1 ;
@@ -589,13 +571,11 @@ bool GB_Global_is_csc_get (void)
 // abort_function
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_abort_function_set (void (* abort_function) (void))
 { 
     GB_Global.abort_function = abort_function ;
 }
 
-GB_PUBLIC
 void GB_Global_abort_function (void)
 {
     GB_Global.abort_function ( ) ;
@@ -608,7 +588,6 @@ void GB_Global_abort_function (void)
 // These functions keep a separate record of the pointers to all allocated
 // blocks of memory and their sizes, just for sanity checks.
 
-GB_PUBLIC
 void GB_Global_memtable_dump (void)
 {
     #ifdef GB_DEBUG
@@ -623,20 +602,17 @@ void GB_Global_memtable_dump (void)
     #endif
 }
 
-GB_PUBLIC
 int GB_Global_memtable_n (void)
 {
     return (GB_Global.nmemtable) ;
 }
 
-GB_PUBLIC
 void GB_Global_memtable_clear (void)
 {
     GB_Global.nmemtable = 0 ;
 }
 
 // add a pointer to the table of malloc'd blocks
-GB_PUBLIC
 void GB_Global_memtable_add (void *p, size_t size)
 {
     if (p == NULL) return ;
@@ -645,6 +621,7 @@ void GB_Global_memtable_add (void *p, size_t size)
         GB_ATOMIC_UPDATE
         GB_Global.nmalloc++ ;
     }
+
     #ifdef GB_DEBUG
     bool fail = false ;
     #ifdef GB_MEMDUMP
@@ -680,13 +657,14 @@ void GB_Global_memtable_add (void *p, size_t size)
     GB_Global_memtable_dump ( ) ;
     #endif
     #endif
+
 }
 
 // get the size of a malloc'd block
-GB_PUBLIC
 size_t GB_Global_memtable_size (void *p)
 {
     size_t size = 0 ;
+
     #ifdef GB_DEBUG
     if (p == NULL) return (0) ;
     bool found = false ;
@@ -710,14 +688,15 @@ size_t GB_Global_memtable_size (void *p)
         ASSERT (0) ;
     }
     #endif
+
     return (size) ;
 }
 
 // test if a malloc'd block is in the table
-GB_PUBLIC
 bool GB_Global_memtable_find (void *p)
 {
     bool found = false ;
+
     #ifdef GB_DEBUG
     if (p == NULL) return (false) ;
     #pragma omp critical(GB_memtable)
@@ -733,11 +712,11 @@ bool GB_Global_memtable_find (void *p)
         }
     }
     #endif
+
     return (found) ;
 }
 
 // remove a pointer from the table of malloc'd blocks
-GB_PUBLIC
 void GB_Global_memtable_remove (void *p)
 {
     if (p == NULL) return ;
@@ -746,6 +725,7 @@ void GB_Global_memtable_remove (void *p)
         GB_ATOMIC_UPDATE
         GB_Global.nmalloc-- ;
     }
+
     #ifdef GB_DEBUG
     bool found = false ;
     #ifdef GB_MEMDUMP
@@ -777,6 +757,7 @@ void GB_Global_memtable_remove (void *p)
     GB_Global_memtable_dump ( ) ;
     #endif
     #endif
+
 }
 
 //------------------------------------------------------------------------------
@@ -874,13 +855,11 @@ void GB_Global_free_function (void *p)
 // malloc_is_thread_safe
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_malloc_is_thread_safe_set (bool malloc_is_thread_safe)
 { 
     GB_Global.malloc_is_thread_safe = malloc_is_thread_safe ;
 }
 
-GB_PUBLIC
 bool GB_Global_malloc_is_thread_safe_get (void)
 { 
     return (GB_Global.malloc_is_thread_safe) ;
@@ -890,7 +869,6 @@ bool GB_Global_malloc_is_thread_safe_get (void)
 // malloc_tracking
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_malloc_tracking_set (bool malloc_tracking)
 { 
     GB_Global.malloc_tracking = malloc_tracking ;
@@ -911,7 +889,6 @@ void GB_Global_nmalloc_clear (void)
     GB_Global.nmalloc = 0 ;
 }
 
-GB_PUBLIC
 int64_t GB_Global_nmalloc_get (void)
 { 
     int64_t nmalloc ;
@@ -924,7 +901,6 @@ int64_t GB_Global_nmalloc_get (void)
 // malloc_debug
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_malloc_debug_set (bool malloc_debug)
 { 
     GB_ATOMIC_WRITE
@@ -943,7 +919,6 @@ bool GB_Global_malloc_debug_get (void)
 // malloc_debug_count
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_malloc_debug_count_set (int64_t malloc_debug_count)
 { 
     GB_ATOMIC_WRITE
@@ -965,13 +940,11 @@ bool GB_Global_malloc_debug_count_decrement (void)
 // hack: for setting an internal flag for testing and development only
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_hack_set (int k, int64_t hack)
 { 
     GB_Global.hack [k] = hack ;
 }
 
-GB_PUBLIC
 int64_t GB_Global_hack_get (int k)
 { 
     return (GB_Global.hack [k]) ;
@@ -986,31 +959,26 @@ void GB_Global_burble_set (bool burble)
     GB_Global.burble = burble ;
 }
 
-GB_PUBLIC
 bool GB_Global_burble_get (void)
 { 
     return (GB_Global.burble) ;
 }
 
-GB_PUBLIC
 GB_printf_function_t GB_Global_printf_get (void)
 { 
     return (GB_Global.printf_func) ;
 }
 
-GB_PUBLIC
 GB_flush_function_t GB_Global_flush_get (void)
 { 
     return (GB_Global.flush_func) ;
 }
 
-GB_PUBLIC
 void GB_Global_printf_set (GB_printf_function_t pr_func)
 { 
     GB_Global.printf_func = pr_func ;
 }
 
-GB_PUBLIC
 void GB_Global_flush_set (GB_flush_function_t fl_func)
 { 
     GB_Global.flush_func = fl_func ;
@@ -1020,13 +988,11 @@ void GB_Global_flush_set (GB_flush_function_t fl_func)
 // for printing matrices in 1-based index notation (@GrB and Julia)
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_print_one_based_set (bool onebased)
 { 
     GB_Global.print_one_based = onebased ;
 }
 
-GB_PUBLIC
 bool GB_Global_print_one_based_get (void)
 { 
     return (GB_Global.print_one_based) ;
@@ -1036,13 +1002,11 @@ bool GB_Global_print_one_based_get (void)
 // for printing matrix in @GrB interface
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_print_mem_shallow_set (bool mem_shallow)
 { 
     GB_Global.print_mem_shallow = mem_shallow ;
 }
 
-GB_PUBLIC
 bool GB_Global_print_mem_shallow_get (void)
 { 
     return (GB_Global.print_mem_shallow) ;
@@ -1181,7 +1145,6 @@ bool GB_Global_gpu_device_properties_get (int device)
 // timing: for code development only
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_Global_timing_clear_all (void)
 {
     for (int k = 0 ; k < 40 ; k++)
@@ -1190,25 +1153,21 @@ void GB_Global_timing_clear_all (void)
     }
 }
 
-GB_PUBLIC
 void GB_Global_timing_clear (int k)
 {
     GB_Global.timing [k] = 0 ;
 }
 
-GB_PUBLIC
 void GB_Global_timing_set (int k, double t)
 {
     GB_Global.timing [k] = t ;
 }
 
-GB_PUBLIC
 void GB_Global_timing_add (int k, double t)
 {
     GB_Global.timing [k] += t ;
 }
 
-GB_PUBLIC
 double GB_Global_timing_get (int k)
 {
     return (GB_Global.timing [k]) ;
@@ -1223,36 +1182,44 @@ double GB_Global_timing_get (int k)
 #define GB_NEXT(p) ((void **) p) [0]
 
 // free_pool_init: initialize the free_pool
-GB_PUBLIC
 void GB_Global_free_pool_init (bool clear)
 { 
     #ifdef _OPENMP
-        #pragma omp critical(GB_free_pool)
+        if (clear)
         {
-            if (clear)
+            // clear the free pool
+            #pragma omp critical(GB_free_pool)
             {
-                // clear the free pool
                 for (int k = 0 ; k < 64 ; k++)
                 {
                     GB_Global.free_pool [k] = NULL ;
                     GB_Global.free_pool_nblocks [k] = 0 ;
                 }
             }
-            // set the default free_pool_limit
-            for (int k = 0 ; k < 64 ; k++)
-            {
-                GB_Global.free_pool_limit [k] = 0 ;
-            }
-            int64_t n = 16384 ;
-            for (int k = 3 ; k <= 8 ; k++)
-            {
-                GB_Global.free_pool_limit [k] = n ;
-            }
-            for (int k = 9 ; k <= 19 ; k++)
-            {
-                n = n/2 ;
-                GB_Global.free_pool_limit [k] = n ;
-            }
+            #pragma omp flush
+        }
+        // set the default free_pool_limit
+        for (int k = 0 ; k < 3 ; k++)
+        {
+            GB_ATOMIC_WRITE
+            GB_Global.free_pool_limit [k] = 0 ;
+        }
+        int64_t n = 16384 ;
+        for (int k = 3 ; k <= 8 ; k++)
+        {
+            GB_ATOMIC_WRITE
+            GB_Global.free_pool_limit [k] = n ;
+        }
+        for (int k = 9 ; k <= 19 ; k++)
+        {
+            n = n/2 ;
+            GB_ATOMIC_WRITE
+            GB_Global.free_pool_limit [k] = n ;
+        }
+        for (int k = 20 ; k < 64 ; k++)
+        {
+            GB_ATOMIC_WRITE
+            GB_Global.free_pool_limit [k] = 0 ;
         }
     #else
         // OpenMP not available: disable the free pool
@@ -1277,7 +1244,6 @@ static inline void GB_Global_free_pool_check (void *p, int k, char *where)
 #endif
 
 // free_pool_get: get a block from the free_pool, or return NULL if none
-GB_PUBLIC
 void *GB_Global_free_pool_get (int k)
 { 
     #ifdef _OPENMP
@@ -1309,7 +1275,6 @@ void *GB_Global_free_pool_get (int k)
 }
 
 // free_pool_put: put a block in the free_pool, unless it is full
-GB_PUBLIC
 bool GB_Global_free_pool_put (void *p, int k)
 { 
     #ifdef _OPENMP
@@ -1317,17 +1282,21 @@ bool GB_Global_free_pool_put (void *p, int k)
         GB_Global_free_pool_check (p, k, "put") ;
         #endif
         bool returned_to_pool = false ;
-        #pragma omp critical(GB_free_pool)
+        int64_t limit ;
+        GB_ATOMIC_READ
+        limit = GB_Global.free_pool_limit [k] ;
+        if (limit > 0)
         {
-            returned_to_pool =
-                (GB_Global.free_pool_nblocks [k] <
-                 GB_Global.free_pool_limit [k]) ;
-            if (returned_to_pool)
+            #pragma omp critical(GB_free_pool)
             {
-                // add the block to the head of the free_pool list
-                GB_Global.free_pool_nblocks [k]++ ;
-                GB_NEXT (p) = GB_Global.free_pool [k] ;
-                GB_Global.free_pool [k] = p ;
+                returned_to_pool = (GB_Global.free_pool_nblocks [k] < limit) ;
+                if (returned_to_pool)
+                {
+                    // add the block to the head of the free_pool list
+                    GB_Global.free_pool_nblocks [k]++ ;
+                    GB_NEXT (p) = GB_Global.free_pool [k] ;
+                    GB_Global.free_pool [k] = p ;
+                }
             }
         }
         return (returned_to_pool) ;
@@ -1337,7 +1306,6 @@ bool GB_Global_free_pool_put (void *p, int k)
 }
 
 // free_pool_dump: check the validity of the free_pool
-GB_PUBLIC
 void GB_Global_free_pool_dump (int pr)
 {
     #ifdef _OPENMP
@@ -1348,7 +1316,9 @@ void GB_Global_free_pool_dump (int pr)
         for (int k = 0 ; k < 64 && !fail ; k++)
         {
             int64_t nblocks = GB_Global.free_pool_nblocks [k] ;
-            int64_t limit   = GB_Global.free_pool_limit [k] ;
+            int64_t limit ;
+            GB_ATOMIC_READ
+            limit = GB_Global.free_pool_limit [k] ;
             if (nblocks != 0 && pr > 0)
             {
                 printf ("pool %2d: " GBd " blocks, " GBd " limit\n",
@@ -1380,45 +1350,33 @@ void GB_Global_free_pool_dump (int pr)
 }
 
 // free_pool_limit_get: get the limit on the # of blocks in the kth pool
-GB_PUBLIC
 int64_t GB_Global_free_pool_limit_get (int k)
 { 
-    #ifdef _OPENMP
-        int64_t nblocks = 0 ;
-        if (k >= 3 && k < 64)
-        {
-            #pragma omp critical(GB_free_pool)
-            {
-                nblocks = GB_Global.free_pool_limit [k] ;
-            }
-        }
-        return (nblocks) ;
-    #else
-        return (0) ;
-    #endif
+    int64_t limit ;
+    if (k < 3) return (0) ;
+    GB_ATOMIC_READ
+    limit = GB_Global.free_pool_limit [k] ;
+    return (limit) ;
 }
 
 // free_pool_limit_set: set the limit on the # of blocks in the kth pool
-GB_PUBLIC
-void GB_Global_free_pool_limit_set (int k, int64_t nblocks)
+void GB_Global_free_pool_limit_set (int64_t *limit)
 { 
-    if (k >= 3 && k < 64)
-    {
-        #ifdef _OPENMP
-            #pragma omp critical(GB_free_pool)
-            {
-                GB_Global.free_pool_limit [k] = nblocks ;
-            }
-        #else
-            {
-                GB_Global.free_pool_limit [k] = 0 ;
-            }
-        #endif
-    }
+    #ifdef _OPENMP
+        for (int k = 3 ; k < 64 ; k++)
+        {
+            GB_ATOMIC_WRITE
+            GB_Global.free_pool_limit [k] = limit [k] ;
+        }
+    #else
+        for (int k = 0 ; k < 64 ; k++)
+        {
+            GB_Global.free_pool_limit [k] = 0 ;
+        }
+    #endif
 }
 
 // free_pool_nblocks_total:  total # of blocks in free_pool (for debug only)
-GB_PUBLIC
 int64_t GB_Global_free_pool_nblocks_total (void)
 {
     int64_t nblocks = 0 ;
@@ -1438,7 +1396,6 @@ int64_t GB_Global_free_pool_nblocks_total (void)
 // get_wtime: return current wallclock time
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 double GB_Global_get_wtime (void)
 { 
     return (GB_OPENMP_GET_WTIME) ;

@@ -9,7 +9,6 @@
 
 // Removes a single entry, C (row,col), from the matrix C.
 
-#define GB_DEBUG
 #include "GB.h"
 
 #define GB_FREE_ALL ;

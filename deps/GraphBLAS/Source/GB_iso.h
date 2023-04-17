@@ -41,7 +41,6 @@ void GB_iso_unop            // Cx [0] = unop (A), binop (s,A) or binop (A,s)
     GrB_Scalar scalar       // input scalar
 ) ;
 
-GB_PUBLIC
 GrB_Info GB_convert_any_to_non_iso // convert iso matrix to non-iso
 (
     GrB_Matrix A,           // input/output matrix
@@ -49,7 +48,6 @@ GrB_Info GB_convert_any_to_non_iso // convert iso matrix to non-iso
     GB_Context Contest
 ) ;
 
-GB_PUBLIC
 GrB_Info GB_convert_any_to_iso // convert non-iso matrix to iso
 (
     GrB_Matrix A,           // input/output matrix
@@ -66,7 +64,6 @@ void GB_iso_expand          // expand an iso scalar into an entire array
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 bool GB_iso_check               // return true if A is iso, false otherwise
 (
     const GrB_Matrix A,         // matrix to reduce

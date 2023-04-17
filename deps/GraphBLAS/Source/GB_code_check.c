@@ -47,7 +47,6 @@
     }                                                               \
 }
 
-GB_PUBLIC
 GrB_Info GB_code_check          // print an entry using a type code
 (
     const GB_Type_code code,    // type code of value to print

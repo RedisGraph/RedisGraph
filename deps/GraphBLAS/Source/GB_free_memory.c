@@ -14,7 +14,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 void GB_free_memory         // free memory, bypassing the free_pool
 (
     // input/output
