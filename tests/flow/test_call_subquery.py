@@ -38,16 +38,74 @@ class testCallSubqueryFlow():
     def test01_test_validations(self):
         # non-simple imports
         for query in [
-            "WITH 1 AS a CALL {WITH 1 AS a RETURN 1} RETURN 1",
-            "WITH 1 AS a CALL {WITH a+1 AS a RETURN a} RETURN a",
+            "WITH 1 AS a CALL {WITH a+1 AS b RETURN b} RETURN b",
             "WITH 1 AS a CALL {WITH a AS b RETURN b} RETURN b",
             "WITH 1 AS a CALL {WITH a LIMIT 5 RETURN a} RETURN a",
             "WITH 1 AS a CALL {WITH a ORDER BY a.v RETURN a} RETURN a",
             "WITH 1 AS a CALL {WITH a WHERE a > 5 RETURN a} RETURN a",
             "WITH 1 AS a CALL {WITH a SKIP 5 RETURN a} RETURN a",
+            "WITH true AS a CALL {WITH NOT(a) AS b RETURN b} RETURN b",
         ]:
             self.expect_error(query,
                 "WITH imports in CALL {} must be simple ('WITH a')")
+
+        # valid leading WITH
+        query_to_expected_result = {
+            """
+            CALL {
+                WITH 1 AS b 
+                RETURN b
+            }
+            RETURN b
+            """ : [[1]],
+            """
+            CALL {
+                WITH {} AS b 
+                RETURN b
+            }
+            RETURN b
+            """ : [[{}]],
+            """
+            CALL {
+                WITH 'a' AS b 
+                RETURN b
+            } 
+            RETURN b""" : [['a']],
+            """
+            CALL { 
+                WITH ['foo', 'bar'] AS l1 
+                RETURN l1
+            } 
+            RETURN l1
+            """ : [[['foo', 'bar']]],
+            """
+            WITH 1 AS one
+            CALL {
+                WITH one, 2 as two
+                RETURN one + two AS three
+            }
+            RETURN three
+            """ : [[3]],
+            """
+            WITH 1 AS one, 2 as two
+            CALL {
+                WITH one, two
+                RETURN one + two AS three
+            }
+            RETURN three
+            """ : [[3]],
+            """
+            WITH 1 AS a, 5 AS b 
+            CALL {
+                WITH a 
+                WITH a, 1 + a AS b 
+                RETURN a + b AS c
+            } 
+            RETURN c
+            """ : [[3]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
         # non-valid queries within CALL {}
         for query in [
@@ -58,6 +116,28 @@ class testCallSubqueryFlow():
             # just pass in case of an error, fail otherwise
             self.expect_error(query, "")
 
+        # TODO: Add these tests after merging fix to bug#2215
+        # # import an undefined identifier
+        # for query in [
+        #     """
+        #     CALL {
+        #         WITH a
+        #         RETURN 1 AS one
+        #     } 
+        #     RETURN one
+        #     """,
+            
+        #     """
+        #     WITH a
+        #     CALL {
+        #         WITH a 
+        #         RETURN a AS b
+        #     } 
+        #     RETURN b
+        #     """,
+        # ]:
+        #     self.expect_error(query, "a not defined")
+        
         # scope of a subquery with no imports starts empty
         query = """
         MATCH (n:N)
@@ -655,18 +735,6 @@ updating clause.")
         # plan = graph.explain(query)
         # # make sure that DELETE is called only once
         # self.env.assertTrue(_check_subquery_compression(plan, "Update"))
-
-    # TODO: Enable this test once WITH validation is fixed
-    # def test15_leading_with(self):
-    #     res = graph.query(
-    #         """
-    #         CALL { 
-    #             WITH ['foo', 'bar'] AS l1 
-    #             RETURN l1
-    #         } 
-    #         RETURN l1
-    #         """
-    #     )
 
     #     # validate the results
     #     self.env.assertEquals(len(res.result_set), 1)
