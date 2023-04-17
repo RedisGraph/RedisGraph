@@ -156,18 +156,18 @@ void EvalEntityUpdates
 		return;
 	}
 
+	SIValue val = Record_Get(r, ctx->record_idx);
+
 	// make sure we're updating either a node or an edge
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		ErrorCtx_RaiseRuntimeException(
-			"Update error: alias '%s' did not resolve to a graph entity",
-			ctx->alias);
+		Error_SITypeMismatch(val, (T_NODE | T_EDGE));
+		return;
 	}
 
 	// label(s) update can only be performed on nodes
-	if((ctx->add_labels != NULL || ctx->remove_labels != NULL) &&
-			t != REC_TYPE_NODE) {
-		ErrorCtx_RaiseRuntimeException(
-				"Type mismatch: expected Node but was Relationship");
+	if ((ctx->add_labels != NULL || ctx->remove_labels != NULL) && t != REC_TYPE_NODE) {
+		Error_SITypeMismatch(val, T_NODE);
+		return;
 	}
 
 	PendingUpdateCtx **updates = (t == REC_TYPE_NODE)
