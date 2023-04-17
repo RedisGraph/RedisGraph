@@ -555,39 +555,37 @@ void ExecutionPlan_Free
 	// -------------------------------------------------------------------------
 
 	// traverse the execution-plan graph (DAG -> no endless cycles), while
-	// while collecting the different segments, and freeing the op tree
-	dict *plans = HashTableCreate(&dt);
-	OpBase **ops = array_new(OpBase *, 1);
-	OpBase **ordered_ops = array_new(OpBase *, 1);
+	// collecting the different segments, and freeing the op tree
+	dict *plans = HashTableCreate(&def_dt);
+	OpBase **visited = array_new(OpBase *, 1);
+	OpBase **to_visit = array_new(OpBase *, 1);
 
 	OpBase *op = plan->root;
-	array_append(ops, op);
+	array_append(to_visit, op);
 
 	dictEntry *entry;
-	while(array_len(ops) > 0) {
-		op = array_pop(ops);
+	while(array_len(to_visit) > 0) {
+		op = array_pop(to_visit);
 
 		// add the plan this op is affiliated with, if first met now
-		if((entry = HashTableAddRaw(plans, (void *)op->plan, NULL)) != NULL) {
-			HashTableSetVal(plans, entry, (void *)op->plan);
-		}
+		HashTableAdd(plans, (void *)op->plan, (void *)op->plan);
 
-		// add all direct children of op to ops
+		// add all direct children of op to to_visit
 		for(uint i = 0; i < op->childCount; i++) {
 			if(op->children[i] != NULL) {
-				array_append(ops, op->children[i]);
+				array_append(to_visit, op->children[i]);
 			}
 		}
 
-		// free op
-		array_append(ordered_ops, op);
+		// add op to `visited` array
+		array_append(visited, op);
 	}
-	while(array_len(ordered_ops) > 0) {
-		op = array_pop(ordered_ops);
+	for(int i = array_len(visited)-1; i >= 0; i--) {
+		op = visited[i];
 		OpBase_Free(op);
 	}
-	array_free(ordered_ops);
-	array_free(ops);
+	array_free(visited);
+	array_free(to_visit);
 
 	// -------------------------------------------------------------------------
 	// free internals of the plans
