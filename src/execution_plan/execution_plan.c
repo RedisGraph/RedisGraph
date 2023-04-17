@@ -16,6 +16,8 @@
 #include "execution_plan_build/execution_plan_modify.h"
 #include "execution_plan_build/execution_plan_construct.h"
 
+#include <setjmp.h>
+
 // Allocate a new ExecutionPlan segment.
 inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
 	return rm_calloc(1, sizeof(ExecutionPlan));
