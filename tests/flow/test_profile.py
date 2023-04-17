@@ -1,4 +1,7 @@
 from common import *
+from execution_plan_util import locate_operation
+from pprint import pprint
+
 
 GRAPH_ID = "profile"
 
@@ -40,26 +43,32 @@ class testProfile(FlowTestsBase):
         self.env.assertIn("Conditional Variable Length Traverse | (a)-[@anon_1*1..INF]->(@anon_0) | Records produced: 0", profile)
         self.env.assertIn("Node By Label Scan | (a:L) | Records produced: 0", profile)
 
-    # TODO: Test under development
-    # def test03_profile_filter_information(self):
-    #     query = """
-    #             MATCH (a:Actor)-[r:ACTED_IN]-(m:Movie)
-    #                 WHERE a.name = 'Mark Hamill'
-    #                     AND (a.name STARTS WITH 'M' OR a.name CONTAINS 'H')
-    #             RETURN a.name, m.title
-    #             """
+    def test03_profile_filter_information(self):
+        query = """
+                MATCH (n)
+                WHERE n:person
+                RETURN n.name
+                """
+        plan = redis_graph.explain(query)
+        filterOp = locate_operation(plan.structured_plan, "Filter")
+        self.env.assertIn("hasLabels(n, [person])", filterOp.args)
 
-    #     query = """
-    #             WITH 'Ham' AS text
-    #             MATCH (a:Actor)-[r:ACTED_IN]-(m:Movie)
-    #                 WHERE a.name = 'Mark Hamill'
-    #                     AND (a.name STARTS WITH 'M' OR a.name CONTAINS text)
-    #             RETURN a.name, m.title
-    #             """
+        query = """
+                MATCH (a:Actor)-[r:ACTED_IN]-(m:Movie) 
+                WHERE (a.id%2=1)+1 >= 1 
+                RETURN a
+                """
+        plan = redis_graph.explain(query)
+        filterOp = locate_operation(plan.structured_plan, "Filter")
+        self.env.assertIn("(((a.id % 2) = 1) + 1) >= 1", filterOp.args)
+
+        query = """
+                MATCH (a:Actor)-[r:ACTED_IN]-(m:Movie)
+                    WHERE a.name = 'Mark Hamill'
+                        AND (a.name STARTS WITH 'M' OR a.name CONTAINS 'H')
+                RETURN a.name, m.title
+                """
+        plan = redis_graph.explain(query)
+        filterOp = locate_operation(plan.structured_plan, "Filter")
+        self.env.assertIn("(a.name = 'Mark Hamill' AND (starts with(a.name, 'M') OR contains(a.name, 'H')))", filterOp.args)
         
-    #     query = """
-    #             MATCH (a:Actor)-[r:ACTED_IN]-(m:Movie)
-    #                 WHERE a.name = 'Mark Hamill'
-    #                     AND (a.id%2=1)+1 >= 1
-    #             RETURN a"
-    #             """
