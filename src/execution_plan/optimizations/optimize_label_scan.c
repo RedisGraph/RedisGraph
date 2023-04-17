@@ -46,7 +46,6 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	QGNode *n = QueryGraph_GetNodeByAlias(qg, node_alias);
 
 	// return if node has only one label
-	// uint label_count = QGNode_LabelCount(qn);
 	uint label_count = array_len(n_ctx->candidates) + 1;
 	ASSERT(label_count >= 1);
 	if(label_count == 1) {
