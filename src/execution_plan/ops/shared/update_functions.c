@@ -188,13 +188,21 @@ void EvalEntityUpdates
 		update = rm_malloc(sizeof(PendingUpdateCtx));
 		update->ge            = entity;
 		update->attributes    = AttributeSet_Clone(*entity->attributes);
-		update->add_labels    = array_new(const char *, array_len(ctx->add_labels));
-		update->remove_labels = array_new(const char *, array_len(ctx->remove_labels));
+		update->add_labels    = NULL;
+		update->remove_labels = NULL;
 		// add update context to updates dictionary
 		HashTableAdd(updates, (void *)ENTITY_GET_ID(entity), update);
 	} else {
 		// update context already exists
 		update = (PendingUpdateCtx *)HashTableGetVal(entry);
+	}
+
+	if(array_len(ctx->add_labels) > 0 && update->add_labels == NULL) {
+		update->add_labels = array_new(const char *, array_len(ctx->add_labels));
+	}
+
+	if(array_len(ctx->remove_labels) > 0 && update->remove_labels == NULL) {
+		update->remove_labels = array_new(const char *, array_len(ctx->remove_labels));
 	}
 	
 	for (uint i = 0; i < array_len(ctx->add_labels); i++) {
