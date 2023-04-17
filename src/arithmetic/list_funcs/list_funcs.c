@@ -557,25 +557,12 @@ SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
 	return array;
 }
 
-// fake hash function
-// hash of key is simply key
-static uint64_t nop_hash
-(
-	const void *key
-) {
-	return ((uint64_t)key);
-}
-
-// hashtable callbacks
-static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
-	NULL, NULL, NULL};
-
 static dict *_list2dict
 (
 	SIValue list
 ) {
 	uint32_t n   = SIArray_Length(list);
-	dict *values = HashTableCreate(&dt);
+	dict *values = HashTableCreate(&def_dt);
 	for(uint i = 0; i < n; i++) {
 		SIValue val = SIArray_Get(list, i);
 		XXH64_state_t state;
@@ -681,7 +668,7 @@ SIValue AR_DEDUP(SIValue *argv, int argc, void *private_data) {
 	uint32_t n          = SIArray_Length(list);
 	SIValue  dedup_list = SI_Array(n);
 
-	dict *values = HashTableCreate(&dt);
+	dict *values = HashTableCreate(&def_dt);
 	// check if value already exists in list
 	for(uint i = 0; i < n; i++) {
 		SIValue val = SIArray_Get(list, i);

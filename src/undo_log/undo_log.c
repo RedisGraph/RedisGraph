@@ -110,7 +110,7 @@ static void _UndoLog_Restore_Entity_Property
 	if(old_value == ATTRIBUTE_NOTFOUND) {
 		// adding a new attribute; do nothing if its value is NULL
 		if(SI_TYPE(value) != T_NULL) {
-			AttributeSet_AddNoClone(ge->attributes, attr_id, value);
+			AttributeSet_AddNoClone(ge->attributes, &attr_id, &value, 1, false);
 		}
 	} else {
 		// update attribute
@@ -157,12 +157,12 @@ static void _UndoLog_Rollback_Set_Labels
 		uint         labels_count      = update_labels_op->labels_count;
 
 		Graph_RemoveNodeLabels(g, update_labels_op->node.id,
-				update_labels_op->label_lds, labels_count);
+				update_labels_op->label_ids, labels_count);
 
 		_index_delete_node_with_labels(ctx, &(update_labels_op->node),
-				update_labels_op->label_lds, labels_count);
+				update_labels_op->label_ids, labels_count);
 
-		array_free(update_labels_op->label_lds);
+		array_free(update_labels_op->label_ids);
 	}
 }
 
@@ -180,12 +180,12 @@ static void _UndoLog_Rollback_Remove_Labels
 		uint         labels_count      = update_labels_op->labels_count;
 
 		Graph_LabelNode(g, update_labels_op->node.id,
-				update_labels_op->label_lds, labels_count);
+				update_labels_op->label_ids, labels_count);
 
 		_index_node_with_labels(ctx, &(update_labels_op->node),
-				update_labels_op->label_lds, labels_count);
+				update_labels_op->label_ids, labels_count);
 
-		array_free(update_labels_op->label_lds);
+		array_free(update_labels_op->label_ids);
 	}
 }
 
@@ -339,6 +339,15 @@ UndoLog UndoLog_New(void) {
 	return (UndoLog)array_new(UndoOp, 0);
 }
 
+// returns number of entries in log
+uint UndoLog_Length
+(
+	const UndoLog log  // log to query
+) {
+	ASSERT(log != NULL);
+	return array_len(log);
+}
+
 //------------------------------------------------------------------------------
 // Undo add changes
 //------------------------------------------------------------------------------
@@ -471,8 +480,8 @@ void UndoLog_AddLabels
 
 	op.type = UNDO_SET_LABELS;
 	op.labels_op.node = *node;
-	op.labels_op.label_lds = array_new(int, labels_count);
-	memcpy(op.labels_op.label_lds, label_ids, sizeof(int)*labels_count);
+	op.labels_op.label_ids = array_new(int, labels_count);
+	memcpy(op.labels_op.label_ids, label_ids, sizeof(int)*labels_count);
 	op.labels_op.labels_count = labels_count;
 	_UndoLog_AddOperation(log, &op);
 }
@@ -492,8 +501,8 @@ void UndoLog_RemoveLabels
 
 	op.type = UNDO_REMOVE_LABELS;
 	op.labels_op.node = *node;
-	op.labels_op.label_lds = array_new(int, labels_count);
-	memcpy(op.labels_op.label_lds, label_ids, sizeof(int)*labels_count);
+	op.labels_op.label_ids = array_new(int, labels_count);
+	memcpy(op.labels_op.label_ids, label_ids, sizeof(int)*labels_count);
 	op.labels_op.labels_count = labels_count;
 	_UndoLog_AddOperation(log, &op);
 }
@@ -589,6 +598,46 @@ void UndoLog_Rollback
 
 	array_clear(log);
 }
+void UndoLog_Clear
+(
+	UndoLog log
+) {
+	ASSERT(log != NULL);
+	array_clear(log);
+}
+
+void UndoLog_FreeOp
+(
+	UndoOp *op
+) {
+	ASSERT(op != NULL);
+
+	switch(op->type) {
+		case UNDO_UPDATE:
+			SIValue_Free(op->update_op.orig_value);
+			break;
+		case UNDO_CREATE_NODE:
+			break;
+		case UNDO_CREATE_EDGE:
+			break;
+		case UNDO_DELETE_NODE:
+			rm_free(op->delete_node_op.labels);
+			AttributeSet_Free(&op->delete_node_op.set);
+			break;
+		case UNDO_DELETE_EDGE:
+			AttributeSet_Free(&op->delete_edge_op.set);
+			break;
+		case UNDO_SET_LABELS:
+		case UNDO_REMOVE_LABELS:
+			array_free(op->labels_op.label_ids);
+			break;
+		case UNDO_ADD_SCHEMA:
+		case UNDO_ADD_ATTRIBUTE:
+			break;
+		default:
+			ASSERT(false);
+	}
+}
 
 void UndoLog_Free
 (
@@ -598,32 +647,9 @@ void UndoLog_Free
 	uint count = array_len(log);
 	for (uint i = 0; i < count; i++) {
 		UndoOp *op = log + i;
-		switch(op->type) {
-			case UNDO_UPDATE:
-				SIValue_Free(op->update_op.orig_value);
-				break;
-			case UNDO_CREATE_NODE:
-				break;
-			case UNDO_CREATE_EDGE:
-				break;
-			case UNDO_DELETE_NODE:
-				rm_free(op->delete_node_op.labels);
-				AttributeSet_Free(&op->delete_node_op.set);
-				break;
-			case UNDO_DELETE_EDGE:
-				AttributeSet_Free(&op->delete_edge_op.set);
-				break;
-			case UNDO_SET_LABELS:
-			case UNDO_REMOVE_LABELS:
-				array_free(op->labels_op.label_lds);
-				break;
-			case UNDO_ADD_SCHEMA:
-			case UNDO_ADD_ATTRIBUTE:
-				break;
-			default:
-				ASSERT(false);
-		}
+		UndoLog_FreeOp(op);
 	}
 
 	array_free(log);
 }
+

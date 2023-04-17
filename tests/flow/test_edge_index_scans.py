@@ -193,7 +193,7 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         expected_result = ["Ailon"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
 
-    def test8_index_scan_with_param_array(self):
+    def test08_index_scan_with_param_array(self):
         query = "MATCH (n)-[f:friend]->() WHERE f.created_at in $times RETURN n.name"
         params = {'times': [31]}
         plan = redis_graph.execution_plan(query, params=params)
@@ -202,7 +202,7 @@ class testEdgeByIndexScanFlow(FlowTestsBase):
         expected_result = ["Ailon"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
 
-    def test9_single_index_multiple_scans(self):
+    def test09_single_index_multiple_scans(self):
         query = "MATCH (p1:person {name: 'Roi'}), (p2:person {name: 'Alon'}) MERGE (p1)-[:friend {created_at: 100}]->(p2) MERGE (p1)-[:friend {created_at: 101}]->(p2)"
         plan = redis_graph.execution_plan(query)
         # Two index scans should be performed.

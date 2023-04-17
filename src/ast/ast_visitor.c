@@ -38,9 +38,10 @@ static VISITOR_STRATEGY _AST_Visitor_visit
 
 	uint nchildren = cypher_astnode_nchildren(node);
 	for (uint i = 0; i < nchildren; i++) {
-		if(_AST_Visitor_visit(cypher_astnode_get_child(node, i), visitor) == VISITOR_BREAK) {
-			// error occurred, fast fold
-			return VISITOR_BREAK;
+		if(_AST_Visitor_visit(cypher_astnode_get_child(node, i), visitor) ==
+			VISITOR_BREAK) {
+				// error occurred, fast fold
+				return VISITOR_BREAK;
 		}
 	}
 

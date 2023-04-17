@@ -15,7 +15,8 @@
 #define ATTRIBUTE_ID_ALL USHRT_MAX - 1
 
 // returns number of attribute within the set
-#define ATTRIBUTE_SET_COUNT(attributes) (attributes == NULL ? 0 : ((attributes)->attr_count))
+#define ATTRIBUTE_SET_COUNT(attributes) \
+	(attributes == NULL ? 0 : ((attributes)->attr_count))
 
 typedef unsigned short Attribute_ID;
 
@@ -51,12 +52,14 @@ SIValue AttributeSet_GetIdx
 // adds an attribute to the set without cloning the SIValue
 void AttributeSet_AddNoClone
 (
-	AttributeSet *set,     // set to update
-	Attribute_ID attr_id,  // attribute identifier
-	SIValue value          // attribute value
+	AttributeSet *set,  // set to update
+	Attribute_ID *ids,  // identifiers
+	SIValue *values,    // values
+	ushort n,           // number of values to add
+	bool allowNull		// accept NULLs
 );
 
-// adds an attribute to the set (clones the SIValue)
+// adds an attribute to the set (clones the value)
 void AttributeSet_Add
 (
 	AttributeSet *set,     // set to update
@@ -64,7 +67,8 @@ void AttributeSet_Add
 	SIValue value          // attribute value
 );
 
-// add or update an attribute, this function allows NULL value to be added to the set
+// add or update an attribute
+// this function allows NULL value to be added to the set
 void AttributeSet_Set_Allow_Null
 (
 	AttributeSet *set,     // set to update
@@ -72,8 +76,8 @@ void AttributeSet_Set_Allow_Null
 	SIValue value          // attribute value
 );
 
-// updates existing attribute (without cloning), return true if attribute been updated
-// otherwise false
+// updates existing attribute (without cloning)
+// return true if attribute been updated
 bool AttributeSet_UpdateNoClone
 (
 	AttributeSet *set,     // set to update
@@ -81,8 +85,8 @@ bool AttributeSet_UpdateNoClone
 	SIValue value          // new value
 );
 
-// updates existing attribute, return true if attribute been updated
-// otherwise false
+// updates existing attribute
+// return true if attribute been updated
 bool AttributeSet_Update
 (
 	AttributeSet *set,     // set to update

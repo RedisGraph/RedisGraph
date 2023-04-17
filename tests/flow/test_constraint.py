@@ -1,3 +1,4 @@
+import threading
 from common import *
 from index_utils import *
 from constraint_utils import *
@@ -961,3 +962,69 @@ class testConstraintEdges():
             self.env.assertTrue(False)
         except ResponseError as e:
             self.env.assertContains("unique constraint violation, on edge of relationship-type Artist", str(e))
+
+MONITOR_ATTACHED = False
+
+class testConstraintReplication():
+    def monitor_thread(self):
+        global MONITOR_ATTACHED
+        try:
+            with self.replica.monitor() as m:
+                MONITOR_ATTACHED = True
+                for cmd in m.listen():
+                    if 'GRAPH.CONSTRAINT' in cmd['command']:
+                        self.monitor.append(cmd)
+        except:
+            pass
+
+    def __init__(self):
+        self.env = Env(decodeResponses=True, env='oss', useSlaves=True)
+        self.source = self.env.getConnection()
+        self.replica = self.env.getSlaveConnection()
+        self.monitor = []
+        self.g = Graph(self.source, GRAPH_ID)
+
+        self.monitor_thread = threading.Thread(target=self.monitor_thread)
+        self.monitor_thread.start()
+
+        # wait for monitor thread to attach
+        while MONITOR_ATTACHED is False:
+            time.sleep(0.2)
+
+        # clear DB
+        self.source.flushall()
+
+        # the WAIT command forces master slave sync to complete
+        self.source.execute_command("WAIT", 1, 0)
+
+    def test_01_constraint_replication(self):
+        # create mandatory node constraint over Person height
+        create_mandatory_node_constraint(self.g, 'Person', 'height')
+
+        # create unique node constraint over Person height
+        create_unique_node_constraint(self.g, 'Person', 'height')
+
+        # create unique node constraint over Person name and age
+        create_unique_node_constraint(self.g, 'Person', 'name', 'age')
+
+        # create unique node constraint over Person loc
+        create_unique_node_constraint(self.g, 'Person', 'loc')
+
+        # create mandatory edge constraint over
+        create_mandatory_edge_constraint(self.g, 'Knows', 'since')
+
+        # validate constrains
+        constraints = list_constraints(self.g)
+        self.env.assertEqual(len(constraints), 5)
+        for c in constraints:
+            self.env.assertTrue(c.status != 'FAILED')
+
+        # create unique edge constraint over
+        create_unique_edge_constraint(self.g, 'Knows', 'since', sync=True)
+
+        # each constraint should be replicated twice from source to replica:
+        # 1. upon creation
+        # 2. upon constraint becoming activate
+        self.source.execute_command("WAIT", 1, 0)
+        self.env.assertGreaterEqual(len(self.monitor), 10)
+
