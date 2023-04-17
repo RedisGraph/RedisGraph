@@ -557,7 +557,7 @@ void ExecutionPlan_Free
 	while(array_len(to_visit) > 0) {
 		op = array_pop(to_visit);
 
-		// add the plan this op is affiliated with, if first met now
+		// add the plan this op is affiliated with
 		HashTableAdd(plans, (void *)op->plan, (void *)op->plan);
 
 		// add all direct children of op to to_visit
@@ -570,6 +570,8 @@ void ExecutionPlan_Free
 		// add op to `visited` array
 		array_append(visited, op);
 	}
+
+	// free the collected ops
 	for(int i = array_len(visited)-1; i >= 0; i--) {
 		op = visited[i];
 		OpBase_Free(op);
