@@ -3,7 +3,7 @@ from common import *
 graph = None
 redis_con = None
 people = ["Roi", "Alon", "Ailon", "Boaz"]
-
+GRAPH_ID = "g"
 
 class testOptimizationsPlan(FlowTestsBase):
     def __init__(self):
@@ -11,7 +11,7 @@ class testOptimizationsPlan(FlowTestsBase):
         global graph
         global redis_con
         redis_con = self.env.getConnection()
-        graph = Graph(redis_con, "g")
+        graph = Graph(redis_con, GRAPH_ID)
         self.populate_graph()
 
     def populate_graph(self):
@@ -476,3 +476,65 @@ class testOptimizationsPlan(FlowTestsBase):
 
         plan = graph.execution_plan(query)
         self.env.assertIn("Node By Label Scan | (n:N)", plan)
+
+    # mandatory match labels should not be replaced with optional ones in
+    # optimize-label-scan
+    def test30_optimize_mandatory_labels_order_only(self):
+        # clean db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create a node with label N
+        query = """CREATE (n:N {v: 1})"""
+        graph.query(query)
+
+        query = """MATCH (n:N) OPTIONAL MATCH (n:Q) RETURN n.v"""
+        plan = graph.execution_plan(query)
+
+        # make sure N is traversed first, even though there are no nodes with
+        # label Q
+        self.env.assertIn("Node By Label Scan | (n:N)", plan)
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set, [[1]])
+
+        # create nodes so there are two nodes with label N, and one with label Q.
+        graph.query("CREATE (:N:Q {v: 2})")
+
+        # The most tempting label to start traversing from is Z, as there are
+        # no nodes of label Z, but it is optional, so the second most tempting
+        # label (Q) must be traversed first (order swapped with N)
+        query = """MATCH (n:N) MATCH (n:Q) OPTIONAL MATCH (n:Z) RETURN n"""
+        plan = graph.execution_plan(query)
+        self.env.assertIn("Node By Label Scan | (n:Q)", plan)
+        self.env.assertIn("Conditional Traverse | (n:N)->(n:N)", plan)
+
+        # assert correctness of the results
+        res = graph.query(query)
+        self.env.assertEquals(res.result_set[0][0], Node(label=['N', 'Q'], properties={'v': 2}))
+
+    def test31_optimize_optional_labels(self):
+        """Tests that the optimization of the Label-Scan op works on optional
+        labels properly"""
+
+        # clean db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create a node with label `N`
+        graph.query("CREATE (:N)")
+
+        plan = graph.execution_plan("OPTIONAL MATCH (n:N:M) RETURN n")
+
+        # make sure `M` is traversed first, as it has less labels
+        self.env.assertIn("Node By Label Scan | (n:M)", plan)
+        self.env.assertIn("Conditional Traverse | (n:N)->(n:N)", plan)
+
+        # make sure that labels from different `OPTIONAL MATCH` clauses are not
+        # "mixed" in Label-Scan optimization
+        query = "OPTIONAL MATCH (n:N) OPTIONAL MATCH (n:M) RETURN n"
+        plan = graph.execution_plan(query)
+
+        # make sure `N` is the first label traversed, even though there are less
+        # labels with label `M`
+        self.env.assertIn("Node By Label Scan | (n:N)", plan)
+        self.env.assertIn("Conditional Traverse | (n:M)->(n:M)", plan)

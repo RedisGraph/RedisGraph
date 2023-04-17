@@ -82,8 +82,16 @@ static void _ExecutionPlan_ProcessQueryGraph
 			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			if(s != NULL) label_id = Schema_GetID(s);
 
+			// build candidates for swap in Label-Scan optimization
+			uint *candidates = array_new(uint, 0);
+			for(uint i = 0; i < label_count; i++) {
+				uint _label_id = QGNode_GetLabelID(src, i);
+				if(_label_id != label_id) {
+					array_append(candidates, _label_id);
+				}
+			}
 			// resolve source node by performing label scan
-			NodeScanCtx ctx = NODE_CTX_NEW(alias, label, label_id);
+			NodeScanCtx ctx = NODE_CTX_NEW(alias, label, label_id, candidates);
 			root = tail = NewNodeByLabelScanOp(plan, ctx);
 
 			// first operand has been converted into a label scan op

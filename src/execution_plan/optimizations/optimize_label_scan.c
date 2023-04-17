@@ -35,41 +35,53 @@
 static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	ASSERT(scan != NULL);	
 
-	OpBase      *op  =  (OpBase*)scan;
-	Graph       *g   =  QueryCtx_GetGraph();
-	QueryGraph  *qg  =  op->plan->query_graph;
+	Graph       *g     =  QueryCtx_GetGraph();
+	OpBase      *op    =  (OpBase*)scan;
+	QueryGraph *qg     =  op->plan->query_graph;
+	NodeScanCtx *n_ctx =  &scan->n;
 
 	// see if scanned node has multiple labels
-	const char *node_alias = scan->n.alias;
-	QGNode *qn = QueryGraph_GetNodeByAlias(qg, node_alias);
-	ASSERT(qn != NULL);
+	const char *node_alias = n_ctx->alias;
+
+	QGNode *n = QueryGraph_GetNodeByAlias(qg, node_alias);
 
 	// return if node has only one label
-	uint label_count = QGNode_LabelCount(qn);
+	// uint label_count = QGNode_LabelCount(qn);
+	uint label_count = array_len(n_ctx->candidates) + 1;
 	ASSERT(label_count >= 1);
-	if(label_count == 1) return;
+	if(label_count == 1) {
+		return;
+	}
 
 	// node has multiple labels
 	// find label with minimum entities
-	uint64_t    min_nnz       = UINT64_MAX; // tracks min entries
-	int         min_label_id  = 0;          // tracks min label ID
-	const char *min_label_str = NULL;       // tracks min label name
+	uint64_t    min_nnz       = (uint64_t) Graph_LabeledNodeCount(g, n_ctx->label_id);
+	int         min_label_id  = n_ctx->label_id;
+	const char *min_label_str = n_ctx->label;
 
-	for(uint i = 0; i < label_count; i++) {
+	uint candidate_count = label_count - 1;
+	for(uint i = 0; i < candidate_count; i++) {
 		uint64_t nnz;
-		int label_id = QGNode_GetLabelID(qn, i);
+		int label_id = n_ctx->candidates[i];
 		nnz = Graph_LabeledNodeCount(g, label_id);
 		if(min_nnz > nnz) {
 			// update minimum
 			min_nnz        =  nnz;
 			min_label_id   =  label_id;
-			min_label_str  =  QGNode_GetLabel(qn, i);
+			// find and set min label str
+			for(uint i = 0; i < array_len(n->labels); i++) {
+				if(n->labelsID[i] == label_id) {
+					min_label_str = n->labels[i];
+				}
+			}
 		}
 	}
 
 	// scanned label has the minimum number of entries
 	// no switching required
-	if(min_label_id == scan->n.label_id) return;
+	if(min_label_id == n_ctx->label_id) {
+		return;
+	}
 
 	// patch following traversal, skip filters
 	OpBase *parent = op->parent;
@@ -80,8 +92,8 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	AlgebraicExpression *ae = op_traverse->ae;
 	AlgebraicExpression *operand;
 
-	const char *row_domain    = scan->n.alias;
-	const char *column_domain = scan->n.alias;
+	const char *row_domain    = n_ctx->alias;
+	const char *column_domain = n_ctx->alias;
 
 	// locate the operand corresponding to the about to be replaced label
 	// in the parent operation (conditional traverse)
@@ -92,11 +104,11 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	// create a replacement operand for the migrated label matrix
 	AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
 			true, AlgebraicExpression_Src(operand),
-			AlgebraicExpression_Dest(operand), NULL, scan->n.label);
+			AlgebraicExpression_Dest(operand), NULL, n_ctx->label);
 
 	// swap current label with minimum label
-	scan->n.label    = min_label_str;
-	scan->n.label_id = min_label_id;
+	n_ctx->label    = min_label_str;
+	n_ctx->label_id = min_label_id;
 
 	_AlgebraicExpression_InplaceRepurpose(operand, replacement);
 }
@@ -117,4 +129,3 @@ void optimizeLabelScan(ExecutionPlan *plan) {
 	}
 	array_free(label_scan_ops);
 }
-
