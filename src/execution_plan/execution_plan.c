@@ -16,16 +16,7 @@
 #include "execution_plan_build/execution_plan_modify.h"
 #include "execution_plan_build/execution_plan_construct.h"
 
-static uint64_t nop_hash
-(
-	const void *key
-) {
-	return ((uint64_t)key);
-}
-
-// hashtable callbacks
-static dictType dt = { nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
-	NULL, NULL, NULL};
+#include <setjmp.h>
 
 // Allocate a new ExecutionPlan segment.
 inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
