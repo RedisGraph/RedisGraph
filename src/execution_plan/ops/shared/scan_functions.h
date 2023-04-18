@@ -10,13 +10,13 @@
 
 // Storage struct for label data in node and index scans.
 typedef struct {
-	QGNode *n;          // candidates for swapping in Label-Scan optimization
+	QGNode *n;          // node to scan (might hold multiple labels)
 	LabelID label_id;   // label ID of the node being traversed
 	const char *alias;  // alias of the node being traversed
 	const char *label;  // label of the node being traversed
 } NodeScanCtx;
 
-// Instantiate a new labeled node context.
+// instantiate a new labeled node context
 #define NODE_CTX_NEW(_alias, _label, _label_id, _n)  \
 (NodeScanCtx) {                                      \
 	.alias = (_alias),                               \
