@@ -207,7 +207,7 @@ static OpResult NodeByLabelScanReset(OpBase *ctx) {
 static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	ASSERT(opBase->type == OPType_NODE_BY_LABEL_SCAN);
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
-	OpBase *clone = NewNodeByLabelScanOp(plan, op->n);
+	OpBase *clone = NewNodeByLabelScanOp(plan, NODE_CTX_CLONE(op->n));
 	return clone;
 }
 
@@ -226,5 +226,9 @@ static void NodeByLabelScanFree(OpBase *op) {
 		UnsignedRange_Free(nodeByLabelScan->id_range);
 		nodeByLabelScan->id_range = NULL;
 	}
-}
 
+	if(nodeByLabelScan->n.n != NULL) {
+		NODE_CTX_FREE(nodeByLabelScan->n);
+		nodeByLabelScan->n.n = NULL;
+	}
+}

@@ -6,20 +6,30 @@
 
 #pragma once
 
+#include "../../../graph/entities/node.h"
+
 // Storage struct for label data in node and index scans.
 typedef struct {
+	QGNode *n;          // candidates for swapping in Label-Scan optimization
+	LabelID label_id;   // label ID of the node being traversed
 	const char *alias;  // alias of the node being traversed
 	const char *label;  // label of the node being traversed
-	int label_id;       // label ID of the node being traversed
-	int *candidates;   // candidates for swapping in Label-Scan optimization
 } NodeScanCtx;
 
 // Instantiate a new labeled node context.
-#define NODE_CTX_NEW(_alias, _label, _label_id, _candidates)  \
-(NodeScanCtx) {                                               \
-	.alias = (_alias),                                        \
-	.label = (_label),                                        \
-	.label_id = (_label_id),                                  \
-	.candidates = (_candidates)                               \
+#define NODE_CTX_NEW(_alias, _label, _label_id, _n)  \
+(NodeScanCtx) {                                      \
+	.alias = (_alias),                               \
+	.label = (_label),                               \
+	.label_id = (_label_id),                         \
+	.n = (_n)                                        \
 }
 
+#define NODE_CTX_CLONE(_ctx)       \
+({                                 \
+	NodeScanCtx ctx = _ctx;        \
+	ctx.n = QGNode_Clone(_ctx.n);  \
+	ctx;                           \
+})
+
+#define NODE_CTX_FREE(_ctx)	(QGNode_Free(_ctx.n))

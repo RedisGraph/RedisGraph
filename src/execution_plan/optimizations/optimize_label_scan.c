@@ -43,10 +43,10 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	// see if scanned node has multiple labels
 	const char *node_alias = n_ctx->alias;
 
-	QGNode *n = QueryGraph_GetNodeByAlias(qg, node_alias);
+	QGNode *n = n_ctx->n;
 
 	// return if node has only one label
-	uint label_count = array_len(n_ctx->candidates) + 1;
+	uint label_count = QGNode_LabelCount(n);
 	ASSERT(label_count >= 1);
 	if(label_count == 1) {
 		return;
@@ -58,21 +58,15 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	int         min_label_id  = n_ctx->label_id;
 	const char *min_label_str = n_ctx->label;
 
-	uint candidate_count = label_count - 1;
-	for(uint i = 0; i < candidate_count; i++) {
+	for(uint i = 0; i < label_count; i++) {
 		uint64_t nnz;
-		int label_id = n_ctx->candidates[i];
+		int label_id = QGNode_GetLabelID(n, i);
 		nnz = Graph_LabeledNodeCount(g, label_id);
 		if(min_nnz > nnz) {
 			// update minimum
-			min_nnz        =  nnz;
-			min_label_id   =  label_id;
-			// find and set min label str
-			for(uint i = 0; i < array_len(n->labels); i++) {
-				if(n->labelsID[i] == label_id) {
-					min_label_str = n->labels[i];
-				}
-			}
+			min_nnz       = nnz;
+			min_label_id  = label_id;
+			min_label_str = QGNode_GetLabel(n, i);
 		}
 	}
 
