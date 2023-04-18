@@ -503,15 +503,18 @@ class testOptimizationsPlan(FlowTestsBase):
         # The most tempting label to start traversing from is Z, as there are
         # no nodes of label Z, but it is optional, so the second most tempting
         # label (Q) must be traversed first (order swapped with N)
-        query = """MATCH (n:N) MATCH (n:Q) OPTIONAL MATCH (n:Z) RETURN n"""
-        plan = graph.execution_plan(query)
-        self.env.assertIn("Node By Label Scan | (n:Q)", plan)
-        self.env.assertIn("Conditional Traverse | (n:N)->(n:N)", plan)
+        queries = ["MATCH (n:N) MATCH (n:Q) OPTIONAL MATCH (n:Z) RETURN n",
+                   "MATCH (n:Q) MATCH (n:N) OPTIONAL MATCH (n:Z) RETURN n"]
 
-        # assert correctness of the results
-        res = graph.query(query)
-        self.env.assertEquals(len(res.result_set), 1)
-        self.env.assertEquals(res.result_set[0][0], Node(label=['N', 'Q'], properties={'v': 2}))
+        for q in queries:
+            plan = graph.execution_plan(q)
+            self.env.assertIn("Node By Label Scan | (n:Q)", plan)
+            self.env.assertIn("Conditional Traverse | (n:N)->(n:N)", plan)
+
+            # assert correctness of the results
+            res = graph.query(q)
+            self.env.assertEquals(len(res.result_set), 1)
+            self.env.assertEquals(res.result_set[0][0], Node(label=['N', 'Q'], properties={'v': 2}))
 
     def test31_optimize_optional_labels(self):
         """Tests that the optimization of the Label-Scan op works on optional
