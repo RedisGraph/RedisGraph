@@ -30,8 +30,8 @@ typedef struct {
 } validations_ctx;
 
 // ast validation visitor mappings
-// number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
-static visit validations_mapping[114];
+// number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 115
+static visit validations_mapping[115];
 
 // forward declarations
 static AST_Validation _ValidateQuerySequence(const AST *ast);

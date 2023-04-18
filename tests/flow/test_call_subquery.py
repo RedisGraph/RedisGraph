@@ -49,64 +49,6 @@ class testCallSubqueryFlow():
             self.expect_error(query,
                 "WITH imports in CALL {} must be simple ('WITH a')")
 
-        # valid leading WITH
-        query_to_expected_result = {
-            """
-            CALL {
-                WITH 1 AS b 
-                RETURN b
-            }
-            RETURN b
-            """ : [[1]],
-            """
-            CALL {
-                WITH {} AS b 
-                RETURN b
-            }
-            RETURN b
-            """ : [[{}]],
-            """
-            CALL {
-                WITH 'a' AS b 
-                RETURN b
-            } 
-            RETURN b""" : [['a']],
-            """
-            CALL { 
-                WITH ['foo', 'bar'] AS l1 
-                RETURN l1
-            } 
-            RETURN l1
-            """ : [[['foo', 'bar']]],
-            """
-            WITH 1 AS one
-            CALL {
-                WITH one, 2 as two
-                RETURN one + two AS three
-            }
-            RETURN three
-            """ : [[3]],
-            """
-            WITH 1 AS one, 2 as two
-            CALL {
-                WITH one, two
-                RETURN one + two AS three
-            }
-            RETURN three
-            """ : [[3]],
-            """
-            WITH 1 AS a, 5 AS b 
-            CALL {
-                WITH a 
-                WITH a, 1 + a AS b 
-                RETURN a + b AS c
-            } 
-            RETURN c
-            """ : [[3]],
-        }
-        for query, expected_result in query_to_expected_result.items():
-            self.get_res_and_assertEquals(query, expected_result)
-
         # non-valid queries within CALL {}
         for query in [
             "CALL {CREATE (n:N) MATCH (n:N) RETURN n} RETURN 1",
@@ -116,27 +58,25 @@ class testCallSubqueryFlow():
             # just pass in case of an error, fail otherwise
             self.expect_error(query, "")
 
-        # TODO: Add these tests after merging fix to bug#2215
-        # # import an undefined identifier
-        # for query in [
-        #     """
-        #     CALL {
-        #         WITH a
-        #         RETURN 1 AS one
-        #     } 
-        #     RETURN one
-        #     """,
-            
-        #     """
-        #     WITH a
-        #     CALL {
-        #         WITH a 
-        #         RETURN a AS b
-        #     } 
-        #     RETURN b
-        #     """,
-        # ]:
-        #     self.expect_error(query, "a not defined")
+        # non-valid queries: import an undefined identifier
+        for query in [
+            """
+            CALL {
+                WITH a
+                RETURN 1 AS one
+            } 
+            RETURN one
+            """,
+            """
+            WITH a
+            CALL {
+                WITH a 
+                RETURN a AS b
+            } 
+            RETURN b
+            """,
+        ]:
+            self.expect_error(query, "a not defined")
         
         # scope of a subquery with no imports starts empty
         query = """
@@ -736,9 +676,64 @@ updating clause.")
         # # make sure that DELETE is called only once
         # self.env.assertTrue(_check_subquery_compression(plan, "Update"))
 
-    #     # validate the results
-    #     self.env.assertEquals(len(res.result_set), 1)
-    #     self.env.assertEquals(res.result_set[0][0], ['foo', 'bar'])
+    def test15_leading_with(self):
+        # valid leading WITH queries
+        query_to_expected_result = {
+            """
+            CALL {
+                WITH 1 AS b 
+                RETURN b
+            }
+            RETURN b
+            """ : [[1]],
+            """
+            CALL {
+                WITH {} AS b 
+                RETURN b
+            }
+            RETURN b
+            """ : [[{}]],
+            """
+            CALL {
+                WITH 'a' AS b 
+                RETURN b
+            } 
+            RETURN b""" : [['a']],
+            """
+            CALL { 
+                WITH ['foo', 'bar'] AS l1 
+                RETURN l1
+            } 
+            RETURN l1
+            """ : [[['foo', 'bar']]],
+            """
+            WITH 1 AS one
+            CALL {
+                WITH one, 2 as two
+                RETURN one + two AS three
+            }
+            RETURN three
+            """ : [[3]],
+            """
+            WITH 1 AS one, 2 as two
+            CALL {
+                WITH one, two
+                RETURN one + two AS three
+            }
+            RETURN three
+            """ : [[3]],
+            """
+            WITH 1 AS a, 5 AS b 
+            CALL {
+                WITH a 
+                WITH a, 1 + a AS b 
+                RETURN a + b AS c
+            } 
+            RETURN c
+            """ : [[3]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
     # TODO: Enable this test after fix the bug. Currently, the query returns: 'S', 'T'
     # def test16_unwind_optional_match_with(self):  

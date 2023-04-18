@@ -17,13 +17,6 @@
 #include "execution_plan_build/execution_plan_construct.h"
 
 #include <setjmp.h>
-#if defined ( __MACH__ ) && defined ( __APPLE__ )
-#include <machine/endian.h>
-#define _htobe64 htonll
-#else
-#include <endian.h>
-#define _htobe64 htobe64
-#endif
 
 // Allocate a new ExecutionPlan segment.
 inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
