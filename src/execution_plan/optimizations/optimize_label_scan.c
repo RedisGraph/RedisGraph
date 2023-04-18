@@ -38,7 +38,7 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 	Graph       *g     =  QueryCtx_GetGraph();
 	OpBase      *op    =  (OpBase*)scan;
 	QueryGraph *qg     =  op->plan->query_graph;
-	NodeScanCtx *n_ctx =  &scan->n;
+	NodeScanCtx *n_ctx =  scan->n;
 
 	// see if scanned node has multiple labels
 	const char *node_alias = n_ctx->alias;

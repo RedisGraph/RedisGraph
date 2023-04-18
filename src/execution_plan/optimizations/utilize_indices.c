@@ -308,7 +308,7 @@ void reduce_scan_op
 	const char  *min_label_str = NULL;        // tracks min label name
 
 	// see if scanned node has multiple labels
-	const char *node_alias = scan->n.alias;
+	const char *node_alias = scan->n->alias;
 	QGNode *qn = QueryGraph_GetNodeByAlias(qg, node_alias);
 	ASSERT(qn != NULL);
 
@@ -331,7 +331,7 @@ void reduce_scan_op
 		ASSERT(Index_Enabled(idx));
 
 		// TODO switch to reusable array
-		OpFilter **cur_filters = _applicableFilters((OpBase *)scan, scan->n.alias, idx);
+		OpFilter **cur_filters = _applicableFilters((OpBase *)scan, scan->n->alias, idx);
 
 		// TODO consider heuristic which combines max
 		// number / restrictiveness of applicable filters
@@ -365,7 +365,7 @@ void reduce_scan_op
 	if(rs_idx == NULL) goto cleanup;
 
 	// did we found a better label to utilize? if so swap
-	if(scan->n.label_id != min_label_id) {
+	if(scan->n->label_id != min_label_id) {
 		// the scanned label does not match the one we will build an
 		// index scan over, update the traversal expression to
 		// remove the indexed label and insert the previously-scanned label
@@ -377,8 +377,8 @@ void reduce_scan_op
 			AlgebraicExpression *ae = op_traverse->ae;
 			AlgebraicExpression *operand;
 
-			const char *row_domain = scan->n.alias;
-			const char *column_domain = scan->n.alias;
+			const char *row_domain = scan->n->alias;
+			const char *column_domain = scan->n->alias;
 
 			bool found = AlgebraicExpression_LocateOperand(ae, &operand, NULL,
 					row_domain, column_domain, NULL, min_label_str);
@@ -386,17 +386,18 @@ void reduce_scan_op
 
 			AlgebraicExpression *replacement = AlgebraicExpression_NewOperand(NULL,
 					true, AlgebraicExpression_Src(operand),
-					AlgebraicExpression_Dest(operand), NULL, scan->n.label);
+					AlgebraicExpression_Dest(operand), NULL, scan->n->label);
 
 			_AlgebraicExpression_InplaceRepurpose(operand, replacement);
 		}
 
-		scan->n.label = min_label_str;
-		scan->n.label_id = min_label_id;
+		scan->n->label = min_label_str;
+		scan->n->label_id = min_label_id;
 	}
 
 	FT_FilterNode *root = _Concat_Filters(filters);
-	OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx,
+	NodeScanCtx *ctx_clone = NodeScanCtx_Clone(scan->n);
+	OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, *ctx_clone, rs_idx,
 			root);
 
 	// replace the redundant scan op with the newly-constructed Index Scan

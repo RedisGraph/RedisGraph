@@ -84,7 +84,7 @@ static void _ExecutionPlan_ProcessQueryGraph
 
 			// resolve source node by performing label scan
 			QGNode *clone = QGNode_Clone(src);
-			NodeScanCtx ctx = NODE_CTX_NEW(alias, label, label_id, clone);
+			NodeScanCtx *ctx = NodeScanCtx_New((char *)alias, (char *)label, label_id, clone);
 			root = tail = NewNodeByLabelScanOp(plan, ctx);
 
 			// first operand has been converted into a label scan op
