@@ -54,9 +54,9 @@ static void _optimizeLabelScan(NodeByLabelScan *scan) {
 
 	// node has multiple labels
 	// find label with minimum entities
-	uint64_t    min_nnz       = (uint64_t) Graph_LabeledNodeCount(g, n_ctx->label_id);
-	int         min_label_id  = n_ctx->label_id;
+	int min_label_id = n_ctx->label_id;
 	const char *min_label_str = n_ctx->label;
+	uint64_t min_nnz =(uint64_t) Graph_LabeledNodeCount(g, n_ctx->label_id);
 
 	for(uint i = 0; i < label_count; i++) {
 		uint64_t nnz;

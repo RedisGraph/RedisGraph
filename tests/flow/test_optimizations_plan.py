@@ -510,6 +510,7 @@ class testOptimizationsPlan(FlowTestsBase):
 
         # assert correctness of the results
         res = graph.query(query)
+        self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(res.result_set[0][0], Node(label=['N', 'Q'], properties={'v': 2}))
 
     def test31_optimize_optional_labels(self):
