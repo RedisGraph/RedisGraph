@@ -96,3 +96,25 @@
 	free(str);                                               \
 } while(0)
 
+
+// write string to stream
+#define fwrite_string(str, stream)                       \
+{                                                        \
+	size_t l = strlen(str) + 1;                          \
+	fwrite_assert(&l, sizeof(size_t), stream);           \
+	fwrite_assert(str, l, stream);                       \
+}
+
+#define fwrite_assert(input, size, stream)               \
+{                                                        \
+	int write = fwrite(input, size, 1, stream);          \
+	ASSERT(write == 1);                                  \
+}
+
+#define fread_assert(output, size, stream)               \
+{                                                        \
+	int read = fread((void*)(output), size, 1, stream);  \
+	/* short read! */                                    \
+	ASSERT("short read" && read == 1);                   \
+}
+

@@ -510,7 +510,10 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 // Execution plan free functions
 //------------------------------------------------------------------------------
 
-static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
+static void _ExecutionPlan_FreeInternals
+(
+	ExecutionPlan *plan
+) {
 	if(plan == NULL) return;
 
 	if(plan->connected_components) {
@@ -536,67 +539,67 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 	rm_free(plan);
 }
 
-// free an op tree
-static void _ExecutionPlan_FreeOpTree(OpBase *op) {
-	if(op == NULL) {
-		return;
-	}
-
-	for(uint i = 0; i < op->childCount; i ++) {
-		_ExecutionPlan_FreeOpTree(op->children[i]);
-	}
-
-	// Free this op.
-	OpBase_Free(op);
-}
-
-// collect all ExecutionPlans from the given operation tree
-static void _ExecutionPlan_AggregatePlansFromOps
-(
-	OpBase *opBase,     // operation to aggregate plans from
-	rax *plans          // plans map to insert to
-) {
-	ASSERT(plans != NULL);
-
-	if(opBase == NULL) {
-		return;
-	}
-
-	// add the plan if it doesn't exist already
-	static_assert(sizeof(opBase->plan) == sizeof(uint64_t), "pointer size is not 64 bits");
-	const uint64_t plan_ptr_be = _htobe64((uint64_t)opBase->plan);
-	raxTryInsert(plans, (unsigned char *)&plan_ptr_be, sizeof(uint64_t), (void *)opBase->plan, NULL);
-
-	for(uint i = 0; i < opBase->childCount; i++) {
-		_ExecutionPlan_AggregatePlansFromOps(opBase->children[i], plans);
-	}
-}
-
 // free the execution plans and all of the operations
-void ExecutionPlan_Free(ExecutionPlan *plan) {
-	if(plan == NULL) {
+void ExecutionPlan_Free
+(
+	ExecutionPlan *plan
+) {
+	ASSERT(plan != NULL);
+	if(plan->root == NULL) {
+		_ExecutionPlan_FreeInternals(plan);
 		return;
 	}
+
+	// -------------------------------------------------------------------------
+	// free op tree and collect execution-plans
+	// -------------------------------------------------------------------------
 
 	// traverse the execution-plan graph (DAG -> no endless cycles), while
-	// aggregating the different execution-plans
-	rax *plans = raxNew();
-	const uint64_t plan_ptr_be = _htobe64((uint64_t)plan);
-	raxInsert(plans, (unsigned char *)&plan_ptr_be, sizeof(uint64_t), plan, NULL);
-	_ExecutionPlan_AggregatePlansFromOps(plan->root, plans);
+	// collecting the different segments, and freeing the op tree
+	dict *plans = HashTableCreate(&def_dt);
+	OpBase **visited = array_new(OpBase *, 1);
+	OpBase **to_visit = array_new(OpBase *, 1);
 
-	// free the operations of the plans (all plans)
-	_ExecutionPlan_FreeOpTree(plan->root);
+	OpBase *op = plan->root;
+	array_append(to_visit, op);
 
-	// free the plan internals
-	raxIterator it;
-	raxStart(&it, plans);
-	raxSeek(&it, "^", NULL, 0);
+	while(array_len(to_visit) > 0) {
+		op = array_pop(to_visit);
 
-	while(raxNext(&it)) {
-		_ExecutionPlan_FreeInternals(it.data);
+		// add the plan this op is affiliated with
+		HashTableAdd(plans, (void *)op->plan, (void *)op->plan);
+
+		// add all direct children of op to to_visit
+		for(uint i = 0; i < op->childCount; i++) {
+			if(op->children[i] != NULL) {
+				array_append(to_visit, op->children[i]);
+			}
+		}
+
+		// add op to `visited` array
+		array_append(visited, op);
 	}
 
-	raxStop(&it);
-	raxFree(plans);
+	// free the collected ops
+	for(int i = array_len(visited)-1; i >= 0; i--) {
+		op = visited[i];
+		OpBase_Free(op);
+	}
+	array_free(visited);
+	array_free(to_visit);
+
+	// -------------------------------------------------------------------------
+	// free internals of the plans
+	// -------------------------------------------------------------------------
+
+	dictEntry *entry;
+	ExecutionPlan *curr_plan;
+	dictIterator *it = HashTableGetIterator(plans);
+	while((entry = HashTableNext(it)) != NULL) {
+		curr_plan = (ExecutionPlan *)HashTableGetVal(entry);
+		_ExecutionPlan_FreeInternals(curr_plan);
+	}
+
+	HashTableReleaseIterator(it);
+	HashTableRelease(plans);
 }

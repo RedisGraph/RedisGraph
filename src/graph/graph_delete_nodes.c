@@ -134,6 +134,9 @@ void Graph_DeleteNodes
 	info = GrB_Matrix_assign(DM, lbls_mask, NULL, M, GrB_ALL, nrows, GrB_ALL, nrows, GrB_DESC_S);
 	ASSERT(info == GrB_SUCCESS);
 
+	// mark labels matrix as dirty
+	RG_Matrix_setDirty(lbls);
+
 	// restore matrix sync policy
 	Graph_SetMatrixPolicy(g, policy);
 

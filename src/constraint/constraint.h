@@ -158,6 +158,14 @@ void Constraint_DecPendingChanges
 	Constraint c  // constraint to update
 );
 
+// replicate constraint to both persistency and replicas
+void Constraint_Replicate
+(
+	RedisModuleCtx *ctx,           // redis module context
+	const Constraint c,            // constraint to replicate
+	const struct GraphContext *gc  // graph context
+);
+
 // tries to enforce constraint on all relevant entities
 // sets constraint status to pending
 void Constraint_Enforce
