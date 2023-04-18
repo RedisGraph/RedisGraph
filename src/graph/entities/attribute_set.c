@@ -208,7 +208,7 @@ void AttributeSet_Add
 }
 
 // adds or updates an attribute to the set null value allowed
-void AttributeSet_Set_Allow_Null
+bool AttributeSet_Set_Allow_Null
 (
 	AttributeSet *set,     // set to update
 	Attribute_ID attr_id,  // attribute identifier
@@ -224,13 +224,13 @@ void AttributeSet_Set_Allow_Null
 
 	// update the attribute if it is already presented in the set
 	if(AttributeSet_Get(_set, attr_id) != ATTRIBUTE_NOTFOUND) {
-		AttributeSet_Update(&_set, attr_id, value);
+		bool res = AttributeSet_Update(&_set, attr_id, value);
 		// update pointer
 		*set = _set;
-		return;
+		return res;
 	}
 
-	if(SIValue_IsNull(value)) return;
+	if(SIValue_IsNull(value)) return false;
 
 	// allocate room for new attribute
 	_set = AttributeSet_AddPrepare(set, 1);
@@ -242,6 +242,7 @@ void AttributeSet_Set_Allow_Null
 
 	// update pointer
 	*set = _set;
+	return true;
 }
 
 // updates existing attribute, return true if attribute been updated

@@ -14,6 +14,7 @@
 #include "resultset/resultset.h"
 #include "execution_plan/ops/op.h"
 #include "undo_log/undo_log.h"
+#include "effects/effects.h"
 #include <pthread.h>
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
@@ -44,6 +45,7 @@ typedef struct {
 	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
 	GraphContext *gc;                           // The GraphContext associated with this query's graph.
 	UndoLog undo_log;                           // Undo log for updates, used in the case of write query can fail and rollback is needed.
+	EffectLog effect_log;                       // Effect log for replication, used in the case of write query can success and replication is needed.
 } QueryCtx;
 
 /* Instantiate the thread-local QueryCtx on module load. */
@@ -82,6 +84,8 @@ rax *QueryCtx_GetParams(void);
 Graph *QueryCtx_GetGraph(void);
 // Retrieve undo log
 UndoLog *QueryCtx_GetUndoLog(void);
+// Retrieve effect log
+EffectLog *QueryCtx_GetEffectLog(void);
 /* Retrieve the GraphCtx. */
 GraphContext *QueryCtx_GetGraphCtx(void);
 /* Retrieve the Redis module context. */

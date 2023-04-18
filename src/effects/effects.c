@@ -7,7 +7,7 @@
 #include "RG.h"
 #include "effects.h"
 #include "../query_ctx.h"
-#include "../undo_log/undo_log.h"
+#include "../effects/effects.h"
 
 // write attributes to stream
 static void WriteAttributeSet
@@ -39,11 +39,11 @@ static void WriteAttributeSet
 	}
 }
 
-// convert UndoNodeDelete into a NodeDelete effect
-static void EffectFromUndoNodeDelete
+// convert EffectNodeDelete into a NodeDelete effect
+static void EffectFromEffectNodeDelete
 (
-	FILE *stream,     // effects stream
-	const UndoOp *op  // undo operation to convert
+	FILE *stream,       // effects stream
+	const Effect *op  // effect operation to convert
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -51,8 +51,8 @@ static void EffectFromUndoNodeDelete
 	//    node ID
 	//--------------------------------------------------------------------------
 	
-	// undo operation
-	const UndoDeleteNodeOp *_op = (const UndoDeleteNodeOp*)op;
+	// effect operation
+	const EffectDeleteNode *_op = &op->delete_node;
 
 	// effect type
 	EffectType t = EFFECT_DELETE_NODE;
@@ -64,11 +64,11 @@ static void EffectFromUndoNodeDelete
 	fwrite_assert(&_op->id, sizeof(_op->id), stream);
 }
 
-// convert UndoEdgeDelete into a EdgeDelete effect
-static void EffectFromUndoEdgeDelete
+// convert EffectEdgeDelete into a EdgeDelete effect
+static void EffectFromEffectEdgeDelete
 (
-	FILE *stream,     // effects stream
-	const UndoOp *op  // undo operation to convert
+	FILE *stream,       // effects stream
+	const Effect *op  // effect operation to convert
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -79,8 +79,8 @@ static void EffectFromUndoEdgeDelete
 	//    dest ID
 	//--------------------------------------------------------------------------
 
-	// undo operation
-	const UndoDeleteEdgeOp *_op = (const UndoDeleteEdgeOp*)op;
+	// effect operation
+	const EffectDeleteEdge *_op = &op->delete_edge;
 
 	// effect type
 	EffectType t = EFFECT_DELETE_EDGE;
@@ -101,22 +101,26 @@ static void EffectFromUndoEdgeDelete
 	fwrite_assert(&_op->destNodeID, sizeof(_op->destNodeID), stream); 
 }
 
-// convert UndoUpdate into a Update effect
+// convert EffectUpdate into a Update effect
 static void EffectFromNodeUpdate
 (
-	FILE *stream,           // effects stream
-	const UndoUpdateOp *op  // undo operation to convert
+	FILE *stream,             // effects stream
+	const EffectUpdate *op  // effect operation to convert
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
 	//    effect type
 	//    entity ID
-	//    attribute count (=n)
-	//    attributes (id,value) pair
+	//    attribute id
+	//    attribute value
 	//--------------------------------------------------------------------------
 	
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Graph *g = QueryCtx_GetGraph();
+
 	// entity type node
-	Node *n = (Node*)&op->n;
+	Node n;
+	Graph_GetNode(g, op->id, &n);
 
 	//--------------------------------------------------------------------------
 	// write effect type
@@ -129,20 +133,32 @@ static void EffectFromNodeUpdate
 	// write entity ID
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&ENTITY_GET_ID(n), sizeof(EntityID), stream);
+	fwrite_assert(&op->id, sizeof(EntityID), stream);
 
 	//--------------------------------------------------------------------------
-	// write attribute attribute set
+	// write attribute ID
 	//--------------------------------------------------------------------------
-	AttributeSet set = GraphEntity_GetAttributes((GraphEntity *)n);
-	WriteAttributeSet(stream, set);
+	
+	fwrite_assert(&op->attr_id, sizeof(Attribute_ID), stream);
+
+	//--------------------------------------------------------------------------
+	// write attribute value
+	//--------------------------------------------------------------------------
+
+	SIValue *v = GraphEntity_GetProperty((const GraphEntity *)&n, op->attr_id);
+	if(v == ATTRIBUTE_NOTFOUND) {
+		// attribute been deleted
+		*v = SI_NullVal();
+	}
+
+	SIValue_ToBinary(stream, v);
 }
 
-// convert UndoUpdate into a Update effect
+// convert EffectUpdate into a Update effect
 static void EffectFromEdgeUpdate
 (
-	FILE *stream,           // effects stream
-	const UndoUpdateOp *op  // undo operation to convert
+	FILE *stream,             // effects stream
+	const EffectUpdate *op  // effect operation to convert
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -159,7 +175,8 @@ static void EffectFromEdgeUpdate
 	Graph *g = GraphContext_GetGraph(gc);
 
 	// entity type edge
-	Edge *e = (Edge*)&op->e;
+	Edge e;
+	Graph_GetEdge(g, op->id, &e);
 
 	//--------------------------------------------------------------------------
 	// write effect type
@@ -172,58 +189,32 @@ static void EffectFromEdgeUpdate
 	// write edge ID
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&ENTITY_GET_ID(e), sizeof(EntityID), stream);
+	fwrite_assert(&op->id, sizeof(EntityID), stream);
 
 	//--------------------------------------------------------------------------
-	// write relation ID
+	// write attribute ID
 	//--------------------------------------------------------------------------
 
-	RelationID r = EDGE_GET_RELATION_ID(e, g);
-	fwrite_assert(&r, sizeof(RelationID), stream);
+	fwrite_assert(&op->attr_id, sizeof(Attribute_ID), stream);
 
 	//--------------------------------------------------------------------------
-	// write src ID
+	// write attribute value
 	//--------------------------------------------------------------------------
 
-	NodeID s = Edge_GetSrcNodeID(e);
-	fwrite_assert(&s, sizeof(NodeID), stream);
-
-	//--------------------------------------------------------------------------
-	// write dest ID
-	//--------------------------------------------------------------------------
-
-	NodeID d = Edge_GetDestNodeID(e);
-	fwrite_assert(&d, sizeof(NodeID), stream);
-
-	//--------------------------------------------------------------------------
-	// write attribute set
-	//--------------------------------------------------------------------------
-
-	AttributeSet set = GraphEntity_GetAttributes((GraphEntity *)e);
-	WriteAttributeSet(stream, set);
-}
-
-// convert UndoUpdate into a Update effect
-static void EffectFromUndoUpdate
-(
-	FILE *stream,     // effects stream
-	const UndoOp *op  // undo operation to convert
-) {
-	// undo operation
-	const UndoUpdateOp *_op = (const UndoUpdateOp*)op;
-
-	if(_op->entity_type == GETYPE_NODE) {
-		EffectFromNodeUpdate(stream, _op);
-	} else {
-		EffectFromEdgeUpdate(stream, _op);
+	SIValue *v = GraphEntity_GetProperty((const GraphEntity *)&e, op->attr_id);
+	if(v == ATTRIBUTE_NOTFOUND) {
+		// attribute been deleted
+		*v = SI_NullVal();
 	}
+
+	SIValue_ToBinary(stream, v);
 }
 
-// convert UndoCreateNodeOp into a CreateNode effect
-static void EffectFromUndoNodeCreate
+// convert EffectCreateNodeOp into a CreateNode effect
+static void EffectFromEffectNodeCreate
 (
-	FILE *stream,      // effects stream
-	const UndoOp *op   // undo operation to convert
+	FILE *stream,        // effects stream
+	const Effect *op   // effect operation to convert
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -235,7 +226,7 @@ static void EffectFromUndoNodeCreate
 	//--------------------------------------------------------------------------
 	
 	Graph *g = QueryCtx_GetGraph();
-	const UndoCreateOp *_op = (const UndoCreateOp*)op;
+	const EffectCreate *_op = &op->create;
 	const Node *n = &_op->n;
 
 	//--------------------------------------------------------------------------
@@ -269,11 +260,11 @@ static void EffectFromUndoNodeCreate
 	WriteAttributeSet(stream, attrs);
 }
 
-// convert UndoCreateEdgeOp into a CreateEdge effect
-static void EffectFromUndoEdgeCreate
+// convert EffectCreateEdgeOp into a CreateEdge effect
+static void EffectFromEffectEdgeCreate
 (
-	FILE *stream,     // effects stream
-	const UndoOp *op  // undo operation to convert
+	FILE *stream,       // effects stream
+	const Effect *op  // effect operation to convert
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -287,7 +278,7 @@ static void EffectFromUndoEdgeCreate
 	//--------------------------------------------------------------------------
 	
 	Graph *g = QueryCtx_GetGraph();
-	const UndoCreateOp *_op = (const UndoCreateOp*)op;
+	const EffectCreate *_op = &op->create;
 	const Edge *e = &_op->e;
 
 	//--------------------------------------------------------------------------
@@ -329,11 +320,11 @@ static void EffectFromUndoEdgeCreate
 	WriteAttributeSet(stream, attrs);
 }
 
-// convert UndoAttrAdd into a AddAttr effect
-static void EffectFromUndoAttrAdd
+// convert EffectAttrAdd into a AddAttr effect
+static void EffectFromEffectAttrAdd
 (
 	FILE *stream,     // effects stream
-	const UndoOp *op  // undo operation to convert
+	const Effect *op  // effect operation to convert
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -341,7 +332,7 @@ static void EffectFromUndoAttrAdd
 	// attribute name
 	//--------------------------------------------------------------------------
 
-	const UndoAddAttributeOp *_op = (const UndoAddAttributeOp*)op;
+	const EffectAddAttribute *_op = &op->attribute;
 
 	//--------------------------------------------------------------------------
 	// write effect type
@@ -360,12 +351,12 @@ static void EffectFromUndoAttrAdd
 	fwrite_string(attr_name, stream);
 }
 
-// convert UndoUpdate into a Update effect
-static void EffectFromUndoSetRemoveLabels
+// convert EffectUpdate into a Update effect
+static void EffectFromEffectSetRemoveLabels
 (
-	FILE *stream,     // effects stream
-	const UndoOp *op, // undo operation to convert
-	EffectType t      // effect type SET/REMOVE LABELS
+	FILE *stream,       // effects stream
+	const Effect *op, // effect operation to convert
+	EffectType t        // effect type SET/REMOVE LABELS
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -377,7 +368,7 @@ static void EffectFromUndoSetRemoveLabels
 	
 	ASSERT(t == EFFECT_SET_LABELS || t == EFFECT_REMOVE_LABELS);
 
-	const UndoLabelsOp *_op = (const UndoLabelsOp*)op;
+	const EffectLabels *_op = &op->labels;
 	ushort lbl_count = _op->labels_count;
 
 	// write effect type
@@ -395,11 +386,11 @@ static void EffectFromUndoSetRemoveLabels
 	fwrite_assert(_op->label_ids, sizeof(LabelID) * lbl_count, stream);
 }
 
-// convert UndoAddSchema into a AddSchema effect
-static void EffectFromUndoSchemaAdd
+// convert EffectAddSchema into a AddSchema effect
+static void EffectFromEffectSchemaAdd
 (
 	FILE *stream,     // effects stream
-	const UndoOp *op  // undo operation to convert
+	const Effect *op  // effect operation to convert
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -409,7 +400,7 @@ static void EffectFromUndoSchemaAdd
 	//--------------------------------------------------------------------------
 	
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	const UndoAddSchemaOp *_op = (const UndoAddSchemaOp *)op;
+	const EffectAddSchema *_op = &op->schema;
 	Schema *schema = GraphContext_GetSchemaByID(gc, _op->schema_id, _op->t);
 	ASSERT(schema != NULL);
 
@@ -434,45 +425,48 @@ static void EffectFromUndoSchemaAdd
 	fwrite_string(schema_name, stream);
 }
 
-// convert undo-operation into an effect
+// convert effect-operation into an effect
 // and write effect to stream
-static void EffectFromUndoOp
+static void EffectFromEffect
 (
-	FILE *stream,     // effects stream
-	const UndoOp *op  // undo op to convert into an effect
+	FILE *stream,       // effects stream
+	const Effect *op  // effect op to convert into an effect
 ) {
 	// validations
-	ASSERT(op     != NULL);  // undo-op can't be NULL
+	ASSERT(op     != NULL);  // effect-op can't be NULL
 	ASSERT(stream != NULL);  // effects stream can't be NULL
 
-	// encode undo-op as an effect
+	// encode effect-op as an effect
 	switch(op->type) {
-		case UNDO_DELETE_NODE:
-			EffectFromUndoNodeDelete(stream, op);
+		case EFFECT_DELETE_NODE:
+			EffectFromEffectNodeDelete(stream, op);
 			break;
-		case UNDO_DELETE_EDGE:
-			EffectFromUndoEdgeDelete(stream, op);
+		case EFFECT_DELETE_EDGE:
+			EffectFromEffectEdgeDelete(stream, op);
 			break;
-		case UNDO_UPDATE:
-			EffectFromUndoUpdate(stream, op);
+		case EFFECT_UPDATE_NODE:
+			EffectFromNodeUpdate(stream, &op->update);
 			break;
-		case UNDO_CREATE_NODE:
-			EffectFromUndoNodeCreate(stream, op);
+		case EFFECT_UPDATE_EDGE:
+			EffectFromEdgeUpdate(stream, &op->update);
 			break;
-		case UNDO_CREATE_EDGE:
-			EffectFromUndoEdgeCreate(stream, op);
+		case EFFECT_CREATE_NODE:
+			EffectFromEffectNodeCreate(stream, op);
 			break;
-		case UNDO_ADD_ATTRIBUTE:
-			EffectFromUndoAttrAdd(stream, op);
+		case EFFECT_CREATE_EDGE:
+			EffectFromEffectEdgeCreate(stream, op);
 			break;
-		case UNDO_SET_LABELS:
-			EffectFromUndoSetRemoveLabels(stream, op, EFFECT_SET_LABELS);
+		case EFFECT_SET_LABELS:
+			EffectFromEffectSetRemoveLabels(stream, op, EFFECT_SET_LABELS);
 			break;
-		case UNDO_REMOVE_LABELS:
-			EffectFromUndoSetRemoveLabels(stream, op, EFFECT_REMOVE_LABELS);
+		case EFFECT_REMOVE_LABELS:
+			EffectFromEffectSetRemoveLabels(stream, op, EFFECT_REMOVE_LABELS);
 			break;
-		case UNDO_ADD_SCHEMA:
-			EffectFromUndoSchemaAdd(stream, op);
+		case EFFECT_ADD_SCHEMA:
+			EffectFromEffectSchemaAdd(stream, op);
+			break;
+		case EFFECT_ADD_ATTRIBUTE:
+			EffectFromEffectAttrAdd(stream, op);
 			break;
 		default:
 			assert(false && "unknown effect");
@@ -480,17 +474,17 @@ static void EffectFromUndoOp
 	}
 }
 
-// create a list of effects from the undo-log
-u_char *Effects_FromUndoLog
+// create a list of effects from the effect-log
+u_char *Effects_FromEffectLog
 (
-	UndoLog log,  // undo-log to convert into effects buffer
+	EffectLog log,  // effect-log to convert into effects buffer
 	size_t *len   // size of generated effects buffer
 ) {
 	// validations
-	ASSERT(log != NULL);  // undo-log can't be NULL
+	ASSERT(log != NULL);  // effect-log can't be NULL
 
-	// expecting at least one undo operation
-	uint n = UndoLog_Length(log);
+	// expecting at least one effect operation
+	uint n = EffectLog_Length(log);
 	if(n == 0) {
 		return NULL;
 	}
@@ -519,13 +513,13 @@ u_char *Effects_FromUndoLog
 	//--------------------------------------------------------------------------
 
 	for(uint i = 0; i < n; i++) {
-		UndoOp *op = log + i;
+		Effect *op = log + i;
 
-		// convert undo-op into an effect and write it to stream
-		EffectFromUndoOp(stream, op);
+		// convert effect-op into an effect and write it to stream
+		EffectFromEffect(stream, op);
 
-		// free undo-op
-		UndoLog_FreeOp(op);
+		// free effect
+		EffectLog_FreeEffect(op);
 	}
 
 	// we should have reached end of buffer
@@ -534,11 +528,267 @@ u_char *Effects_FromUndoLog
 	// close stream
 	fclose(stream);
 
-	// clear undo-log
-	UndoLog_Clear(log);
+	// clear effect-log
+	EffectLog_Clear(log);
 
 	// set output length and return buffer
 	*len = buff_size;
 	return buffer;
+}
+
+EffectLog EffectLog_New(void) {
+	return (EffectLog)array_new(Effect, 0);
+}
+
+// returns number of entries in log
+uint EffectLog_Length
+(
+	const EffectLog log  // log to query
+) {
+	ASSERT(log != NULL);
+	return array_len(log);
+}
+
+// add an operation to effect log
+static inline void _EffectLog_AddOperation
+(
+	EffectLog *log,  // effect log
+	Effect *op       // effect
+) {
+	ASSERT(op != NULL);
+	ASSERT(log != NULL && *log != NULL);
+
+	array_append(*log, *op);
+}
+
+// node creation effect
+void EffectLog_CreateNode
+(
+	EffectLog *log,
+	Node *node             // node created
+) {
+	ASSERT(log != NULL && *log != NULL);
+
+	Effect op;
+
+	op.type        = EFFECT_CREATE_NODE;
+	op.create.n    = *node;
+
+	_EffectLog_AddOperation(log, &op);
+}
+
+// edge creation effect
+void EffectLog_CreateEdge
+(
+	EffectLog *log,
+	Edge *edge             // edge created
+) {
+	ASSERT(log != NULL && *log != NULL);
+
+	Effect op;
+
+	op.type        = EFFECT_CREATE_EDGE;
+	op.create.e    = *edge;
+
+	_EffectLog_AddOperation(log, &op);
+}
+
+// node deletion effect
+void EffectLog_DeleteNode
+(
+	EffectLog *log,    // effect log
+	Node *node         // node deleted
+) {
+	ASSERT(log != NULL && *log != NULL);
+	ASSERT(node != NULL);
+
+	Effect op;
+
+	op.type            = EFFECT_DELETE_NODE;
+	op.delete_node.id  = node->id;
+
+	// take ownership over node's attribute-set
+	op.delete_node.set = *node->attributes;
+	*node->attributes  = NULL;
+
+	Graph *g = QueryCtx_GetGraph();
+	NODE_GET_LABELS(g, node, op.delete_node.label_count);
+	op.delete_node.labels = rm_malloc(sizeof(LabelID) * op.delete_node.label_count);
+	for (uint i = 0; i < op.delete_node.label_count; i++) {
+		op.delete_node.labels[i] = labels[i];
+	}
+
+	_EffectLog_AddOperation(log, &op);
+}
+
+// edge deletion effect
+void EffectLog_DeleteEdge
+(
+	EffectLog *log,  // Effect log
+	Edge *edge       // edge deleted
+) {
+	ASSERT(log != NULL && *log != NULL);
+	ASSERT(edge != NULL);
+
+	Effect op;
+
+	op.type                   = EFFECT_DELETE_EDGE;
+	op.delete_edge.id         = edge->id;
+	op.delete_edge.srcNodeID  = edge->srcNodeID;
+	op.delete_edge.destNodeID = edge->destNodeID;
+	op.delete_edge.relationID = edge->relationID;
+
+	// take ownership over edge's attribute-set
+	op.delete_edge.set = *edge->attributes;
+	*edge->attributes = NULL;
+
+	_EffectLog_AddOperation(log, &op);
+}
+
+// entity update effect
+void EffectLog_UpdateEntity
+(
+	EffectLog *log,              // effect log
+	GraphEntity *ge,             // updated entity
+	Attribute_ID attr_id,        // updated attribute ID
+	SIValue orig_value,          // attribute original value
+	GraphEntityType entity_type  // entity type
+) {
+	ASSERT(log != NULL && *log != NULL);
+	ASSERT(ge != NULL);
+
+	Effect op;
+
+	op.type               = entity_type == GETYPE_NODE ? EFFECT_UPDATE_NODE : EFFECT_UPDATE_EDGE;
+	op.update.attr_id     = attr_id;
+	op.update.orig_value  = orig_value;
+	op.update.entity_type = entity_type;
+
+	op.update.id = ENTITY_GET_ID(ge);
+
+	_EffectLog_AddOperation(log, &op);
+}
+
+// node add label effect
+void EffectLog_AddLabels
+(
+	EffectLog *log,              // effect log
+	Node *node,                  // updated node
+	int *label_ids,              // added labels
+	size_t labels_count          // number of removed labels
+) {
+	ASSERT(node != NULL);
+	ASSERT(label_ids != NULL);
+
+	Effect op;
+
+	op.type = EFFECT_SET_LABELS;
+	op.labels.node = *node;
+	op.labels.label_ids = array_new(int, labels_count);
+	memcpy(op.labels.label_ids, label_ids, sizeof(int)*labels_count);
+	op.labels.labels_count = labels_count;
+	_EffectLog_AddOperation(log, &op);
+}
+
+// node remove label effect
+void EffectLog_RemoveLabels
+(
+	EffectLog *log,              // effect log
+	Node *node,                  // updated node
+	int *label_ids,              // removed labels
+	size_t labels_count          // number of removed labels
+) {
+	ASSERT(node != NULL);
+	ASSERT(label_ids != NULL);
+
+	Effect op;
+
+	op.type = EFFECT_REMOVE_LABELS;
+	op.labels.node = *node;
+	op.labels.label_ids = array_new(int, labels_count);
+	memcpy(op.labels.label_ids, label_ids, sizeof(int)*labels_count);
+	op.labels.labels_count = labels_count;
+	_EffectLog_AddOperation(log, &op);
+}
+
+// schema addition effect
+void EffectLog_AddSchema
+(
+	EffectLog *log,   // effect log
+	int schema_id,  // id of the schema
+	SchemaType t    // type of the schema
+) {
+	ASSERT(log != NULL);
+	Effect op;
+
+	op.type = EFFECT_ADD_SCHEMA;
+	op.schema.schema_id = schema_id;
+	op.schema.t = t;
+	_EffectLog_AddOperation(log, &op);
+}
+
+void EffectLog_AddAttribute
+(
+	EffectLog *log,           // effect log
+	Attribute_ID attribute_id // id of the attribute
+) {
+	ASSERT(log != NULL);
+	Effect op;
+
+	op.type = EFFECT_ADD_ATTRIBUTE;
+	op.attribute.attribute_id = attribute_id;
+	_EffectLog_AddOperation(log, &op);
+}
+
+void EffectLog_Clear
+(
+	EffectLog log
+) {
+	ASSERT(log != NULL);
+	array_clear(log);
+}
+
+void EffectLog_FreeEffect
+(
+	Effect *op
+) {
+	ASSERT(op != NULL);
+
+	switch(op->type) {
+		case EFFECT_UPDATE_NODE:
+		case EFFECT_UPDATE_EDGE:
+			break;
+		case EFFECT_CREATE_NODE:
+			break;
+		case EFFECT_CREATE_EDGE:
+			break;
+		case EFFECT_DELETE_NODE:
+			break;
+		case EFFECT_DELETE_EDGE:
+			break;
+		case EFFECT_SET_LABELS:
+		case EFFECT_REMOVE_LABELS:
+			break;
+		case EFFECT_ADD_SCHEMA:
+			break;
+		case EFFECT_ADD_ATTRIBUTE:
+			break;
+		default:
+			ASSERT(false);
+	}
+}
+
+void EffectLog_Free
+(
+	EffectLog log
+) {
+	// free each effect
+	uint count = array_len(log);
+	for (uint i = 0; i < count; i++) {
+		Effect *op = log + i;
+		EffectLog_FreeEffect(op);
+	}
+
+	array_free(log);
 }
 

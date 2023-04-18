@@ -30,7 +30,7 @@ typedef enum {
 	UNDO_SET_LABELS,    // undo set labels
 	UNDO_REMOVE_LABELS, // undo remove labels
 	UNDO_ADD_SCHEMA,    // undo schema addition
-	UNDO_ADD_ATTRIBUTE   // undo property addition
+	UNDO_ADD_ATTRIBUTE  // undo property addition
 } UndoOpType;
 
 //------------------------------------------------------------------------------

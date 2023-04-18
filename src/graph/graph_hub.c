@@ -115,6 +115,8 @@ uint CreateNode
 	if(log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_CreateNode(undo_log, n);
+		EffectLog *effect_log = QueryCtx_GetEffectLog();
+		EffectLog_CreateNode(effect_log, n);
 	}
 
 	return ATTRIBUTE_SET_COUNT(set);
@@ -145,6 +147,8 @@ uint CreateEdge
 	if(log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_CreateEdge(undo_log, e);
+		EffectLog *effect_log = QueryCtx_GetEffectLog();
+		EffectLog_CreateEdge(effect_log, e);
 	}
 
 	return ATTRIBUTE_SET_COUNT(set);
@@ -165,6 +169,7 @@ void DeleteNodes
 	ASSERT(nodes != NULL);
 
 	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
+	EffectLog *effect_log = (log == true) ? QueryCtx_GetEffectLog() : NULL;
 	bool has_indices = GraphContext_HasIndices(gc);
 
 	if(log == true || has_indices) {
@@ -174,6 +179,7 @@ void DeleteNodes
 			if(log == true) {
 				// add node deletion operation to undo log
 				UndoLog_DeleteNode(undo_log, n);
+				EffectLog_DeleteNode(effect_log, n);
 			}
 
 			if(has_indices == true) {
@@ -199,11 +205,13 @@ void DeleteEdges
 	// add edge deletion operation to undo log
 	bool has_indecise = GraphContext_HasIndices(gc);
 	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
+	EffectLog *effect_log = (log == true) ? QueryCtx_GetEffectLog() : NULL;
 
 	if(has_indecise == true || log == true) {
 		for (uint i = 0; i < n; i++) {
 			if(log == true) {
 				UndoLog_DeleteEdge(undo_log, edges + i);
+				EffectLog_DeleteEdge(effect_log, edges + i);
 			}
 
 			if(has_indecise == true) {
@@ -224,7 +232,8 @@ void UpdateEntityProperties
 	const AttributeSet set,       // new attributes
 	GraphEntityType entity_type,  // entity type
 	uint *props_set_count,        // number of attributes set
-	uint *props_removed_count    // number of attributes removed
+	uint *props_removed_count,    // number of attributes removed
+	bool log                      // log update in undo-log
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(ge != NULL);
@@ -236,8 +245,10 @@ void UpdateEntityProperties
 
 	AttributeSet old_set = *ge->attributes;
 
-	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	UndoLog_UpdateEntity(&query_ctx->undo_log, ge, old_set, entity_type);
+	if(log == true) {
+		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, old_set, entity_type);
+	}
 
 	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
 		Attribute *prop = set->attributes + i;
@@ -305,6 +316,7 @@ void UpdateNodeLabels
 		   (remove_labels == NULL && n_remove_labels == 0));
 
 	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
+	EffectLog *effect_log = (log == true) ? QueryCtx_GetEffectLog() : NULL;
 
 	if(add_labels != NULL) {
 		int add_labels_ids[n_add_labels];
@@ -344,6 +356,8 @@ void UpdateNodeLabels
 			if(log == true) {
 				UndoLog_AddLabels(undo_log, node, add_labels_ids,
 						add_labels_index);
+				EffectLog_AddLabels(effect_log, node, add_labels_ids,
+						add_labels_index);
 			}
 		}
 	}
@@ -378,6 +392,8 @@ void UpdateNodeLabels
 			if(log == true) {
 				UndoLog_RemoveLabels(undo_log, node, remove_labels_ids,
 						remove_labels_index);
+				EffectLog_RemoveLabels(effect_log, node, remove_labels_ids,
+						remove_labels_index);
 			}
 		}
 	}
@@ -397,6 +413,8 @@ Schema *AddSchema
 	if(log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_AddSchema(undo_log, s->id, s->type);
+		EffectLog *effect_log = QueryCtx_GetEffectLog();
+		EffectLog_AddSchema(effect_log, s->id, s->type);
 	}
 
 	return s;
@@ -417,6 +435,8 @@ Attribute_ID FindOrAddAttribute
 	if(created == true && log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_AddAttribute(undo_log, attr_id);
+		EffectLog *effect_log = QueryCtx_GetEffectLog();
+		EffectLog_AddAttribute(effect_log, attr_id);
 	}
 	return attr_id;
 }

@@ -77,7 +77,7 @@ void CommitUpdates
 		// update the attributes on the graph entity
 		UpdateEntityProperties(gc, update->ge, update->attributes,
 				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &_props_set,
-				&_props_removed);
+				&_props_removed, true);
 		update->attributes = NULL;
 
 		if(type == ENTITY_NODE) {
@@ -258,7 +258,8 @@ void EvalEntityUpdates
 	//
 	// collect all updates into a single attribute-set
 	//
-
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
+	GraphEntityType entity_type = t == REC_TYPE_NODE ? GETYPE_NODE : GETYPE_EDGE;
 	for(uint i = 0; i < exp_count && !error; i++) {
 		PropertySetCtx *property = ctx->properties + i;
 
@@ -281,7 +282,9 @@ void EvalEntityUpdates
 			}
 
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
-			AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v);
+			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
+				EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, v, entity_type);
+			}
 			SIValue_Free(v);
 			continue;
 		}
@@ -300,6 +303,10 @@ void EvalEntityUpdates
 		if(mode == UPDATE_REPLACE) {
 			// if this update replaces all existing properties
 			// enqueue a 'clear' update to do so
+			for (uint i = 0; i < ATTRIBUTE_SET_COUNT(update->attributes); i++) {
+				Attribute *attr = update->attributes->attributes + i;
+				EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr->id, SI_NullVal(), entity_type);
+			}
 			AttributeSet_Free(&update->attributes);
 		}
 
@@ -324,7 +331,9 @@ void EvalEntityUpdates
 				}
 
 				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval, true);
-				AttributeSet_Set_Allow_Null(&update->attributes, attr_id, value);
+				if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, value)) {
+					EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, value, entity_type);
+				}
 			}
 
 			// free map
@@ -349,7 +358,9 @@ void EvalEntityUpdates
 			SIValue v = AttributeSet_GetIdx(set, j, &attr_id);
 
 			// simple assignment, no need to value validation
-			AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v);
+			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
+				EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, v, entity_type);
+			}
 		}
 	} // for loop end
 

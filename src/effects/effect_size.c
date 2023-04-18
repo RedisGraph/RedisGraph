@@ -7,12 +7,12 @@
 #include "RG.h"
 #include "effects.h"
 #include "../query_ctx.h"
-#include "../undo_log/undo_log.h"
+#include "../effects/effects.h"
 #include "../graph/entities/attribute_set.h"
 
 static size_t ComputeCreateNodeSize
 (
-	const UndoOp *op
+	const Effect *op
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -23,9 +23,9 @@ static size_t ComputeCreateNodeSize
 	// attributes (id,value) pair
 	//--------------------------------------------------------------------------
 
-	// undo operation
+	// effect operation
 	Graph *g = QueryCtx_GetGraph();
-	const UndoCreateOp *_op = (const UndoCreateOp*)op;
+	const EffectCreate *_op = (const EffectCreate*)op;
 
 	// entity-type node/edge
 	const Node *n = &_op->n;
@@ -61,7 +61,7 @@ static size_t ComputeCreateNodeSize
 
 static size_t ComputeCreateEdgeSize
 (
-	const UndoOp *op
+	const Effect *op
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -74,9 +74,9 @@ static size_t ComputeCreateEdgeSize
 	// attributes (id,value) pair
 	//--------------------------------------------------------------------------
 
-	// undo operation
+	// effect operation
 	Graph *g = QueryCtx_GetGraph();
-	const UndoCreateOp *_op = (const UndoCreateOp*)op;
+	const EffectCreate *_op = &op->create;
 
 	const Edge *e = &_op->e;
 
@@ -110,7 +110,7 @@ static size_t ComputeCreateEdgeSize
 // compute required update-effect size for undo-add-attribute operation
 static size_t ComputeAttrAddSize
 (
-	const UndoOp *op
+	const Effect *op
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -119,7 +119,7 @@ static size_t ComputeAttrAddSize
 	//--------------------------------------------------------------------------
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	const UndoAddAttributeOp *_op = (const UndoAddAttributeOp*)op;
+	const EffectAddAttribute *_op = &op->attribute;
 
 	// get added attribute name
 	Attribute_ID attr_id  = _op->attribute_id;
@@ -133,10 +133,10 @@ static size_t ComputeAttrAddSize
 	return s;
 }
 
-// compute required update-effect size for undo-set-labels operation
+// compute required update-effect size for effect-set-labels operation
 static size_t ComputeSetLabelSize
 (
-	const UndoOp *op
+	const Effect *op
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -146,7 +146,7 @@ static size_t ComputeSetLabelSize
 	//    label IDs
 	//--------------------------------------------------------------------------
 	
-	const UndoLabelsOp *_op = (const UndoLabelsOp*)op;
+	const EffectLabels *_op = &op->labels;
 
 	size_t s = sizeof(EffectType) +
 		       sizeof(EntityID)   +
@@ -156,10 +156,10 @@ static size_t ComputeSetLabelSize
 	return s;
 }
 
-// compute required update-effect size for undo-remove-labels operation
+// compute required update-effect size for effect-remove-labels operation
 static size_t ComputeRemoveLabelSize
 (
-	const UndoOp *op
+	const Effect *op
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -175,7 +175,7 @@ static size_t ComputeRemoveLabelSize
 
 static size_t ComputeSchemaAddSize
 (
-	const UndoOp *op
+	const Effect *op
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -185,7 +185,7 @@ static size_t ComputeSchemaAddSize
 	//--------------------------------------------------------------------------
 	
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	const UndoAddSchemaOp *_op = (const UndoAddSchemaOp *)op;
+	const EffectAddSchema *_op = &op->schema;
 	Schema *schema = GraphContext_GetSchemaByID(gc, _op->schema_id, _op->t);
 	ASSERT(schema != NULL);
 
@@ -197,10 +197,10 @@ static size_t ComputeSchemaAddSize
 	return s;
 }
 
-// compute required update-effect size for undo-edge-update operation
+// compute required update-effect size for effect-edge-update operation
 static size_t ComputeEdgeUpdateSize
 (
-	const UndoUpdateOp *op
+	const EffectUpdate *op
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -213,36 +213,26 @@ static size_t ComputeEdgeUpdateSize
 	//    attributes (id,value) pair
 	//--------------------------------------------------------------------------
 
-	const Edge *e = &op->e;
+	Graph *g = QueryCtx_GetGraph();
+	Edge e;
+	Graph_GetEdge(g, op->id, &e);
 
 	// get updated value
-	AttributeSet set = GraphEntity_GetAttributes((GraphEntity *)e);
-	ushort attr_count = ATTRIBUTE_SET_COUNT(set);
+	SIValue *v = GraphEntity_GetProperty((const GraphEntity *)&e, op->attr_id);
 
 	// compute effect byte size
 	size_t s = sizeof(EffectType)                +   // effect type
 			   sizeof(EntityID)                  +   // edge ID
-			   sizeof(RelationID)                +   // relation ID
-			   sizeof(NodeID)                    +   // src node ID
-			   sizeof(NodeID)                    +   // dest node ID
-			   sizeof(ushort)                    +   // attribute count
-			   attr_count * sizeof(Attribute_ID);    // attribute IDs
-
-	// compute attribute-set size
-	for(ushort i = 0; i < attr_count; i++) {
-		// compute attribute size
-		Attribute_ID attr_id;
-		SIValue attr = AttributeSet_GetIdx(set, i, &attr_id);
-		s += SIValue_BinarySize(&attr);  // attribute value
-	}
+			   sizeof(Attribute_ID)              +   // attribute ID
+			   SIValue_BinarySize(v);                // attribute value
 
 	return s;
 }
 
-// compute required update-effect size for undo-node-update operation
+// compute required update-effect size for effect-node-update operation
 static size_t ComputeNodeUpdateSize
 (
-	const UndoUpdateOp *op
+	const EffectUpdate *op
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -252,103 +242,83 @@ static size_t ComputeNodeUpdateSize
 	//    attribute (id, value) pairs
 	//--------------------------------------------------------------------------
 
-	const Node *n = &op->n;
-	
-	// get updated attribute set
-	// SIValue *v = GraphEntity_GetProperty((GraphEntity*)n, op->attr_id);
-	AttributeSet set = GraphEntity_GetAttributes((GraphEntity *)n);
-	ushort attr_count = ATTRIBUTE_SET_COUNT(set);
+	Graph *g = QueryCtx_GetGraph();
+	Node n;
+	Graph_GetNode(g, op->id, &n);
+
+	// get updated value
+	SIValue *v = GraphEntity_GetProperty((const GraphEntity *)&n, op->attr_id);
 
 	// compute effect byte size
 	size_t s = sizeof(EffectType)                +  // effect type
 			   sizeof(NodeID)                    +  // node ID
-			   sizeof(uint16_t)                  +  // attribute cnt
-			   attr_count * sizeof(Attribute_ID);   // attribute IDs
-
-	// compute attribute-set size
-	for(ushort i = 0; i < attr_count; i++) {
-		// compute attribute size
-		Attribute_ID attr_id;
-		SIValue attr = AttributeSet_GetIdx(set, i, &attr_id);
-		s += SIValue_BinarySize(&attr);  // attribute value
-	}
+			   sizeof(Attribute_ID)              +  // attribute ID
+			   SIValue_BinarySize(v);               // attribute value
 
 	return s;
 }
 
-// compute required update-effect size for undo-update operation
-static size_t ComputeUpdateSize
-(
-	const UndoOp *op
-) {
-	// undo operation
-	const UndoUpdateOp *_op = (const UndoUpdateOp*)op;
-
-	// entity-type node/edge
-	if(_op->entity_type == GETYPE_NODE) {
-		return ComputeNodeUpdateSize(_op);
-	} else {
-		return ComputeEdgeUpdateSize(_op);
-	}
-}
-
-// compute required effects buffer byte size from undo-log
+// compute required effects buffer byte size from effect-log
 size_t ComputeBufferSize
 (
-	const UndoLog undolog
+	const EffectLog effect_log
 ) {
-	ASSERT(undolog != NULL);
+	ASSERT(effect_log != NULL);
 
 	size_t s = 0;  // effects-buffer required size in bytes
-	uint n = UndoLog_Length(undolog);  // number of undo entries
+	uint n = EffectLog_Length(effect_log);  // number of effect entries
 
-	// make sure undo-log is not empty
+	// make sure effect-log is not empty
 	ASSERT(n > 0);
 
 	// account for effect version
 	s += sizeof(uint8_t);
 
-	// compute effect size from each undo operation
+	// compute effect size from each effect operation
 	for(uint i = 0; i < n; i++) {
-		const UndoOp *op = undolog + i;
+		const Effect *op = effect_log + i;
 		switch(op->type) {
-			case UNDO_DELETE_NODE:
+			case EFFECT_DELETE_NODE:
 				// DeleteNode effect size
 				s += sizeof(EffectType) +
-					 fldsiz(UndoDeleteNodeOp, id);
+					 fldsiz(EffectDeleteNode, id);
 				break;
-			case UNDO_DELETE_EDGE:
+			case EFFECT_DELETE_EDGE:
 				// DeleteEdge effect size
 				s += sizeof(EffectType)                   +
-					 fldsiz(UndoDeleteEdgeOp, id)         +
-					 fldsiz(UndoDeleteEdgeOp, relationID) +
-					 fldsiz(UndoDeleteEdgeOp, srcNodeID)  +
-					 fldsiz(UndoDeleteEdgeOp, destNodeID);
+					 fldsiz(EffectDeleteEdge, id)         +
+					 fldsiz(EffectDeleteEdge, relationID) +
+					 fldsiz(EffectDeleteEdge, srcNodeID)  +
+					 fldsiz(EffectDeleteEdge, destNodeID);
 				break;
-			case UNDO_UPDATE:
+			case EFFECT_UPDATE_NODE:
 				// Update effect size
-				s += ComputeUpdateSize(op);
+				s += ComputeNodeUpdateSize(&op->update);
 				break;
-			case UNDO_CREATE_NODE:
+			case EFFECT_UPDATE_EDGE:
+				// Update effect size
+				s += ComputeEdgeUpdateSize(&op->update);
+				break;
+			case EFFECT_CREATE_NODE:
 				s += ComputeCreateNodeSize(op);
 				break;
-			case UNDO_CREATE_EDGE:
+			case EFFECT_CREATE_EDGE:
 				s += ComputeCreateEdgeSize(op);
 				break;
-			case UNDO_ADD_ATTRIBUTE:
-				s += ComputeAttrAddSize(op);
-				break;
-			case UNDO_SET_LABELS:
+			case EFFECT_SET_LABELS:
 				s += ComputeSetLabelSize(op);
 				break;
-			case UNDO_REMOVE_LABELS:
+			case EFFECT_REMOVE_LABELS:
 				s += ComputeRemoveLabelSize(op);
 				break;
-			case UNDO_ADD_SCHEMA:
+			case EFFECT_ADD_SCHEMA:
 				s += ComputeSchemaAddSize(op);
 				break;
+			case EFFECT_ADD_ATTRIBUTE:
+				s += ComputeAttrAddSize(op);
+				break;
 			default:
-				assert(false && "unknown undo operation");
+				assert(false && "unknown effect operation");
 				break;
 		}
 	}

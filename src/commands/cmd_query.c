@@ -95,7 +95,7 @@ static bool _should_replicate_effects(void)
 
 	// compute average change time
 	double exec_time = QueryCtx_GetExecutionTime();   // query execution time
-	uint n = UndoLog_Length(*QueryCtx_GetUndoLog());  // number of modifications
+	uint n = EffectLog_Length(*QueryCtx_GetEffectLog());  // number of modifications
 	ASSERT(n > 0);
 	double avg_mod_time = exec_time / n;              // avg modification time
 
@@ -369,11 +369,11 @@ static void _ExecuteQuery(void *args) {
 		// replicate if graph was modified
 		if(ResultSetStat_IndicateModification(&result_set->stats)) {
 			// determine rather or not to replicate via effects
-			if(UndoLog_Length(*QueryCtx_GetUndoLog()) > 0 &&
+			if(EffectLog_Length(*QueryCtx_GetEffectLog()) > 0 &&
 			   _should_replicate_effects()) {
 				// compute effects buffer
 				size_t effects_len = 0;
-				u_char *effects = Effects_FromUndoLog(*QueryCtx_GetUndoLog(),
+				u_char *effects = Effects_FromEffectLog(*QueryCtx_GetEffectLog(),
 						&effects_len);
 				ASSERT(effects_len > 0 && effects != NULL);
 
