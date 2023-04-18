@@ -48,4 +48,6 @@ void NodeScanCtx_Free
         QGNode_Free(ctx->n);
         ctx->n = NULL;
     }
+
+    rm_free(ctx);
 }
