@@ -8,6 +8,7 @@
 
 #include "./index.h"
 #include "../graph/graphcontext.h"
+#include "../constraint/constraint.h"
 
 // Indexer handels asynchronously index population
 // in the system there's a single instance of it, initialized on module init
@@ -26,6 +27,7 @@ bool Indexer_Init(void);
 void Indexer_PopulateIndex
 (
 	GraphContext *gc, // graph to operate on
+	Schema *s,        // schema containing the idx
 	Index idx         // index to populate
 );
 
@@ -34,6 +36,26 @@ void Indexer_PopulateIndex
 // eventually the indexer working thread will pick it up and drop the index
 void Indexer_DropIndex
 (
-	Index idx  // index to drop
+	Index idx,        // index to drop
+	GraphContext *gc  // graph context
+);
+
+// TODO: Indexer should be incorparated into our scheduler
+
+// enforces constraint
+// adds the task for enforcing the given constraint to the indexer
+void Indexer_EnforceConstraint
+(
+	Constraint c,  // constraint to enforce
+	GraphContext *gc  // graph context
+);
+
+// drops constraint asynchronously
+// this function simply place the drop request onto a queue
+// eventually the indexer working thread will pick it up and drop the constraint
+void Indexer_DropConstraint
+(
+	Constraint c,     // constraint to drop
+	GraphContext *gc  // graph context
 );
 

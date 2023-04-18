@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../ast/ast.h"
-#include "graphcontext.h"
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "entities/qg_node.h"

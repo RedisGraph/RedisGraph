@@ -36,12 +36,12 @@ static Schema *_RdbLoadSchema
 		RedisModule_Free(field_name);
 	}
 
-	if(s->index != NULL) {
-		Index_Disable(s->index);
+	if(PENDING_EXACTMATCH_IDX(s) != NULL) {
+		Index_Disable(PENDING_EXACTMATCH_IDX(s));
 	}
 
-	if(s->fulltextIdx != NULL) {
-		Index_Disable(s->fulltextIdx);
+	if(PENDING_FULLTEXT_IDX(s) != NULL) {
+		Index_Disable(PENDING_FULLTEXT_IDX(s));
 	}
 
 	return s;

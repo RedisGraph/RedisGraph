@@ -9,8 +9,8 @@
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
-#include "../slow_log/slow_log.h"
 #include "graph.h"
+#include "../slow_log/slow_log.h"
 #include "../serializers/encode_context.h"
 #include "../serializers/decode_context.h"
 #include "../util/cache/cache.h"
@@ -100,6 +100,12 @@ XXH32_hash_t GraphContext_GetVersion
 	const GraphContext *gc
 );
 
+// get graph from graph context
+Graph *GraphContext_GetGraph
+(
+	const GraphContext *gc
+);
+
 //------------------------------------------------------------------------------
 // Schema API
 //------------------------------------------------------------------------------
@@ -109,6 +115,18 @@ unsigned short GraphContext_SchemaCount
 (
 	const GraphContext *gc,
 	SchemaType t
+);
+
+// enable all constraints
+void GraphContext_EnableConstrains
+(
+	const GraphContext *gc
+);
+
+// disable all constraints
+void GraphContext_DisableConstrains
+(
+	GraphContext *gc
 );
 
 // retrieve the specific schema for the provided ID
@@ -198,19 +216,33 @@ void GraphContext_RemoveAttribute
 // Index API
 //------------------------------------------------------------------------------
 
+// returns true if the passed graph context has indices, false otherwise.
 bool GraphContext_HasIndices
 (
 	GraphContext *gc
 );
 
+// returns the number of node indices within the passed graph context.
+uint64_t GraphContext_NodeIndexCount
+(
+	const GraphContext *gc
+);
+
+// returns the number of edge indices within the passed graph context.
+uint64_t GraphContext_EdgeIndexCount
+(
+	const GraphContext *gc
+);
+
 // attempt to retrieve an index on the given label and attribute IDs
 Index GraphContext_GetIndexByID
 (
-	const GraphContext *gc,
-	int id,
-	Attribute_ID *attribute_id,
-	IndexType type,
-	SchemaType t
+	const GraphContext *gc,        // graph context
+	int lbl_id,                    // label / rel-type ID
+	const Attribute_ID *attrs,     // attributes
+	uint n,                        // attributes count
+	IndexType idx_type,            // index type
+	GraphEntityType entity_type    // schema type NODE / EDGE
 );
 
 // attempt to retrieve an index on the given label and attribute
@@ -218,20 +250,21 @@ Index GraphContext_GetIndex
 (
 	const GraphContext *gc,
 	const char *label,
-	Attribute_ID *attribute_id,
+	Attribute_ID *attrs,
+	uint n,
 	IndexType type,
 	SchemaType schema_type
 );
 
-// create an exact match index for the given label and attribute
 bool GraphContext_AddExactMatchIndex
 (
-	Index *idx,              // [input/output] index created
-	GraphContext *gc,        // graph context
-	SchemaType schema_type,  // type of entities to index nodes/edges
-	const char *label,       // label of indexed entities
-	const char **fields,     // fields to index
-	uint fields_count        // number of fields to index
+	Index *idx,                 // [input/output] index created
+	GraphContext *gc,           // graph context
+	SchemaType schema_type,     // type of entities to index nodes/edges
+	const char *label,          // label of indexed entities
+	const char **fields_str,    // fields to index
+	uint fields_count,          // number of fields to index
+	bool should_reply           // should reply to client
 );
 
 // create a full text index for the given label and attribute
@@ -239,7 +272,6 @@ bool GraphContext_AddFullTextIndex
 (
 	Index *idx,              // [input/output] index created
 	GraphContext *gc,        // graph context
-	SchemaType schema_type,  // type of entities to index nodes/edges
 	const char *label,       // label of indexed entities
 	const char **fields,     // fields to index
 	uint fields_count,       // number of fields to index
@@ -306,3 +338,14 @@ Cache *GraphContext_GetCache
 	const GraphContext *gc
 );
 
+void GraphContext_LockForCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+);
+
+void GraphContext_UnlockCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+);

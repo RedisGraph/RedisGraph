@@ -171,6 +171,7 @@ static AR_ExpNode *_AR_EXP_FromPropertyExpression(const cypher_astnode_t *expr) 
 
 static SIValue _AR_EXP_FromIntegerString(const char *value_str) {
 	char *endptr = NULL;
+	errno = 0;
 	int64_t l = strtol(value_str, &endptr, 0);
 	if(endptr[0] != 0) {
 		// Failed to convert integer value; set compile-time error to be raised later.

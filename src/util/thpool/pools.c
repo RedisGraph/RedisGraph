@@ -135,16 +135,17 @@ void ThreadPools_Resume
 	thpool_resume(_writers_thpool);
 }
 
-// add task for reader thread
+// adds a read task
 int ThreadPools_AddWorkReader
 (
-	void (*function_p)(void *),
-	void *arg_p
+	void (*function_p)(void *),  // function to run
+	void *arg_p,                 // function arguments
+	int force                    // true will add task even if internal queue is full
 ) {
 	ASSERT(_readers_thpool != NULL);
 
 	// make sure there's enough room in thread pool queue
-	if(thpool_queue_full(_readers_thpool)) return THPOOL_QUEUE_FULL;
+	if(!force && thpool_queue_full(_readers_thpool)) return THPOOL_QUEUE_FULL;
 
 	return thpool_add_work(_readers_thpool, function_p, arg_p);
 }

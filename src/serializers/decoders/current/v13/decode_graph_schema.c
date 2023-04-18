@@ -4,7 +4,8 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "decode_v12.h"
+#include "decode_v13.h"
+#include "../../../../schema/schema.h"
 
 static void _RdbLoadFullTextIndex
 (
@@ -55,7 +56,9 @@ static void _RdbLoadFullTextIndex
 		ASSERT(idx != NULL);
 		Index_SetLanguage(idx, language);
 		Index_SetStopwords(idx, stopwords);
-		Index_ConstructStructure(idx);
+		// disable and create index structure
+		// must be enabled once the graph is fully loaded
+		Index_Disable(idx);
 	}
 	
 	// free language
@@ -79,22 +82,97 @@ static void _RdbLoadExactMatchIndex
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		if(!already_loaded) {
 			IndexField field;
-			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
+			Attribute_ID field_id = GraphContext_GetAttributeID(gc, field_name);
 			IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
 				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
-
 			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH);
 		}
 		RedisModule_Free(field_name);
 	}
 
-	// construct index structure
 	if(!already_loaded) {
-		Index_ConstructStructure(idx);
+		// disable index, internally creates the RediSearch index structure
+		// must be enabled once the graph is fully loaded
+		Index_Disable(idx);
 	}
 }
 
-static Schema *_RdbLoadSchema
+static void _RdbLoadConstaint
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,    // graph context
+	Schema *s,           // schema to populate
+	bool already_loaded  // constraints already loaded
+) {
+	/* Format:
+	 * constraint type
+	 * fields count
+	 * field IDs */
+
+	Constraint c = NULL;
+
+	//--------------------------------------------------------------------------
+	// decode constraint type
+	//--------------------------------------------------------------------------
+
+	ConstraintType t = RedisModule_LoadUnsigned(rdb);
+
+	//--------------------------------------------------------------------------
+	// decode constraint fields count
+	//--------------------------------------------------------------------------
+	
+	uint8_t n = RedisModule_LoadUnsigned(rdb);
+
+	//--------------------------------------------------------------------------
+	// decode constraint fields
+	//--------------------------------------------------------------------------
+
+	Attribute_ID attr_ids[n];
+	const char *attr_strs[n];
+
+	// read fields
+	for(uint8_t i = 0; i < n; i++) {
+		Attribute_ID attr = RedisModule_LoadUnsigned(rdb);
+		attr_ids[i]  = attr;
+		attr_strs[i] = GraphContext_GetAttributeString(gc, attr);
+	}
+
+	if(!already_loaded) {
+		GraphEntityType et = (Schema_GetType(s) == SCHEMA_NODE) ?
+			GETYPE_NODE : GETYPE_EDGE;
+
+		c = Constraint_New((struct GraphContext*)gc, t, Schema_GetID(s),
+				attr_ids, attr_strs, n, et, NULL);
+
+		// set constraint status to active
+		// only active constraints are encoded
+		Constraint_SetStatus(c, CT_ACTIVE);
+
+		// check if constraint already contained in schema
+		ASSERT(!Schema_ContainsConstraint(s, t, attr_ids, n));
+
+		// add constraint to schema
+		Schema_AddConstraint(s, c);
+	}
+}
+
+// load schema's constraints
+static void _RdbLoadConstaints
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,    // graph context
+	Schema *s,           // schema to populate
+	bool already_loaded  // constraints already loaded
+) {
+	// read number of constraints
+	uint constraint_count = RedisModule_LoadUnsigned(rdb);
+
+	for (uint i = 0; i < constraint_count; i++) {
+		_RdbLoadConstaint(rdb, gc, s, already_loaded);
+	}
+}
+
+static void _RdbLoadSchema
 (
 	RedisModuleIO *rdb,
 	GraphContext *gc,
@@ -105,16 +183,34 @@ static Schema *_RdbLoadSchema
 	 * id
 	 * name
 	 * #indices
-	 * index type
-	 * index data */
+	 * (index type, indexed property) X M 
+	 * #constraints 
+	 * (constraint type, constraint fields) X N
+	 */
 
-	int id = RedisModule_LoadUnsigned(rdb);
-	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
-	Schema *s = already_loaded ? NULL : Schema_New(type, id, name);
+	Schema *s    = NULL;
+	int     id   = RedisModule_LoadUnsigned(rdb);
+	char   *name = RedisModule_LoadStringBuffer(rdb, NULL);
+
+	if(!already_loaded) {
+		s = Schema_New(type, id, name);
+		if(type == SCHEMA_NODE) {
+			ASSERT(array_len(gc->node_schemas) == id);
+			array_append(gc->node_schemas, s);
+		} else {
+			ASSERT(array_len(gc->relation_schemas) == id);
+			array_append(gc->relation_schemas, s);
+		}
+	}
+
 	RedisModule_Free(name);
 
+	//--------------------------------------------------------------------------
+	// load indices
+	//--------------------------------------------------------------------------
+
 	uint index_count = RedisModule_LoadUnsigned(rdb);
-	for (uint index = 0; index < index_count; index++) {
+	for(uint index = 0; index < index_count; index++) {
 		IndexType index_type = RedisModule_LoadUnsigned(rdb);
 
 		switch(index_type) {
@@ -130,7 +226,11 @@ static Schema *_RdbLoadSchema
 		}
 	}
 
-	return s;
+	//--------------------------------------------------------------------------
+	// load constraints
+	//--------------------------------------------------------------------------
+
+	_RdbLoadConstaints(rdb, gc, s, already_loaded);
 }
 
 static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
@@ -147,7 +247,12 @@ static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-void RdbLoadGraphSchema_v12(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadGraphSchema_v13
+(
+	RedisModuleIO *rdb,
+	GraphContext *gc,
+	bool already_loaded
+) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas
@@ -163,13 +268,10 @@ void RdbLoadGraphSchema_v12(RedisModuleIO *rdb, GraphContext *gc) {
 	// #Node schemas
 	uint schema_count = RedisModule_LoadUnsigned(rdb);
 
-	bool already_loaded = array_len(gc->node_schemas) > 0;
-
 	// Load each node schema
 	gc->node_schemas = array_ensure_cap(gc->node_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		Schema *s = _RdbLoadSchema(rdb, gc, SCHEMA_NODE, already_loaded);
-		if(!already_loaded) array_append(gc->node_schemas, s);
+		_RdbLoadSchema(rdb, gc, SCHEMA_NODE, already_loaded);
 	}
 
 	// #Edge schemas
@@ -178,8 +280,7 @@ void RdbLoadGraphSchema_v12(RedisModuleIO *rdb, GraphContext *gc) {
 	// Load each edge schema
 	gc->relation_schemas = array_ensure_cap(gc->relation_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		Schema *s = _RdbLoadSchema(rdb, gc, SCHEMA_EDGE, already_loaded);
-		if(!already_loaded) array_append(gc->relation_schemas, s);
+		_RdbLoadSchema(rdb, gc, SCHEMA_EDGE, already_loaded);
 	}
 }
 

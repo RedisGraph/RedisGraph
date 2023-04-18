@@ -11,13 +11,15 @@
 #include "../util/arr.h"
 #include "../util/cron.h"
 #include "../query_ctx.h"
+#include "execution_ctx.h"
 #include "../graph/graph.h"
 #include "../index/indexer.h"
 #include "../util/rmalloc.h"
+#include "../effects/effects.h"
 #include "../util/cache/cache.h"
 #include "../util/thpool/pools.h"
+#include "../configuration/config.h"
 #include "../execution_plan/execution_plan.h"
-#include "execution_ctx.h"
 
 // GraphQueryCtx stores the allocations required to execute a query.
 typedef struct {
@@ -55,12 +57,55 @@ static GraphQueryCtx *GraphQueryCtx_New
 	return ctx;
 }
 
-void static inline GraphQueryCtx_Free(GraphQueryCtx *ctx) {
+static void inline GraphQueryCtx_Free
+(
+	GraphQueryCtx *ctx
+) {
 	ASSERT(ctx != NULL);
 	rm_free(ctx);
 }
 
-void static abort_and_check_timeout
+// checks if we should replicate command to replicas via
+// the original GRAPH.QUERY command
+// or via a set of effects GRAPH.EFFECT
+// we would prefer to use effects when the number of effects is relatively small
+// compared to query's execution time
+static bool _should_replicate_effects(void)
+{
+	// GRAPH.EFFECT will be used to replicate a query when
+	// the average modification time > configuted replicate effects threshold
+	//
+	// for example:
+	// a query which ran for 10ms and performed 5 changes
+	// the average change time is 10/5 = 2ms
+	// if 2ms > configured replicate effects threshold
+	// then the query will be replicated via GRAPH.EFFECT
+	//
+	// on the other hand if a query ran for 1ms and performed 4 changes
+	// the average change timw is 1/4 = 0.25ms
+	// 0.25 < configured replicate effects threshold
+	// then the query will be replicate via GRAPH.QUERY
+
+	//--------------------------------------------------------------------------
+	// consult with configuration
+	//--------------------------------------------------------------------------
+
+	uint64_t effects_threshold;
+	Config_Option_get(Config_EFFECTS_THRESHOLD, &effects_threshold);
+
+	// compute average change time
+	double exec_time = QueryCtx_GetExecutionTime();   // query execution time
+	uint n = UndoLog_Length(*QueryCtx_GetUndoLog());  // number of modifications
+	ASSERT(n > 0);
+	double avg_mod_time = exec_time / n;              // avg modification time
+
+	avg_mod_time *= 1000; // convert from ms to μs microseconds
+
+	// use GRAPH.EFFECT when avg_mod_time > effects_threshold
+	return (avg_mod_time > (double)effects_threshold);
+}
+
+static void abort_and_check_timeout
 (
 	GraphQueryCtx *gq_ctx,
 	ExecutionPlan *plan
@@ -79,10 +124,8 @@ void static abort_and_check_timeout
 static bool _index_operation_delete
 (
 	GraphContext *gc,
-	AST *ast,
-	Index *idx
+	AST *ast
 ) {
-	*idx = NULL;
 	Schema *s = NULL;
 	SchemaType schema_type = SCHEMA_NODE;
 	const cypher_astnode_t *index_op = ast->root;
@@ -95,52 +138,45 @@ static bool _index_operation_delete
 
 	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr);
 
-	//--------------------------------------------------------------------------
-	// make sure index exists
-	//--------------------------------------------------------------------------
+	// try deleting a NODE EXACT-MATCH index
 
-	// try locating a NODE EXACT-MATCH index
-	s = GraphContext_GetSchema(gc, label, schema_type);
+	// lock
+	QueryCtx_LockForCommit();
+
+	s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s != NULL) {
-		*idx = Schema_GetIndex(s, &attr_id, IDX_EXACT_MATCH);
+		if(Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH, true) != NULL) {
+			// try deleting an exact match node index
+			return GraphContext_DeleteIndex(gc, SCHEMA_NODE, label, attr, IDX_EXACT_MATCH);
+		}
 	}
 
-	// try locating a EDGE EXACT-MATCH index
-	if(*idx == NULL) {
-		schema_type = SCHEMA_EDGE;
-		s = GraphContext_GetSchema(gc, label, schema_type);
-		if(s != NULL) {
-			*idx = Schema_GetIndex(s, &attr_id, IDX_EXACT_MATCH);
+	// try removing from an edge schema
+	s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
+	if(s != NULL) {
+		if(Schema_GetIndex(s, &attr_id, 1, IDX_EXACT_MATCH, true) != NULL) {
+			// try deleting an exact match edge index
+			return GraphContext_DeleteIndex(gc, SCHEMA_EDGE, label, attr, IDX_EXACT_MATCH);
 		}
 	}
 
 	// no matching index
-	if(*idx == NULL) {
-		ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.",
-				label, attr);
-		return false;
-	}
+	ErrorCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.",
+			label, attr);
 
-	QueryCtx_LockForCommit();
-
-	int res = GraphContext_DeleteIndex(gc, schema_type, label, attr,
-			IDX_EXACT_MATCH);
-
-	return res == INDEX_OK;
+	return false;
 }
 
 // create index structure
-static bool _index_operation_create
+static void _index_operation_create
 (
 	RedisModuleCtx *ctx,
 	GraphContext *gc,
-	AST *ast,
-	Index *idx
+	AST *ast
 ) {
 	ASSERT(gc  != NULL);
 	ASSERT(ctx != NULL);
 	ASSERT(ast != NULL);
-	ASSERT(idx != NULL);
 
 	uint nprops            = 0;            // number of fields indexed
 	const char *label      = NULL;         // label being indexed
@@ -190,15 +226,17 @@ static bool _index_operation_create
 	// lock
 	QueryCtx_LockForCommit();
 
+	Index idx;
 	// add fields to index
-	bool index_added = GraphContext_AddExactMatchIndex(idx, gc, schema_type,
-					label, fields, nprops);
-
-	return index_added;
+	if(GraphContext_AddExactMatchIndex(&idx, gc, schema_type, label, fields,
+				nprops, true)) {
+		Schema *s = GraphContext_GetSchema(gc, label, schema_type);
+		Indexer_PopulateIndex(gc, s, idx);
+	}
 }
 
-// handle index operation
-// either index creation or index deletion
+// handle index/constraint operation
+// either index/constraint creation or index/constraint deletion
 static void _index_operation
 (
 	RedisModuleCtx *ctx,
@@ -206,24 +244,12 @@ static void _index_operation
 	AST *ast,
 	ExecutionType exec_type
 ) {
-	Index idx = NULL;
-
 	switch(exec_type) {
 		case EXECUTION_TYPE_INDEX_CREATE:
-			if(_index_operation_create(ctx, gc, ast, &idx)) {
-				Indexer_PopulateIndex(gc, idx);
-			}
+			_index_operation_create(ctx, gc, ast);
 			break;
 		case EXECUTION_TYPE_INDEX_DROP:
-			if(_index_operation_delete(gc, ast, &idx)) {
-				// if idx field count > 0 reindex
-				// otherwise drop
-				if(Index_FieldsCount(idx) > 0) {
-					Indexer_PopulateIndex(gc, idx);
-				} else {
-					Indexer_DropIndex(idx);
-				}
-			}
+			_index_operation_delete(gc, ast);
 			break;
 		default:
 			ErrorCtx_SetError("ERR Encountered unknown query execution type.");
@@ -251,23 +277,23 @@ inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 	return strcasecmp(CommandCtx_GetCommandName(ctx), "graph.RO_QUERY") == 0;
 }
 
-// _ExecuteQuery accepts a GraphQeuryCtx as an argument
+// _ExecuteQuery accepts a GraphQueryCtx as an argument
 // it may be called directly by a reader thread or the Redis main thread,
-// or dispatched as a worker thread job
+// or dispatched as a worker thread job when used for writing.
 static void _ExecuteQuery(void *args) {
 	ASSERT(args != NULL);
 
-	GraphQueryCtx   *gq_ctx       =  args;
-	QueryCtx        *query_ctx    =  gq_ctx->query_ctx;
-	GraphContext    *gc           =  gq_ctx->graph_ctx;
-	RedisModuleCtx  *rm_ctx       =  gq_ctx->rm_ctx;
-	bool            profile       =  gq_ctx->profile;
-	bool            readonly      =  gq_ctx->readonly_query;
-	ExecutionCtx    *exec_ctx     =  gq_ctx->exec_ctx;
-	CommandCtx      *command_ctx  =  gq_ctx->command_ctx;
-	AST             *ast          =  exec_ctx->ast;
-	ExecutionPlan   *plan         =  exec_ctx->plan;
-	ExecutionType   exec_type     =  exec_ctx->exec_type;
+	GraphQueryCtx  *gq_ctx      = args;
+	QueryCtx       *query_ctx   = gq_ctx->query_ctx;
+	GraphContext   *gc          = gq_ctx->graph_ctx;
+	RedisModuleCtx *rm_ctx      = gq_ctx->rm_ctx;
+	bool           profile      = gq_ctx->profile;
+	bool           readonly     = gq_ctx->readonly_query;
+	ExecutionCtx   *exec_ctx    = gq_ctx->exec_ctx;
+	CommandCtx     *command_ctx = gq_ctx->command_ctx;
+	AST            *ast         = exec_ctx->ast;
+	ExecutionPlan  *plan        = exec_ctx->plan;
+	ExecutionType  exec_type    = exec_ctx->exec_type;
 
 	// if we have migrated to a writer thread,
 	// update thread-local storage and track the CommandCtx
@@ -279,14 +305,16 @@ static void _ExecuteQuery(void *args) {
 	// instantiate the query ResultSet
 	bool compact = command_ctx->compact;
 	// replicated command don't need to return result
-	ResultSetFormatterType resultset_format = 
+	ResultSetFormatterType resultset_format =
 		profile || command_ctx->replicated_command
-		? FORMATTER_NOP 
-		: (compact) 
-			? FORMATTER_COMPACT 
+		? FORMATTER_NOP
+		: (compact)
+			? FORMATTER_COMPACT
 			: FORMATTER_VERBOSE;
 	ResultSet *result_set = NewResultSet(rm_ctx, resultset_format);
-	if(exec_ctx->cached) ResultSet_CachedExecution(result_set); // indicate a cached execution
+	if (exec_ctx->cached) {
+		ResultSet_CachedExecution(result_set); // indicate a cached execution
+	}
 
 	QueryCtx_SetResultSet(result_set);
 
@@ -334,16 +362,32 @@ static void _ExecuteQuery(void *args) {
 
 	// in case of an error, rollback any modifications
 	if(ErrorCtx_EncounteredError()) {
-		UndoLog_Rollback(query_ctx->undo_log);
+		UndoLog_Rollback(*QueryCtx_GetUndoLog());
 		// clear resultset statistics, avoiding commnad being replicated
 		ResultSet_Clear(result_set);
+	} else {
+		// replicate if graph was modified
+		if(ResultSetStat_IndicateModification(&result_set->stats)) {
+			// determine rather or not to replicate via effects
+			if(UndoLog_Length(*QueryCtx_GetUndoLog()) > 0 &&
+			   _should_replicate_effects()) {
+				// compute effects buffer
+				size_t effects_len = 0;
+				u_char *effects = Effects_FromUndoLog(*QueryCtx_GetUndoLog(),
+						&effects_len);
+				ASSERT(effects_len > 0 && effects != NULL);
+
+				// replicate effects
+				RedisModule_Replicate(rm_ctx, "GRAPH.EFFECT", "cb!",
+						GraphContext_GetName(gc), effects, effects_len);
+				rm_free(effects);
+			} else {
+				// replicate original query
+				QueryCtx_Replicate(query_ctx);
+			}
+		}	
 	}
-	
-	// replicate command if graph was modified
-	if(ResultSetStat_IndicateModification(&result_set->stats)) {
-		QueryCtx_Replicate(query_ctx);
-	}
-	
+
 	QueryCtx_UnlockCommit();
 
 	if(!profile || ErrorCtx_EncounteredError()) {

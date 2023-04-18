@@ -53,7 +53,7 @@ typedef enum {
 #define SI_GRAPHENTITY (T_NODE | T_EDGE)
 #define SI_ALL (T_MAP | T_NODE | T_EDGE | T_ARRAY | T_PATH | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE | T_NULL | T_PTR | T_POINT)
 #define SI_VALID_PROPERTY_VALUE (T_POINT | T_ARRAY | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE)
-#define SI_INDEXABLE (SI_NUMERIC | T_BOOL | T_STRING)
+#define SI_INDEXABLE (SI_NUMERIC | T_BOOL | T_STRING | T_POINT)
 
 /* Any values (except durations) are comparable with other values of the same type.
  * Integer and floating-point values are also comparable with each other. */
@@ -82,6 +82,11 @@ typedef enum {
 
 struct Pair;
 
+typedef struct Point {
+	float latitude;   // 32 bit
+	float longitude;  // 32 bit
+} Point;
+
 typedef struct SIValue {
 	union {
 		int64_t longval;
@@ -90,10 +95,7 @@ typedef struct SIValue {
 		void *ptrval;
 		struct Pair *map;
 		struct SIValue *array;
-		struct {
-			float latitude;   // 32 bit
-			float longitude;  // 32 bit
-		} point;
+		Point point;
 	};
 	SIType type;
 	SIAllocation allocation;
@@ -204,6 +206,26 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state);
 
 /* Returns a hash code for a given SIValue. */
 XXH64_hash_t SIValue_HashCode(SIValue v);
+
+// returns the number of bytes required to represent `v` in a binary
+//  format
+size_t SIValue_BinarySize
+(
+	const SIValue *v
+);
+
+// writes a binary representation of `v` into `stream`
+void SIValue_ToBinary
+(
+	FILE *stream,
+	const SIValue *v
+);
+
+// reads SIValue off of binary stream
+SIValue SIValue_FromBinary
+(
+	FILE *stream  // stream to read value from
+);
 
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */
