@@ -3,31 +3,11 @@
  * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
  * the Server Side Public License v1 (SSPLv1).
  */
- /*
- This module supports RESP3 and RESP2. When replying with RESP3's map
- the RESP3 functions are used. If those are unavailable, the map is
- emulated with RESP2's arrays. When using RESP2, the booleans are
- emulated as integers having 1 or 0 value for true and false values
- correspondingly.
- */
 
 #include "module.h"
 
 #include "../redismodule.h"
 #include "../RG.h"
-
-static int module_reply_map_resp3
-(
-    RedisModuleCtx *ctx,
-    const long key_value_count
-) {
-    ASSERT(ctx);
-    if (!ctx || !RedisModule_ReplyWithMap) {
-        return REDISMODULE_ERR;
-    }
-
-    return RedisModule_ReplyWithMap(ctx, key_value_count);
-}
 
 static int module_reply_map_resp2
 (
@@ -51,29 +31,11 @@ int module_reply_map
     RedisModuleCtx *ctx,
     const long key_value_count
 ) {
-    if(module_reply_map_resp3(ctx, key_value_count) == REDISMODULE_ERR) {
-        REDISMODULE_ASSERT(module_reply_map_resp2(ctx, key_value_count));
-    }
+    int ret = module_reply_map_resp2(ctx, key_value_count);
+    ASSERT(ret == REDISMODULE_OK);
+    UNUSED(ret);
 
     return REDISMODULE_OK;
-}
-
-static bool module_reply_map_set_postponed_length_resp3
-(
-    RedisModuleCtx *ctx,
-    const long length
-) {
-    ASSERT(ctx);
-    ASSERT(length != REDISMODULE_POSTPONED_LEN);
-    if (!ctx
-     || length == REDISMODULE_POSTPONED_LEN
-     || !RedisModule_ReplySetMapLength) {
-        return false;
-    }
-
-    RedisModule_ReplySetMapLength(ctx, length);
-
-    return true;
 }
 
 void module_reply_map_set_postponed_length
@@ -83,17 +45,11 @@ void module_reply_map_set_postponed_length
 ) {
     ASSERT(ctx);
     ASSERT(length != REDISMODULE_POSTPONED_LEN);
-    if (!ctx
-     || length == REDISMODULE_POSTPONED_LEN) {
+    if (!ctx || length == REDISMODULE_POSTPONED_LEN) {
         return;
     }
 
-    if(!module_reply_map_set_postponed_length_resp3(ctx, length)) {
-        // In RESP2 the map is emulated via an array having twice the
-        // size, as we need to store keys and values as separate array
-        // entries.
-        RedisModule_ReplySetArrayLength(ctx, length * 2);
-    }
+    RedisModule_ReplySetArrayLength(ctx, length * 2);
 }
 
 int module_reply_key_value_number
@@ -165,19 +121,6 @@ int module_reply_key_value_string
     return REDISMODULE_OK;
 }
 
-static int module_reply_bool_resp3
-(
-    RedisModuleCtx *ctx,
-    const bool value
-) {
-    ASSERT(ctx);
-    if (!ctx || !RedisModule_ReplyWithBool) {
-        return REDISMODULE_ERR;
-    }
-
-    return RedisModule_ReplyWithBool(ctx, value);
-}
-
 static int module_reply_bool_resp2
 (
     RedisModuleCtx *ctx,
@@ -195,14 +138,9 @@ int module_reply_bool(
     RedisModuleCtx *ctx,
     const bool value
 ) {
-    ASSERT(ctx);
-    if (!ctx) {
-        return REDISMODULE_ERR;
-    }
+    ASSERT(ctx != NULL);
 
-    if (module_reply_bool_resp3(ctx, value) == REDISMODULE_ERR) {
-        return module_reply_bool_resp2(ctx, value);
-    }
+    return module_reply_bool_resp2(ctx, value);
 
     return REDISMODULE_OK;
 }
