@@ -51,7 +51,9 @@ static Record JoinConsume(OpBase *opBase) {
 		r = OpBase_Consume(op->stream);
 
 		if(!r) {
-			// Stream depleted, see if there's a new stream to pull from.
+			// Stream depleted, propagate reset to release lock if any exists
+			OpBase_PropagateReset(op->stream);
+			// See if there's a new stream to pull from.
 			op->streamIdx++;
 			if(op->streamIdx >= op->op.childCount) break;
 
