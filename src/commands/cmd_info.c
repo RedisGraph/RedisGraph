@@ -115,12 +115,12 @@ static bool _collect_queries_info_from_graph
     const uint64_t executing = 0;
     const uint64_t reporting = 0;
     const uint64_t waiting = Info_GetWaitingQueriesCount(gc->info);
-    Info_GetReportingQueriesCount(gc->info, &executing, &reporting);
+    Info_GetExecutingReportingQueriesCount(gc->info, &executing, &reporting);
     const uint64_t max_wait_time = Info_GetMaxQueryWaitTime(gc->info);
 
-    global_info->total_waiting_queries_count += waiting_queries_count;
-	global_info->total_executing_queries_count += executing_queries_count;
-    global_info->total_reporting_queries_count += reporting_queries_count;
+    global_info->total_waiting_queries_count += waiting;
+	global_info->total_executing_queries_count += executing;
+    global_info->total_reporting_queries_count += reporting;
 	global_info->max_query_wait_time = MAX(max_wait_time,
 			global_info->max_query_wait_time);
 

@@ -341,53 +341,33 @@ uint64_t Info_GetWaitingQueriesCount
     return count;
 }
 
-// return the number of queries being currently executed
-// requires a pointer to mutable, for it changes the state of the locks
-uint64_t Info_GetExecutingQueriesCount
+// count the amount of executing and reporting queries
+void Info_GetExecutingReportingQueriesCount
 (
-	Info *info
+    Info *info,           // info
+    uint64_t *executing,  // [OUTPUT] amount of executing queries
+    uint64_t *reporting   // [OUTPUT] amount of reporting queries
 ) {
-    ASSERT(info != NULL);
-
-    bool res = _Info_LockEverything(info);
-	ASSERT(res == true);
-
-    uint64_t count = 0;
-    uint n = ThreadPools_ThreadCount() + 1;
-
-	for(uint i = 0; i < n; i++) {
-		QueryInfo *qi = info->working_queries[i];
-        if(qi != NULL && qi->stage == QueryStage_EXECUTING) {
-            count++;
-        }
-	}
-
-	res = _Info_UnlockEverything(info);
-	ASSERT(res == true);
-
-    return count;
-}
-
-uint64_t Info_GetReportingQueriesCount(Info *info) {
     ASSERT(info != NULL);
 
     bool res = _Info_LockEverything(info);
     ASSERT(res == true);
 
-    uint64_t count = 0;
     uint n = ThreadPools_ThreadCount() + 1;
 
 	for(uint i = 0; i < n; i++) {
 		QueryInfo *qi = info->working_queries[i];
-        if(qi != NULL && qi->stage == QueryStage_REPORTING) {
-            count++;
+        if(qi != NULL) {
+            if(qi->stage == QueryStage_REPORTING) {
+                (*reporting)++;
+            } else if(qi->stage == QueryStage_EXECUTING) {
+                (*executing)++;
+            }
         }
 	}
 
     res = _Info_UnlockEverything(info);
     ASSERT(res == true);
-
-    return count;
 }
 
 // return the total number of queries currently queued or being executed

@@ -104,18 +104,12 @@ uint64_t Info_GetWaitingQueriesCount
 	Info *info
 );
 
-// return the number of queries being currently executed
-// requires a pointer to mutable, for it changes the state of the locks
-uint64_t Info_GetExecutingQueriesCount
+// count the amount of executing and reporting queries
+void Info_GetExecutingReportingQueriesCount
 (
-	Info *info
-);
-
-// return the number of queries currently reporting results back
-// requires a pointer to mutable, for it changes the state of the locks
-uint64_t Info_GetReportingQueriesCount
-(
-	Info *info
+    Info *info,           // info
+    uint64_t *executing,  // [OUTPUT] amount of executing queries
+    uint64_t *reporting   // [OUTPUT] amount of reporting queries
 );
 
 // return the total number of queries currently queued or being executed
