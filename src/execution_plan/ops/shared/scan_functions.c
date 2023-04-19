@@ -4,7 +4,7 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "../../../RG.h"
+#include "RG.h"
 #include "scan_functions.h"
 #include "../../../util/rmalloc.h"
 #include "../../../graph/entities/qg_node.h"
