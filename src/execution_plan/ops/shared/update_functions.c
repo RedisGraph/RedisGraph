@@ -283,7 +283,7 @@ void EvalEntityUpdates
 
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
 			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
-				EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, v, entity_type);
+				EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, SI_CloneValue(v), entity_type);
 			}
 			SIValue_Free(v);
 			continue;
@@ -332,7 +332,7 @@ void EvalEntityUpdates
 
 				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval, true);
 				if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, value)) {
-					EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, value, entity_type);
+					EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, SI_CloneValue(value), entity_type);
 				}
 			}
 
@@ -359,7 +359,7 @@ void EvalEntityUpdates
 
 			// simple assignment, no need to value validation
 			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
-				EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, v, entity_type);
+				EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, SI_CloneValue(v), entity_type);
 			}
 		}
 	} // for loop end
