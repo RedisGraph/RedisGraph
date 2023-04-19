@@ -11,7 +11,7 @@
 
 // Storage struct for label data in node and index scans.
 typedef struct {
-	QGNode *n;    // node to scan (might hold multiple labels)
+	QGNode *n;          // node to scan (might hold multiple labels)
 	LabelID label_id;   // label ID of the node being traversed
 	const char *alias;  // alias of the node being traversed
 	const char *label;  // label of the node being traversed
