@@ -66,11 +66,13 @@ static void _ExecutionPlan_ProcessQueryGraph
 		orderExpressions(qg, exps, &expCount, ft, bound_vars);
 
 		// Create the SCAN operation that will be the tail of the traversal chain.
-		QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Src(exps[0]));
+		QGNode *src = QueryGraph_GetNodeByAlias(qg,
+			AlgebraicExpression_Src(exps[0]));
 
 		uint label_count = QGNode_LabelCount(src);
 		if(label_count > 0) {
-			AlgebraicExpression *ae_src = AlgebraicExpression_RemoveSource(&exps[0]);
+			AlgebraicExpression *ae_src =
+				AlgebraicExpression_RemoveSource(&exps[0]);
 			ASSERT(AlgebraicExpression_DiagonalOperand(ae_src, 0));
 
 			const char *label = AlgebraicExpression_Label(ae_src);
@@ -83,7 +85,8 @@ static void _ExecutionPlan_ProcessQueryGraph
 			if(s != NULL) label_id = Schema_GetID(s);
 
 			// resolve source node by performing label scan
-			NodeScanCtx ctx = NODE_CTX_NEW(alias, label, label_id);
+			NodeScanCtx *ctx = NodeScanCtx_New((char *)alias, (char *)label,
+				label_id, src);
 			root = tail = NewNodeByLabelScanOp(plan, ctx);
 
 			// first operand has been converted into a label scan op
