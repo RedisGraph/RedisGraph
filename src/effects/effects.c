@@ -7,7 +7,6 @@
 #include "RG.h"
 #include "effects.h"
 #include "../query_ctx.h"
-#include "../effects/effects.h"
 
 // write attributes to stream
 static void WriteAttributeSet
@@ -528,9 +527,6 @@ u_char *Effects_FromEffectLog
 	// close stream
 	fclose(stream);
 
-	// clear effect-log
-	EffectLog_Clear(log);
-
 	// set output length and return buffer
 	*len = buff_size;
 	return buffer;
@@ -555,7 +551,7 @@ static inline void _EffectLog_AddOperation
 	EffectLog *log,  // effect log
 	Effect *op       // effect
 ) {
-	ASSERT(op != NULL);
+	ASSERT(op  != NULL);
 	ASSERT(log != NULL && *log != NULL);
 
 	array_append(*log, *op);
@@ -564,15 +560,16 @@ static inline void _EffectLog_AddOperation
 // node creation effect
 void EffectLog_CreateNode
 (
-	EffectLog *log,
-	Node *node             // node created
+	EffectLog *log,   // effect log
+	const Node *node  // node created
 ) {
 	ASSERT(log != NULL && *log != NULL);
+	ASSERT(node != NULL);
 
 	Effect op;
 
-	op.type        = EFFECT_CREATE_NODE;
-	op.create.n    = *node;
+	op.type     = EFFECT_CREATE_NODE;
+	op.create.n = *node;
 
 	_EffectLog_AddOperation(log, &op);
 }
@@ -580,15 +577,16 @@ void EffectLog_CreateNode
 // edge creation effect
 void EffectLog_CreateEdge
 (
-	EffectLog *log,
-	Edge *edge             // edge created
+	EffectLog *log,   // effect log
+	const Edge *edge  // edge created
 ) {
 	ASSERT(log != NULL && *log != NULL);
+	ASSERT(edge != NULL);
 
 	Effect op;
 
-	op.type        = EFFECT_CREATE_EDGE;
-	op.create.e    = *edge;
+	op.type     = EFFECT_CREATE_EDGE;
+	op.create.e = *edge;
 
 	_EffectLog_AddOperation(log, &op);
 }
@@ -596,27 +594,16 @@ void EffectLog_CreateEdge
 // node deletion effect
 void EffectLog_DeleteNode
 (
-	EffectLog *log,    // effect log
-	Node *node         // node deleted
+	EffectLog *log,   // effect log
+	const Node *node  // node deleted
 ) {
 	ASSERT(log != NULL && *log != NULL);
 	ASSERT(node != NULL);
 
 	Effect op;
 
-	op.type            = EFFECT_DELETE_NODE;
-	op.delete_node.id  = node->id;
-
-	// take ownership over node's attribute-set
-	op.delete_node.set = *node->attributes;
-	*node->attributes  = NULL;
-
-	Graph *g = QueryCtx_GetGraph();
-	NODE_GET_LABELS(g, node, op.delete_node.label_count);
-	op.delete_node.labels = rm_malloc(sizeof(LabelID) * op.delete_node.label_count);
-	for (uint i = 0; i < op.delete_node.label_count; i++) {
-		op.delete_node.labels[i] = labels[i];
-	}
+	op.type           = EFFECT_DELETE_NODE;
+	op.delete_node.id = ENTITY_GET_ID(node);
 
 	_EffectLog_AddOperation(log, &op);
 }
@@ -624,8 +611,8 @@ void EffectLog_DeleteNode
 // edge deletion effect
 void EffectLog_DeleteEdge
 (
-	EffectLog *log,  // Effect log
-	Edge *edge       // edge deleted
+	EffectLog *log,  // effect log
+	const Edge *edge // edge deleted
 ) {
 	ASSERT(log != NULL && *log != NULL);
 	ASSERT(edge != NULL);
@@ -633,14 +620,10 @@ void EffectLog_DeleteEdge
 	Effect op;
 
 	op.type                   = EFFECT_DELETE_EDGE;
-	op.delete_edge.id         = edge->id;
-	op.delete_edge.srcNodeID  = edge->srcNodeID;
-	op.delete_edge.destNodeID = edge->destNodeID;
-	op.delete_edge.relationID = edge->relationID;
-
-	// take ownership over edge's attribute-set
-	op.delete_edge.set = *edge->attributes;
-	*edge->attributes = NULL;
+	op.delete_edge.id         = ENTITY_GET_ID(edge);
+	op.delete_edge.srcNodeID  = Edge_GetSrcNodeID(edge);
+	op.delete_edge.destNodeID = Edge_GetDestNodeID(edge);
+	op.delete_edge.relationID = Edge_GetRelationID(edge);
 
 	_EffectLog_AddOperation(log, &op);
 }
@@ -649,22 +632,24 @@ void EffectLog_DeleteEdge
 void EffectLog_UpdateEntity
 (
 	EffectLog *log,              // effect log
-	GraphEntity *ge,             // updated entity
+	EntityID id,                 // updated entity ID
 	Attribute_ID attr_id,        // updated attribute ID
-	SIValue orig_value,          // attribute original value
+	SIValue value,               // value
 	GraphEntityType entity_type  // entity type
 ) {
 	ASSERT(log != NULL && *log != NULL);
-	ASSERT(ge != NULL);
+
+
+	EntityType t = entity_type == GETYPE_NODE
+		? EFFECT_UPDATE_NODE : EFFECT_UPDATE_EDGE;
 
 	Effect op;
 
-	op.type               = entity_type == GETYPE_NODE ? EFFECT_UPDATE_NODE : EFFECT_UPDATE_EDGE;
+	op.type               = t;
+	op.update.id          = id;
+	op.update.value       = value;
 	op.update.attr_id     = attr_id;
-	op.update.orig_value  = orig_value;
 	op.update.entity_type = entity_type;
-
-	op.update.id = ENTITY_GET_ID(ge);
 
 	_EffectLog_AddOperation(log, &op);
 }
@@ -672,80 +657,88 @@ void EffectLog_UpdateEntity
 // node add label effect
 void EffectLog_AddLabels
 (
-	EffectLog *log,              // effect log
-	Node *node,                  // updated node
-	int *label_ids,              // added labels
-	size_t labels_count          // number of removed labels
+	EffectLog *log,            // effect log
+	Node *node,                // updated node
+	const LabelID *label_ids,  // added labels
+	size_t labels_count        // number of removed labels
 ) {
+
+	ASSERT(log != NULL);
 	ASSERT(node != NULL);
 	ASSERT(label_ids != NULL);
 
 	Effect op;
 
-	op.type = EFFECT_SET_LABELS;
-	op.labels.node = *node;
-	op.labels.label_ids = array_new(int, labels_count);
-	memcpy(op.labels.label_ids, label_ids, sizeof(int)*labels_count);
+	size_t n = sizeof(LabelID) * labels_count;
+
+	op.type                = EFFECT_SET_LABELS;
+	op.labels.id           = ENTITY_GET_ID(node);
+	op.labels.label_ids    = rm_malloc(n);
 	op.labels.labels_count = labels_count;
+
+	memcpy(op.labels.label_ids, label_ids, n);
+
 	_EffectLog_AddOperation(log, &op);
 }
 
 // node remove label effect
 void EffectLog_RemoveLabels
 (
-	EffectLog *log,              // effect log
-	Node *node,                  // updated node
-	int *label_ids,              // removed labels
-	size_t labels_count          // number of removed labels
+	EffectLog *log,            // effect log
+	Node *node,                // updated node
+	const LabelID *label_ids,  // removed labels
+	size_t labels_count        // number of removed labels
 ) {
+	ASSERT(log != NULL);
 	ASSERT(node != NULL);
 	ASSERT(label_ids != NULL);
 
 	Effect op;
 
-	op.type = EFFECT_REMOVE_LABELS;
-	op.labels.node = *node;
-	op.labels.label_ids = array_new(int, labels_count);
-	memcpy(op.labels.label_ids, label_ids, sizeof(int)*labels_count);
+	size_t n = sizeof(LabelID) * labels_count;
+
+	op.type                = EFFECT_REMOVE_LABELS;
+	op.labels.id           = ENTITY_GET_ID(node);
+	op.labels.label_ids    = rm_malloc(n);
 	op.labels.labels_count = labels_count;
+
+	memcpy(op.labels.label_ids, label_ids, n);
+
 	_EffectLog_AddOperation(log, &op);
 }
 
 // schema addition effect
 void EffectLog_AddSchema
 (
-	EffectLog *log,   // effect log
-	int schema_id,  // id of the schema
-	SchemaType t    // type of the schema
+	EffectLog *log,           // effect log
+	const char *schema_name,  // id of the schema
+	SchemaType t              // type of the schema
 ) {
 	ASSERT(log != NULL);
+	ASSERT(schema_name != NULL);
+
 	Effect op;
 
-	op.type = EFFECT_ADD_SCHEMA;
-	op.schema.schema_id = schema_id;
-	op.schema.t = t;
+	op.type               = EFFECT_ADD_SCHEMA;
+	op.schema.t           = t;
+	op.schema.schema_name = schema_name;
+
 	_EffectLog_AddOperation(log, &op);
 }
 
 void EffectLog_AddAttribute
 (
-	EffectLog *log,           // effect log
-	Attribute_ID attribute_id // id of the attribute
+	EffectLog *log,   // effect log
+	const char *attr  // attribute name
 ) {
 	ASSERT(log != NULL);
+	ASSERT(attr != NULL);
+
 	Effect op;
 
 	op.type = EFFECT_ADD_ATTRIBUTE;
-	op.attribute.attribute_id = attribute_id;
+	op.attribute.attr = attr;
 	_EffectLog_AddOperation(log, &op);
-}
-
-void EffectLog_Clear
-(
-	EffectLog log
-) {
-	ASSERT(log != NULL);
-	array_clear(log);
 }
 
 void EffectLog_FreeEffect
@@ -782,6 +775,8 @@ void EffectLog_Free
 (
 	EffectLog log
 ) {
+	ASSERT(log != NULL);
+
 	// free each effect
 	uint count = array_len(log);
 	for (uint i = 0; i < count; i++) {

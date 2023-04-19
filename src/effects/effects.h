@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../effects/effects.h"
 #include "../graph/graphcontext.h"
 
 #define EFFECTS_VERSION 1  // current effects encoding/decoding version
@@ -30,7 +29,7 @@ typedef enum {
 	EFFECT_ADD_ATTRIBUTE,  // add attribute
 } EffectType;
 
-// Effect node/edge creation
+// effect node/edge creation
 typedef struct EffectCreate EffectCreate;
 struct EffectCreate {
 	union {
@@ -39,53 +38,52 @@ struct EffectCreate {
 	};
 };
 
-// Effect node deletion
+// effect node deletion
 typedef struct EffectDeleteNode EffectDeleteNode;
 struct EffectDeleteNode {
-	EntityID id;
-	AttributeSet set;
-	LabelID *labels;   // labels attached to deleted entity
-	uint label_count;  // number of labels attached to deleted entity
+	EntityID id;       // ID of deleted node
 };
 
-// Effect edge deletion
+// effect edge deletion
 typedef struct EffectDeleteEdge EffectDeleteEdge;
 struct EffectDeleteEdge {
-	EntityID id;
-	int relationID;             // Relation ID
-	NodeID srcNodeID;           // Source node ID
-	NodeID destNodeID;          // Destination node ID
-	AttributeSet set;
+	EntityID id;        // ID of deleted edge
+	int relationID;     // Relation ID
+	NodeID srcNodeID;   // Source node ID
+	NodeID destNodeID;  // Destination node ID
 };
 
-// Effect graph entity update
+// effect graph entity update
 typedef struct EffectUpdate EffectUpdate;
 struct EffectUpdate {
-	EntityID id;
+	EntityID id;                  // entity ID
 	GraphEntityType entity_type;  // node/edge
 	Attribute_ID attr_id;         // attribute update
- 	SIValue orig_value;           // attribute original value
+	SIValue value;                // attribute value
 };
 
+// effect added/removed labels to/from node
 typedef struct EffectLabels EffectLabels;
 struct EffectLabels {
-	Node node;
-	LabelID* label_ids;
-	ushort labels_count;
+	EntityID id;          // node ID
+	LabelID* label_ids;   // set of labels IDs
+	ushort labels_count;  // number of labels
 };
 
+// effect added schema
 typedef struct EffectAddSchema EffectAddSchema;
 struct EffectAddSchema {
-	int schema_id;
-	SchemaType t;
+	const char *schema_name; // name of schema
+	SchemaType t;            // schema type
 };
 
+// effect added attribute
 typedef struct EffectAddAttribute EffectAddAttribute;
 struct EffectAddAttribute {
-	Attribute_ID attribute_id;
+	const char *attr_name;  // name of added attribute
 };
 
-// effect operation
+// unified effect representation
 typedef struct {
 	union {
 		EffectCreate create;
@@ -96,7 +94,7 @@ typedef struct {
 		EffectAddSchema schema;
 		EffectAddAttribute attribute;
 	};
-	EffectType type;  // type of effect operation
+	EffectType type;  // effect type
 } Effect;
 
 // container for effect_list
@@ -143,84 +141,78 @@ uint EffectLog_Length
 // node creation effect
 void EffectLog_CreateNode
 (
-	EffectLog *log,  // Effect log
-	Node *node       // node created
+	EffectLog *log,  // effect log
+	const Node *node // node created
 );
 
 // edge creation effect
 void EffectLog_CreateEdge
 (
-	EffectLog *log,  // Effect log
-	Edge *edge       // edge created
+	EffectLog *log,  // effect log
+	const Edge *edge // edge created
 );
 
 // node deletion effect
 void EffectLog_DeleteNode
 (
-	EffectLog *log,  // Effect log
-	Node *node       // node deleted
+	EffectLog *log,  // effect log
+	const Node *node // node deleted
 );
 
 // edge deletion effect
 void EffectLog_DeleteEdge
 (
-	EffectLog *log,  // Effect log
-	Edge *edge       // edge deleted
+	EffectLog *log,  // effect log
+	const Edge *edge // edge deleted
 );
 
 // entity update effect
 void EffectLog_UpdateEntity
 (
-	EffectLog *log,              // Effect log
-	GraphEntity *ge,             // updated entity
+	EffectLog *log,              // effect log
+	EntityID id,                 // updated entity ID
 	Attribute_ID attr_id,        // updated attribute ID
- 	SIValue orig_value,          // attribute original value
+ 	SIValue value,               // value
 	GraphEntityType entity_type  // entity type
 );
 
 // node add label effect
 void EffectLog_AddLabels
 (
-	EffectLog *log,              // Effect log
-	Node *node,                  // updated node
-	int *label_ids,              // added labels
+	EffectLog *log,              // effect log
+	const Node *node,            // updated node
+	const LabelID *label_ids,    // added labels
 	size_t labels_count          // number of removed labels
 );
 
 // node remove label effect
 void EffectLog_RemoveLabels
 (
-	EffectLog *log,              // Effect log
-	Node *node,                  // updated node
-	int *label_ids,              // removed labels
+	EffectLog *log,              // effect log
+	const Node *node,            // updated node
+	const LabelID *label_ids,    // removed labels
 	size_t labels_count          // number of removed labels
 );
 
 // schema addition effect
 void EffectLog_AddSchema
 (
-	EffectLog *log,              // effect log
-	int schema_id,               // id of the schema
-	SchemaType t                 // type of the schema
+	EffectLog *log,               // effect log
+	const char *schema_name,      // id of the schema
+	SchemaType t                  // type of the schema
 );
 
 // attribute addition effect
 void EffectLog_AddAttribute
 (
 	EffectLog *log,              // effect log
-	Attribute_ID attribute_id    // id of the attribute
-);
-
-// clears effect-log from all entries
-void EffectLog_Clear
-(
-	EffectLog log  // log to clear
+	const char *attr             // attribute name
 );
 
 // free effect
 void EffectLog_FreeEffect
 (
-	Effect *op  // operation to free
+	Effect *effect  // effect to free
 );
 
 // free EffectLog
@@ -228,3 +220,4 @@ void EffectLog_Free
 (
 	EffectLog log
 );
+
