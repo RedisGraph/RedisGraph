@@ -122,9 +122,9 @@ static size_t ComputeAttrAddSize
 	const EffectAddAttribute *_op = &op->attribute;
 
 	// compute effect byte size
-	size_t s = sizeof(EffectType) +
-		       sizeof(size_t) +
-			   strlen(_op->attr_name) + 1;
+	size_t s = sizeof(EffectType) +         // effect type
+		       sizeof(size_t) +             // attribute name length
+			   strlen(_op->attr_name) + 1;  // attribute name
 
 	return s;
 }
@@ -144,10 +144,10 @@ static size_t ComputeSetLabelSize
 	
 	const EffectLabels *_op = &op->labels;
 
-	size_t s = sizeof(EffectType) +
-		       sizeof(EntityID)   +
-		       sizeof(ushort)     +
-			   sizeof(LabelID) * _op->labels_count;
+	size_t s = sizeof(EffectType) +                  // effect type
+		       sizeof(EntityID)   +                  // node ID
+		       sizeof(ushort)     +                  // number of labels
+			   sizeof(LabelID) * _op->labels_count;  // labels IDs
 
 	return s;
 }
@@ -182,10 +182,10 @@ static size_t ComputeSchemaAddSize
 	
 	const EffectAddSchema *_op = &op->schema;
 
-	size_t s = sizeof(EffectType) +
-		       sizeof(SchemaType) +
-			   sizeof(size_t)     +
-			   strlen(_op->schema_name) + 1;
+	size_t s = sizeof(EffectType) +           // effect type
+		       sizeof(SchemaType) +           // schema type
+			   sizeof(size_t)     +           // schema name length
+			   strlen(_op->schema_name) + 1;  // schema name
 
 	return s;
 }
@@ -207,13 +207,13 @@ static size_t ComputeEdgeUpdateSize
 	//--------------------------------------------------------------------------
 
 	// compute effect byte size
-	size_t s = sizeof(EffectType)                +   // effect type
-			   sizeof(EntityID)                  +   // edge ID
-			   sizeof(RelationID)                +   // relation ID
-			   sizeof(NodeID)                    +   // src node ID
-			   sizeof(NodeID)                    +   // dest node ID
-			   sizeof(Attribute_ID)              +   // attribute ID
-			   SIValue_BinarySize(&op->value);       // attribute value
+	size_t s = sizeof(EffectType)                +  // effect type
+			   sizeof(EntityID)                  +  // edge ID
+			   sizeof(RelationID)                +  // relation ID
+			   sizeof(NodeID)                    +  // src node ID
+			   sizeof(NodeID)                    +  // dest node ID
+			   sizeof(Attribute_ID)              +  // attribute ID
+			   SIValue_BinarySize(&op->value);      // attribute value
 
 	return s;
 }
@@ -258,8 +258,8 @@ size_t ComputeBufferSize
 
 	// compute effect size from each effect operation
 	for(uint i = 0; i < n; i++) {
-		const Effect *op = effect_log + i;
-		switch(op->type) {
+		const Effect *e = effect_log + i;
+		switch(e->type) {
 			case EFFECT_DELETE_NODE:
 				// DeleteNode effect size
 				s += sizeof(EffectType) +
@@ -275,32 +275,32 @@ size_t ComputeBufferSize
 				break;
 			case EFFECT_UPDATE_NODE:
 				// Update effect size
-				s += ComputeNodeUpdateSize(&op->update);
+				s += ComputeNodeUpdateSize(&e->update);
 				break;
 			case EFFECT_UPDATE_EDGE:
 				// Update effect size
-				s += ComputeEdgeUpdateSize(&op->update);
+				s += ComputeEdgeUpdateSize(&e->update);
 				break;
 			case EFFECT_CREATE_NODE:
-				s += ComputeCreateNodeSize(op);
+				s += ComputeCreateNodeSize(e);
 				break;
 			case EFFECT_CREATE_EDGE:
-				s += ComputeCreateEdgeSize(op);
+				s += ComputeCreateEdgeSize(e);
 				break;
 			case EFFECT_SET_LABELS:
-				s += ComputeSetLabelSize(op);
+				s += ComputeSetLabelSize(e);
 				break;
 			case EFFECT_REMOVE_LABELS:
-				s += ComputeRemoveLabelSize(op);
+				s += ComputeRemoveLabelSize(e);
 				break;
 			case EFFECT_ADD_SCHEMA:
-				s += ComputeSchemaAddSize(op);
+				s += ComputeSchemaAddSize(e);
 				break;
 			case EFFECT_ADD_ATTRIBUTE:
-				s += ComputeAttrAddSize(op);
+				s += ComputeAttrAddSize(e);
 				break;
 			default:
-				assert(false && "unknown effect operation");
+				assert(false && "unknown effect");
 				break;
 		}
 	}

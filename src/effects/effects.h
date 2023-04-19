@@ -29,6 +29,10 @@ typedef enum {
 	EFFECT_ADD_ATTRIBUTE,  // add attribute
 } EffectType;
 
+//------------------------------------------------------------------------------
+// effect structures
+//------------------------------------------------------------------------------
+
 // effect node/edge creation
 typedef struct EffectCreate EffectCreate;
 struct EffectCreate {
@@ -41,27 +45,27 @@ struct EffectCreate {
 // effect node deletion
 typedef struct EffectDeleteNode EffectDeleteNode;
 struct EffectDeleteNode {
-	EntityID id;       // ID of deleted node
+	EntityID id;       // deleted node ID
 };
 
 // effect edge deletion
 typedef struct EffectDeleteEdge EffectDeleteEdge;
 struct EffectDeleteEdge {
-	EntityID id;        // ID of deleted edge
-	int relationID;     // Relation ID
-	NodeID srcNodeID;   // Source node ID
-	NodeID destNodeID;  // Destination node ID
+	EntityID id;        // deleted edge ID
+	int relationID;     // relation ID
+	NodeID srcNodeID;   // source node ID
+	NodeID destNodeID;  // destination node ID
 };
 
-// effect graph entity update
+// effect entity update
 typedef struct EffectUpdate EffectUpdate;
 struct EffectUpdate {
 	union {
 		Node n;
 		Edge e;
 	}; // entity to update
-	GraphEntityType entity_type;  // node/edge
-	Attribute_ID attr_id;         // attribute update
+	GraphEntityType entity_type;  // entity type
+	Attribute_ID attr_id;         // attribute ID
 	SIValue value;                // attribute value
 };
 
@@ -69,21 +73,21 @@ struct EffectUpdate {
 typedef struct EffectLabels EffectLabels;
 struct EffectLabels {
 	EntityID id;          // node ID
-	LabelID* label_ids;   // set of labels IDs
+	LabelID* label_ids;   // labels IDs
 	ushort labels_count;  // number of labels
 };
 
 // effect added schema
 typedef struct EffectAddSchema EffectAddSchema;
 struct EffectAddSchema {
-	const char *schema_name; // name of schema
+	const char *schema_name; // schema name
 	SchemaType t;            // schema type
 };
 
 // effect added attribute
 typedef struct EffectAddAttribute EffectAddAttribute;
 struct EffectAddAttribute {
-	const char *attr_name;  // name of added attribute
+	const char *attr_name;  // attribute name
 };
 
 // unified effect representation
@@ -104,29 +108,8 @@ typedef struct {
 typedef Effect *EffectLog;
 
 //------------------------------------------------------------------------------
-// effects
+// effects API
 //------------------------------------------------------------------------------
-
-// compute required effects buffer byte size from effect-log
-size_t ComputeBufferSize
-(
-	const EffectLog effect_log
-);
-
-// create a list of effects from the effect-log
-u_char *Effects_FromEffectLog
-(
-	EffectLog log,
-	size_t *l
-);
-
-// applys effects encoded in buffer
-void Effects_Apply
-(
-	GraphContext *gc,          // graph to operate on
-	const char *effects_buff,  // encoded effects
-	size_t l                   // size of buffer
-);
 
 // create a new effect-log
 EffectLog EffectLog_New(void);
@@ -137,8 +120,29 @@ uint EffectLog_Length
 	const EffectLog log  // log to query
 );
 
+// compute required effects buffer byte size from effect-log
+size_t ComputeBufferSize
+(
+	const EffectLog effect_log
+);
+
+// dump effects into buffer
+u_char *Effects_Dump
+(
+	const EffectLog log,  // effect-log to dump
+	size_t *len           // size of generated buffer
+);
+
+// applys effects encoded in buffer
+void Effects_Apply
+(
+	GraphContext *gc,          // graph to operate on
+	const char *effects_buff,  // encoded effects
+	size_t l                   // size of buffer
+);
+
 //------------------------------------------------------------------------------
-// EffectLog add operations
+// effects creation
 //------------------------------------------------------------------------------
 
 // node creation effect

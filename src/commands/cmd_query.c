@@ -373,7 +373,7 @@ static void _ExecuteQuery(void *args) {
 			   _should_replicate_effects()) {
 				// compute effects buffer
 				size_t effects_len = 0;
-				u_char *effects = Effects_FromEffectLog(*QueryCtx_GetEffectLog(),
+				u_char *effects = Effects_Dump(*QueryCtx_GetEffectLog(),
 						&effects_len);
 				ASSERT(effects_len > 0 && effects != NULL);
 

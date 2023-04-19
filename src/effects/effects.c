@@ -38,11 +38,11 @@ static void WriteAttributeSet
 	}
 }
 
-// convert EffectNodeDelete into a NodeDelete effect
-static void EffectFromEffectNodeDelete
+// dump EffectNodeDelete into stream
+static void DumpNodeDeleteEffect
 (
-	FILE *stream,       // effects stream
-	const Effect *op  // effect operation to convert
+	FILE *stream,     // stream
+	const Effect *e   // effect
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -50,24 +50,18 @@ static void EffectFromEffectNodeDelete
 	//    node ID
 	//--------------------------------------------------------------------------
 	
-	// effect operation
-	const EffectDeleteNode *_op = &op->delete_node;
-
-	// effect type
-	EffectType t = EFFECT_DELETE_NODE;
-
-	// write effect type
-	fwrite_assert(&t, sizeof(t), stream); 
+	// effect 
+	const EffectDeleteNode *_e = &e->delete_node;
 
 	// write node ID
-	fwrite_assert(&_op->id, sizeof(_op->id), stream);
+	fwrite_assert(&_e->id, sizeof(_e->id), stream);
 }
 
-// convert EffectEdgeDelete into a EdgeDelete effect
-static void EffectFromEffectEdgeDelete
+// dump EffectEdgeDelete into stream
+static void DumpEdgeDeleteEffect
 (
-	FILE *stream,       // effects stream
-	const Effect *op  // effect operation to convert
+	FILE *stream,    // stream
+	const Effect *e  // effect
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -78,33 +72,22 @@ static void EffectFromEffectEdgeDelete
 	//    dest ID
 	//--------------------------------------------------------------------------
 
-	// effect operation
-	const EffectDeleteEdge *_op = &op->delete_edge;
+	// effect
+	const EffectDeleteEdge *_e = &e->delete_edge;
 
-	// effect type
-	EffectType t = EFFECT_DELETE_EDGE;
-
-	// write effect type
-	fwrite_assert(&t, sizeof(t), stream); 
-
-	// write edge ID
-	fwrite_assert(&_op->id, sizeof(_op->id), stream); 
-
-	// write relation ID
-	fwrite_assert(&_op->relationID, sizeof(_op->relationID), stream); 
-
-	// write edge src node ID
-	fwrite_assert(&_op->srcNodeID, sizeof(_op->srcNodeID), stream); 
-
-	// write edge dest node ID
-	fwrite_assert(&_op->destNodeID, sizeof(_op->destNodeID), stream); 
+	// write edge ID, relation ID, edge src node ID and edge dest node ID
+	size_t n = sizeof(_e->id)         +
+		       sizeof(_e->relationID) +
+			   sizeof(_e->srcNodeID)  +
+			   sizeof(_e->destNodeID) ;
+	fwrite_assert(_e, n, stream); 
 }
 
-// convert EffectUpdate into a Update effect
-static void EffectFromNodeUpdate
+// dump NodeUpdateEffect into stream
+static void DumpNodeUpdateEffect
 (
-	FILE *stream,             // effects stream
-	const EffectUpdate *op  // effect operation to convert
+	FILE *stream,    // stream
+	const Effect *e  // effect
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -114,37 +97,33 @@ static void EffectFromNodeUpdate
 	//    attribute value
 	//--------------------------------------------------------------------------
 
-	//--------------------------------------------------------------------------
-	// write effect type
-	//--------------------------------------------------------------------------
-
-	EffectType t = EFFECT_UPDATE_NODE;
-	fwrite_assert(&t, sizeof(EffectType), stream); 
+	// effect
+	const EffectUpdate *_e = (EffectUpdate*)&e->update;
 
 	//--------------------------------------------------------------------------
 	// write entity ID
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&ENTITY_GET_ID(&op->n), sizeof(EntityID), stream);
+	fwrite_assert(&ENTITY_GET_ID(&_e->n), sizeof(EntityID), stream);
 
 	//--------------------------------------------------------------------------
 	// write attribute ID
 	//--------------------------------------------------------------------------
 	
-	fwrite_assert(&op->attr_id, sizeof(Attribute_ID), stream);
+	fwrite_assert(&_e->attr_id, sizeof(Attribute_ID), stream);
 
 	//--------------------------------------------------------------------------
 	// write attribute value
 	//--------------------------------------------------------------------------
 
-	SIValue_ToBinary(stream, &op->value);
+	SIValue_ToBinary(stream, &_e->value);
 }
 
-// convert EffectUpdate into a Update effect
-static void EffectFromEdgeUpdate
+// dump EdgeUpdateEffect into stream
+static void DumpEdgeUpdateEffect
 (
-	FILE *stream,             // effects stream
-	const EffectUpdate *op  // effect operation to convert
+	FILE *stream,    // stream
+	const Effect *e  // effect
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -157,64 +136,60 @@ static void EffectFromEdgeUpdate
 	//    attributes (id,value) pair
 	//--------------------------------------------------------------------------
 
+	// effect
+	const EffectUpdate *_e = (EffectUpdate*)&e->update;
+
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Graph *g = GraphContext_GetGraph(gc);
 
 	// entity type edge
-	Edge *e = (Edge *)&op->e;
-
-	//--------------------------------------------------------------------------
-	// write effect type
-	//--------------------------------------------------------------------------
-
-	EffectType t = EFFECT_UPDATE_EDGE;
-	fwrite_assert(&t, sizeof(EffectType), stream);
+	Edge *edge = (Edge *)&_e->e;
 
 	//--------------------------------------------------------------------------
 	// write edge ID
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&ENTITY_GET_ID(&op->e), sizeof(EntityID), stream);
+	fwrite_assert(&ENTITY_GET_ID(edge), sizeof(EntityID), stream);
 
 	//--------------------------------------------------------------------------
 	// write relation ID
 	//--------------------------------------------------------------------------
 
-	RelationID r = EDGE_GET_RELATION_ID(e, g);
+	RelationID r = EDGE_GET_RELATION_ID(edge, g);
 	fwrite_assert(&r, sizeof(RelationID), stream);
 
 	//--------------------------------------------------------------------------
 	// write src ID
 	//--------------------------------------------------------------------------
 
-	NodeID s = Edge_GetSrcNodeID(e);
+	NodeID s = Edge_GetSrcNodeID(edge);
 	fwrite_assert(&s, sizeof(NodeID), stream);
 
 	//--------------------------------------------------------------------------
 	// write dest ID
 	//--------------------------------------------------------------------------
 
-	NodeID d = Edge_GetDestNodeID(e);
+	NodeID d = Edge_GetDestNodeID(edge);
 	fwrite_assert(&d, sizeof(NodeID), stream);
 
 	//--------------------------------------------------------------------------
 	// write attribute ID
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&op->attr_id, sizeof(Attribute_ID), stream);
+	fwrite_assert(&_e->attr_id, sizeof(Attribute_ID), stream);
 
 	//--------------------------------------------------------------------------
 	// write attribute value
 	//--------------------------------------------------------------------------
 
-	SIValue_ToBinary(stream, &op->value);
+	SIValue_ToBinary(stream, &_e->value);
 }
 
-// convert EffectCreateNodeOp into a CreateNode effect
-static void EffectFromEffectNodeCreate
+// dump CreateNodeEffect into stream
+static void DumpNodeCreateEffect
 (
-	FILE *stream,        // effects stream
-	const Effect *op   // effect operation to convert
+	FILE *stream,    // stream
+	const Effect *e  // effect
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -226,15 +201,8 @@ static void EffectFromEffectNodeCreate
 	//--------------------------------------------------------------------------
 	
 	Graph *g = QueryCtx_GetGraph();
-	const EffectCreate *_op = &op->create;
-	const Node *n = &_op->n;
-
-	//--------------------------------------------------------------------------
-	// write effect type
-	//--------------------------------------------------------------------------
-
-	EffectType et = EFFECT_CREATE_NODE;
-	fwrite_assert(&et, sizeof(EffectType), stream); 
+	const EffectCreate *_e = &e->create;
+	const Node *n = &_e->n;
 
 	//--------------------------------------------------------------------------
 	// write label count
@@ -260,11 +228,11 @@ static void EffectFromEffectNodeCreate
 	WriteAttributeSet(stream, attrs);
 }
 
-// convert EffectCreateEdgeOp into a CreateEdge effect
-static void EffectFromEffectEdgeCreate
+// dump CreateEdgeEffect into stream
+static void DumpEdgeCreateEffect
 (
-	FILE *stream,       // effects stream
-	const Effect *op  // effect operation to convert
+	FILE *stream,    // stream
+	const Effect *e  // effect
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -278,15 +246,8 @@ static void EffectFromEffectEdgeCreate
 	//--------------------------------------------------------------------------
 	
 	Graph *g = QueryCtx_GetGraph();
-	const EffectCreate *_op = &op->create;
-	const Edge *e = &_op->e;
-
-	//--------------------------------------------------------------------------
-	// write effect type
-	//--------------------------------------------------------------------------
-
-	EffectType et = EFFECT_CREATE_EDGE;
-	fwrite_assert(&et, sizeof(EffectType), stream); 
+	const EffectCreate *_e = &e->create;
+	const Edge *edge = &_e->e;
 
 	//--------------------------------------------------------------------------
 	// write relationship type
@@ -295,66 +256,36 @@ static void EffectFromEffectEdgeCreate
 	ushort rel_count = 1;
 	fwrite_assert(&rel_count, sizeof(rel_count), stream);
 
-	RelationID rel_id = Edge_GetRelationID(e);
+	RelationID rel_id = Edge_GetRelationID(edge);
 	fwrite_assert(&rel_id, sizeof(RelationID), stream);
 
 	//--------------------------------------------------------------------------
 	// write src node ID
 	//--------------------------------------------------------------------------
 	
-	NodeID src_id = Edge_GetSrcNodeID(e);
+	NodeID src_id = Edge_GetSrcNodeID(edge);
 	fwrite_assert(&src_id, sizeof(NodeID), stream);
 
 	//--------------------------------------------------------------------------
 	// write dest node ID
 	//--------------------------------------------------------------------------
 
-	NodeID dest_id = Edge_GetDestNodeID(e);
+	NodeID dest_id = Edge_GetDestNodeID(edge);
 	fwrite_assert(&dest_id, sizeof(NodeID), stream);
 
 	//--------------------------------------------------------------------------
 	// write attribute set 
 	//--------------------------------------------------------------------------
 
-	const AttributeSet attrs = GraphEntity_GetAttributes((const GraphEntity*)e);
+	const AttributeSet attrs = GraphEntity_GetAttributes((GraphEntity*)edge);
 	WriteAttributeSet(stream, attrs);
 }
 
-// convert EffectAttrAdd into a AddAttr effect
-static void EffectFromEffectAttrAdd
+// dump EffectUpdate into stream
+static void DumpSetRemoveLabelsEffect
 (
-	FILE *stream,     // effects stream
-	const Effect *op  // effect operation to convert
-) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	// effect type
-	// attribute name
-	//--------------------------------------------------------------------------
-
-	const EffectAddAttribute *_op = &op->attribute;
-
-	//--------------------------------------------------------------------------
-	// write effect type
-	//--------------------------------------------------------------------------
-
-	EffectType t = EFFECT_ADD_ATTRIBUTE;
-	fwrite_assert(&t, sizeof(EffectType), stream);
-
-	//--------------------------------------------------------------------------
-	// write attribute name
-	//--------------------------------------------------------------------------
-
-	const char *attr_name = _op->attr_name;
-	fwrite_string(attr_name, stream);
-}
-
-// convert EffectUpdate into a Update effect
-static void EffectFromEffectSetRemoveLabels
-(
-	FILE *stream,       // effects stream
-	const Effect *op, // effect operation to convert
-	EffectType t        // effect type SET/REMOVE LABELS
+	FILE *stream,    // effects stream
+	const Effect *e  // effect operation to convert
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -364,29 +295,24 @@ static void EffectFromEffectSetRemoveLabels
 	//    label IDs
 	//--------------------------------------------------------------------------
 	
-	ASSERT(t == EFFECT_SET_LABELS || t == EFFECT_REMOVE_LABELS);
-
-	const EffectLabels *_op = &op->labels;
-	ushort lbl_count = _op->labels_count;
-
-	// write effect type
-	fwrite_assert(&t, sizeof(EffectType), stream); 
+	const EffectLabels *_e = &e->labels;
 
 	// write node ID
-	fwrite_assert(&_op->id, sizeof(_op->id), stream); 
+	fwrite_assert(&_e->id, sizeof(_e->id), stream); 
 	
 	// write labels count
+	ushort lbl_count = _e->labels_count;
 	fwrite_assert(&lbl_count, sizeof(lbl_count), stream); 
 	
 	// write label IDs
-	fwrite_assert(_op->label_ids, sizeof(LabelID) * lbl_count, stream);
+	fwrite_assert(_e->label_ids, sizeof(LabelID) * lbl_count, stream);
 }
 
-// convert EffectAddSchema into a AddSchema effect
-static void EffectFromEffectSchemaAdd
+// dump AddSchemaEffect into stream
+static void DumpSchemaAddEffect
 (
-	FILE *stream,     // effects stream
-	const Effect *op  // effect operation to convert
+	FILE *stream,    // stream
+	const Effect *e  // effect
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -395,71 +321,90 @@ static void EffectFromEffectSchemaAdd
 	//    schema name
 	//--------------------------------------------------------------------------
 	
-	const EffectAddSchema *_op = &op->schema;
-
-	//--------------------------------------------------------------------------
-	// write effect type
-	//--------------------------------------------------------------------------
-
-	EffectType t = EFFECT_ADD_SCHEMA;
-	fwrite_assert(&t, sizeof(EffectType), stream);
+	const EffectAddSchema *_e = &e->schema;
 
 	//--------------------------------------------------------------------------
 	// write schema type
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&_op->t, sizeof(_op->t), stream);
+	fwrite_assert(&_e->t, sizeof(_e->t), stream);
 
 	//--------------------------------------------------------------------------
 	// write schema name
 	//--------------------------------------------------------------------------
 
-	const char *schema_name = _op->schema_name;
-	fwrite_string(schema_name, stream);
+	fwrite_string(_e->schema_name, stream);
 }
 
-// convert effect-operation into an effect
-// and write effect to stream
-static void EffectFromEffect
+// dump EffectAttrAdd into stream
+static void DumpAttrAddEffect
 (
-	FILE *stream,       // effects stream
-	const Effect *op  // effect op to convert into an effect
+	FILE *stream,    // stream
+	const Effect *e  // effect
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	// effect type
+	// attribute name
+	//--------------------------------------------------------------------------
+
+	const EffectAddAttribute *_e = &e->attribute;
+
+	//--------------------------------------------------------------------------
+	// write attribute name
+	//--------------------------------------------------------------------------
+
+	fwrite_string(_e->attr_name, stream);
+}
+
+
+// dumps effect to stream
+static void DumpEffect
+(
+	FILE *stream,     // effects stream
+	const Effect *e   // effect to dump
 ) {
 	// validations
-	ASSERT(op     != NULL);  // effect-op can't be NULL
+	ASSERT(e      != NULL);  // effect can't be NULL
 	ASSERT(stream != NULL);  // effects stream can't be NULL
 
-	// encode effect-op as an effect
-	switch(op->type) {
+	//--------------------------------------------------------------------------
+	// write effect type
+	//--------------------------------------------------------------------------
+
+	fwrite_assert(&e->type, sizeof(EffectType), stream); 
+
+	// encode effect
+	switch(e->type) {
 		case EFFECT_DELETE_NODE:
-			EffectFromEffectNodeDelete(stream, op);
+			DumpNodeDeleteEffect(stream, e);
 			break;
 		case EFFECT_DELETE_EDGE:
-			EffectFromEffectEdgeDelete(stream, op);
+			DumpEdgeDeleteEffect(stream, e);
 			break;
 		case EFFECT_UPDATE_NODE:
-			EffectFromNodeUpdate(stream, &op->update);
+			DumpNodeUpdateEffect(stream, e);
 			break;
 		case EFFECT_UPDATE_EDGE:
-			EffectFromEdgeUpdate(stream, &op->update);
+			DumpEdgeUpdateEffect(stream, e);
 			break;
 		case EFFECT_CREATE_NODE:
-			EffectFromEffectNodeCreate(stream, op);
+			DumpNodeCreateEffect(stream, e);
 			break;
 		case EFFECT_CREATE_EDGE:
-			EffectFromEffectEdgeCreate(stream, op);
+			DumpEdgeCreateEffect(stream, e);
 			break;
 		case EFFECT_SET_LABELS:
-			EffectFromEffectSetRemoveLabels(stream, op, EFFECT_SET_LABELS);
+			DumpSetRemoveLabelsEffect(stream, e);
 			break;
 		case EFFECT_REMOVE_LABELS:
-			EffectFromEffectSetRemoveLabels(stream, op, EFFECT_REMOVE_LABELS);
+			DumpSetRemoveLabelsEffect(stream, e);
 			break;
 		case EFFECT_ADD_SCHEMA:
-			EffectFromEffectSchemaAdd(stream, op);
+			DumpSchemaAddEffect(stream, e);
 			break;
 		case EFFECT_ADD_ATTRIBUTE:
-			EffectFromEffectAttrAdd(stream, op);
+			DumpAttrAddEffect(stream, e);
 			break;
 		default:
 			assert(false && "unknown effect");
@@ -467,14 +412,28 @@ static void EffectFromEffect
 	}
 }
 
-// create a list of effects from the effect-log
-u_char *Effects_FromEffectLog
+EffectLog EffectLog_New(void) {
+	return (EffectLog)array_new(Effect, 0);
+}
+
+// returns number of entries in log
+uint EffectLog_Length
 (
-	EffectLog log,  // effect-log to convert into effects buffer
-	size_t *len   // size of generated effects buffer
+	const EffectLog log  // log to query
+) {
+	ASSERT(log != NULL);
+	return array_len(log);
+}
+
+// dump effects into buffer
+u_char *Effects_Dump
+(
+	const EffectLog log,  // effect-log to dump
+	size_t *len           // size of generated buffer
 ) {
 	// validations
-	ASSERT(log != NULL);  // effect-log can't be NULL
+	ASSERT(log != NULL);
+	ASSERT(len != NULL);
 
 	// expecting at least one effect operation
 	uint n = EffectLog_Length(log);
@@ -505,14 +464,10 @@ u_char *Effects_FromEffectLog
 	// encode effects
 	//--------------------------------------------------------------------------
 
+	// dump effects to stream
 	for(uint i = 0; i < n; i++) {
-		Effect *op = log + i;
-
-		// convert effect-op into an effect and write it to stream
-		EffectFromEffect(stream, op);
-
-		// free effect
-		EffectLog_FreeEffect(op);
+		const Effect *e = log + i;
+		DumpEffect(stream, e);
 	}
 
 	// we should have reached end of buffer
@@ -526,21 +481,8 @@ u_char *Effects_FromEffectLog
 	return buffer;
 }
 
-EffectLog EffectLog_New(void) {
-	return (EffectLog)array_new(Effect, 0);
-}
-
-// returns number of entries in log
-uint EffectLog_Length
-(
-	const EffectLog log  // log to query
-) {
-	ASSERT(log != NULL);
-	return array_len(log);
-}
-
-// add an operation to effect log
-static inline void _EffectLog_AddOperation
+// add an enffect to effect-log
+static inline void _EffectLog_AddEffect
 (
 	EffectLog *log,  // effect log
 	Effect *op       // effect
@@ -550,6 +492,10 @@ static inline void _EffectLog_AddOperation
 
 	array_append(*log, *op);
 }
+
+//------------------------------------------------------------------------------
+// effects creation
+//------------------------------------------------------------------------------
 
 // node creation effect
 void EffectLog_CreateNode
@@ -565,7 +511,7 @@ void EffectLog_CreateNode
 	op.type     = EFFECT_CREATE_NODE;
 	op.create.n = *node;
 
-	_EffectLog_AddOperation(log, &op);
+	_EffectLog_AddEffect(log, &op);
 }
 
 // edge creation effect
@@ -582,7 +528,7 @@ void EffectLog_CreateEdge
 	op.type     = EFFECT_CREATE_EDGE;
 	op.create.e = *edge;
 
-	_EffectLog_AddOperation(log, &op);
+	_EffectLog_AddEffect(log, &op);
 }
 
 // node deletion effect
@@ -599,7 +545,7 @@ void EffectLog_DeleteNode
 	op.type           = EFFECT_DELETE_NODE;
 	op.delete_node.id = ENTITY_GET_ID(node);
 
-	_EffectLog_AddOperation(log, &op);
+	_EffectLog_AddEffect(log, &op);
 }
 
 // edge deletion effect
@@ -619,7 +565,7 @@ void EffectLog_DeleteEdge
 	op.delete_edge.destNodeID = Edge_GetDestNodeID(edge);
 	op.delete_edge.relationID = Edge_GetRelationID(edge);
 
-	_EffectLog_AddOperation(log, &op);
+	_EffectLog_AddEffect(log, &op);
 }
 
 // entity update effect
@@ -649,7 +595,31 @@ void EffectLog_UpdateEntity
 		op.update.e = *(Edge *)entity;
 	}
 
-	_EffectLog_AddOperation(log, &op);
+	_EffectLog_AddEffect(log, &op);
+}
+
+// node add label effect
+static void _EffectLog_ModifyLabels
+(
+	EffectLog *log,            // effect log
+	EffectType t,              // add/remove labels
+	const Node *node,          // updated node
+	const LabelID *label_ids,  // added labels
+	size_t labels_count        // number of removed labels
+) {
+	Effect op;
+
+	// TODO: is it necessary to copy `label_ids` ?
+	size_t n = sizeof(LabelID) * labels_count;
+
+	op.type                = t;
+	op.labels.id           = ENTITY_GET_ID(node);
+	op.labels.label_ids    = rm_malloc(n);
+	op.labels.labels_count = labels_count;
+
+	memcpy(op.labels.label_ids, label_ids, n);
+
+	_EffectLog_AddEffect(log, &op);
 }
 
 // node add label effect
@@ -660,23 +630,13 @@ void EffectLog_AddLabels
 	const LabelID *label_ids,  // added labels
 	size_t labels_count        // number of removed labels
 ) {
-
 	ASSERT(log != NULL);
 	ASSERT(node != NULL);
 	ASSERT(label_ids != NULL);
+	ASSERT(labels_count > 0);
 
-	Effect op;
-
-	size_t n = sizeof(LabelID) * labels_count;
-
-	op.type                = EFFECT_SET_LABELS;
-	op.labels.id           = ENTITY_GET_ID(node);
-	op.labels.label_ids    = rm_malloc(n);
-	op.labels.labels_count = labels_count;
-
-	memcpy(op.labels.label_ids, label_ids, n);
-
-	_EffectLog_AddOperation(log, &op);
+	_EffectLog_ModifyLabels(log, EFFECT_SET_LABELS, node, label_ids,
+			labels_count);
 }
 
 // node remove label effect
@@ -690,19 +650,10 @@ void EffectLog_RemoveLabels
 	ASSERT(log != NULL);
 	ASSERT(node != NULL);
 	ASSERT(label_ids != NULL);
+	ASSERT(labels_count > 0);
 
-	Effect op;
-
-	size_t n = sizeof(LabelID) * labels_count;
-
-	op.type                = EFFECT_REMOVE_LABELS;
-	op.labels.id           = ENTITY_GET_ID(node);
-	op.labels.label_ids    = rm_malloc(n);
-	op.labels.labels_count = labels_count;
-
-	memcpy(op.labels.label_ids, label_ids, n);
-
-	_EffectLog_AddOperation(log, &op);
+	_EffectLog_ModifyLabels(log, EFFECT_REMOVE_LABELS, node, label_ids,
+			labels_count);
 }
 
 // schema addition effect
@@ -721,7 +672,7 @@ void EffectLog_AddSchema
 	op.schema.t           = t;
 	op.schema.schema_name = schema_name;
 
-	_EffectLog_AddOperation(log, &op);
+	_EffectLog_AddEffect(log, &op);
 }
 
 void EffectLog_AddAttribute
@@ -736,7 +687,8 @@ void EffectLog_AddAttribute
 
 	op.type = EFFECT_ADD_ATTRIBUTE;
 	op.attribute.attr_name = attr;
-	_EffectLog_AddOperation(log, &op);
+
+	_EffectLog_AddEffect(log, &op);
 }
 
 void EffectLog_FreeEffect
@@ -746,22 +698,17 @@ void EffectLog_FreeEffect
 	ASSERT(op != NULL);
 
 	switch(op->type) {
+		// free fall all the way down!
+		case EFFECT_UNKNOWN:
 		case EFFECT_UPDATE_NODE:
 		case EFFECT_UPDATE_EDGE:
-			break;
 		case EFFECT_CREATE_NODE:
-			break;
 		case EFFECT_CREATE_EDGE:
-			break;
 		case EFFECT_DELETE_NODE:
-			break;
 		case EFFECT_DELETE_EDGE:
-			break;
 		case EFFECT_SET_LABELS:
 		case EFFECT_REMOVE_LABELS:
-			break;
 		case EFFECT_ADD_SCHEMA:
-			break;
 		case EFFECT_ADD_ATTRIBUTE:
 			break;
 		default:
@@ -776,8 +723,8 @@ void EffectLog_Free
 	ASSERT(log != NULL);
 
 	// free each effect
-	uint count = array_len(log);
-	for (uint i = 0; i < count; i++) {
+	uint n = EffectLog_Length(log);
+	for (uint i = 0; i < n; i++) {
 		Effect *op = log + i;
 		EffectLog_FreeEffect(op);
 	}
