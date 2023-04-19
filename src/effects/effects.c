@@ -125,7 +125,7 @@ static void EffectFromNodeUpdate
 	// write entity ID
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&ENTITY_GET_ID(op->entity), sizeof(EntityID), stream);
+	fwrite_assert(&ENTITY_GET_ID(&op->n), sizeof(EntityID), stream);
 
 	//--------------------------------------------------------------------------
 	// write attribute ID
@@ -161,7 +161,7 @@ static void EffectFromEdgeUpdate
 	Graph *g = GraphContext_GetGraph(gc);
 
 	// entity type edge
-	Edge *e = (Edge*)&op->entity;
+	Edge *e = (Edge *)&op->e;
 
 	//--------------------------------------------------------------------------
 	// write effect type
@@ -174,7 +174,7 @@ static void EffectFromEdgeUpdate
 	// write edge ID
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&ENTITY_GET_ID(op->entity), sizeof(EntityID), stream);
+	fwrite_assert(&ENTITY_GET_ID(&op->e), sizeof(EntityID), stream);
 
 	//--------------------------------------------------------------------------
 	// write relation ID
@@ -640,9 +640,14 @@ void EffectLog_UpdateEntity
 
 	op.type               = t;
 	op.update.value       = value;
-	op.update.entity      = entity;
 	op.update.attr_id     = attr_id;
 	op.update.entity_type = entity_type;
+
+	if(entity_type == GETYPE_NODE) {
+		op.update.n = *(Node *)entity;
+	} else {
+		op.update.e = *(Edge *)entity;
+	}
 
 	_EffectLog_AddOperation(log, &op);
 }

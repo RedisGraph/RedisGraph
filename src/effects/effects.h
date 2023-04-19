@@ -56,7 +56,10 @@ struct EffectDeleteEdge {
 // effect graph entity update
 typedef struct EffectUpdate EffectUpdate;
 struct EffectUpdate {
-	const GraphEntity *entity;    // entity to update
+	union {
+		Node n;
+		Edge e;
+	}; // entity to update
 	GraphEntityType entity_type;  // node/edge
 	Attribute_ID attr_id;         // attribute update
 	SIValue value;                // attribute value
