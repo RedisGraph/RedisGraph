@@ -46,9 +46,10 @@ void NodeScanCtx_Free
 (
     NodeScanCtx *ctx  // context
 ) {
-    if(ctx->n != NULL) {
-        QGNode_Free(ctx->n);
-    }
+    ASSERT(ctx != NULL);
+    ASSERT(ctx->n != NULL);
+    
+    QGNode_Free(ctx->n);
 
     rm_free(ctx);
 }
