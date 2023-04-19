@@ -308,10 +308,16 @@ static void ApplyUpdateEdge
 	
 	bool res;
 	Edge e;                // edge to delete
+	Node s;                // edge src node
+	Node t;                // edge dest node
 	SIValue v;             // updated value
 	uint props_set;        // number of attributes updated
 	uint props_removed;    // number of attributes removed
 	Attribute_ID attr_id;  // entity ID
+
+	NodeID     s_id = INVALID_ENTITY_ID;       // edge src node ID
+	NodeID     t_id = INVALID_ENTITY_ID;       // edge dest node ID
+	RelationID r_id = GRAPH_UNKNOWN_RELATION;  // edge rel-type
 
 	Graph *g = gc->g;
 	EntityID id = INVALID_ENTITY_ID;
@@ -322,6 +328,27 @@ static void ApplyUpdateEdge
 
 	fread_assert(&id, sizeof(EntityID), stream);
 	ASSERT(id != INVALID_ENTITY_ID);
+
+	//--------------------------------------------------------------------------
+	// read relation ID
+	//--------------------------------------------------------------------------
+
+	fread_assert(&r_id, sizeof(RelationID), stream);
+	ASSERT(r_id >= 0);
+
+	//--------------------------------------------------------------------------
+	// read src ID
+	//--------------------------------------------------------------------------
+
+	fread_assert(&s_id, sizeof(NodeID), stream);
+	ASSERT(s_id != INVALID_ENTITY_ID);
+
+	//--------------------------------------------------------------------------
+	// read dest ID
+	//--------------------------------------------------------------------------
+
+	fread_assert(&t_id, sizeof(NodeID), stream);
+	ASSERT(t_id != INVALID_ENTITY_ID);
 
 	//--------------------------------------------------------------------------
 	// read attribute ID
@@ -337,11 +364,32 @@ static void ApplyUpdateEdge
 	v = SIValue_FromBinary(stream);
 	ASSERT(SI_TYPE(v) & (SI_VALID_PROPERTY_VALUE | T_NULL));
 
-	Graph_GetEdge(g, id, &e);
+	//--------------------------------------------------------------------------
+	// fetch updated entity
+	//--------------------------------------------------------------------------
+
+	// get src node, dest node and edge from the graph
+	res = Graph_GetNode(g, s_id, &s);
+	ASSERT(res != 0);
+	res = Graph_GetNode(g, t_id, &t);
+	ASSERT(res != 0);
+	res = Graph_GetEdge(g, id, &e);
+	ASSERT(res != 0);
+
+	// set edge relation, src and destination node
+	Edge_SetSrcNode(&e, &s);
+	Edge_SetDestNode(&e, &t);
+	Edge_SetRelationID(&e, r_id);
+
 	if(GraphEntity_GetProperty((GraphEntity *)&e, attr_id) == ATTRIBUTE_NOTFOUND) {
 		AttributeSet_AddNoClone(e.attributes, &attr_id, &v, 1, true);
 	} else {
 		AttributeSet_UpdateNoClone(e.attributes, attr_id, v);
+	}
+
+	Schema *schema = GraphContext_GetSchemaByID(gc, r_id, SCHEMA_EDGE);
+	if(schema) {
+		Schema_AddEdgeToIndices(schema, &e);
 	}
 }
 
@@ -401,6 +449,19 @@ static void ApplyUpdateNode
 		AttributeSet_AddNoClone(n.attributes, &attr_id, &v, 1, true);
 	} else {
 		AttributeSet_UpdateNoClone(n.attributes, attr_id, v);
+	}
+
+	// retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(g, &n, label_count);
+
+	Schema *s;
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i];
+		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+		if(s) {
+			Schema_AddNodeToIndices(s, &n);
+		}
 	}
 }
 

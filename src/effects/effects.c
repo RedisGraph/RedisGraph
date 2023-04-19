@@ -157,6 +157,12 @@ static void EffectFromEdgeUpdate
 	//    attributes (id,value) pair
 	//--------------------------------------------------------------------------
 
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Graph *g = GraphContext_GetGraph(gc);
+
+	// entity type edge
+	Edge *e = (Edge*)&op->entity;
+
 	//--------------------------------------------------------------------------
 	// write effect type
 	//--------------------------------------------------------------------------
@@ -169,6 +175,27 @@ static void EffectFromEdgeUpdate
 	//--------------------------------------------------------------------------
 
 	fwrite_assert(&ENTITY_GET_ID(op->entity), sizeof(EntityID), stream);
+
+	//--------------------------------------------------------------------------
+	// write relation ID
+	//--------------------------------------------------------------------------
+
+	RelationID r = EDGE_GET_RELATION_ID(e, g);
+	fwrite_assert(&r, sizeof(RelationID), stream);
+
+	//--------------------------------------------------------------------------
+	// write src ID
+	//--------------------------------------------------------------------------
+
+	NodeID s = Edge_GetSrcNodeID(e);
+	fwrite_assert(&s, sizeof(NodeID), stream);
+
+	//--------------------------------------------------------------------------
+	// write dest ID
+	//--------------------------------------------------------------------------
+
+	NodeID d = Edge_GetDestNodeID(e);
+	fwrite_assert(&d, sizeof(NodeID), stream);
 
 	//--------------------------------------------------------------------------
 	// write attribute ID

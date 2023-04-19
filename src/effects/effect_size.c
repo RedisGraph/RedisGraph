@@ -209,8 +209,11 @@ static size_t ComputeEdgeUpdateSize
 	// compute effect byte size
 	size_t s = sizeof(EffectType)                +   // effect type
 			   sizeof(EntityID)                  +   // edge ID
+			   sizeof(RelationID)                +   // relation ID
+			   sizeof(NodeID)                    +   // src node ID
+			   sizeof(NodeID)                    +   // dest node ID
 			   sizeof(Attribute_ID)              +   // attribute ID
-			   SIValue_BinarySize(&op->value);        // attribute value
+			   SIValue_BinarySize(&op->value);       // attribute value
 
 	return s;
 }
