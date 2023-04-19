@@ -149,9 +149,21 @@ class testUnion(FlowTestsBase):
         redis_graph.query(query)
         query = """CREATE INDEX ON :N(v)"""
         redis_graph.query(query)
+
+        # test MATCH and CREATE
         query = """MATCH (n:N {v:'10'})-[:R]->(m:M) RETURN m.v AS p
                    UNION
-                   MATCH (s:M {v:'12'}) CREATE (:N {v:'10'})-[:R]->(s) RETURN s.v as p"""
+                   MATCH (s:M {v:'12'}) CREATE (:N {v:'10'})-[:R]->(s) RETURN s.v AS p"""
         result = redis_graph.query(query)
         expected_result = [['11'],['12']]
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # test MATCH, CREATE and MERGE
+        query = """MATCH (n:N {v:'10'})-[:R]->(:M) RETURN n.v AS p 
+                   UNION 
+                   MATCH (s:M {v:'12'}) CREATE (:N {v:'10'})-[:R]->(s) RETURN s.v AS p 
+                   UNION 
+                   MERGE(x:N {v:'15'})-[:R]->(:M {v:'18'}) RETURN x.v AS p"""
+        result = redis_graph.query(query)
+        expected_result = [['10'],['12'],['15']]
         self.env.assertEquals(result.result_set, expected_result)
