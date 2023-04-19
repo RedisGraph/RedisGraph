@@ -11,11 +11,13 @@
 // forward declaration
 typedef struct _CircularBuffer _CircularBuffer;
 typedef _CircularBuffer* CircularBuffer;
+typedef void(*CircularBufferItemFree)(void*);
 
 CircularBuffer CircularBuffer_New
 (
-	size_t item_size,  // size of item in bytes
-	uint cap           // max number of items in buffer
+	size_t item_size,          // size of item in bytes
+	uint cap,                  // max number of items in buffer
+	CircularBufferItemFree cb  // [optional] item delete callback
 );
 
 // adds an item to buffer
@@ -24,6 +26,14 @@ int CircularBuffer_Add
 (
 	CircularBuffer cb,  // buffer to populate
 	void *item          // item to add
+);
+
+// forcefully adds item to buffer
+// in case buffer is full an element is overwritten
+void CircularBuffer_AddForce
+(
+	CircularBuffer cb  // buffer to populate
+	void *item         // item to add
 );
 
 // removes oldest item from buffer
@@ -62,3 +72,4 @@ void CircularBuffer_Free
 (
 	CircularBuffer *cb  // buffer to free
 );
+

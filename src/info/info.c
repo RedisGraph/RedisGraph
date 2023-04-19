@@ -17,15 +17,15 @@
 #include "../util/dict.h"
 #include "../query_ctx.h"
 #include "util/thpool/pools.h"
+#include "util/circular_buffer.h"
 // #include "hdr/hdr_histogram.h"
-#include "util/circular_buffer_nrg.h"
 
 #include <string.h>
 #include <sys/types.h>
 
 #define INITIAL_QUERY_INFO_CAPACITY 100
 
-static CircularBufferNRG finished_queries;
+static CircularBuffer finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 // forward declaration
@@ -125,7 +125,7 @@ static void _add_finished_query
     int res = pthread_rwlock_wrlock(&finished_queries_rwlock);
 	ASSERT(res == 0);
 
-    CircularBufferNRG_Add(finished_queries, (const void*)qi);
+    CircularBuffer_AddForce(finished_queries, (const void*)qi);
 
     res = pthread_rwlock_unlock(&finished_queries_rwlock);
 	ASSERT(res == 0);
@@ -511,29 +511,7 @@ void Info_GetQueries
     _Info_UnlockEverything(info);
 }
 
-void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count) {
-    int res = pthread_rwlock_wrlock(&finished_queries_rwlock);
-    ASSERT(res == 0);
-
-    if (!finished_queries) {
-        finished_queries = CircularBufferNRG_New(sizeof(QueryInfo), count);
-        CircularBufferNRG_SetDeleter(
-            finished_queries,
-            QueryInfoDeleter,
-            NULL);
-        CircularBufferNRG_SetItemClone(
-            finished_queries,
-            QueryInfo_CloneTo,
-            NULL
-        );
-    } else {
-        CircularBufferNRG_SetCapacity(&finished_queries, count);
-    }
-
-    res = pthread_rwlock_unlock(&finished_queries_rwlock);
-    ASSERT(res == 0);
-}
-
+// views the circular buffer of finished queries
 void Info_ViewAllFinishedQueries
 (
     CircularBufferNRG_ReadAllCallback callback,
@@ -547,7 +525,14 @@ void Info_ViewAllFinishedQueries
     int res = pthread_rwlock_rdlock(&finished_queries_rwlock);
     ASSERT(res == 0);
 
+	int n = CircularBuffer_ItemCount(finished_queries);
+	QueryInfo *queries = rm_malloc(sizeof(QueryInfo*) * n);
+
+	CircularBuffer_ReadAll(finished_queries, queries, n);
+
     CircularBufferNRG_ViewAll(finished_queries, callback, user_data);
+
+	rm_free(queries);
 }
 
 void Info_Free

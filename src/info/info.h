@@ -176,14 +176,13 @@ QueryInfoStorage* Info_GetWorkingQueriesStorage
     Info *info
 );
 
-// Resizes the finished queries storage.
-void Info_SetCapacityForFinishedQueriesStorage(const uint32_t count);
-// Views the circular buffer of finished queries.
+// views the circular buffer of finished queries
 void Info_ViewAllFinishedQueries
 (
     CircularBufferNRG_ReadAllCallback callback,
     void *user_data
 );
+
 // returns the total number of queries recorded
 uint64_t FinishedQueryCounters_GetTotalCount
 (

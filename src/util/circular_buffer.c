@@ -70,6 +70,32 @@ int CircularBuffer_Add
 	return 1;
 }
 
+// forcefully adds item to buffer
+// in case buffer is full an element is overwritten
+void CircularBuffer_AddForce
+(
+	CircularBuffer cb  // buffer to populate
+	void *item         // item to add
+) {
+	ASSERT(cb != NULL);
+	ASSERT(item != NULL);
+
+	// copy item into buffer
+	memcpy(cb->write, item, cb->item_size);
+
+	// atomic update buffer item count
+	if(!CircularBuffer_Full(cb)) {
+		cb->item_count++;
+	}
+
+	// advance write position
+	// circle back if write reached the end of the buffer
+	cb->write += cb->item_size;
+	if(unlikely(cb->write >= cb->end_marker)) {
+		cb->write = cb->data;
+	}
+}
+
 // removes oldest item from buffer
 // returns 1 on success, 0 otherwise
 int CircularBuffer_Remove

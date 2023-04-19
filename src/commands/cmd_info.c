@@ -28,7 +28,6 @@
 #define INFO_QUERIES_PREV_ARG "PREV"
 #define SUBCOMMAND_NAME_RESET "RESET"
 #define INFO_GET_STATISTICS_ARG "STAT"
-#define COMPACT_MODE_OPTION "--compact"
 #define GRAPH_NAME_KEY_NAME "Graph name"
 #define SUBCOMMAND_NAME_QUERIES "QUERIES"
 #define INFO_QUERIES_CURRENT_ARG "CURRENT"
@@ -87,9 +86,10 @@ typedef struct ViewFinishedQueriesCallbackData {
     int status;
 } ViewFinishedQueriesCallbackData;
 
-static bool _is_cmd_info_enabled() {
-    bool cmd_info_enabled = false;
-    return Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled;
+// returns true if graph info tracking is enabled
+static bool _is_cmd_info_enabled(void) {
+    bool enabled = false;
+    return Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && enabled;
 }
 
 static uint64_t _info_queries_max_count() {
@@ -108,58 +108,41 @@ static bool _collect_queries_info_from_graph
     GraphContext *gc,
     GlobalInfo *global_info
 ) {
-    ASSERT(ctx && gc && global_info);
-    if (!ctx || !gc || !global_info) {
-        return false;
-    }
+    ASSERT(ctx         != NULL);
+    ASSERT(gc          != NULL);
+    ASSERT(global_info != NULL);
 
-    const uint64_t waiting_queries_count = Info_GetWaitingQueriesCount(gc->info);
-    const uint64_t executing_queries_count = Info_GetExecutingQueriesCount(gc->info);
-    const uint64_t reporting_queries_count = Info_GetReportingQueriesCount(gc->info);
-    const uint64_t max_query_wait_time = Info_GetMaxQueryWaitTime(gc->info);
+    const uint64_t executing = 0;
+    const uint64_t reporting = 0;
+    const uint64_t waiting = Info_GetWaitingQueriesCount(gc->info);
+    Info_GetReportingQueriesCount(gc->info, &executing, &reporting);
+    const uint64_t max_wait_time = Info_GetMaxQueryWaitTime(gc->info);
 
-    CHECKED_ADD_OR_RETURN(
-        global_info->total_waiting_queries_count,
-        waiting_queries_count,
-        false);
-
-    CHECKED_ADD_OR_RETURN(
-        global_info->total_executing_queries_count,
-        executing_queries_count,
-        false);
-
-    CHECKED_ADD_OR_RETURN(
-        global_info->total_reporting_queries_count,
-        reporting_queries_count,
-        false);
-
-    if (max_query_wait_time > global_info->max_query_wait_time) {
-        global_info->max_query_wait_time = max_query_wait_time;
-    }
+    global_info->total_waiting_queries_count += waiting_queries_count;
+	global_info->total_executing_queries_count += executing_queries_count;
+    global_info->total_reporting_queries_count += reporting_queries_count;
+	global_info->max_query_wait_time = MAX(max_wait_time,
+			global_info->max_query_wait_time);
 
     return true;
 }
 
-// Collects all the global information from all the graphs.
+// collects all the global information from all the graphs
 static bool _collect_global_info
 (
     RedisModuleCtx *ctx,
     GlobalInfo *global_info
 ) {
-    ASSERT(ctx && global_info && graphs_in_keyspace);
-    if (!ctx || !global_info || !graphs_in_keyspace) {
-        return REDISMODULE_ERR;
-    }
+    ASSERT(ctx != NULL);
+	ASSERT(global_info != NULL);
+	ASSERT(graphs_in_keyspace != NULL);
 
     const uint32_t graphs_count = array_len(graphs_in_keyspace);
     memset(global_info, 0, sizeof(GlobalInfo));
 
     for (uint32_t i = 0; i < graphs_count; ++i) {
         GraphContext *gc = graphs_in_keyspace[i];
-        if (!gc) {
-            RedisModule_ReplyWithError(ctx, "Graph does not exist.");
-            return false;
-        }
+		ASSERT(gc != NULL);
 
         if (!_collect_queries_info_from_graph(ctx, gc, global_info)) {
             RedisModule_ReplyWithError(ctx, "Error while collecting data.");
@@ -212,18 +195,15 @@ static int _reply_global_info
     return REDISMODULE_OK;
 }
 
-// Replies with the global query information.
-// This is a part of the "GRAPH.INFO QUERIES" information.
+// replies with the global query information
+// this is a part of the "GRAPH.INFO QUERIES" information
 static int _reply_with_queries_info_global
 (
     RedisModuleCtx *ctx
 ) {
-    ASSERT(ctx);
-    if (!ctx) {
-        return REDISMODULE_ERR;
-    }
+    ASSERT(ctx != NULL);
 
-    GlobalInfo global_info = {};
+    GlobalInfo global_info;
     if (!_collect_global_info(ctx, &global_info)) {
         return REDISMODULE_ERR;
     }
@@ -232,10 +212,6 @@ static int _reply_with_queries_info_global
     REDISMODULE_ASSERT(_reply_global_info(ctx, global_info));
 
     return REDISMODULE_OK;
-}
-
-static bool _is_queries_cmd(const char *cmd) {
-    return !strcasecmp(cmd, SUBCOMMAND_NAME_QUERIES);
 }
 
 // Parses out a single "GRAPH.INFO QUERIES" flag.
@@ -251,7 +227,7 @@ static InfoQueriesFlag _parse_info_queries_flag_from_string
     return InfoQueriesFlag_NONE;
 }
 
-// Parses out the "GRAPH.INFO QUERIES" flags from an array of strings.
+// parses out the "GRAPH.INFO QUERIES" flags from an array of strings
 static InfoQueriesFlag _parse_info_queries_flags_from_args
 (
     const RedisModuleString **argv,
@@ -259,15 +235,15 @@ static InfoQueriesFlag _parse_info_queries_flags_from_args
 ) {
     InfoQueriesFlag flags = InfoQueriesFlag_NONE;
 
-    if (!argv || argc <= 0) {
+    if (argc == 0) {
         return flags;
     }
 
     int read = 0;
-    while (read < argc) {
+    while(read < argc) {
         const char *arg = RedisModule_StringPtrLen(argv[read], NULL);
         flags |= _parse_info_queries_flag_from_string(arg);
-        ++read;
+        read++;
     }
 
     return flags;
@@ -371,8 +347,8 @@ static bool _reply_finished_queries(void *user_data, const void *item) {
     return false;
 }
 
-// Replies with the finished queries information.
-// This is a part of the "GRAPH.INFO QUERIES PREV" reply.
+// replies with the finished queries information
+// this is a part of the "GRAPH.INFO QUERIES PREV" reply
 static int _reply_with_queries_info_prev
 (
     RedisModuleCtx *ctx,
@@ -400,7 +376,7 @@ static int _reply_with_queries_info_prev
     return user_data.status;
 }
 
-// Parses and handles the "GRAPH.INFO QUERIES PREV <count>" command.
+// parses and handles the "GRAPH.INFO QUERIES PREV <count>" command
 static int _parse_and_reply_info_queries_prev
 (
     RedisModuleCtx *ctx,
@@ -408,16 +384,11 @@ static int _parse_and_reply_info_queries_prev
     const int argc,
     uint64_t *actual_element_count
 ) {
-    ASSERT(ctx && argv && argc);
-    if (!ctx || !argv || !argc) {
-        RedisModule_ReplyWithError(ctx, INVALID_PARAMETERS_MESSAGE);
-        if (actual_element_count) {
-            *actual_element_count = 1;
-        }
-        return REDISMODULE_ERR;
-    }
+    ASSERT(ctx  != NULL);
+    ASSERT(argv != NULL);
+    ASSERT(argc > 0);
 
-    // We expect the count as the last argument.
+    // we expect the count as the last argument
     const char *arg_count = RedisModule_StringPtrLen(argv[argc - 1], NULL);
     if (arg_count && !isdigit(arg_count[0])) {
         RedisModule_ReplyWithError(ctx, INVALID_COUNT_PARAMETER_FOR_PREV_MESSAGE);
@@ -679,7 +650,8 @@ static int _reply_with_queries
         return REDISMODULE_ERR;
     }
 
-    const InfoQueriesFlag flags = _parse_info_queries_flags_from_args(argv, argc);
+    const InfoQueriesFlag flags = _parse_info_queries_flags_from_args(argv,
+			argc);
 
     if (flags == InfoQueriesFlag_NONE) {
         return REDISMODULE_OK;
@@ -726,27 +698,22 @@ static int _reply_with_queries
     return REDISMODULE_OK;
 }
 
-// Handles the "GRAPH.INFO QUERIES" subcommand.
-// The format is "GRAPH.INFO QUERIES [CURRENT] [PREV <count>]".
+// handles the "GRAPH.INFO QUERIES" subcommand
+// the format is "GRAPH.INFO QUERIES [CURRENT] [PREV <count>]"
 static int _info_queries
 (
     RedisModuleCtx *ctx,
     const RedisModuleString **argv,
     const int argc
 ) {
-    ASSERT(ctx);
-    if (!ctx) {
-        RedisModule_ReplyWithError(ctx, INVALID_PARAMETERS_MESSAGE);
-        return REDISMODULE_ERR;
-    }
+    ASSERT(ctx != NULL);
 
-    uint8_t top_level_count = 1;
+    uint8_t top_level_count = 1;  // ?
 
-    REDISMODULE_ASSERT(module_reply_map(
-        ctx,
-        REDISMODULE_POSTPONED_LEN));
+    module_reply_map(ctx, REDISMODULE_POSTPONED_LEN);
 
-    REDISMODULE_ASSERT(_reply_with_queries_info_global(ctx));
+	// emit queries statistics
+    _reply_with_queries_info_global(ctx);
 
     const int ret = _reply_with_queries(
         ctx,
@@ -763,22 +730,25 @@ static int _info_queries
     return ret;
 }
 
-// Attempts to find the specified subcommand of "GRAPH.INFO" and dispatch it.
-// Returns true if the command was found and handled, false otherwise.
+// attempts to find the specified subcommand of "GRAPH.INFO" and dispatch it
+// returns true if the command was found and handled, false otherwise
 static bool _dispatch_subcommand
 (
-    RedisModuleCtx *ctx,
-    const RedisModuleString **argv,
-    const int argc,
-    const char *subcommand_name,
-    int *result
+    RedisModuleCtx *ctx,             // redis module context
+    const RedisModuleString **argv,  // command arguments
+    const int argc,                  // number of arguments
+    const char *subcmd,              // sub command
+    int *result                      // [output] result
 ) {
-    ASSERT(ctx && result);
-    ASSERT(subcommand_name != NULL && "Subcommand must be specified.");
+    ASSERT(ctx != NULL);
+    ASSERT(result != NULL);
+    ASSERT(subcmd != NULL);
 
-    if (_is_queries_cmd(subcommand_name)) {
+	// GRAPH.INFO QUERIES
+    if (!strcasecmp(subcmd, SUBCOMMAND_NAME_QUERIES)) {
         *result = _info_queries(ctx, argv + 1, argc - 1);
     } else {
+		// sub command either un-familiar or not supported
         return false;
     }
 
@@ -789,7 +759,7 @@ static bool _dispatch_subcommand
 // GRAPH.INFO key RESET
 // GRAPH.INFO key STATS
 // GRAPH.INFO key QUERIES
-// Dispatch the subcommand.
+// dispatch the subcommand
 int Graph_Info
 (
     RedisModuleCtx *ctx,
@@ -802,7 +772,7 @@ int Graph_Info
         return RedisModule_WrongArity(ctx);
     }
 
-    if (!_is_cmd_info_enabled()) {
+    if (_is_cmd_info_enabled() == false) {
         RedisModule_ReplyWithError(ctx, COMMAND_IS_DISABLED);
         return REDISMODULE_ERR;
     }
@@ -821,3 +791,4 @@ int Graph_Info
 
     return result;
 }
+

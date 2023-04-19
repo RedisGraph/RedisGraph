@@ -168,11 +168,9 @@ void QueryInfo_CloneTo
 // QueryInfo deleter callback
 void QueryInfoDeleter
 (
-    void *user_data,
     void *info
 ) {
-    UNUSED(user_data);
-    ASSERT(info);
+    ASSERT(info != NULL);
     if (info) {
         QueryInfo *qi = (QueryInfo *)info;
         QueryInfo_Free(qi);
@@ -191,3 +189,4 @@ void QueryInfo_Free
         free(qi->graph_name);
     }
 }
+
