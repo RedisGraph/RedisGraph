@@ -396,9 +396,9 @@ void reduce_scan_op
 	}
 
 	FT_FilterNode *root = _Concat_Filters(filters);
-	NodeScanCtx *ctx_clone = NodeScanCtx_Clone(scan->n);
-	OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, ctx_clone, rs_idx,
+	OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx,
 			root);
+	scan->n = NULL;
 
 	// replace the redundant scan op with the newly-constructed Index Scan
 	ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);

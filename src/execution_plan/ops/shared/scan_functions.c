@@ -4,6 +4,7 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
+#include "../../../RG.h"
 #include "scan_functions.h"
 #include "../../../util/rmalloc.h"
 #include "../../../graph/entities/qg_node.h"
@@ -14,13 +15,13 @@ NodeScanCtx *NodeScanCtx_New
     char *alias,       // alias
     char *label,       // label
     LabelID label_id,  // label id
-    QGNode *n          // node
+    const QGNode *n    // node
 ) {
     NodeScanCtx *ctx = rm_malloc(sizeof(NodeScanCtx));
     ctx->alias = alias;
     ctx->label = label;
     ctx->label_id = label_id;
-    ctx->n = n;
+    ctx->n = QGNode_Clone(n);
 
     return ctx;
 }
@@ -28,12 +29,13 @@ NodeScanCtx *NodeScanCtx_New
 // clones a context
 NodeScanCtx *NodeScanCtx_Clone
 (
-    NodeScanCtx *ctx  // context
+    const NodeScanCtx *ctx  // context
 ) {
+    ASSERT(ctx != NULL);
+    ASSERT(ctx->n != NULL);
+
     NodeScanCtx *clone = rm_malloc(sizeof(NodeScanCtx));
-    clone->alias = ctx->alias;
-    clone->label = ctx->label;
-    clone->label_id = ctx->label_id;
+    memcpy(clone, ctx, sizeof(NodeScanCtx));
     clone->n = QGNode_Clone(ctx->n);
 
     return clone;
@@ -46,7 +48,6 @@ void NodeScanCtx_Free
 ) {
     if(ctx->n != NULL) {
         QGNode_Free(ctx->n);
-        ctx->n = NULL;
     }
 
     rm_free(ctx);
