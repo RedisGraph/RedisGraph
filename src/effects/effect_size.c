@@ -121,14 +121,10 @@ static size_t ComputeAttrAddSize
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	const EffectAddAttribute *_op = &op->attribute;
 
-	// get added attribute name
-	Attribute_ID attr_id  = _op->attribute_id;
-	const char *attr_name = GraphContext_GetAttributeString(gc, attr_id);
-
 	// compute effect byte size
 	size_t s = sizeof(EffectType) +
 		       sizeof(size_t) +
-			   strlen(attr_name) + 1;
+			   strlen(_op->attr_name) + 1;
 
 	return s;
 }
@@ -184,15 +180,12 @@ static size_t ComputeSchemaAddSize
 	//    schema name
 	//--------------------------------------------------------------------------
 	
-	GraphContext *gc = QueryCtx_GetGraphCtx();
 	const EffectAddSchema *_op = &op->schema;
-	Schema *schema = GraphContext_GetSchemaByID(gc, _op->schema_id, _op->t);
-	ASSERT(schema != NULL);
 
 	size_t s = sizeof(EffectType) +
 		       sizeof(SchemaType) +
 			   sizeof(size_t)     +
-			   strlen(Schema_GetName(schema)) + 1;
+			   strlen(_op->schema_name) + 1;
 
 	return s;
 }
@@ -213,18 +206,11 @@ static size_t ComputeEdgeUpdateSize
 	//    attributes (id,value) pair
 	//--------------------------------------------------------------------------
 
-	Graph *g = QueryCtx_GetGraph();
-	Edge e;
-	Graph_GetEdge(g, op->id, &e);
-
-	// get updated value
-	SIValue *v = GraphEntity_GetProperty((const GraphEntity *)&e, op->attr_id);
-
 	// compute effect byte size
 	size_t s = sizeof(EffectType)                +   // effect type
 			   sizeof(EntityID)                  +   // edge ID
 			   sizeof(Attribute_ID)              +   // attribute ID
-			   SIValue_BinarySize(v);                // attribute value
+			   SIValue_BinarySize(&op->value);        // attribute value
 
 	return s;
 }
@@ -242,18 +228,11 @@ static size_t ComputeNodeUpdateSize
 	//    attribute (id, value) pairs
 	//--------------------------------------------------------------------------
 
-	Graph *g = QueryCtx_GetGraph();
-	Node n;
-	Graph_GetNode(g, op->id, &n);
-
-	// get updated value
-	SIValue *v = GraphEntity_GetProperty((const GraphEntity *)&n, op->attr_id);
-
 	// compute effect byte size
 	size_t s = sizeof(EffectType)                +  // effect type
 			   sizeof(NodeID)                    +  // node ID
 			   sizeof(Attribute_ID)              +  // attribute ID
-			   SIValue_BinarySize(v);               // attribute value
+			   SIValue_BinarySize(&op->value);      // attribute value
 
 	return s;
 }

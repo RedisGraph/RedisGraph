@@ -414,7 +414,7 @@ Schema *AddSchema
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_AddSchema(undo_log, s->id, s->type);
 		EffectLog *effect_log = QueryCtx_GetEffectLog();
-		EffectLog_AddSchema(effect_log, s->id, s->type);
+		EffectLog_AddSchema(effect_log, Schema_GetName(s), s->type);
 	}
 
 	return s;
@@ -436,7 +436,7 @@ Attribute_ID FindOrAddAttribute
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_AddAttribute(undo_log, attr_id);
 		EffectLog *effect_log = QueryCtx_GetEffectLog();
-		EffectLog_AddAttribute(effect_log, attr_id);
+		EffectLog_AddAttribute(effect_log, rm_strdup(attribute));
 	}
 	return attr_id;
 }

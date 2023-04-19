@@ -113,13 +113,6 @@ static void EffectFromNodeUpdate
 	//    attribute id
 	//    attribute value
 	//--------------------------------------------------------------------------
-	
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Graph *g = QueryCtx_GetGraph();
-
-	// entity type node
-	Node n;
-	Graph_GetNode(g, op->id, &n);
 
 	//--------------------------------------------------------------------------
 	// write effect type
@@ -132,7 +125,7 @@ static void EffectFromNodeUpdate
 	// write entity ID
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&op->id, sizeof(EntityID), stream);
+	fwrite_assert(&ENTITY_GET_ID(op->entity), sizeof(EntityID), stream);
 
 	//--------------------------------------------------------------------------
 	// write attribute ID
@@ -144,13 +137,7 @@ static void EffectFromNodeUpdate
 	// write attribute value
 	//--------------------------------------------------------------------------
 
-	SIValue *v = GraphEntity_GetProperty((const GraphEntity *)&n, op->attr_id);
-	if(v == ATTRIBUTE_NOTFOUND) {
-		// attribute been deleted
-		*v = SI_NullVal();
-	}
-
-	SIValue_ToBinary(stream, v);
+	SIValue_ToBinary(stream, &op->value);
 }
 
 // convert EffectUpdate into a Update effect
@@ -170,13 +157,6 @@ static void EffectFromEdgeUpdate
 	//    attributes (id,value) pair
 	//--------------------------------------------------------------------------
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Graph *g = GraphContext_GetGraph(gc);
-
-	// entity type edge
-	Edge e;
-	Graph_GetEdge(g, op->id, &e);
-
 	//--------------------------------------------------------------------------
 	// write effect type
 	//--------------------------------------------------------------------------
@@ -188,7 +168,7 @@ static void EffectFromEdgeUpdate
 	// write edge ID
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&op->id, sizeof(EntityID), stream);
+	fwrite_assert(&ENTITY_GET_ID(op->entity), sizeof(EntityID), stream);
 
 	//--------------------------------------------------------------------------
 	// write attribute ID
@@ -200,13 +180,7 @@ static void EffectFromEdgeUpdate
 	// write attribute value
 	//--------------------------------------------------------------------------
 
-	SIValue *v = GraphEntity_GetProperty((const GraphEntity *)&e, op->attr_id);
-	if(v == ATTRIBUTE_NOTFOUND) {
-		// attribute been deleted
-		*v = SI_NullVal();
-	}
-
-	SIValue_ToBinary(stream, v);
+	SIValue_ToBinary(stream, &op->value);
 }
 
 // convert EffectCreateNodeOp into a CreateNode effect
@@ -344,9 +318,7 @@ static void EffectFromEffectAttrAdd
 	// write attribute name
 	//--------------------------------------------------------------------------
 
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID attr_id = _op->attribute_id;
-	const char *attr_name = GraphContext_GetAttributeString(gc, attr_id);
+	const char *attr_name = _op->attr_name;
 	fwrite_string(attr_name, stream);
 }
 
@@ -374,9 +346,7 @@ static void EffectFromEffectSetRemoveLabels
 	fwrite_assert(&t, sizeof(EffectType), stream); 
 
 	// write node ID
-	const Node *n = &_op->node;
-	EntityID id = ENTITY_GET_ID(n);
-	fwrite_assert(&id, sizeof(id), stream); 
+	fwrite_assert(&_op->id, sizeof(_op->id), stream); 
 	
 	// write labels count
 	fwrite_assert(&lbl_count, sizeof(lbl_count), stream); 
@@ -398,10 +368,7 @@ static void EffectFromEffectSchemaAdd
 	//    schema name
 	//--------------------------------------------------------------------------
 	
-	GraphContext *gc = QueryCtx_GetGraphCtx();
 	const EffectAddSchema *_op = &op->schema;
-	Schema *schema = GraphContext_GetSchemaByID(gc, _op->schema_id, _op->t);
-	ASSERT(schema != NULL);
 
 	//--------------------------------------------------------------------------
 	// write effect type
@@ -420,7 +387,7 @@ static void EffectFromEffectSchemaAdd
 	// write schema name
 	//--------------------------------------------------------------------------
 
-	const char *schema_name = Schema_GetName(schema);
+	const char *schema_name = _op->schema_name;
 	fwrite_string(schema_name, stream);
 }
 
@@ -632,22 +599,21 @@ void EffectLog_DeleteEdge
 void EffectLog_UpdateEntity
 (
 	EffectLog *log,              // effect log
-	EntityID id,                 // updated entity ID
+	const GraphEntity *entity,   // updated entity ID
 	Attribute_ID attr_id,        // updated attribute ID
 	SIValue value,               // value
 	GraphEntityType entity_type  // entity type
 ) {
 	ASSERT(log != NULL && *log != NULL);
 
-
-	EntityType t = entity_type == GETYPE_NODE
+	EffectType t = entity_type == GETYPE_NODE
 		? EFFECT_UPDATE_NODE : EFFECT_UPDATE_EDGE;
 
 	Effect op;
 
 	op.type               = t;
-	op.update.id          = id;
 	op.update.value       = value;
+	op.update.entity      = entity;
 	op.update.attr_id     = attr_id;
 	op.update.entity_type = entity_type;
 
@@ -658,7 +624,7 @@ void EffectLog_UpdateEntity
 void EffectLog_AddLabels
 (
 	EffectLog *log,            // effect log
-	Node *node,                // updated node
+	const Node *node,          // updated node
 	const LabelID *label_ids,  // added labels
 	size_t labels_count        // number of removed labels
 ) {
@@ -685,7 +651,7 @@ void EffectLog_AddLabels
 void EffectLog_RemoveLabels
 (
 	EffectLog *log,            // effect log
-	Node *node,                // updated node
+	const Node *node,          // updated node
 	const LabelID *label_ids,  // removed labels
 	size_t labels_count        // number of removed labels
 ) {
@@ -737,7 +703,7 @@ void EffectLog_AddAttribute
 	Effect op;
 
 	op.type = EFFECT_ADD_ATTRIBUTE;
-	op.attribute.attr = attr;
+	op.attribute.attr_name = attr;
 	_EffectLog_AddOperation(log, &op);
 }
 
