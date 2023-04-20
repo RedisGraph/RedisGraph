@@ -367,7 +367,7 @@ static int _reply_with_queries_info_prev
         .actual_elements_count = 0
     };
 
-    Info_ViewAllFinishedQueries(_reply_finished_queries, (void*)&user_data);
+    Info_ViewFinishedQueries(_reply_finished_queries, (void*)&user_data);
 
     if (actual_element_count) {
         *actual_element_count = user_data.actual_elements_count;

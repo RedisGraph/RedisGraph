@@ -492,9 +492,9 @@ void Info_GetQueries
 }
 
 // views the circular buffer of finished queries
-void Info_ViewAllFinishedQueries
+void Info_ViewFinishedQueries
 (
-    CircularBufferNRG_ReadAllCallback callback,
+    CircularBufferNRG_ReadCallback callback,
     void *user_data
 ) {
     ASSERT(finished_queries);

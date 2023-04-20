@@ -12,28 +12,31 @@
 // the buffer is of fixed size
 // items are removed by order of insertion, similar to a queue
 struct _CircularBuffer {
-	char *read;              // read data from here
-	char *write;             // write data to here
-	size_t item_size;        // item size in bytes
-	_Atomic int item_count;  // current number of items in buffer
-	int item_cap;            // max number of items held by buffer
-	char *end_marker;        // marks the end of the buffer
-	char data[];             // data
+	char *read;                      // read data from here
+	char *write;                     // write data to here
+	size_t item_size;                // item size in bytes
+	_Atomic int item_count;          // current number of items in buffer
+	int item_cap;                    // max number of items held by buffer
+	char *end_marker;                // marks the end of the buffer
+	CircularBufferItemFree free_cb;  // free callback
+	char data[];                     // data
 };
 
 CircularBuffer CircularBuffer_New
 (
-	size_t item_size,  // size of item in bytes
-	uint cap           // max number of items in buffer
+	size_t item_size,               // size of item in bytes
+	uint cap,                       // max number of items in buffer
+	CircularBufferItemFree free_cb  // [optional] item delete callback
 ) {
 	CircularBuffer cb = rm_malloc(sizeof(_CircularBuffer) + item_size * cap);
 
-	cb->read       = cb->data;   // read from begining of data
-	cb->write      = cb->data;   // write to begining of data
+	cb->read       = cb->data;   // read from beginning of data
+	cb->write      = cb->data;   // write to beginning of data
 	cb->item_cap   = cap;        // save cap
 	cb->item_size  = item_size;  // save item size
 	cb->item_count = 0;          // no items in buffer
 	cb->end_marker = cb->data + (item_size * cap);
+	cb->free_cb    = free_cb;
 
 	return cb;
 }
@@ -70,12 +73,12 @@ int CircularBuffer_Add
 	return 1;
 }
 
-// forcefully adds item to buffer
+// forcefully adds item to buffer, i.e., may run over an existing element
 // in case buffer is full an element is overwritten
 void CircularBuffer_AddForce
 (
-	CircularBuffer cb  // buffer to populate
-	void *item         // item to add
+	CircularBuffer cb,  // buffer to populate
+	void *item          // item to add
 ) {
 	ASSERT(cb != NULL);
 	ASSERT(item != NULL);
@@ -128,6 +131,18 @@ int CircularBuffer_Remove
 	return 1;
 }
 
+// returns a pointer to the element at the i'th position
+void *CircularBuffer_GetElement
+(
+	CircularBuffer cb,  // buffer
+	uint idx            // index of wanted element
+) {
+	ASSERT(cb != NULL);
+	ASSERT(idx < cb->item_cap);
+
+	return cb->data + idx * cb->item_size;
+}
+
 void *CircularBuffer_Current
 (
 	const CircularBuffer cb
@@ -136,6 +151,25 @@ void *CircularBuffer_Current
 	ASSERT(!CircularBuffer_Empty(cb));
 
 	return cb->read;
+}
+
+// set the read pointer to a wanted index relative to the write pointer (before)
+void CircularBuffer_SetReadBehindWrite
+(
+	CircularBuffer cb,  // buffer
+	uint cnt            // the amount of indexes behind the write pointer
+) {
+	// note: It's the callers responsibility to check that cnt < item_cap
+	ASSERT(cnt < cb->item_cap);
+
+	char *curr_write = cb->write;
+
+	cb->read = cb->write - cb->item_size * cnt;
+
+	// if exceeded the buffer data (from start), compensate in a circular manner
+	if(cb->read < cb->data) {
+		cb->read = cb->end_marker - (cb->data - cb->read);
+	}
 }
 
 // returns number of items in buffer
@@ -168,16 +202,21 @@ inline bool CircularBuffer_Full
 	return cb->item_count == cb->item_cap;
 }
 
-// free buffer
+// free buffer (does not free its elements if its free callback is NULL)
 void CircularBuffer_Free
 (
-	CircularBuffer *cb  // buffer to free
+	CircularBuffer cb  // buffer to free
 ) {
 	ASSERT(cb != NULL && *cb != NULL);
 
-	// note: if there are items in buffer that are heap allocated
-	// we don't free them, it is the caller responsibility to make sure
-	// items stored in the buffer do not leak
-	rm_free(*cb);
-	*cb = NULL;
+	if(cb->free_cb != NULL) {
+		uint64_t read_offset = 0;
+		while (read_offset < cb->item_count) {
+			void *item = CircularBuffer_GetElement(cb, read_offset);
+			cb->free_cb(item);
+			++read_offset;
+		}
+	}
+
+	rm_free(cb);
 }
