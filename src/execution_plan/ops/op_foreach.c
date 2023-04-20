@@ -107,19 +107,19 @@ static Record ForeachConsume
 	if(op->supplier) {
 		// eagerly drain supplier
 		while((r = OpBase_Consume(op->supplier))) {
-			Record supp_rec = OpBase_CreateRecord(op->supplier);
-			Record_DeepClone(r, supp_rec);
-			array_append(op->records, supp_rec);
+			Record_PersistScalars(r);
+			array_append(op->records, r);
 
 			// create a record with the mapping of the embedded plan
 			// (as opposed to the record-mapping of the consumed record)
 			Record body_rec = OpBase_CreateRecord(op->body);
 			// copy the consumed record's entries to the record to be sent to
 			// the body
-			Record_DeepClone(r, body_rec);
+			Record_Clone(r, body_rec);
 			array_append(op->body_records, body_rec);
 		}
-		// supplier depleted, propagate reset to release lock if any exists
+		// supplier depleted
+		// propagate reset to release RediSearch index lock if any exists
 		OpBase_PropagateReset(op->supplier);
 	} else {
 		// static list, create a dummy empty record just to kick start the
