@@ -12,7 +12,7 @@ def _check_subquery_compression(plan: ExecutionPlan, operation_name: str):
     if (callsubquery):
         return (count_operation(callsubquery, operation_name) == 1)
     else:
-        return False;
+        return False
 
 class testCallSubqueryFlow():
     def __init__(self):
@@ -375,31 +375,29 @@ updating clause.")
             Node(label='N', properties={'name': 'Raz', 'v': 6}))
 
         # Test with a non-returning subquery
-        # TODO: Add this test after exec-plan freeing refactor is merged.
+        # Update properties using FOREACH in subquery
+        graph.query(
+            """
+            CALL {
+                MATCH (n:N)
+                FOREACH (m in [n] |
+                    MERGE (:TEMP {v: m.v})
+                )
+            }
+            """
+        )
 
-        # # Update properties using FOREACH in subquery
-        # graph.query(
-        #     """
-        #     CALL {
-        #         MATCH (n:N)
-        #         FOREACH (m in [n] |
-        #             MERGE (:TEMP {v: m.v})
-        #         )
-        #     }
-        #     """
-        # )
+        # assert the correctness of the results
+        res = graph.query("MATCH(n:TEMP) RETURN n ORDER BY n.v ASC")
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0],
+            Node(label='TEMP', properties={'v': 5}))
+        self.env.assertEquals(res.result_set[1][0],
+            Node(label='TEMP', properties={'v': 6}))
 
-        # # assert the correctness of the results
-        # res = graph.query("MATCH(n:TEMP) RETURN n ORDER BY n.v ASC")
-        # self.env.assertEquals(len(res.result_set), 2)
-        # self.env.assertEquals(res.result_set[0][0],
-        #     Node(label='TEMP', properties={'v': 5}))
-        # self.env.assertEquals(res.result_set[1][0],
-        #     Node(label='TEMP', properties={'v': 6}))
-
-        # # delete the nodes with label :TEMP
-        # res = graph.query("MATCH (n:TEMP) DELETE n")
-        # self.env.assertEquals(res.nodes_deleted, 2)
+        # delete the nodes with label :TEMP
+        res = graph.query("MATCH (n:TEMP) DELETE n")
+        self.env.assertEquals(res.nodes_deleted, 2)
 
     # tests that SKIP and LIMIT work properly
     def test11_skip_limit(self):
@@ -628,6 +626,8 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0], {'name': 'Canada', 'langs': ['English', 'French'], 'states': [OrderedDict([('type', 'State'), ('name', 'British Columbia'), ('cities', [OrderedDict([('type', 'City'), ('name', 'Victoria')])])]), OrderedDict([('type', 'State'), ('name', 'Ontario'), ('cities', [OrderedDict([('type', 'City'), ('name', 'Toronto')])])])]})
 
     def test16_rewrite_same_clauses(self):
+        """Tests that rewrite same clauses works properly on clauses in a
+        subquery"""
 
         # Test CREATE
         query = """
@@ -676,7 +676,7 @@ updating clause.")
         # # make sure that DELETE is called only once
         # self.env.assertTrue(_check_subquery_compression(plan, "Update"))
 
-    def test15_leading_with(self):
+    def test17_leading_with(self):
         # valid leading WITH queries
         query_to_expected_result = {
             """
@@ -735,8 +735,36 @@ updating clause.")
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
 
-    # TODO: Enable this test after fix the bug. Currently, the query returns: 'S', 'T'
-    # def test16_unwind_optional_match_with(self):  
+    # def test18_returning_aggregations(self):
+    #     """Tests that we deal properly with returning aggregations instead of
+    #     regular projections"""
+
+    #     # clear the db
+    #     self.env.flush()
+    #     graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+    #     # create a node with label N
+    #     graph.query("CREATE (:N)")
+
+    #     query = """
+    #     MATCH (n)
+    #     CALL {
+    #         WITH n
+    #         OPTIONAL MATCH (m:M)
+    #         SET m.v = 1
+    #         RETURN collect(n) AS cn
+    #     }
+    #     UNWIND cn as ns
+    #     RETURN ns
+    #     """
+
+    #     res = graph.query(query)
+
+    #     # assert results
+    #     self.env.assertEquals(len(res.result_set), 1)
+    #     self.env.assertEquals(res.result_set[0][0], Node(label='N'))
+
+    # def test19_unwind_optional_match_with(self):
     #     res = graph.query (
     #         """
     #         CALL { 
@@ -754,8 +782,7 @@ updating clause.")
     #     self.env.assertEquals(res.result_set[0][0], None)
     #     self.env.assertEquals(res.result_set[1][0], None)
 
-    # TODO: Enable this test after fixing: (error) _AR_EXP_UpdateEntityIdx: Unable to locate a value with alias n within the record
-    # def test17_aggregation_in_subquery(self):
+    # def test20_aggregation_in_subquery(self):
     #     # Create 3 nodes for this test
     #     graph.query("UNWIND range(1, 3) AS i CREATE (n:A {v:i})")
         
@@ -786,8 +813,7 @@ updating clause.")
     #     for query, expected_result in query_to_expected_result.items():
     #         self.get_res_and_assertEquals(query, expected_result)
 
-    # # TODO: Add this once UNION is supported
-    # def test18_union(self):
+    # def test21_union(self):
     #     """Test that UNION works properly within a subquery"""
 
     #     # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
@@ -813,62 +839,3 @@ updating clause.")
     #     Node(label='N', properties={'name': 'Raz', 'v': 1}))
     #     self.env.assertEquals(res.result_set[1][0],
     #     Node(label='N', properties={'name': 'Raz', 'v': 4}))
-
-
-    # # TODO: Add these tests once the eager returning case is implemented
-        # Note: It's supported (eager returning case) - modify the test to match new db state.
-    # def test19_update(self):
-    #     """Test that updates within the subquery are applied appropriately and
-    #     later read correctly"""
-
-    #     # delete the node with `v` property of value 4, so that there is only
-    #     # one node in the graph, with `name`: 'Raz' and `v`: 1
-    #     res = graph.query("MATCH (n:N {v: 4}) DELETE n")
-    #     self.env.assertEquals(res.nodes_deleted, 1)
-
-    #     # update the node within the sq
-    #     res = graph.query(
-    #         """
-    #         MATCH (n:N)
-    #         CALL {
-    #             WITH n
-    #             SET n.v = 2, n.name = 'Roi'
-    #         }
-    #         RETURN n
-    #         """
-    #     )
-
-    #     # assert the result is correct
-    #     self.env.assertEquals(len(res.result_set), 1)
-    #     self.env.assertEquals(res.result_set[0][0],
-    #     Node(label='N', properties={'name': 'Roi', 'v': 2}))
-
-    #     # remove a label and a property
-    #     res = graph.query(
-    #         """
-    #         MATCH (n:N)
-    #         CALL {
-    #             WITH n
-    #             REMOVE n:N, n.name
-    #         }
-    #         RETURN n
-    #         """
-    #     )
-
-    #     # assert the correctness of the effects of the query
-    #     self.env.assertEquals(res.labels_removed, 1)
-    #     self.env.assertEquals(res.properties_removed, 1)
-    #     self.env.assertEquals(res.result_set[0][0],
-    #     Node(label='', properties={}))
-
-    #     # delete the node (?)
-
-
-
-
-    # def test06_readonly(self):
-    #     """~~!!Under construction!!~~"""
-
-        # NTS: Clauses that should be tested:
-        # MATCH, OPTIONAL MATCH, WHERE, ORDERBY, SKIP, LIMIT, WITH, UNION,
-        # UNWIND, (partly) FOREACH
