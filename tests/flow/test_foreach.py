@@ -657,15 +657,14 @@ class testForeachFlow():
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("n not defined", str(e))
 
-    # TODO: Fix index lock release
-    # def test15_foreach_and_index_scan(self):
-    #     query = """UNWIND range(1,9) AS i 
-    #                CREATE (n:N {v:i})-[:R]->(m:M {v:(i+1)})"""
-    #     graph.query(query)
-    #     query = """CREATE INDEX FOR (n:N) ON (n.v)"""
-    #     graph.query(query)
-    #     query = """MATCH p=(n:N)-[:R]->(:M) WHERE n.v <= 5 
-    #                FOREACH( n in nodes(p) | SET n.x = 3) RETURN count(n.v)"""
-    #     result = graph.query(query)
-    #     expected_result = [[5]]
-    #     self.env.assertEquals(result.result_set, expected_result)
+    def test15_foreach_and_index_scan(self):
+        query = """UNWIND range(1,9) AS i 
+                   CREATE (n:N {v:i})-[:R]->(m:M {v:(i+1)})"""
+        graph.query(query)
+        query = """CREATE INDEX FOR (n:N) ON (n.v)"""
+        graph.query(query)
+        query = """MATCH p=(n:N)-[:R]->(:M) WHERE n.v <= 5 
+                   FOREACH( n in nodes(p) | SET n.x = 3) RETURN count(n.v)"""
+        result = graph.query(query)
+        expected_result = [[5]]
+        self.env.assertEquals(result.result_set, expected_result)

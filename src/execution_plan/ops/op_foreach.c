@@ -117,6 +117,8 @@ static Record ForeachConsume
 			Record_Clone(r, body_rec);
 			array_append(op->body_records, body_rec);
 		}
+		// supplier depleted, propagate reset to release lock if any exists
+		OpBase_PropagateReset(op->supplier);
 	} else {
 		// static list, create a dummy empty record just to kick start the
 		// argument-list operation, and a dummy to pass on
