@@ -8,18 +8,206 @@
 #include "effects.h"
 #include "../query_ctx.h"
 
-// dump attributes to stream
-static void DumpAttributeSet
+// determine block available space 
+#define BLOCK_AVAILABLE_SPACE(b) (b->cap - BLOCK_USED_SPACE(b))
+
+// determine how many bytes been written to buffer
+#define BLOCK_USED_SPACE(b) (b->offset - b->buffer)
+
+// linked list of EffectsBufferblocks
+struct EffectsBufferBlock {
+	size_t cap;                       // block capacity
+	unsigned char *offset;            // buffer offset
+	struct EffectsBufferBlock *next;  // pointer to next buffer
+	unsigned char buffer[];           // buffer
+};
+
+// effects buffer is a linked-list of buffers
+struct _EffectsBuffer {
+	size_t block_size;                   // block size
+	struct EffectsBufferBlock *head;     // first block
+	struct EffectsBufferBlock *current;  // current block
+	uint64_t n;                          // number of effects in buffer
+};
+
+// forward declarations
+static void EffectsBuffer_WriteSIArray
 (
-	FILE *stream,             // stream to write attributes into
-	const AttributeSet attrs  // attribute set to write to stream
+	const SIValue *arr,  // array
+	EffectsBuffer *buff  // effect buffer
+);
+
+// create a new effects-buffer block
+static struct EffectsBufferBlock *EffectsBufferBlock_New
+(
+	size_t n  // size of block
+) {
+	size_t _n = sizeof(struct EffectsBufferBlock) + n;
+	struct EffectsBufferBlock *b = rm_malloc(_n);
+
+	b->cap    = n;
+	b->next   = NULL;
+	b->offset = b->buffer;
+
+	return b;
+}
+
+// add a new block to effects-buffer
+static void EffectsBuffer_AddBlock
+(
+	EffectsBuffer *eb  // effects-buffer
+) {
+	// create a new block and link
+	struct EffectsBufferBlock *b = EffectsBufferBlock_New(eb->block_size);
+	eb->current->next = b;
+	eb->current       = b;
+}
+
+// write n bytes from ptr into block
+// returns actual number of bytes written
+// if buffer isn't large enough only a portion of the bytes will be written
+static size_t EffectsBufferBlock_WriteBytes
+(
+	const void *ptr,              // data to write
+	size_t n,                     // number of bytes to write
+	struct EffectsBufferBlock *b  // block to write to
+) {
+	// validations
+	ASSERT(n   > 0);
+	ASSERT(b   != NULL);
+	ASSERT(ptr != NULL);
+
+	// determine number of bytes we can write
+	n = MIN(n, BLOCK_AVAILABLE_SPACE(b));
+
+	// write n bytes to buffer
+	memcpy(b->offset, ptr, n);
+
+	return n;
+}
+
+// write n bytes from ptr into effects-buffer
+static void EffectsBuffer_WriteBytes
+(
+	const void *ptr,   // data to write
+	size_t n,          // number of bytes to write
+	EffectsBuffer *eb  // effects-buffer
+) {
+	ASSERT(n   > 0);
+	ASSERT(eb  != NULL);
+	ASSERT(ptr != NULL);
+
+	while(n > 0) {
+		struct EffectsBufferBlock *b = eb->current;
+		n = EffectsBufferBlock_WriteBytes(ptr, n, b);
+		if(n == 0) {
+			// no bytes written block is full, create a new block
+			EffectsBuffer_AddBlock(eb);
+		}
+	}
+}
+
+static void EffectsBuffer_WriteString
+(
+	const char *str,
+	EffectsBuffer *eb
+) {
+	ASSERT(eb  != NULL);
+	ASSERT(str != NULL);
+
+	size_t l = strlen(str) + 1;
+	EffectsBuffer_WriteBytes(&l, sizeof(size_t), eb);
+	EffectsBuffer_WriteBytes(str, l, eb);
+}
+
+// writes a binary representation of v into Effect-Buffer
+static void EffectsBuffer_WriteSIValue
+(
+	const SIValue *v,
+	EffectsBuffer *buff
+) {
+	ASSERT(v != NULL);
+	ASSERT(buff != NULL);
+
+	// format:
+	//    type
+	//    value
+	bool b;
+	size_t len = 0;
+
+	SIType t = v->type;
+
+	// write type
+	EffectsBuffer_WriteBytes(&t, sizeof(SIType), buff);
+
+	// write value
+	switch(t) {
+		case T_POINT:
+			// write value to stream
+			EffectsBuffer_WriteBytes(&v->point, sizeof(Point), buff);
+			break;
+		case T_ARRAY:
+			// write array to stream
+			EffectsBuffer_WriteSIArray(v, buff);
+			break;
+		case T_STRING:
+			EffectsBuffer_WriteString(v->stringval, buff);
+			break;
+		case T_BOOL:
+			// write bool to stream
+			b = SIValue_IsTrue(*v);
+			EffectsBuffer_WriteBytes(&b, sizeof(bool), buff);
+			break;
+		case T_INT64:
+			// write int to stream
+			EffectsBuffer_WriteBytes(&v->longval, sizeof(v->longval), buff);
+			break;
+		case T_DOUBLE:
+			// write double to stream
+			EffectsBuffer_WriteBytes(&v->doubleval, sizeof(v->doubleval), buff);
+			break;
+		case T_NULL:
+			// no additional data is required to represent NULL
+			break;
+		default:
+			assert(false && "unknown SIValue type");
+	}
+}
+
+// writes a binary representation of arr into Effect-Buffer
+static void EffectsBuffer_WriteSIArray
+(
+	const SIValue *arr,  // array
+	EffectsBuffer *buff  // effect buffer
+) {
+	// format:
+	// number of elements
+	// elements
+
+	SIValue *elements = arr->array;
+	uint32_t len = array_len(elements);
+
+	// write number of elements
+	EffectsBuffer_WriteBytes(&len, sizeof(uint32_t), buff);
+
+	// write each element
+	for (uint32_t i = 0; i < len; i++) {
+		EffectsBuffer_WriteSIValue(elements + i, buff);
+	}
+}
+
+// dump attributes to stream
+static void EffectsBuffer_WriteAttributeSet
+(
+	const AttributeSet attrs,  // attribute set to write to stream
+	EffectsBuffer *buff
 ) {
 	//--------------------------------------------------------------------------
 	// write attribute count
 	//--------------------------------------------------------------------------
 
 	ushort attr_count = ATTRIBUTE_SET_COUNT(attrs);
-	fwrite_assert(&attr_count, sizeof(attr_count), stream);
+	EffectsBuffer_WriteBytes(&attr_count, sizeof(attr_count), buff);
 
 	//--------------------------------------------------------------------------
 	// write attributes
@@ -31,165 +219,103 @@ static void DumpAttributeSet
 		SIValue attr = AttributeSet_GetIdx(attrs, i, &attr_id);
 
 		// write attribute ID
-		fwrite_assert(&attr_id, sizeof(Attribute_ID), stream);
+		EffectsBuffer_WriteBytes(&attr_id, sizeof(Attribute_ID), buff);
 
 		// write attribute value
-		SIValue_ToBinary(stream, &attr);
+		EffectsBuffer_WriteSIValue(&attr, buff);
 	}
 }
 
-// dump EffectNodeDelete into stream
-static void DumpNodeDeleteEffect
+static inline void EffectsBuffer_IncEffectCount
 (
-	FILE *stream,     // stream
-	const Effect *e   // effect
+	EffectsBuffer *buff
 ) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	//    effect type
-	//    node ID
-	//--------------------------------------------------------------------------
+	ASSERT(buff != NULL);
 	
-	// effect 
-	const EffectDeleteNode *_e = &e->delete_node;
-
-	// write node ID
-	fwrite_assert(&_e->id, sizeof(_e->id), stream);
+	buff->n++;
 }
 
-// dump EffectEdgeDelete into stream
-static void DumpEdgeDeleteEffect
+// create a new effects-buffer
+EffectsBuffer *EffectsBuffer_New
 (
-	FILE *stream,    // stream
-	const Effect *e  // effect
+	size_t n  // initial size of buffer
 ) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	//    effect type
-	//    edge ID
-	//    relation ID
-	//    src ID
-	//    dest ID
-	//--------------------------------------------------------------------------
+	EffectsBuffer *eb = rm_malloc(sizeof(EffectsBuffer));
 
-	// effect
-	const EffectDeleteEdge *_e = &e->delete_edge;
+	struct EffectsBufferBlock *b = EffectsBufferBlock_New(n);
 
-	// write edge ID, relation ID, edge src node ID and edge dest node ID
-	size_t n = sizeof(_e->id)         +
-		       sizeof(_e->relationID) +
-			   sizeof(_e->srcNodeID)  +
-			   sizeof(_e->destNodeID) ;
-	fwrite_assert(_e, n, stream); 
+	eb->n          = 0;
+	eb->head       = b;
+	eb->current    = b;
+	eb->block_size = n;
+
+	// write effects version to newly created buffer
+	uint v = EFFECTS_VERSION;
+	EffectsBuffer_WriteBytes(&v, sizeof(v), eb);
+
+	return eb;
 }
 
-// dump NodeUpdateEffect into stream
-static void DumpNodeUpdateEffect
+// returns number of effects in buffer
+uint64_t EffectsBuffer_Length
 (
-	FILE *stream,    // stream
-	const Effect *e  // effect
+	const EffectsBuffer *buff  // effects-buffer
 ) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	//    effect type
-	//    entity ID
-	//    attribute id
-	//    attribute value
-	//--------------------------------------------------------------------------
-
-	// effect
-	const EffectUpdate *_e = (EffectUpdate*)&e->update;
-
-	//--------------------------------------------------------------------------
-	// write entity ID
-	//--------------------------------------------------------------------------
-
-	fwrite_assert(&ENTITY_GET_ID(&_e->n), sizeof(EntityID), stream);
-
-	//--------------------------------------------------------------------------
-	// write attribute ID
-	//--------------------------------------------------------------------------
+	ASSERT(buff != NULL);
 	
-	fwrite_assert(&_e->attr_id, sizeof(Attribute_ID), stream);
-
-	//--------------------------------------------------------------------------
-	// write attribute value
-	//--------------------------------------------------------------------------
-
-	SIValue_ToBinary(stream, &_e->value);
+	return buff->n;
 }
 
-// dump EdgeUpdateEffect into stream
-static void DumpEdgeUpdateEffect
+// get a copy of effectspbuffer internal buffer
+unsigned char *EffectsBuffer_Buffer
 (
-	FILE *stream,    // stream
-	const Effect *e  // effect
+	const EffectsBuffer *eb,  // effects-buffer
+	size_t *n                 // size of returned buffer
 ) {
-	//--------------------------------------------------------------------------
-	// effect format:
-	//    effect type
-	//    edge ID
-	//    relation ID
-	//    src ID
-	//    dest ID
-	//    attribute count (=n)
-	//    attributes (id,value) pair
-	//--------------------------------------------------------------------------
-
-	// effect
-	const EffectUpdate *_e = (EffectUpdate*)&e->update;
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Graph *g = GraphContext_GetGraph(gc);
-
-	// entity type edge
-	Edge *edge = (Edge *)&_e->e;
+	ASSERT(eb != NULL);
 
 	//--------------------------------------------------------------------------
-	// write edge ID
+	// determine required buffer size
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&ENTITY_GET_ID(edge), sizeof(EntityID), stream);
+	size_t l = 0;  // required buffer size
+	struct EffectsBufferBlock *b = eb->head;
+	while(b != NULL) {
+		l += BLOCK_USED_SPACE(b);
+		b = b->next;
+	}
 
 	//--------------------------------------------------------------------------
-	// write relation ID
+	// allocate buffer and populate
 	//--------------------------------------------------------------------------
 
-	RelationID r = EDGE_GET_RELATION_ID(edge, g);
-	fwrite_assert(&r, sizeof(RelationID), stream);
+	unsigned char *buffer = rm_malloc(sizeof(unsigned char) * l);
+	unsigned char *offset = buffer;
 
-	//--------------------------------------------------------------------------
-	// write src ID
-	//--------------------------------------------------------------------------
+	b = eb->head;
+	while(b != NULL) {
+		// write block's data to buffer
+		size_t _n = BLOCK_USED_SPACE(b);
+		memcpy(offset, b->buffer, _n);
+		offset += _n;
 
-	NodeID s = Edge_GetSrcNodeID(edge);
-	fwrite_assert(&s, sizeof(NodeID), stream);
+		// advance to next block
+		b = b->next;
+	}
 
-	//--------------------------------------------------------------------------
-	// write dest ID
-	//--------------------------------------------------------------------------
-
-	NodeID d = Edge_GetDestNodeID(edge);
-	fwrite_assert(&d, sizeof(NodeID), stream);
-
-	//--------------------------------------------------------------------------
-	// write attribute ID
-	//--------------------------------------------------------------------------
-
-	fwrite_assert(&_e->attr_id, sizeof(Attribute_ID), stream);
-
-	//--------------------------------------------------------------------------
-	// write attribute value
-	//--------------------------------------------------------------------------
-
-	SIValue_ToBinary(stream, &_e->value);
+	*n = l;
+	return buffer;
 }
 
-// dump NodeCreateEffect into stream
-static void DumpNodeCreateEffect
+//------------------------------------------------------------------------------
+// effects creation API
+//------------------------------------------------------------------------------
+
+// add a node creation effect to buffer
+void EffectsBuffer_AddCreateNodeEffect
 (
-	FILE *stream,    // stream
-	const Effect *e  // effect
+	EffectsBuffer *buff,  // effect buffer
+	const Node *n         // node created
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -200,24 +326,24 @@ static void DumpNodeCreateEffect
 	// attributes (id,value) pair
 	//--------------------------------------------------------------------------
 	
-	Graph *g = QueryCtx_GetGraph();
-	const EffectCreate *_e = &e->create;
-	const Node *n = &_e->n;
+	EffectType t = EFFECT_CREATE_NODE;
+	EffectsBuffer_WriteBytes(&t, sizeof(t), buff);
 
 	//--------------------------------------------------------------------------
 	// write label count
 	//--------------------------------------------------------------------------
 
+	Graph *g = QueryCtx_GetGraph();
 	ushort lbl_count;
 	NODE_GET_LABELS(g, n, lbl_count);
-	fwrite_assert(&lbl_count, sizeof(lbl_count), stream);
+	EffectsBuffer_WriteBytes(&lbl_count, sizeof(lbl_count), buff);
 
 	//--------------------------------------------------------------------------
 	// write labels
 	//--------------------------------------------------------------------------
 
 	if(lbl_count > 0) {
-		fwrite_assert(labels, sizeof(LabelID) * lbl_count, stream);
+		EffectsBuffer_WriteBytes(labels, sizeof(LabelID) * lbl_count, buff);
 	}
 
 	//--------------------------------------------------------------------------
@@ -225,14 +351,16 @@ static void DumpNodeCreateEffect
 	//--------------------------------------------------------------------------
 
 	const AttributeSet attrs = GraphEntity_GetAttributes((const GraphEntity*)n);
-	DumpAttributeSet(stream, attrs);
+	EffectsBuffer_WriteAttributeSet(attrs, buff);
+
+	EffectsBuffer_IncEffectCount(buff);
 }
 
-// dump EdgeCreateEffect into stream
-static void DumpEdgeCreateEffect
+// add a edge creation effect to buffer
+void EffectsBuffer_AddCreateEdgeEffect
 (
-	FILE *stream,    // stream
-	const Effect *e  // effect
+	EffectsBuffer *buff,  // effect buffer
+	const Edge *edge      // edge created
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -245,47 +373,225 @@ static void DumpEdgeCreateEffect
 	// attributes (id,value) pair
 	//--------------------------------------------------------------------------
 	
-	Graph *g = QueryCtx_GetGraph();
-	const EffectCreate *_e = &e->create;
-	const Edge *edge = &_e->e;
+	EffectType t = EFFECT_CREATE_EDGE;
+	EffectsBuffer_WriteBytes(&t, sizeof(t), buff);
 
 	//--------------------------------------------------------------------------
 	// write relationship type
 	//--------------------------------------------------------------------------
 
 	ushort rel_count = 1;
-	fwrite_assert(&rel_count, sizeof(rel_count), stream);
+	EffectsBuffer_WriteBytes(&rel_count, sizeof(rel_count), buff);
 
 	RelationID rel_id = Edge_GetRelationID(edge);
-	fwrite_assert(&rel_id, sizeof(RelationID), stream);
+	EffectsBuffer_WriteBytes(&rel_id, sizeof(RelationID), buff);
 
 	//--------------------------------------------------------------------------
 	// write src node ID
 	//--------------------------------------------------------------------------
 	
 	NodeID src_id = Edge_GetSrcNodeID(edge);
-	fwrite_assert(&src_id, sizeof(NodeID), stream);
+	EffectsBuffer_WriteBytes(&src_id, sizeof(NodeID), buff);
 
 	//--------------------------------------------------------------------------
 	// write dest node ID
 	//--------------------------------------------------------------------------
 
 	NodeID dest_id = Edge_GetDestNodeID(edge);
-	fwrite_assert(&dest_id, sizeof(NodeID), stream);
+	EffectsBuffer_WriteBytes(&dest_id, sizeof(NodeID), buff);
 
 	//--------------------------------------------------------------------------
 	// write attribute set 
 	//--------------------------------------------------------------------------
 
 	const AttributeSet attrs = GraphEntity_GetAttributes((GraphEntity*)edge);
-	DumpAttributeSet(stream, attrs);
+	EffectsBuffer_WriteAttributeSet(attrs, buff);
+
+	EffectsBuffer_IncEffectCount(buff);
 }
 
-// dump LabelsUpdateEffect into stream
-static void DumpSetRemoveLabelsEffect
+// add a node deletion effect to buffer
+void EffectsBuffer_AddDeleteNodeEffect
 (
-	FILE *stream,    // effects stream
-	const Effect *e  // effect operation to convert
+	EffectsBuffer *buff,  // effect buffer
+	const Node *node      // node deleted
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    node ID
+	//--------------------------------------------------------------------------
+
+	EffectType t = EFFECT_DELETE_NODE;
+	EffectsBuffer_WriteBytes(&t, sizeof(t), buff);
+
+	// write node ID
+	EffectsBuffer_WriteBytes(&ENTITY_GET_ID(node), sizeof(EntityID), buff);
+
+	EffectsBuffer_IncEffectCount(buff);
+}
+
+// add a edge deletion effect to buffer
+void EffectsBuffer_AddDeleteEdgeEffect
+(
+	EffectsBuffer *eb,  // effect buffer
+	const Edge *edge    // edge deleted
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    edge ID
+	//    relation ID
+	//    src ID
+	//    dest ID
+	//--------------------------------------------------------------------------
+
+	EffectType t = EFFECT_DELETE_EDGE;
+	EffectsBuffer_WriteBytes(&t, sizeof(t), eb);
+
+	EffectsBuffer_WriteBytes(&ENTITY_GET_ID(edge), sizeof(EntityID), eb);
+
+	RelationID r_id = Edge_GetRelationID(edge);
+	EffectsBuffer_WriteBytes(&r_id, sizeof(RelationID), eb);
+
+	NodeID src_id = Edge_GetSrcNodeID(edge);
+	EffectsBuffer_WriteBytes(&src_id, sizeof(EntityID), eb);
+
+	NodeID dest_id = Edge_GetDestNodeID(edge);
+	EffectsBuffer_WriteBytes(&dest_id, sizeof(EntityID), eb);
+
+	EffectsBuffer_IncEffectCount(eb);
+};
+
+// add an entity update effect to buffer
+static void EffectsBuffer_AddNodeUpdateEffect
+(
+	EffectsBuffer *buff,   // effect buffer
+	Node *node,            // updated node
+	Attribute_ID attr_id,  // updated attribute ID
+ 	SIValue value          // value
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    entity ID
+	//    attribute id
+	//    attribute value
+	//--------------------------------------------------------------------------
+
+	EffectType t = EFFECT_UPDATE_NODE;
+	EffectsBuffer_WriteBytes(&t, sizeof(t), buff);
+
+	//--------------------------------------------------------------------------
+	// write entity ID
+	//--------------------------------------------------------------------------
+
+	EffectsBuffer_WriteBytes(&ENTITY_GET_ID(node), sizeof(EntityID), buff);
+
+	//--------------------------------------------------------------------------
+	// write attribute ID
+	//--------------------------------------------------------------------------
+	
+	EffectsBuffer_WriteBytes(&attr_id, sizeof(Attribute_ID), buff);
+
+	//--------------------------------------------------------------------------
+	// write attribute value
+	//--------------------------------------------------------------------------
+
+	EffectsBuffer_WriteSIValue(&value, buff);
+
+	EffectsBuffer_IncEffectCount(buff);
+}
+
+// add an entity update effect to buffer
+static void EffectsBuffer_AddEdgeUpdateEffect
+(
+	EffectsBuffer *buff,   // effect buffer
+	Edge *edge,            // updated edge
+	Attribute_ID attr_id,  // updated attribute ID
+ 	SIValue value          // value
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    edge ID
+	//    relation ID
+	//    src ID
+	//    dest ID
+	//    attribute count (=n)
+	//    attributes (id,value) pair
+	//--------------------------------------------------------------------------
+
+	EffectType t = EFFECT_UPDATE_EDGE;
+	EffectsBuffer_WriteBytes(&t, sizeof(t), buff);
+
+	//--------------------------------------------------------------------------
+	// write edge ID
+	//--------------------------------------------------------------------------
+
+	EffectsBuffer_WriteBytes(&ENTITY_GET_ID(edge), sizeof(EntityID), buff);
+
+	//--------------------------------------------------------------------------
+	// write relation ID
+	//--------------------------------------------------------------------------
+
+	Graph *g = QueryCtx_GetGraph();
+	RelationID r = EDGE_GET_RELATION_ID(edge, g);
+	EffectsBuffer_WriteBytes(&r, sizeof(RelationID), buff);
+
+	//--------------------------------------------------------------------------
+	// write src ID
+	//--------------------------------------------------------------------------
+
+	NodeID s = Edge_GetSrcNodeID(edge);
+	EffectsBuffer_WriteBytes(&s, sizeof(NodeID), buff);
+
+	//--------------------------------------------------------------------------
+	// write dest ID
+	//--------------------------------------------------------------------------
+
+	NodeID d = Edge_GetDestNodeID(edge);
+	EffectsBuffer_WriteBytes(&d, sizeof(NodeID), buff);
+
+	//--------------------------------------------------------------------------
+	// write attribute ID
+	//--------------------------------------------------------------------------
+
+	EffectsBuffer_WriteBytes(&attr_id, sizeof(Attribute_ID), buff);
+
+	//--------------------------------------------------------------------------
+	// write attribute value
+	//--------------------------------------------------------------------------
+
+	EffectsBuffer_WriteSIValue(&value, buff);
+
+	EffectsBuffer_IncEffectCount(buff);
+}
+
+// add an entity update effect to buffer
+void EffectsBuffer_AddUpdateEntityEffect
+(
+	EffectsBuffer *buff,         // effect buffer
+	GraphEntity *entity,         // updated entity ID
+	Attribute_ID attr_id,        // updated attribute ID
+ 	SIValue value,               // value
+	GraphEntityType entity_type  // entity type
+) {
+	if(entity_type == GETYPE_NODE) {
+		EffectsBuffer_AddNodeUpdateEffect(buff, (Node*)entity, attr_id, value);
+	} else {
+		EffectsBuffer_AddEdgeUpdateEffect(buff, (Edge*)entity, attr_id, value);
+	}
+}
+
+// add a node add label effect to buffer
+void EffectsBuffer_AddSetRemoveLabelsEffect
+(
+	EffectsBuffer *buff,     // effect buffer
+	const Node *node,        // updated node
+	const LabelID *lbl_ids,  // added labels
+	size_t lbl_count,        // number of removed labels
+	EffectType t             // effect type
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -294,25 +600,63 @@ static void DumpSetRemoveLabelsEffect
 	//    labels count
 	//    label IDs
 	//--------------------------------------------------------------------------
-	
-	const EffectLabels *_e = &e->labels;
+
+	EffectsBuffer_WriteBytes(&t, sizeof(t), buff);
 
 	// write node ID
-	fwrite_assert(&_e->id, sizeof(_e->id), stream); 
+	EffectsBuffer_WriteBytes(&ENTITY_GET_ID(node), sizeof(EntityID), buff); 
 	
 	// write labels count
-	ushort lbl_count = _e->labels_count;
-	fwrite_assert(&lbl_count, sizeof(lbl_count), stream); 
+	EffectsBuffer_WriteBytes(&lbl_count, sizeof(lbl_count), buff); 
 	
 	// write label IDs
-	fwrite_assert(_e->label_ids, sizeof(LabelID) * lbl_count, stream);
+	EffectsBuffer_WriteBytes(lbl_ids, sizeof(LabelID) * lbl_count, buff);
+
+	EffectsBuffer_IncEffectCount(buff);
 }
 
-// dump AddSchemaEffect into stream
-static void DumpSchemaAddEffect
+// add a node add labels effect to buffer
+void EffectsBuffer_AddLabelsEffect
 (
-	FILE *stream,    // stream
-	const Effect *e  // effect
+	EffectsBuffer *buff,     // effect buffer
+	const Node *node,        // updated node
+	const LabelID *lbl_ids,  // added labels
+	size_t lbl_count         // number of removed labels
+) {
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    node ID
+	//    labels count
+	//    label IDs
+	//--------------------------------------------------------------------------
+
+	EffectType t = EFFECT_SET_LABELS;
+	EffectsBuffer_AddSetRemoveLabelsEffect(buff, node, lbl_ids, lbl_count, t);
+
+	EffectsBuffer_IncEffectCount(buff);
+}
+
+// add a node remove labels effect to buffer
+void EffectsBuffer_AddRemoveLabelsEffect
+(
+	EffectsBuffer *buff,     // effect buffer
+	const Node *node,        // updated node
+	const LabelID *lbl_ids,  // removed labels
+	size_t lbl_count         // number of removed labels
+) {
+	EffectType t = EFFECT_REMOVE_LABELS;
+	EffectsBuffer_AddSetRemoveLabelsEffect(buff, node, lbl_ids, lbl_count, t);
+
+	EffectsBuffer_IncEffectCount(buff);
+}
+
+// add a schema addition effect to buffer
+void EffectsBuffer_AddNewSchemaEffect
+(
+	EffectsBuffer *buff,      // effect buffer
+	const char *schema_name,  // id of the schema
+	SchemaType st             // type of the schema
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -320,27 +664,30 @@ static void DumpSchemaAddEffect
 	//    schema type
 	//    schema name
 	//--------------------------------------------------------------------------
-	
-	const EffectAddSchema *_e = &e->schema;
+
+	EffectType t = EFFECT_ADD_SCHEMA;
+	EffectsBuffer_WriteBytes(&t, sizeof(t), buff);
 
 	//--------------------------------------------------------------------------
 	// write schema type
 	//--------------------------------------------------------------------------
 
-	fwrite_assert(&_e->t, sizeof(_e->t), stream);
+	EffectsBuffer_WriteBytes(&st, sizeof(st), buff);
 
 	//--------------------------------------------------------------------------
 	// write schema name
 	//--------------------------------------------------------------------------
 
-	fwrite_string(_e->schema_name, stream);
+	EffectsBuffer_WriteString(schema_name, buff);
+
+	EffectsBuffer_IncEffectCount(buff);
 }
 
-// dump AttrAddEffect into stream
-static void DumpAttrAddEffect
+// add an attribute addition effect to buffer
+void EffectsBuffer_AddNewAttributeEffect
 (
-	FILE *stream,    // stream
-	const Effect *e  // effect
+	EffectsBuffer *buff,  // effect buffer
+	const char *attr      // attribute name
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -348,122 +695,40 @@ static void DumpAttrAddEffect
 	// attribute name
 	//--------------------------------------------------------------------------
 
-	const EffectAddAttribute *_e = &e->attribute;
+	EffectType t = EFFECT_ADD_ATTRIBUTE;
+	EffectsBuffer_WriteBytes(&t, sizeof(t), buff);
 
 	//--------------------------------------------------------------------------
 	// write attribute name
 	//--------------------------------------------------------------------------
 
-	fwrite_string(_e->attr_name, stream);
+	EffectsBuffer_WriteString(attr, buff);
+
+	EffectsBuffer_IncEffectCount(buff);
 }
 
-// dump effect to stream
-static void Effect_Dump
+static inline void EffectsBufferBlock_Free
 (
-	FILE *stream,     // effects stream
-	const Effect *e   // effect to dump
+	struct EffectsBufferBlock *b
 ) {
-	// validations
-	ASSERT(e      != NULL);  // effect can't be NULL
-	ASSERT(stream != NULL);  // effects stream can't be NULL
-
-	//--------------------------------------------------------------------------
-	// write effect type
-	//--------------------------------------------------------------------------
-
-	fwrite_assert(&e->type, sizeof(EffectType), stream); 
-
-	// encode effect
-	switch(e->type) {
-		case EFFECT_DELETE_NODE:
-			DumpNodeDeleteEffect(stream, e);
-			break;
-		case EFFECT_DELETE_EDGE:
-			DumpEdgeDeleteEffect(stream, e);
-			break;
-		case EFFECT_UPDATE_NODE:
-			DumpNodeUpdateEffect(stream, e);
-			break;
-		case EFFECT_UPDATE_EDGE:
-			DumpEdgeUpdateEffect(stream, e);
-			break;
-		case EFFECT_CREATE_NODE:
-			DumpNodeCreateEffect(stream, e);
-			break;
-		case EFFECT_CREATE_EDGE:
-			DumpEdgeCreateEffect(stream, e);
-			break;
-		case EFFECT_SET_LABELS:
-			DumpSetRemoveLabelsEffect(stream, e);
-			break;
-		case EFFECT_REMOVE_LABELS:
-			DumpSetRemoveLabelsEffect(stream, e);
-			break;
-		case EFFECT_ADD_SCHEMA:
-			DumpSchemaAddEffect(stream, e);
-			break;
-		case EFFECT_ADD_ATTRIBUTE:
-			DumpAttrAddEffect(stream, e);
-			break;
-		default:
-			assert(false && "unknown effect");
-			break;
-	}
+	ASSERT(b != NULL);
+	rm_free(b);
 }
 
-// dump effects into buffer
-u_char *Effects_Dump
+void EffectsBuffer_Free
 (
-	const EffectLog log,  // effect-log to dump
-	size_t *len           // size of generated buffer
+	EffectsBuffer *eb
 ) {
-	// validations
-	ASSERT(log != NULL);
-	ASSERT(len != NULL);
+	ASSERT(eb != NULL);
 
-	// expecting at least one effect operation
-	uint n = EffectLog_Length(log);
-	if(n == 0) {
-		return NULL;
+	// free blocks
+	struct EffectsBufferBlock *b = eb->head;
+	while(b != NULL) {
+		struct EffectsBufferBlock *next = b->next;
+		EffectsBufferBlock_Free(b);
+		b = next;
 	}
 
-	//--------------------------------------------------------------------------
-	// determine required effects buffer size
-	//--------------------------------------------------------------------------
-
-	size_t buff_size = ComputeBufferSize(log);
-	ASSERT(buff_size > 0);
-
-	// allocate effects buffer and treat it as a stream
-	u_char *buffer = rm_malloc(sizeof(u_char) * buff_size);
-	FILE *stream = fmemopen(buffer, buff_size, "w");
-
-	//--------------------------------------------------------------------------
-	// encode effects header
-	//--------------------------------------------------------------------------
-
-	// effects version
-	uint8_t v = EFFECTS_VERSION;
-	fwrite_assert(&v, sizeof(uint8_t), stream);
-
-	//--------------------------------------------------------------------------
-	// encode effects
-	//--------------------------------------------------------------------------
-
-	// dump effects to stream
-	for(uint i = 0; i < n; i++) {
-		const Effect *e = log + i;
-		Effect_Dump(stream, e);
-	}
-
-	// we should have reached end of buffer
-	ASSERT(ftell(stream) == buff_size);
-
-	// close stream
-	fclose(stream);
-
-	// set output length and return buffer
-	*len = buff_size;
-	return buffer;
+	rm_free(eb);
 }
 

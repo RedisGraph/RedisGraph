@@ -520,16 +520,16 @@ static void ApplyDeleteEdge
 	Graph *g = gc->g;  // graph to delete edge from
 
 	// read edge ID
-	fread_assert(&id, fldsiz(EffectDeleteEdge, id), stream);
+	fread_assert(&id, sizeof(EntityID), stream);
 
 	// read relation ID
-	fread_assert(&r_id, fldsiz(EffectDeleteEdge, relationID), stream);
+	fread_assert(&r_id, sizeof(RelationID), stream);
 
 	// read src node ID
-	fread_assert(&s_id, fldsiz(EffectDeleteEdge, srcNodeID), stream);
+	fread_assert(&s_id, sizeof(EntityID), stream);
 
 	// read dest node ID
-	fread_assert(&t_id, fldsiz(EffectDeleteEdge, destNodeID), stream);
+	fread_assert(&t_id, sizeof(EntityID), stream);
 
 	// get src node, dest node and edge from the graph
 	res = Graph_GetNode(g, s_id, (Node*)&s);

@@ -115,8 +115,8 @@ uint CreateNode
 	if(log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_CreateNode(undo_log, n);
-		EffectLog *effect_log = QueryCtx_GetEffectLog();
-		EffectLog_CreateNode(effect_log, n);
+		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
+		EffectsBuffer_AddCreateNodeEffect(eb, n);
 	}
 
 	return ATTRIBUTE_SET_COUNT(set);
@@ -147,8 +147,8 @@ uint CreateEdge
 	if(log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_CreateEdge(undo_log, e);
-		EffectLog *effect_log = QueryCtx_GetEffectLog();
-		EffectLog_CreateEdge(effect_log, e);
+		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
+		EffectsBuffer_AddCreateEdgeEffect(eb, e);
 	}
 
 	return ATTRIBUTE_SET_COUNT(set);
@@ -169,7 +169,7 @@ void DeleteNodes
 	ASSERT(nodes != NULL);
 
 	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
-	EffectLog *effect_log = (log == true) ? QueryCtx_GetEffectLog() : NULL;
+	EffectsBuffer *eb = (log == true) ? QueryCtx_GetEffectsBuffer() : NULL;
 	bool has_indices = GraphContext_HasIndices(gc);
 
 	if(log == true || has_indices) {
@@ -179,7 +179,7 @@ void DeleteNodes
 			if(log == true) {
 				// add node deletion operation to undo log
 				UndoLog_DeleteNode(undo_log, n);
-				EffectLog_DeleteNode(effect_log, n);
+				EffectsBuffer_AddDeleteNodeEffect(eb, n);
 			}
 
 			if(has_indices == true) {
@@ -205,13 +205,13 @@ void DeleteEdges
 	// add edge deletion operation to undo log
 	bool has_indecise = GraphContext_HasIndices(gc);
 	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
-	EffectLog *effect_log = (log == true) ? QueryCtx_GetEffectLog() : NULL;
+	EffectsBuffer *eb = (log == true) ? QueryCtx_GetEffectsBuffer() : NULL;
 
 	if(has_indecise == true || log == true) {
 		for (uint i = 0; i < n; i++) {
 			if(log == true) {
 				UndoLog_DeleteEdge(undo_log, edges + i);
-				EffectLog_DeleteEdge(effect_log, edges + i);
+				EffectsBuffer_AddDeleteEdgeEffect(eb, edges + i);
 			}
 
 			if(has_indecise == true) {
@@ -316,7 +316,7 @@ void UpdateNodeLabels
 		   (remove_labels == NULL && n_remove_labels == 0));
 
 	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
-	EffectLog *effect_log = (log == true) ? QueryCtx_GetEffectLog() : NULL;
+	EffectsBuffer *eb = (log == true) ? QueryCtx_GetEffectsBuffer() : NULL;
 
 	if(add_labels != NULL) {
 		int add_labels_ids[n_add_labels];
@@ -356,7 +356,7 @@ void UpdateNodeLabels
 			if(log == true) {
 				UndoLog_AddLabels(undo_log, node, add_labels_ids,
 						add_labels_index);
-				EffectLog_AddLabels(effect_log, node, add_labels_ids,
+				EffectsBuffer_AddLabelsEffect(eb, node, add_labels_ids,
 						add_labels_index);
 			}
 		}
@@ -392,7 +392,7 @@ void UpdateNodeLabels
 			if(log == true) {
 				UndoLog_RemoveLabels(undo_log, node, remove_labels_ids,
 						remove_labels_index);
-				EffectLog_RemoveLabels(effect_log, node, remove_labels_ids,
+				EffectsBuffer_AddRemoveLabelsEffect(eb, node, remove_labels_ids,
 						remove_labels_index);
 			}
 		}
@@ -413,8 +413,8 @@ Schema *AddSchema
 	if(log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_AddSchema(undo_log, s->id, s->type);
-		EffectLog *effect_log = QueryCtx_GetEffectLog();
-		EffectLog_AddSchema(effect_log, Schema_GetName(s), s->type);
+		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
+		EffectsBuffer_AddNewSchemaEffect(eb, Schema_GetName(s), s->type);
 	}
 
 	return s;
@@ -435,8 +435,8 @@ Attribute_ID FindOrAddAttribute
 	if(created == true && log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_AddAttribute(undo_log, attr_id);
-		EffectLog *effect_log = QueryCtx_GetEffectLog();
-		EffectLog_AddAttribute(effect_log, rm_strdup(attribute));
+		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
+		EffectsBuffer_AddNewAttributeEffect(eb, rm_strdup(attribute));
 	}
 	return attr_id;
 }

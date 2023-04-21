@@ -10,9 +10,8 @@
 
 #define EFFECTS_VERSION 1  // current effects encoding/decoding version
 
-// size of the field in the structure
-#define	fldsiz(name, field) \
-	(sizeof(((struct name *)0)->field))
+// EffectsBuffer is an opaque data structure
+typedef struct _EffectsBuffer EffectsBuffer;
 
 // types of effects
 typedef enum {
@@ -30,108 +29,8 @@ typedef enum {
 } EffectType;
 
 //------------------------------------------------------------------------------
-// effect structures
-//------------------------------------------------------------------------------
-
-// effect node/edge creation
-typedef struct EffectCreate EffectCreate;
-struct EffectCreate {
-	union {
-		Node n;
-		Edge e;
-	};
-};
-
-// effect node deletion
-typedef struct EffectDeleteNode EffectDeleteNode;
-struct EffectDeleteNode {
-	EntityID id;       // deleted node ID
-};
-
-// effect edge deletion
-typedef struct EffectDeleteEdge EffectDeleteEdge;
-struct EffectDeleteEdge {
-	EntityID id;        // deleted edge ID
-	int relationID;     // relation ID
-	NodeID srcNodeID;   // source node ID
-	NodeID destNodeID;  // destination node ID
-};
-
-// effect entity update
-typedef struct EffectUpdate EffectUpdate;
-struct EffectUpdate {
-	union {
-		Node n;
-		Edge e;
-	}; // entity to update
-	GraphEntityType entity_type;  // entity type
-	Attribute_ID attr_id;         // attribute ID
-	SIValue value;                // attribute value
-};
-
-// effect added/removed labels to/from node
-typedef struct EffectLabels EffectLabels;
-struct EffectLabels {
-	EntityID id;          // node ID
-	LabelID* label_ids;   // labels IDs
-	ushort labels_count;  // number of labels
-};
-
-// effect added schema
-typedef struct EffectAddSchema EffectAddSchema;
-struct EffectAddSchema {
-	const char *schema_name; // schema name
-	SchemaType t;            // schema type
-};
-
-// effect added attribute
-typedef struct EffectAddAttribute EffectAddAttribute;
-struct EffectAddAttribute {
-	const char *attr_name;  // attribute name
-};
-
-// unified effect representation
-typedef struct {
-	union {
-		EffectCreate create;
-		EffectDeleteNode delete_node;
-		EffectDeleteEdge delete_edge;
-		EffectUpdate update;
-		EffectLabels labels;
-		EffectAddSchema schema;
-		EffectAddAttribute attribute;
-	};
-	EffectType type;  // effect type
-} Effect;
-
-// container for effect_list
-typedef Effect *EffectLog;
-
-//------------------------------------------------------------------------------
 // effects API
 //------------------------------------------------------------------------------
-
-// create a new effect-log
-EffectLog EffectLog_New(void);
-
-// returns number of entries in log
-uint EffectLog_Length
-(
-	const EffectLog log  // log to query
-);
-
-// compute required effects buffer byte size from effect-log
-size_t ComputeBufferSize
-(
-	const EffectLog effect_log
-);
-
-// dump effects into buffer
-u_char *Effects_Dump
-(
-	const EffectLog log,  // effect-log to dump
-	size_t *len           // size of generated buffer
-);
 
 // applys effects encoded in buffer
 void Effects_Apply
@@ -141,90 +40,99 @@ void Effects_Apply
 	size_t l                   // size of buffer
 );
 
-//------------------------------------------------------------------------------
-// effects creation
-//------------------------------------------------------------------------------
-
-// node creation effect
-void EffectLog_CreateNode
+// create a new effects-buffer
+EffectsBuffer *EffectsBuffer_New
 (
-	EffectLog *log,  // effect log
-	const Node *node // node created
+	size_t n  // initial size of buffer
 );
 
-// edge creation effect
-void EffectLog_CreateEdge
+// returns number of effects in buffer
+uint64_t EffectsBuffer_Length
 (
-	EffectLog *log,  // effect log
-	const Edge *edge // edge created
+	const EffectsBuffer *buff  // effects-buffer
 );
 
-// node deletion effect
-void EffectLog_DeleteNode
+// get a copy of effectspbuffer internal buffer
+unsigned char *EffectsBuffer_Buffer
 (
-	EffectLog *log,  // effect log
-	const Node *node // node deleted
+	const EffectsBuffer *eb,  // effects-buffer
+	size_t *n                 // size of returned buffer
 );
 
-// edge deletion effect
-void EffectLog_DeleteEdge
+// add a node creation effect to buffer
+void EffectsBuffer_AddCreateNodeEffect
 (
-	EffectLog *log,  // effect log
-	const Edge *edge // edge deleted
+	EffectsBuffer *buff,  // effect buffer
+	const Node *node      // node created
 );
 
-// entity update effect
-void EffectLog_UpdateEntity
+// add a edge creation effect to buffer
+void EffectsBuffer_AddCreateEdgeEffect
 (
-	EffectLog *log,              // effect log
-	const GraphEntity *entity,   // updated entity ID
+	EffectsBuffer *buff,  // effect buffer
+	const Edge *edge      // edge created
+);
+
+// add a node deletion effect to buffer
+void EffectsBuffer_AddDeleteNodeEffect
+(
+	EffectsBuffer *buff,  // effect buffer
+	const Node *node      // node deleted
+);
+
+// add a edge deletion effect to buffer
+void EffectsBuffer_AddDeleteEdgeEffect
+(
+	EffectsBuffer *buff,  // effect buffer
+	const Edge *edge      // edge deleted
+);
+
+// add an entity update effect to buffer
+void EffectsBuffer_AddUpdateEntityEffect
+(
+	EffectsBuffer *buff,         // effect buffer
+	GraphEntity *entity,         // updated entity ID
 	Attribute_ID attr_id,        // updated attribute ID
  	SIValue value,               // value
 	GraphEntityType entity_type  // entity type
 );
 
-// node add label effect
-void EffectLog_AddLabels
+// add a node add label effect to buffer
+void EffectsBuffer_AddLabelsEffect
 (
-	EffectLog *log,              // effect log
-	const Node *node,            // updated node
-	const LabelID *label_ids,    // added labels
-	size_t labels_count          // number of removed labels
+	EffectsBuffer *buff,     // effect buffer
+	const Node *node,        // updated node
+	const LabelID *lbl_ids,  // added labels
+	size_t lbl_count         // number of removed labels
 );
 
-// node remove label effect
-void EffectLog_RemoveLabels
+// add a node remove label effect to buffer
+void EffectsBuffer_AddRemoveLabelsEffect
 (
-	EffectLog *log,              // effect log
-	const Node *node,            // updated node
-	const LabelID *label_ids,    // removed labels
-	size_t labels_count          // number of removed labels
+	EffectsBuffer *buff,     // effect buffer
+	const Node *node,        // updated node
+	const LabelID *lbl_ids,  // removed labels
+	size_t lbl_count         // number of removed labels
 );
 
-// schema addition effect
-void EffectLog_AddSchema
+// add a schema addition effect to buffer
+void EffectsBuffer_AddNewSchemaEffect
 (
-	EffectLog *log,               // effect log
-	const char *schema_name,      // id of the schema
-	SchemaType t                  // type of the schema
+	EffectsBuffer *buff,      // effect buffer
+	const char *schema_name,  // id of the schema
+	SchemaType t              // type of the schema
 );
 
-// attribute addition effect
-void EffectLog_AddAttribute
+// add an attribute addition effect to buffer
+void EffectsBuffer_AddNewAttributeEffect
 (
-	EffectLog *log,              // effect log
-	const char *attr             // attribute name
+	EffectsBuffer *buff,  // effect buffer
+	const char *attr      // attribute name
 );
 
-// free effect
-void EffectLog_FreeEffect
+// free effects-buffer
+void EffectsBuffer_Free
 (
-	Effect *effect  // effect to free
-);
-
-// free EffectLog
-void EffectLog_Free
-(
-	EffectLog log
+	EffectsBuffer *eb
 );
 

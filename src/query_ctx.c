@@ -24,7 +24,7 @@ static inline QueryCtx *_QueryCtx_GetCreateCtx(void) {
 		// Set a new thread-local QueryCtx if one has not been created.
 		ctx = rm_calloc(1, sizeof(QueryCtx));
 		ctx->undo_log = UndoLog_New();
-		ctx->effect_log = EffectLog_New();
+		ctx->effects_buffer = EffectsBuffer_New(62500); // MB/16
 		pthread_setspecific(_tlsQueryCtxKey, ctx);
 	}
 	return ctx;
@@ -124,11 +124,11 @@ UndoLog *QueryCtx_GetUndoLog(void) {
 	return &ctx->undo_log;
 }
 
-EffectLog *QueryCtx_GetEffectLog(void) {
+EffectsBuffer *QueryCtx_GetEffectsBuffer(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ASSERT(ctx != NULL && ctx->effect_log != NULL);
+	ASSERT(ctx != NULL && ctx->effects_buffer != NULL);
 	
-	return &ctx->effect_log;
+	return ctx->effects_buffer;
 }
 
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
@@ -262,7 +262,7 @@ void QueryCtx_Free(void) {
 	ASSERT(ctx != NULL);
 
 	UndoLog_Free(ctx->undo_log);
-	EffectLog_Free(ctx->effect_log);
+	EffectsBuffer_Free(ctx->effects_buffer);
 
 	if(ctx->query_data.params) {
 		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);

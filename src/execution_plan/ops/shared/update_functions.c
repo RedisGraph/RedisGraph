@@ -238,7 +238,6 @@ void EvalEntityUpdates
 	} else {
 		Record_AddEdge(r, ctx->record_idx, *(Edge *)entity);
 	}
-	
 
 	// if we're converting a SET clause, NULL is acceptable
 	// as it indicates a deletion
@@ -249,6 +248,7 @@ void EvalEntityUpdates
 
 	bool error = false;
 	uint exp_count = array_len(ctx->properties);
+	EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
 
 	// evaluate each assigned expression
 	// e.g. n.v = n.a + 2
@@ -283,7 +283,11 @@ void EvalEntityUpdates
 
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
 			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
-				EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, SI_CloneValue(v), entity_type);
+				// TODO: not sure we need to clone
+				// who's responsible for freeing?
+				// note we're freeing `v` a few lines below
+				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id,
+						SI_CloneValue(v), entity_type);
 			}
 			SIValue_Free(v);
 			continue;
@@ -304,8 +308,11 @@ void EvalEntityUpdates
 			// if this update replaces all existing properties
 			// enqueue a 'clear' update to do so
 			for (uint i = 0; i < ATTRIBUTE_SET_COUNT(update->attributes); i++) {
+				// TODO: can't we somehow update to an empty dict?
+				// n = {}?
 				Attribute *attr = update->attributes->attributes + i;
-				EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr->id, SI_NullVal(), entity_type);
+				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr->id,
+						SI_NullVal(), entity_type);
 			}
 			AttributeSet_Free(&update->attributes);
 		}
@@ -332,7 +339,12 @@ void EvalEntityUpdates
 
 				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval, true);
 				if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, value)) {
-					EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, SI_CloneValue(value), entity_type);
+					// TODO: would have been nice we we just sent
+					// n = {}
+					// TODO: do we really need to clone?
+					// note we're freeing the map `v` a few lines down
+					EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id,
+							SI_CloneValue(value), entity_type);
 				}
 			}
 
@@ -359,7 +371,8 @@ void EvalEntityUpdates
 
 			// simple assignment, no need to value validation
 			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
-				EffectLog_UpdateEntity(&query_ctx->effect_log, update->ge, attr_id, SI_CloneValue(v), entity_type);
+				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id,
+						SI_CloneValue(v), entity_type);
 			}
 		}
 	} // for loop end

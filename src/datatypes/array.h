@@ -97,19 +97,6 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
  */
 XXH64_hash_t SIArray_HashCode(SIValue siarray);
 
-// returns the number of bytes required for a binary representation of `v`
-size_t SIArray_BinarySize
-(
-	const SIValue *arr  // array
-);
-
-// writes a binary representation of `v` into `stream`
-void SIArray_ToBinary
-(
-	FILE *stream,       // stream to populate
-	const SIValue *arr  // array
-);
-
 // creates an array from its binary representation
 // this is the reverse of SIArray_ToBinary
 // x = SIArray_FromBinary(SIArray_ToBinary(y));
