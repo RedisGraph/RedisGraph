@@ -283,11 +283,8 @@ void EvalEntityUpdates
 
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
 			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
-				// TODO: not sure we need to clone
-				// who's responsible for freeing?
-				// note we're freeing `v` a few lines below
-				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id,
-						SI_CloneValue(v), entity_type);
+				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id, v,
+						entity_type);
 			}
 			SIValue_Free(v);
 			continue;
@@ -341,10 +338,8 @@ void EvalEntityUpdates
 				if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, value)) {
 					// TODO: would have been nice we we just sent
 					// n = {}
-					// TODO: do we really need to clone?
-					// note we're freeing the map `v` a few lines down
 					EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id,
-							SI_CloneValue(value), entity_type);
+							value, entity_type);
 				}
 			}
 
@@ -371,8 +366,8 @@ void EvalEntityUpdates
 
 			// simple assignment, no need to value validation
 			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
-				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id,
-						SI_CloneValue(v), entity_type);
+				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id, v,
+						entity_type);
 			}
 		}
 	} // for loop end
