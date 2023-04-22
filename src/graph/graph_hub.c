@@ -436,7 +436,7 @@ Attribute_ID FindOrAddAttribute
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_AddAttribute(undo_log, attr_id);
 		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
-		EffectsBuffer_AddNewAttributeEffect(eb, rm_strdup(attribute));
+		EffectsBuffer_AddNewAttributeEffect(eb, attribute);
 	}
 	return attr_id;
 }
