@@ -83,6 +83,9 @@ static size_t EffectsBufferBlock_WriteBytes
 	// write n bytes to buffer
 	memcpy(b->offset, ptr, n);
 
+	// update offset
+	b->offset += n;
+
 	return n;
 }
 
@@ -99,11 +102,14 @@ static void EffectsBuffer_WriteBytes
 
 	while(n > 0) {
 		struct EffectsBufferBlock *b = eb->current;
-		n = EffectsBufferBlock_WriteBytes(ptr, n, b);
-		if(n == 0) {
+		size_t written = EffectsBufferBlock_WriteBytes(ptr, n, b);
+		if(written == 0) {
 			// no bytes written block is full, create a new block
 			EffectsBuffer_AddBlock(eb);
 		}
+
+		// update remaining bytes to write
+		n -= written;
 	}
 }
 
@@ -238,8 +244,9 @@ static inline void EffectsBuffer_IncEffectCount
 // create a new effects-buffer
 EffectsBuffer *EffectsBuffer_New
 (
-	size_t n  // initial size of buffer
+	void
 ) {
+	size_t n = 62500;  // initial size of buffer
 	EffectsBuffer *eb = rm_malloc(sizeof(EffectsBuffer));
 
 	struct EffectsBufferBlock *b = EffectsBufferBlock_New(n);
@@ -250,7 +257,7 @@ EffectsBuffer *EffectsBuffer_New
 	eb->block_size = n;
 
 	// write effects version to newly created buffer
-	uint v = EFFECTS_VERSION;
+	uint8_t v = EFFECTS_VERSION;
 	EffectsBuffer_WriteBytes(&v, sizeof(v), eb);
 
 	return eb;
@@ -589,8 +596,8 @@ void EffectsBuffer_AddSetRemoveLabelsEffect
 (
 	EffectsBuffer *buff,     // effect buffer
 	const Node *node,        // updated node
-	const LabelID *lbl_ids,  // added labels
-	size_t lbl_count,        // number of removed labels
+	const LabelID *lbl_ids,  // labels
+	uint8_t lbl_count,       // number of labels
 	EffectType t             // effect type
 ) {
 	//--------------------------------------------------------------------------

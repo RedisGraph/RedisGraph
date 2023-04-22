@@ -197,7 +197,7 @@ static void ApplyLabels
 	// read labels count
 	//--------------------------------------------------------------------------
 
-	ushort lbl_count;
+	uint8_t lbl_count;
 	fread_assert(&lbl_count, sizeof(lbl_count), stream);
 	ASSERT(lbl_count > 0);
 

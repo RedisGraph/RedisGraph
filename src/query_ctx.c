@@ -24,7 +24,7 @@ static inline QueryCtx *_QueryCtx_GetCreateCtx(void) {
 		// Set a new thread-local QueryCtx if one has not been created.
 		ctx = rm_calloc(1, sizeof(QueryCtx));
 		ctx->undo_log = UndoLog_New();
-		ctx->effects_buffer = EffectsBuffer_New(62500); // MB/16
+		ctx->effects_buffer = EffectsBuffer_New();
 		pthread_setspecific(_tlsQueryCtxKey, ctx);
 	}
 	return ctx;
