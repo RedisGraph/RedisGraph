@@ -540,3 +540,9 @@ class testEntityUpdate():
         result = graph.query("MATCH (v) RETURN v")
         self.env.assertEqual(result.header, [[1, 'v']])
 
+    def test_38_remove_property_from_null(self):
+        graph.delete()
+        result = graph.query("REMOVE null.v")
+        self.env.assertEqual(result.header, [])
+        self.env.assertEqual(result.properties_set, 0)
+        self.env.assertEqual(result.properties_removed, 0)
