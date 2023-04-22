@@ -251,8 +251,8 @@ static void _AST_MapRemovePropertyReferences
 		cypher_ast_remove_property_get_property(remove_item);
 	const cypher_astnode_t *ast_entity =
 		cypher_ast_property_operator_get_expression(ast_prop);
-
-	int ast_entity_type = cypher_astnode_type(ast_entity);
+	const cypher_astnode_type_t ast_entity_type = 
+		cypher_astnode_type(ast_entity);
 	ASSERT(ast_entity_type == CYPHER_AST_IDENTIFIER 
 		|| ast_entity_type == CYPHER_AST_NULL);
 		
