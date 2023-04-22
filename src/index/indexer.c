@@ -109,6 +109,7 @@ static void _indexer_idx_drop
 	Index_Free(ctx->idx);
 
 	RedisModule_ThreadSafeContextUnlock(rm_ctx);
+	RedisModule_FreeThreadSafeContext(rm_ctx);
 
 	// decrease graph reference count
 	GraphContext_DecreaseRefCount(ctx->gc);
@@ -125,15 +126,49 @@ static void _indexer_enforce_constraint
 	GraphContext *gc = ctx->gc;
 	Graph *g = GraphContext_GetGraph(gc);
 
+	// unique constraint uses index to enforce the constraint
+	// if the index is not enabled, we'll delay the enforcement
+	// until the index is ready
+	if(Constraint_GetType(c) == CT_UNIQUE) {
+		Index idx = Constraint_GetPrivateData(c);
+		// if index is not enabled and the constraint is not marked for deletion
+		// postpone the enforcement
+		if(!Index_Enabled(idx) && Constraint_PendingChanges(c) == 1) {
+			Indexer_EnforceConstraint(c, gc);
+			goto cleanup;
+		}
+	}
+
+	// try to enforce constraint on all relevent entities
 	if(Constraint_GetEntityType(c) == GETYPE_NODE) {
 		Constraint_EnforceNodes(c, g);
 	} else {
 		Constraint_EnforceEdges(c, g);
 	}
 
+	// replicate constraint if active
+	// upon constraint creation
+	// it is possible for the primary shard to replicate the constraint via RDB
+	// in which case the constraint wouldn't be included
+	// as only active constraints are encoded within RDBs
+	// to make sure the constraint is introduced to the replica we re-issue it
+	// once the constraint becomes active
+	if(Constraint_GetStatus(c) == CT_ACTIVE) {
+		// lock before calling replicate
+		RedisModuleCtx *rm_ctx = RedisModule_GetThreadSafeContext(NULL);
+		RedisModule_ThreadSafeContextLock(rm_ctx);
+
+		Constraint_Replicate(rm_ctx, c, (const struct GraphContext*)gc);
+
+		// unlock and free
+		RedisModule_ThreadSafeContextUnlock(rm_ctx);
+		RedisModule_FreeThreadSafeContext(rm_ctx);
+	}
+
 	// decrease number of pending changes
 	Constraint_DecPendingChanges(c);
 
+cleanup:
 	// decrease graph reference count
 	GraphContext_DecreaseRefCount(gc);
 

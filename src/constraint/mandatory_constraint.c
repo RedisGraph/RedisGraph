@@ -19,6 +19,7 @@ struct _MandatoryConstraint {
 	ConstraintType t;                       // constraint type
 	Constraint_EnforcementCB enforce;       // enforcement function
 	Constraint_SetPrivateDataCB set_pdata;  // set private data
+	Constraint_GetPrivateDataCB get_pdata;  // get private data
 	int schema_id;                          // enforced schema ID
     Attribute_ID *attrs;                    // enforced attributes
 	const char **attr_names;                // enforced attribute names
@@ -36,7 +37,7 @@ static const char *_edge_violation_err_msg =
 	"mandatory constraint violation: edge with relationship-type %s missing property %s";
 
 // enforces mandatory constraint on given entity
-static bool Constraint_EnforceMandatory
+bool Constraint_EnforceMandatory
 (
 	const Constraint c,    // constraint to enforce
 	const GraphEntity *e,  // enforced entity
@@ -99,6 +100,7 @@ Constraint Constraint_MandatoryNew
 	c->n_attr          = n_fields;
 	c->enforce         = Constraint_EnforceMandatory;
 	c->set_pdata       = NULL;
+	c->get_pdata       = NULL;
 	c->schema_id       = schema_id;
 	c->pending_changes = ATOMIC_VAR_INIT(0);
 

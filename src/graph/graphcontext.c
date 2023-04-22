@@ -289,18 +289,42 @@ unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t) {
 	else return array_len(gc->relation_schemas);
 }
 
-void GraphContext_ActivateAllConstraints(const GraphContext *gc) {
+// enable all constraints
+void GraphContext_EnableConstrains
+(
+	const GraphContext *gc
+) {
 	for(uint i = 0; i < array_len(gc->node_schemas); i ++) {
 		Schema *s = gc->node_schemas[i];
 		for(uint j = 0; j < array_len(s->constraints); j ++) {
-			Constraint_SetStatus(s->constraints[j], CT_ACTIVE);
+			Constraint_Enable(s->constraints[j]);
 		}
 	}
 
 	for(uint i = 0; i < array_len(gc->relation_schemas); i ++) {
 		Schema *s = gc->relation_schemas[i];
 		for(uint j = 0; j < array_len(s->constraints); j ++) {
-			Constraint_SetStatus(s->constraints[j], CT_ACTIVE);
+			Constraint_Enable(s->constraints[j]);
+		}
+	}
+}
+
+// disable all constraints
+void GraphContext_DisableConstrains
+(
+	GraphContext *gc
+) {
+	for(uint i = 0; i < array_len(gc->node_schemas); i ++) {
+		Schema *s = gc->node_schemas[i];
+		for(uint j = 0; j < array_len(s->constraints); j ++) {
+			Constraint_Disable(s->constraints[j]);
+		}
+	}
+
+	for(uint i = 0; i < array_len(gc->relation_schemas); i ++) {
+		Schema *s = gc->relation_schemas[i];
+		for(uint j = 0; j < array_len(s->constraints); j ++) {
+			Constraint_Disable(s->constraints[j]);
 		}
 	}
 }
@@ -311,7 +335,12 @@ Schema *GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t)
 	return schemas[id];
 }
 
-Schema *GraphContext_GetSchema(const GraphContext *gc, const char *label, SchemaType t) {
+Schema *GraphContext_GetSchema
+(
+	const GraphContext *gc,
+	const char *label,
+	SchemaType t
+) {
 	int id = _GraphContext_GetLabelID(gc, label, t);
 	return GraphContext_GetSchemaByID(gc, id, t);
 }
@@ -418,9 +447,15 @@ Attribute_ID GraphContext_FindOrAddAttribute
 	return (uintptr_t)attribute_id;
 }
 
-const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id) {
+const char *GraphContext_GetAttributeString
+(
+	GraphContext *gc,
+	Attribute_ID id
+) {
+	ASSERT(gc != NULL);
+	ASSERT(id >= 0 && id < array_len(gc->string_mapping));
+
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
-	ASSERT(id < array_len(gc->string_mapping));
 	const char *name = gc->string_mapping[id];
 	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 	return name;

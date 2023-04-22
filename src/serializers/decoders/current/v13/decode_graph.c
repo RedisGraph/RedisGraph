@@ -188,7 +188,6 @@ GraphContext *RdbLoadGraphContext_v13
 		}
 	}
 
-	GraphContext_ActivateAllConstraints(gc);
 	array_free(key_schema);
 
 	// update decode context

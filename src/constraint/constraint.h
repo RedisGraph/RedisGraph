@@ -29,6 +29,11 @@ typedef void (*Constraint_SetPrivateDataCB)
 	void *pdata    // private data
 );
 
+typedef void* (*Constraint_GetPrivateDataCB)
+(
+	Constraint c  // constraint to get private data from
+);
+
 // different states a constraint can be at
 // starting as pending and transitioning to either active or failed
 typedef enum ConstraintStatus {
@@ -59,6 +64,18 @@ Constraint Constraint_New
 	uint8_t n_fields,         // number of fields
 	GraphEntityType et,       // entity type
 	const char **err_msg      // error message
+);
+
+// enable constraint
+void Constraint_Enable
+(
+	Constraint c  // constraint to enable
+);
+
+// disable constraint
+void Constraint_Disable
+(
+	Constraint c  // constraint to disable
 );
 
 // returns constraint type
@@ -102,6 +119,12 @@ void Constraint_SetPrivateData
 	void *pdata    // private data
 );
 
+// get constraint private data
+void *Constraint_GetPrivateData
+(
+	Constraint c  // constraint from which to get private data
+);
+
 // returns a shallow copy of constraint attributes
 uint8_t Constraint_GetAttributes
 (
@@ -133,6 +156,14 @@ void Constraint_IncPendingChanges
 void Constraint_DecPendingChanges
 (
 	Constraint c  // constraint to update
+);
+
+// replicate constraint to both persistency and replicas
+void Constraint_Replicate
+(
+	RedisModuleCtx *ctx,           // redis module context
+	const Constraint c,            // constraint to replicate
+	const struct GraphContext *gc  // graph context
 );
 
 // tries to enforce constraint on all relevant entities

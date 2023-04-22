@@ -236,6 +236,8 @@ static void Schema_ActivateExactMatchIndex
 	Index active  = ACTIVE_EXACTMATCH_IDX(s);
 	Index pending = PENDING_EXACTMATCH_IDX(s);
 
+	ASSERT(Index_Enabled(pending) == true);
+
 	// drop active if exists
 	if(active != NULL) {
 		Index_Free(active);
@@ -564,10 +566,10 @@ void Schema_AddEdgeToIndices
 	Index idx = NULL;
 
 	idx = ACTIVE_EXACTMATCH_IDX(s);
-	if(idx) Index_IndexEdge(idx, e);
+	if(idx != NULL) Index_IndexEdge(idx, e);
 
 	idx = PENDING_EXACTMATCH_IDX(s);
-	if(idx) Index_IndexEdge(idx, e);
+	if(idx != NULL) Index_IndexEdge(idx, e);
 }
 
 // remove node from schema indicies
