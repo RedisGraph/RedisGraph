@@ -81,7 +81,6 @@ typedef enum InfoQueriesFlag {
 // It is used as a "user data" field in the view callback.
 typedef struct ViewFinishedQueriesCallbackData {
     RedisModuleCtx *ctx;
-    uint64_t max_count;
     uint64_t actual_elements_count;
     int status;
 } ViewFinishedQueriesCallbackData;
@@ -89,7 +88,7 @@ typedef struct ViewFinishedQueriesCallbackData {
 // returns true if graph info tracking is enabled
 static bool _is_cmd_info_enabled(void) {
     bool enabled = false;
-    return Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && enabled;
+    return Config_Option_get(Config_CMD_INFO, &enabled) && enabled;
 }
 
 static uint64_t _info_queries_max_count() {
@@ -112,15 +111,15 @@ static bool _collect_queries_info_from_graph
     ASSERT(gc          != NULL);
     ASSERT(global_info != NULL);
 
-    const uint64_t executing = 0;
-    const uint64_t reporting = 0;
-    const uint64_t waiting = Info_GetWaitingQueriesCount(gc->info);
+    uint64_t executing = 0;
+    uint64_t reporting = 0;
+    uint64_t waiting = Info_GetWaitingQueriesCount(gc->info);
     Info_GetExecutingReportingQueriesCount(gc->info, &executing, &reporting);
-    const uint64_t max_wait_time = Info_GetMaxQueryWaitTime(gc->info);
+    uint64_t max_wait_time = Info_GetMaxQueryWaitTime(gc->info);
 
-    global_info->total_waiting_queries_count += waiting;
-	global_info->total_executing_queries_count += executing;
-    global_info->total_reporting_queries_count += reporting;
+    global_info->total_waiting_queries_count = waiting;
+	global_info->total_executing_queries_count = executing;
+    global_info->total_reporting_queries_count = reporting;
 	global_info->max_query_wait_time = MAX(max_wait_time,
 			global_info->max_query_wait_time);
 
@@ -323,7 +322,7 @@ static int _reply_graph_query_info
 // Replies with the finished queries information.
 // This function is used as a callback for the circular buffer viewer.
 // This is a part of the "GRAPH.INFO QUERIES PREV" reply.
-static bool _reply_finished_queries(void *user_data, const void *item) {
+static void _reply_finished_queries(void *user_data, const void *item) {
     ViewFinishedQueriesCallbackData *data
         = (ViewFinishedQueriesCallbackData*)user_data;
     const QueryInfo *finished
@@ -331,20 +330,12 @@ static bool _reply_finished_queries(void *user_data, const void *item) {
 
     ASSERT(data);
     ASSERT(item);
-    if (!data || !item) {
-        data->status = REDISMODULE_ERR;
-        return true;
-    }
 
     const QueryInfo info = *finished;
 
-    REDISMODULE_ASSERT(_reply_graph_query_info(data->ctx, info))
-
-    if (++data->actual_elements_count >= data->max_count) {
-        return true;
-    }
-
-    return false;
+    int res = _reply_graph_query_info(data->ctx, info);
+    ASSERT(res == REDISMODULE_OK);
+    UNUSED(res);
 }
 
 // replies with the finished queries information
@@ -362,12 +353,12 @@ static int _reply_with_queries_info_prev
 
     ViewFinishedQueriesCallbackData user_data = {
         .ctx = ctx,
-        .max_count = max_count,
         .status = REDISMODULE_OK,
         .actual_elements_count = 0
     };
 
-    Info_ViewFinishedQueries(_reply_finished_queries, (void*)&user_data);
+    Info_ViewFinishedQueries(_reply_finished_queries, (void*)&user_data,
+        max_count);
 
     if (actual_element_count) {
         *actual_element_count = user_data.actual_elements_count;
@@ -643,12 +634,7 @@ static int _reply_with_queries
     const int argc,
     uint8_t *top_level_count
 ) {
-    ASSERT(ctx);
-
-    if (!ctx) {
-        RedisModule_ReplyWithError(ctx, INVALID_PARAMETERS_MESSAGE);
-        return REDISMODULE_ERR;
-    }
+    ASSERT(ctx != NULL);
 
     const InfoQueriesFlag flags = _parse_info_queries_flags_from_args(argv,
 			argc);

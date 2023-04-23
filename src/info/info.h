@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <sys/types.h>
 
 #include "query_info.h"
 #include "../util/num.h"
@@ -31,7 +32,7 @@ typedef enum QueryExecutionTypeFlag QueryExecutionTypeFlag;
 #define MILLIS_T_MAX UINT32_MAX
 typedef struct QueryCtx QueryCtx;
 // duplicate typedef from the circular buffer
-typedef bool (*CircularBufferNRG_ReadCallback)(void *user_data,
+typedef void (*CircularBuffer_ReadCallback)(void *user_data,
                                                   const void *item);
 typedef QueryInfo** QueryInfoStorage;
 
@@ -57,6 +58,12 @@ typedef struct Info {
 // create a new info structure
 // returns true on successful creation
 Info *Info_New(void);
+
+// create the finished queries storage (circular buffer)
+void Info_SetFinishedQueriesStorage
+(
+    const uint n  // size of circular buffer
+);
 
 // add a query to the waiting list for the first time (from dispatcher)
 // at this stage, no time has been previously accumulated
@@ -173,8 +180,9 @@ QueryInfoStorage* Info_GetWorkingQueriesStorage
 // views the circular buffer of finished queries
 void Info_ViewFinishedQueries
 (
-    CircularBufferNRG_ReadCallback callback,
-    void *user_data
+    CircularBuffer_ReadCallback callback,  // callback
+    void *user_data,                       // additional data for callback
+    uint n_items                           // number of items to view
 );
 
 // returns the total number of queries recorded

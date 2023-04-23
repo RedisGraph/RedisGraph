@@ -27,7 +27,7 @@ void test_CircularBufferInit(void) {
 	TEST_ASSERT(CircularBuffer_Full(buff) == false);
 
 	// clean up
-	CircularBuffer_Free(&buff);
+	CircularBuffer_Free(buff);
 	TEST_ASSERT(buff == NULL);
 }
 
@@ -73,7 +73,7 @@ void test_CircularBufferPopulation(void) {
 	}
 
 	// clean up
-	CircularBuffer_Free(&buff);
+	CircularBuffer_Free(buff);
 }
 
 void test_CircularBuffer_Circularity(void) {
@@ -113,7 +113,7 @@ void test_CircularBuffer_Circularity(void) {
 	TEST_ASSERT(CircularBuffer_Empty(buff) == true);
 
 	// clean up
-	CircularBuffer_Free(&buff);
+	CircularBuffer_Free(buff);
 }
 
 TEST_LIST = {

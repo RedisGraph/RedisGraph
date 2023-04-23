@@ -98,9 +98,8 @@ void QueryInfo_CloneTo
 );
 
 // QueryInfo deleter callback
-void QueryInfoDeleter
+void QueryInfo_Deleter
 (
-    void *user_data,
     void *info
 );
 

@@ -4,9 +4,11 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
+
 #include "RG.h"
 #include "rmalloc.h"
 #include "circular_buffer.h"
+#include "graph/graphcontext.h"
 
 // circular buffer structure
 // the buffer is of fixed size
@@ -153,22 +155,43 @@ void *CircularBuffer_Current
 	return cb->read;
 }
 
-// set the read pointer to a wanted index relative to the write pointer (before)
-void CircularBuffer_SetReadBehindWrite
+// traverse circular buffer cb, from n items before the last written item.
+// if n > # items in cb --> all items will be visited once
+// note: this function sets the read pointer
+void CircularBuffer_TraverseCBFromLast
 (
-	CircularBuffer cb,  // buffer
-	uint cnt            // the amount of indexes behind the write pointer
+	CircularBuffer cb,                     // buffer
+	uint n,                                // # of items to traverse
+	CircularBuffer_ReadCallback callback,  // callback called on elements
+	void *user_data                        // additional data for the callback
 ) {
-	// note: It's the callers responsibility to check that cnt < item_cap
-	ASSERT(cnt < cb->item_cap);
+	// set the read pointer to min(#items, n) items behind the write pointer
+	uint n_items = CircularBuffer_ItemCount(cb);
+	uint n_items_back = MIN(n, n_items);
 
-	char *curr_write = cb->write;
+	// compensate for circularity
+	uint write_ind = (cb->write - cb->data) / cb->item_size;
+	int sub = write_ind - n_items_back;
+	if(sub < 0) {
+		cb->read = cb->end_marker + (sub * cb->item_size);
+	} else {
+		cb->read = cb->write - n_items_back * cb->item_size;
+	}
 
-	cb->read = cb->write - cb->item_size * cnt;
+	// visit items
+	while(n_items_back > 0) {
+		void *curr = cb->read;
 
-	// if exceeded the buffer data (from start), compensate in a circular manner
-	if(cb->read < cb->data) {
-		cb->read = cb->end_marker - (cb->data - cb->read);
+		// apply callback
+		callback(user_data, curr);
+
+		cb->read += cb->item_size;
+
+		if(unlikely(cb->read >= cb->end_marker)) {
+			cb->write = cb->data;
+		}
+
+		n_items_back--;
 	}
 }
 
@@ -207,7 +230,7 @@ void CircularBuffer_Free
 (
 	CircularBuffer cb  // buffer to free
 ) {
-	ASSERT(cb != NULL && *cb != NULL);
+	ASSERT(cb != NULL);
 
 	if(cb->free_cb != NULL) {
 		uint64_t read_offset = 0;

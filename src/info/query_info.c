@@ -138,6 +138,8 @@ QueryInfo *QueryInfo_Clone
     clone->report_duration = qi->report_duration;
     clone->stage = qi->stage;
     // clone timer will isn't relevant, stays {0}
+
+    return clone;
 }
 
 // used as a callback for the circular buffer
@@ -166,15 +168,13 @@ void QueryInfo_CloneTo
 }
 
 // QueryInfo deleter callback
-void QueryInfoDeleter
+void QueryInfo_Deleter
 (
     void *info
 ) {
     ASSERT(info != NULL);
-    if (info) {
-        QueryInfo *qi = (QueryInfo *)info;
-        QueryInfo_Free(qi);
-    }
+    QueryInfo *qi = (QueryInfo *)info;
+    QueryInfo_Free(qi);
 }
 
 // free a QueryInfo

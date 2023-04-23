@@ -139,7 +139,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if (Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled) {
 		uint32_t info_max_query_count = 0;
 		if (Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &info_max_query_count)) {
-			Info_SetCapacityForFinishedQueriesStorage(info_max_query_count);
+			Info_SetFinishedQueriesStorage(info_max_query_count);
 		}
 		RedisModule_Log(ctx, "notice", "Maximum number of info queries for history is %u", info_max_query_count);
 	}

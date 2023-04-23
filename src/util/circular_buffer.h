@@ -12,6 +12,8 @@
 typedef struct _CircularBuffer _CircularBuffer;
 typedef _CircularBuffer* CircularBuffer;
 typedef void(*CircularBufferItemFree)(void *);
+typedef void (*CircularBuffer_ReadCallback)(void *user_data,
+                                                  const void *item);
 
 CircularBuffer CircularBuffer_New
 (
@@ -56,26 +58,21 @@ void *CircularBuffer_Current
 	const CircularBuffer cb
 );
 
-// traverse
-void CircularBuffer_TraverseCB
+// traverse circular buffer cb, from n items before the last written item.
+// if n > # items in cb --> all items will be visited once
+// note: this function sets the read pointer
+void CircularBuffer_TraverseCBFromLast
 (
-	CircularBuffer cb,           // buffer
-	CircularBuffer_cb callback,  // callback to call on traversed elements
-	uint start_idx,              // start index
-	uint n                       // amount of elements to traverse
+	CircularBuffer cb,                     // buffer
+	uint n,                                // # of items to traverse
+	CircularBuffer_ReadCallback callback,  // callback called on elements
+	void *user_data                        // additional data for the callback
 );
 
 // returns number of items in buffer
 int CircularBuffer_ItemCount
 (
 	CircularBuffer cb  // buffer to inspect
-);
-
-// set the read pointer to a wanted index relative to the write pointer (before)
-void CircularBuffer_SetReadBehindWrite
-(
-	CircularBuffer cb,  // buffer
-	uint cnt            // the amount of indexes behind the write pointer
 );
 
 // return true if buffer is empty

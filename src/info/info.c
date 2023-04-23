@@ -29,10 +29,10 @@ static CircularBuffer finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 // forward declaration
-void QueryInfoDeleter(void *user_data, void *info);
 QueryInfo *QueryInfo_Clone(QueryInfo *qi);
 void QueryInfo_CloneTo(const void *item_to_clone, void *destination_item,
     void *user_data);
+typedef struct ViewFinishedQueriesCallbackData ViewFinishedQueriesCallbackData;
 
 // returns the total number of queries recorded
 uint64_t FinishedQueryCounters_GetTotalCount
@@ -125,7 +125,7 @@ static void _add_finished_query
     int res = pthread_rwlock_wrlock(&finished_queries_rwlock);
 	ASSERT(res == 0);
 
-    CircularBuffer_AddForce(finished_queries, (const void*)qi);
+    CircularBuffer_AddForce(finished_queries, (void*)qi);
 
     res = pthread_rwlock_unlock(&finished_queries_rwlock);
 	ASSERT(res == 0);
@@ -177,6 +177,15 @@ Info *Info_New(void) {
     ASSERT(res == 0);
 
     return info;
+}
+
+// create the finished queries storage (circular buffer)
+void Info_SetFinishedQueriesStorage
+(
+    const uint n  // size of circular buffer
+) {
+    finished_queries = CircularBuffer_New(sizeof(QueryInfo *), n,
+        QueryInfo_Deleter);
 }
 
 // add a query to the waiting list for the first time (from dispatcher)
@@ -377,9 +386,12 @@ uint64_t Info_GetTotalQueriesCount
 ) {
     ASSERT(info != NULL);
 
-	const uint64_t waiting   = Info_GetWaitingQueriesCount(info);
-	const uint64_t executing = Info_GetExecutingQueriesCount(info);
-	const uint64_t reporting = Info_GetReportingQueriesCount(info);
+    GraphContext *gc = QueryCtx_GetGraphCtx();
+
+    uint64_t executing = 0;
+    uint64_t reporting = 0;
+    uint64_t waiting = Info_GetWaitingQueriesCount(gc->info);
+    Info_GetExecutingReportingQueriesCount(gc->info, &executing, &reporting);
 
     return waiting + executing + reporting;
 }
@@ -494,8 +506,9 @@ void Info_GetQueries
 // views the circular buffer of finished queries
 void Info_ViewFinishedQueries
 (
-    CircularBufferNRG_ReadCallback callback,
-    void *user_data
+    CircularBuffer_ReadCallback callback,  // callback
+    void *user_data,                       // additional data for callback
+    uint n_items                           // number of items to view
 ) {
     ASSERT(finished_queries);
     if (!finished_queries) {
@@ -505,14 +518,12 @@ void Info_ViewFinishedQueries
     int res = pthread_rwlock_rdlock(&finished_queries_rwlock);
     ASSERT(res == 0);
 
-	int n = CircularBuffer_ItemCount(finished_queries);
-	QueryInfo *queries = rm_malloc(sizeof(QueryInfo*) * n);
+	// read items from the circular buffer, calling callback on each one
+    CircularBuffer_TraverseCBFromLast(finished_queries, n_items, callback,
+        user_data);
 
-	CircularBuffer_ReadAll(finished_queries, queries, n);
-
-    CircularBufferNRG_ViewAll(finished_queries, callback, user_data);
-
-	rm_free(queries);
+    res = pthread_rwlock_unlock(&finished_queries_rwlock);
+    ASSERT(res == 0);
 }
 
 void Info_Free
