@@ -14,6 +14,7 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
+static OpResult UpdateInit(OpBase *opBase);
 static Record UpdateConsume(OpBase *opBase);
 static OpResult UpdateReset(OpBase *opBase);
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase);
@@ -30,7 +31,6 @@ static Record _handoff(OpUpdate *op) {
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->gc                 =  QueryCtx_GetGraphCtx();
-	op->stats              =  QueryCtx_GetResultSetStatistics();
 	op->records            =  array_new(Record, 64);
 	op->update_ctxs        =  update_exps;
 	op->node_updates       =  HashTableCreate(NULL);
@@ -38,7 +38,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	op->updates_committed  =  false;
 
 	// set our op operations
-	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", NULL, UpdateConsume,
+	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
 				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
 
 	// iterate over all update expressions
@@ -51,6 +51,12 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	}
 
 	return (OpBase *)op;
+}
+
+static OpResult UpdateInit(OpBase *opBase) {
+	OpUpdate *op = (OpUpdate *)opBase;
+	op->stats = QueryCtx_GetResultSetStatistics();
+	return OP_OK;
 }
 
 static Record UpdateConsume(OpBase *opBase) {

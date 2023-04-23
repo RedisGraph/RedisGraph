@@ -258,10 +258,12 @@ void UpdateEntityProperties
 
 		if(v == ATTRIBUTE_NOTFOUND) {
 			set_props++;
-		} else {
+		} else if(SIValue_Compare(*v, prop->value, NULL) != 0) {
 			intersection++;
 			set_props++;
 			removed_props++;
+		} else {
+			intersection++;
 		}
 	}
 
