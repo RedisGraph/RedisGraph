@@ -4,18 +4,10 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#pragma once
-
-#include "../../../graph/entities/node.h"
+#include "RG.h"
+#include "scan_functions.h"
+#include "../../../util/rmalloc.h"
 #include "../../../graph/entities/qg_node.h"
-
-// Storage struct for label data in node and index scans.
-typedef struct {
-	QGNode *n;          // node to scan (might hold multiple labels)
-	LabelID label_id;   // label ID of the node being traversed
-	const char *alias;  // alias of the node being traversed
-	const char *label;  // label of the node being traversed
-} NodeScanCtx;
 
 // allocates and returns a new context
 NodeScanCtx *NodeScanCtx_New
@@ -24,16 +16,40 @@ NodeScanCtx *NodeScanCtx_New
     char *label,       // label
     LabelID label_id,  // label id
     const QGNode *n    // node
-);
+) {
+    NodeScanCtx *ctx = rm_malloc(sizeof(NodeScanCtx));
+    ctx->alias = alias;
+    ctx->label = label;
+    ctx->label_id = label_id;
+    ctx->n = QGNode_Clone(n);
+
+    return ctx;
+}
 
 // clones a context
 NodeScanCtx *NodeScanCtx_Clone
 (
     const NodeScanCtx *ctx  // context
-);
+) {
+    ASSERT(ctx != NULL);
+    ASSERT(ctx->n != NULL);
+
+    NodeScanCtx *clone = rm_malloc(sizeof(NodeScanCtx));
+    memcpy(clone, ctx, sizeof(NodeScanCtx));
+    clone->n = QGNode_Clone(ctx->n);
+
+    return clone;
+}
 
 // frees a context
 void NodeScanCtx_Free
 (
     NodeScanCtx *ctx  // context
-);
+) {
+    ASSERT(ctx != NULL);
+    ASSERT(ctx->n != NULL);
+    
+    QGNode_Free(ctx->n);
+
+    rm_free(ctx);
+}
