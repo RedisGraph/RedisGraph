@@ -325,13 +325,13 @@ static int _reply_graph_query_info
 static void _reply_finished_queries(void *user_data, const void *item) {
     ViewFinishedQueriesCallbackData *data
         = (ViewFinishedQueriesCallbackData*)user_data;
-    const QueryInfo *finished
-        = (QueryInfo *)item;
+    QueryInfo **finished
+        = (QueryInfo **)item;
 
-    ASSERT(data);
-    ASSERT(item);
+    ASSERT(data != NULL);
+    ASSERT(item != NULL);
 
-    const QueryInfo info = *finished;
+    const QueryInfo info = **finished;
 
     int res = _reply_graph_query_info(data->ctx, info);
     ASSERT(res == REDISMODULE_OK);
@@ -560,13 +560,14 @@ static int _reply_graph_queries
     uint64_t count = 0;
     uint64_t current_limit = max_elements_count;
 
-    _reply_queries_from_all_graphs(
-        ctx,
-        QueryStage_WAITING,
-        current_limit,
-        &count
-    );
-    actual_elements_count += count;
+    // TODO: Was this a mistake? Seems redundant.
+    // _reply_queries_from_all_graphs(
+    //     ctx,
+    //     QueryStage_WAITING,
+    //     current_limit,
+    //     &count
+    // );
+    // actual_elements_count += count;
     if (current_limit >= count) {
         current_limit -= count;
     } else {

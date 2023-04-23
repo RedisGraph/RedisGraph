@@ -148,15 +148,6 @@ static bool _Info_UnlockEverything
     return !pthread_mutex_unlock(&info->mutex);
 }
 
-// fake hash function
-// hash of key is simply key
-static uint64_t _nop_hash
-(
-	const void *key
-) {
-	return ((uint64_t)key);
-}
-
 Info *Info_New(void) {
     // HACK: compensate for the main thread
     const uint64_t thread_count = ThreadPools_ThreadCount() + 1;
@@ -164,9 +155,7 @@ Info *Info_New(void) {
 	Info *info = rm_malloc(sizeof(Info));
 
     // initialize hashmap for the waiting queries (keys are QueryInfo *)
-    static dictType dt = { _nop_hash, NULL, NULL, NULL, NULL, NULL, NULL,
-	NULL, NULL, NULL};
-    info->waiting_queries = HashTableCreate(&dt);
+    info->waiting_queries = HashTableCreate(&def_dt);
 
     // initialize working_queries array
     info->working_queries = rm_calloc(thread_count, sizeof(QueryInfo*));
@@ -470,7 +459,7 @@ void Info_GetQueries
 (
     Info *info,                 // info
     QueryStage stage,           // wanted stage
-    QueryInfoStorage *storage  // result container
+    QueryInfoStorage *storage   // result container
 ) {
     QueryInfoStorage st = *storage;
 

@@ -172,10 +172,10 @@ void CircularBuffer_TraverseCBFromLast
 	// compensate for circularity
 	uint write_ind = (cb->write - cb->data) / cb->item_size;
 	int sub = write_ind - n_items_back;
-	if(sub < 0) {
-		cb->read = cb->end_marker + (sub * cb->item_size);
-	} else {
+	if(sub >= 0) {
 		cb->read = cb->write - n_items_back * cb->item_size;
+	} else {
+		cb->read = cb->end_marker + (sub * cb->item_size);
 	}
 
 	// visit items
@@ -188,7 +188,7 @@ void CircularBuffer_TraverseCBFromLast
 		cb->read += cb->item_size;
 
 		if(unlikely(cb->read >= cb->end_marker)) {
-			cb->write = cb->data;
+			cb->read = cb->data;
 		}
 
 		n_items_back--;

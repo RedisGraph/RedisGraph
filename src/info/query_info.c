@@ -132,11 +132,11 @@ QueryInfo *QueryInfo_Clone
     if(qi->query_string != NULL) {
         clone->query_string = strdup(qi->query_string);
     }
+    clone->stage = qi->stage;
     clone->received_ts = qi->received_ts;
     clone->wait_duration = qi->wait_duration;
-    clone->execution_duration = qi->execution_duration;
     clone->report_duration = qi->report_duration;
-    clone->stage = qi->stage;
+    clone->execution_duration = qi->execution_duration;
     // clone timer will isn't relevant, stays {0}
 
     return clone;
@@ -158,12 +158,12 @@ void QueryInfo_CloneTo
 
     *destination = *source;
 
-    if (destination->query_string) {
-        destination->query_string = strdup(destination->query_string);
+    if (source->query_string != NULL) {
+        destination->query_string = strdup(source->query_string);
     }
 
-    if (destination->graph_name) {
-        destination->graph_name = strdup(destination->graph_name);
+    if (source->graph_name != NULL) {
+        destination->graph_name = strdup(source->graph_name);
     }
 }
 
@@ -182,10 +182,10 @@ void QueryInfo_Free
 (
     QueryInfo *qi
 ) {
-    if (qi->query_string) {
+    if (qi->query_string != NULL) {
         free(qi->query_string);
     }
-    if (qi->graph_name) {
+    if (qi->graph_name != NULL) {
         free(qi->graph_name);
     }
 }

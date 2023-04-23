@@ -26,8 +26,8 @@ typedef struct QueryInfo {
     millis_t wait_duration;      // waiting time
     millis_t execution_duration; // executing time
     millis_t report_duration;    // reporting time
-    simple_timer_t stage_timer;  // timer
     QueryStage stage;            // query stage
+    simple_timer_t stage_timer;  // timer
 } QueryInfo;
 
 // creates a new, empty query info object
