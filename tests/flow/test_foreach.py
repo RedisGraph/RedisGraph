@@ -675,10 +675,9 @@ class testForeachFlow():
         FOREACH(x in $li |
             SET n.v = n.v + x
         )
-        RETURN n
+        RETURN n.v
         """
 
         res = graph.query(query)
         # check that the `v` property of the node is now 1 + 0 + 1 + 2 + 3 = 7
-        self.env.assertEquals(res.result_set[0][0],
-            Node(label='N', properties={'v': 7}))
+        self.env.assertEquals(res.result_set[0][0], 7)

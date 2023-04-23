@@ -242,12 +242,13 @@ void UpdateEntityProperties
 
 	int set_props     = 0;
 	int removed_props = 0;
+	int intersection  = 0;
 
-	AttributeSet old_set = *ge->attributes;
+	AttributeSet old_set = GraphEntity_GetAttributes(ge);
 
 	if(log == true) {
-		QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-		UndoLog_UpdateEntity(&query_ctx->undo_log, ge, old_set, entity_type);
+		UndoLog *log = QueryCtx_GetUndoLog();
+		UndoLog_UpdateEntity(log, ge, old_set, entity_type);
 	}
 
 	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
@@ -257,21 +258,14 @@ void UpdateEntityProperties
 
 		if(v == ATTRIBUTE_NOTFOUND) {
 			set_props++;
-		} else if(SIValue_Compare(*v, prop->value, NULL) != 0) {
+		} else {
+			intersection++;
 			set_props++;
 			removed_props++;
 		}
 	}
 
-	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(old_set); i++) {
-		Attribute *prop = old_set->attributes + i;
-
-		SIValue *v = AttributeSet_Get(set, prop->id);
-
-		if(v == ATTRIBUTE_NOTFOUND) {
-			removed_props++;
-		}
-	}
+	removed_props += ATTRIBUTE_SET_COUNT(old_set) - intersection;
 
 	*ge->attributes = set;
 

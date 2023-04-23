@@ -103,7 +103,7 @@ static Record UpdateConsume(OpBase *opBase) {
 
 	dictIterator *it = HashTableGetIterator(op->node_updates);
 	dictEntry *entry;
-	while((entry  = HashTableNext(it)) != NULL) {
+	while((entry = HashTableNext(it)) != NULL) {
 		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
 		PendingUpdateCtx_Free(pending_update);
 	}
@@ -136,7 +136,7 @@ static OpResult UpdateReset(OpBase *ctx) {
 
 	dictIterator *it = HashTableGetIterator(op->node_updates);
 	dictEntry *entry;
-	while((entry  = HashTableNext(it)) != NULL) {
+	while((entry = HashTableNext(it)) != NULL) {
 		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
 		PendingUpdateCtx_Free(pending_update);
 	}

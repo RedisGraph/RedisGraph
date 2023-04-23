@@ -132,7 +132,9 @@ static void _UndoLog_Rollback_Update_Entity
 
 		// update indices
 		if(update_op->entity_type == GETYPE_NODE) {
+			// free current entity attribute-set
 			AttributeSet_Free(update_op->n.attributes);
+			// restore entity previous attribute-set
 			*update_op->n.attributes = update_op->set;
 			_index_node(ctx, &update_op->n);
 		} else {
