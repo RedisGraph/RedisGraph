@@ -21,20 +21,24 @@ static void NodeByLabelScanFree(OpBase *opBase);
 
 static inline void NodeByLabelScanToString(const OpBase *ctx, sds *buf) {
 	NodeByLabelScan *op = (NodeByLabelScan *)ctx;
-	ScanToString(ctx, buf, op->n.alias, op->n.label);
+	ScanToString(ctx, buf, op->n->alias, op->n->label);
 }
 
 // update the label-id of a cached operation, as it may have not 
 // been known when the plan was prepared.
 static void _update_label_id(NodeByLabelScan *op) {
-	if(op->n.label_id != GRAPH_UNKNOWN_LABEL) return;
+	if(op->n->label_id != GRAPH_UNKNOWN_LABEL) return;
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Schema *s = GraphContext_GetSchema(gc, op->n.label, SCHEMA_NODE);
-	if(s != NULL) op->n.label_id = Schema_GetID(s);
+	Schema *s = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
+	if(s != NULL) op->n->label_id = Schema_GetID(s);
 }
 
-OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
+OpBase *NewNodeByLabelScanOp
+(
+	const ExecutionPlan *plan,
+	NodeScanCtx *n
+) {
 	NodeByLabelScan *op = rm_calloc(sizeof(NodeByLabelScan), 1);
 	op->g = QueryCtx_GetGraph();
 	op->n = n;
@@ -47,7 +51,7 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
 				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NodeByLabelScanClone,
 				NodeByLabelScanFree, false, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n.alias);
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 
 	return (OpBase *)op;
 }
@@ -67,7 +71,7 @@ static GrB_Info _ConstructIterator(NodeByLabelScan *op) {
 	GrB_Index nrows;
 
 	GraphContext  *gc  =  QueryCtx_GetGraphCtx();
-	RG_Matrix     L    =  Graph_GetLabelMatrix(gc->g, op->n.label_id);
+	RG_Matrix     L    =  Graph_GetLabelMatrix(gc->g, op->n->label_id);
 
 	info = RG_Matrix_nrows(&nrows, L);
 	ASSERT(info == GrB_SUCCESS);
@@ -100,7 +104,7 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 		return OP_OK;
 	}
 
-	if(op->n.label_id == GRAPH_UNKNOWN_LABEL) {
+	if(op->n->label_id == GRAPH_UNKNOWN_LABEL) {
 		// Missing schema, use the NOP consume function.
 		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
 		return OP_OK;
@@ -207,8 +211,7 @@ static OpResult NodeByLabelScanReset(OpBase *ctx) {
 static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	ASSERT(opBase->type == OPType_NODE_BY_LABEL_SCAN);
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
-	OpBase *clone = NewNodeByLabelScanOp(plan, op->n);
-	return clone;
+	return NewNodeByLabelScanOp(plan, NodeScanCtx_Clone(op->n));
 }
 
 static void NodeByLabelScanFree(OpBase *op) {
@@ -226,5 +229,9 @@ static void NodeByLabelScanFree(OpBase *op) {
 		UnsignedRange_Free(nodeByLabelScan->id_range);
 		nodeByLabelScan->id_range = NULL;
 	}
-}
 
+	if(nodeByLabelScan->n != NULL) {
+		NodeScanCtx_Free(nodeByLabelScan->n);
+		nodeByLabelScan->n = NULL;
+	}
+}
