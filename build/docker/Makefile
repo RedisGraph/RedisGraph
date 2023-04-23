@@ -14,4 +14,8 @@ PREVIEW_BRANCH=2.12
 
 ART_DIR=$(ROOT)/bin/artifacts
 
+XENIAL_MODERN_OMP ?= 0
+
+DOCKER_VARS += XENIAL_MODERN_OMP
+
 include $(MK)/module.docker.rules
