@@ -86,7 +86,7 @@ void CircularBuffer_AddForce
 	ASSERT(item != NULL);
 
 	// copy item into buffer
-	memcpy(cb->write, &item, cb->item_size);
+	memcpy(cb->write, item, cb->item_size);
 
 	// atomic update buffer item count
 	if(!CircularBuffer_Full(cb)) {
@@ -233,8 +233,8 @@ void CircularBuffer_Free
 	if(cb->free_cb != NULL) {
 		uint64_t read_offset = 0;
 		while (read_offset < cb->item_count) {
-			void *item = CircularBuffer_GetElement(cb, read_offset);
-			cb->free_cb(item);
+			void **item = (void **)CircularBuffer_GetElement(cb, read_offset);
+			cb->free_cb(*item);
 			++read_offset;
 		}
 	}

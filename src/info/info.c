@@ -126,7 +126,7 @@ static void _add_finished_query
     int res = pthread_rwlock_wrlock(&finished_queries_rwlock);
 	ASSERT(res == 0);
 
-    CircularBuffer_AddForce(finished_queries, (void *)qi);
+    CircularBuffer_AddForce(finished_queries, (void *)&qi);
 
     res = pthread_rwlock_unlock(&finished_queries_rwlock);
 	ASSERT(res == 0);
