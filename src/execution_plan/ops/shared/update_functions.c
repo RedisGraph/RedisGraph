@@ -175,9 +175,15 @@ void EvalEntityUpdates
 				"Type mismatch: expected Node but was Relationship");
 	}
 
-	dict *updates = (t == REC_TYPE_NODE)
-		? node_updates
-		: edge_updates;
+	dict *updates;
+	GraphEntityType entity_type;
+	if(t == REC_TYPE_NODE) {
+		updates = node_updates;
+		entity_type = GETYPE_NODE;
+	} else {
+		updates = edge_updates;
+		entity_type = GETYPE_EDGE;
+	}
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
 
@@ -205,31 +211,8 @@ void EvalEntityUpdates
 		update->remove_labels = array_new(const char *, array_len(ctx->remove_labels));
 	}
 	
-	for (uint i = 0; i < array_len(ctx->add_labels); i++) {
-		bool found = false;
-		for(uint j = 0; j < array_len(update->add_labels); j++) {
-			if(strcmp(update->add_labels[j], ctx->add_labels[i]) == 0) {
-				found = true;
-				break;
-			}
-		}
-		if(!found) {
-			array_append(update->add_labels, ctx->add_labels[i]);
-		}
-	}
-
-	for (uint i = 0; i < array_len(ctx->remove_labels); i++) {
-		bool found = false;
-		for(uint j = 0; j < array_len(update->remove_labels); j++) {
-			if(strcmp(update->remove_labels[j], ctx->remove_labels[i]) == 0) {
-				found = true;
-				break;
-			}
-		}
-		if(!found) {
-			array_append(update->remove_labels, ctx->remove_labels[i]);
-		}
-	}
+	array_union(update->add_labels, ctx->add_labels, strcmp);
+	array_union(update->remove_labels, ctx->remove_labels, strcmp);
 
 	AttributeSet *old_attributes = entity->attributes;
 	entity->attributes = &update->attributes;
@@ -259,7 +242,6 @@ void EvalEntityUpdates
 	// collect all updates into a single attribute-set
 	//
 	QueryCtx *query_ctx = QueryCtx_GetQueryCtx();
-	GraphEntityType entity_type = t == REC_TYPE_NODE ? GETYPE_NODE : GETYPE_EDGE;
 	for(uint i = 0; i < exp_count && !error; i++) {
 		PropertySetCtx *property = ctx->properties + i;
 
@@ -305,8 +287,6 @@ void EvalEntityUpdates
 			// if this update replaces all existing properties
 			// enqueue a 'clear' update to do so
 			for (uint i = 0; i < ATTRIBUTE_SET_COUNT(update->attributes); i++) {
-				// TODO: can't we somehow update to an empty dict?
-				// n = {}?
 				Attribute *attr = update->attributes->attributes + i;
 				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr->id,
 						SI_NullVal(), entity_type);
@@ -372,6 +352,8 @@ void EvalEntityUpdates
 		}
 	} // for loop end
 
+	// we need the pointer to the datablock in the commit phase
+	// and we don't want to expose the updated attributes before committing
 	entity->attributes = old_attributes;
 	if(t == REC_TYPE_NODE) {
 		Record_AddNode(r, ctx->record_idx, *(Node *)entity);

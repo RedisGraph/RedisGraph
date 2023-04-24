@@ -69,7 +69,7 @@ void AttributeSet_Add
 
 // add or update an attribute
 // this function allows NULL value to be added to the set
-// returns true if the value was added or updated or deleted otherwise false
+// returns true if the value was added, updated or deleted otherwise false
 bool AttributeSet_Set_Allow_Null
 (
 	AttributeSet *set,     // set to update

@@ -55,6 +55,7 @@
  * the number of elements and the buckets > dict_force_resize_ratio. */
 static HashTableResizeEnable dict_can_resize = DICT_RESIZE_ENABLE;
 static unsigned int dict_force_resize_ratio = 5;
+const dictType default_dt = {nop_hash, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 /* -------------------------- types ----------------------------------------- */
 
@@ -77,8 +78,7 @@ struct dictEntry {
 static int _HashTableExpandIfNeeded(dict *d);
 static signed char _dictNextExp(unsigned long size);
 static long _dictKeyIndex(dict *d, const void *key, uint64_t hash, dictEntry **existing);
-static int _dictInit(dict *d, dictType *type);
-static dictType default_dt = DEFAULT_DICT_TYPE;
+static int _dictInit(dict *d, const dictType *type);
 
 /* -------------------------- hash functions -------------------------------- */
 
@@ -135,12 +135,9 @@ static void _dictReset
 /* Create a new hash table */
 dict *HashTableCreate
 (
-	dictType *type
-)
-{
-    if(type == NULL) {
-        type = &default_dt;
-    }
+	const dictType *type
+) {
+    assert(type != NULL);
 
     size_t metasize = type->dictMetadataBytes ? type->dictMetadataBytes() : 0;
     dict *d = malloc(sizeof(*d) + metasize);
@@ -148,7 +145,7 @@ dict *HashTableCreate
         memset(HashTableMetadata(d), 0, metasize);
     }
 
-    _dictInit(d,type);
+    _dictInit(d, type);
     return d;
 }
 
@@ -164,7 +161,7 @@ unsigned long HashTableElemCount
 int _dictInit
 (
 	dict *d,
-	dictType *type
+	const dictType *type
 ) {
     _dictReset(d, 0);
     _dictReset(d, 1);

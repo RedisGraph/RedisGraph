@@ -325,6 +325,24 @@ __extension__({                                         \
         }                                       \
     })                                          \
 
+// dest = dest ∪ src
+// treats both src and dest as sets
+#define array_union(dest, src, cmp)                  \
+  __extension__({                                    \
+    for (uint i = 0; i < array_len((src)); i++) {    \
+      bool found = false;                            \
+      for(uint j = 0; j < array_len((dest)); j++) {  \
+        if(cmp((dest)[j], (src)[i]) == 0) {          \
+          found = true;                              \
+          break;                                     \
+        }                                            \
+      }                                              \
+      if(!found) {                                   \
+        array_append((dest), (src)[i]);              \
+      }                                              \
+    }                                                \
+})                                                   \
+
 #pragma GCC diagnostic pop
 
 #ifdef __cplusplus

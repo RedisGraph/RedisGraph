@@ -30,12 +30,12 @@ static Record _handoff(OpUpdate *op) {
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
-	op->gc                 =  QueryCtx_GetGraphCtx();
-	op->records            =  array_new(Record, 64);
-	op->update_ctxs        =  update_exps;
-	op->node_updates       =  HashTableCreate(NULL);
-	op->edge_updates       =  HashTableCreate(NULL);
-	op->updates_committed  =  false;
+	op->gc                = QueryCtx_GetGraphCtx();
+	op->records           = array_new(Record, 64);
+	op->update_ctxs       = update_exps;
+	op->node_updates      = HashTableCreate(&default_dt);
+	op->edge_updates      = HashTableCreate(&default_dt);
+	op->updates_committed = false;
 
 	// set our op operations
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,

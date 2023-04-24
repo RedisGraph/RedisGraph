@@ -366,8 +366,8 @@ static Record MergeConsume
 	}
 	OpBase_PropagateReset(op->match_stream);
 
-	op->node_pending_updates = HashTableCreate(NULL);
-	op->edge_pending_updates = HashTableCreate(NULL);
+	op->node_pending_updates = HashTableCreate(&default_dt);
+	op->edge_pending_updates = HashTableCreate(&default_dt);
 
 	// if we are setting properties with ON MATCH, compute all pending updates
 	if(op->on_match && match_count > 0) {

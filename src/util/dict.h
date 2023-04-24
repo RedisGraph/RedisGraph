@@ -76,10 +76,10 @@ static uint64_t nop_hash
 	return ((uint64_t)key);
 }
 
-#define DEFAULT_DICT_TYPE {nop_hash, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL}
+extern const dictType default_dt;
 
 struct dict {
-    dictType *type;
+    const dictType *type;
 
     dictEntry **ht_table[2];
     unsigned long ht_used[2];
@@ -159,7 +159,7 @@ typedef enum {
 } HashTableResizeEnable;
 
 /* API */
-dict *HashTableCreate(dictType *type);
+dict *HashTableCreate(const dictType *type);
 unsigned long HashTableElemCount(const dict *d);
 int HashTableExpand(dict *d, unsigned long size);
 void *HashTableMetadata(dict *d);
