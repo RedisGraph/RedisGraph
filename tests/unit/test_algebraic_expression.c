@@ -77,7 +77,7 @@ static void _fake_graph_context() {
 	gc->slowlog = NULL;
 	gc->encoding_context = NULL;
 	gc->decoding_context = NULL;
-	Info_New(&gc->info);
+	gc->info = Info_New();
 
 	GraphContext_AddSchema(gc, "Person", SCHEMA_NODE);
 	GraphContext_AddSchema(gc, "City", SCHEMA_NODE);

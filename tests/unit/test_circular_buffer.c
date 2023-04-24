@@ -15,7 +15,7 @@ void setup() {
 #include "acutest.h"
 
 void test_CircularBufferInit(void) {
-	CircularBuffer buff = CircularBuffer_New(sizeof(int), 16);
+	CircularBuffer buff = CircularBuffer_New(sizeof(int), 16, NULL);
 
 	// a new circular buffer should be empty
 	TEST_ASSERT(CircularBuffer_Empty(buff) == true);
@@ -34,7 +34,7 @@ void test_CircularBufferInit(void) {
 void test_CircularBufferPopulation(void) {
 	int n;
 	int cap = 16;
-	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap);
+	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap, NULL);
 
 	// remove item from an empty buffer should report failure
 	TEST_ASSERT(CircularBuffer_Remove(buff, &n) == 0);
@@ -79,7 +79,7 @@ void test_CircularBufferPopulation(void) {
 void test_CircularBuffer_Circularity(void) {
 	int n;
 	int cap = 16;
-	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap);
+	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap, NULL);
 
 	//--------------------------------------------------------------------------
 	// fill buffer
@@ -122,4 +122,3 @@ TEST_LIST = {
 	{"CircularBuffer_Circularity", test_CircularBuffer_Circularity},
 	{NULL, NULL}
 };
-
