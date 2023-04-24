@@ -20,7 +20,7 @@
 typedef struct {
 	OpBase op;
 	Graph *g;
-	NodeScanCtx n;              // Label data of node being scanned
+	NodeScanCtx *n;             // Label data of node being scanned
 	unsigned int nodeRecIdx;    // Node position within record
 	UnsignedRange *id_range;    // ID range to iterate over
 	RG_MatrixTupleIter iter;    // Iterator over label matrix
@@ -28,7 +28,11 @@ typedef struct {
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
-OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n);
+OpBase *NewNodeByLabelScanOp
+(
+	const ExecutionPlan *plan,
+	NodeScanCtx *n
+);
 
 /* Transform a simple label scan to perform additional range query over the label  matrix. */
 void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range);

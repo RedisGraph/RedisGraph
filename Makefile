@@ -235,9 +235,11 @@ $(RAX):
 
 graphblas: $(GRAPHBLAS)
 
+GRAPHBLAS_MAKE_FLAGS.xenial-x64=CC=gcc-5 CXX=gxx-5
+
 $(GRAPHBLAS):
 	@echo Building $@ ...
-	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/GraphBLAS DEBUG=$(DEPS_DEBUG)
+	$(SHOW)$(MAKE) --no-print-directory -C $(ROOT)/build/GraphBLAS DEBUG=$(DEPS_DEBUG) $(GRAPHBLAS_MAKE_FLAGS.$(OSNICK)-$(ARCH))
 
 libcypher-parser: $(LIBCYPHER_PARSER)
 
