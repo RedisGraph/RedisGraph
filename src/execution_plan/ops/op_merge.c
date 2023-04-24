@@ -20,6 +20,28 @@ static Record MergeConsume(OpBase *opBase);
 static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
+// fake hash function
+// hash of key is simply key
+static uint64_t _id_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+// hashtable entry free callback
+static void freeCallback
+(
+	dict *d,
+	void *val
+) {
+	PendingUpdateCtx_Free((PendingUpdateCtx*)val);
+}
+
+// hashtable callbacks
+static dictType _dt = { _id_hash, NULL, NULL, NULL, NULL, freeCallback, NULL,
+	NULL, NULL, NULL};
+
 //------------------------------------------------------------------------------
 // ON MATCH / ON CREATE logic
 //------------------------------------------------------------------------------
@@ -29,7 +51,6 @@ static void _UpdateProperties
 (
 	dict *node_pending_updates,
 	dict *edge_pending_updates,
-	ResultSetStatistics *stats,
 	raxIterator updates,
 	Record *records,
 	uint record_count
@@ -84,25 +105,11 @@ static inline void _free_pending_updates
 	OpMerge *op
 ) {
 	if(op->node_pending_updates) {
-		dictIterator *it = HashTableGetIterator(op->node_pending_updates);
-		dictEntry *entry;
-		while((entry  = HashTableNext(it)) != NULL) {
-			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-			PendingUpdateCtx_Free(pending_update);
-		}
-		HashTableReleaseIterator(it);
 		HashTableRelease(op->node_pending_updates);
 		op->node_pending_updates = NULL;
 	}
 
 	if(op->edge_pending_updates) {
-		dictIterator *it = HashTableGetIterator(op->edge_pending_updates);
-		dictEntry *entry;
-		while((entry = HashTableNext(it)) != NULL) {
-			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-			PendingUpdateCtx_Free(pending_update);
-		}
-		HashTableReleaseIterator(it);
 		HashTableRelease(op->edge_pending_updates);
 		op->edge_pending_updates = NULL;
 	}
@@ -120,7 +127,6 @@ OpBase *NewMergeOp
 	// (see CartesianProduct and ValueHashJoin)
 	OpMerge *op = rm_calloc(1, sizeof(OpMerge));
 
-	op->stats                = NULL;
 	op->on_match             = on_match;
 	op->on_create            = on_create;
 	op->node_pending_updates = NULL;
@@ -174,7 +180,6 @@ static OpResult MergeInit
 	// - the last creates the pattern
 	ASSERT(opBase->childCount == 2 || opBase->childCount == 3);
 	OpMerge *op = (OpMerge *)opBase;
-	op->stats = QueryCtx_GetResultSetStatistics();
 	if(opBase->childCount == 2) {
 		// if we only have 2 streams
 		// we simply need to determine which has a MergeCreate op
@@ -366,13 +371,13 @@ static Record MergeConsume
 	}
 	OpBase_PropagateReset(op->match_stream);
 
-	op->node_pending_updates = HashTableCreate(&default_dt);
-	op->edge_pending_updates = HashTableCreate(&default_dt);
+	op->node_pending_updates = HashTableCreate(&_dt);
+	op->edge_pending_updates = HashTableCreate(&_dt);
 
 	// if we are setting properties with ON MATCH, compute all pending updates
 	if(op->on_match && match_count > 0) {
 		_UpdateProperties(op->node_pending_updates, op->edge_pending_updates,
-			op->stats, op->on_match_it, op->output_records, match_count);
+			op->on_match_it, op->output_records, match_count);
 	}
 
 	if(must_create_records) {
@@ -383,25 +388,22 @@ static Record MergeConsume
 
 		// we only need to pull the created records if we're returning results
 		// or performing updates on creation
-		// TODO: isn't op->stats always != NULL ?
-		if(op->stats || op->on_create) {
-			// pull all records from the Create stream
-			uint create_count = 0;
-			Record created_record;
-			while((created_record = _pullFromStream(op->create_stream))) {
-				array_append(op->output_records, created_record);
-				create_count++;
-			}
+		// pull all records from the Create stream
+		uint create_count = 0;
+		Record created_record;
+		while((created_record = _pullFromStream(op->create_stream))) {
+			array_append(op->output_records, created_record);
+			create_count++;
+		}
 
-			// if we are setting properties with ON CREATE
-			// compute all pending updates
-			// TODO: note we're under lock at this point! is there a way
-			// to compute these changes before locking ?
-			if(op->on_create) {
-				_UpdateProperties(op->node_pending_updates,
-					op->edge_pending_updates, op->stats, op->on_create_it,
-					op->output_records + match_count, create_count);
-			}
+		// if we are setting properties with ON CREATE
+		// compute all pending updates
+		// TODO: note we're under lock at this point! is there a way
+		// to compute these changes before locking ?
+		if(op->on_create) {
+			_UpdateProperties(op->node_pending_updates,
+				op->edge_pending_updates, op->on_create_it,
+				op->output_records + match_count, create_count);
 		}
 	}
 
@@ -414,9 +416,9 @@ static Record MergeConsume
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		// lock everything
 		QueryCtx_LockForCommit(); {
-			CommitUpdates(gc, op->stats, op->node_pending_updates, ENTITY_NODE);
+			CommitUpdates(gc, op->node_pending_updates, ENTITY_NODE, true);
 			if(likely(!ErrorCtx_EncounteredError())) {
-				CommitUpdates(gc, op->stats, op->edge_pending_updates, ENTITY_EDGE);
+				CommitUpdates(gc, op->edge_pending_updates, ENTITY_EDGE, true);
 			}
 		}
 	}
@@ -425,21 +427,7 @@ static Record MergeConsume
 	// free updates
 	//--------------------------------------------------------------------------
 
-	dictIterator *it = HashTableGetIterator(op->node_pending_updates);
-	dictEntry *entry;
-	while((entry  = HashTableNext(it)) != NULL) {
-		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-		PendingUpdateCtx_Free(pending_update);
-	}
-	HashTableReleaseIterator(it);
 	HashTableEmpty(op->node_pending_updates, NULL);
-
-	it = HashTableGetIterator(op->edge_pending_updates);
-	while((entry  = HashTableNext(it)) != NULL) {
-		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-		PendingUpdateCtx_Free(pending_update);
-	}
-	HashTableReleaseIterator(it);
 	HashTableEmpty(op->edge_pending_updates, NULL);
 
 	return _handoff(op);

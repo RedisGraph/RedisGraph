@@ -89,7 +89,7 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 	Schema_AddEdgeToIndices(s, e);
 }
 
-uint CreateNode
+void CreateNode
 (
 	GraphContext *gc,
 	Node *n,
@@ -118,11 +118,9 @@ uint CreateNode
 		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
 		EffectsBuffer_AddCreateNodeEffect(eb, n);
 	}
-
-	return ATTRIBUTE_SET_COUNT(set);
 }
 
-uint CreateEdge
+void CreateEdge
 (
 	GraphContext *gc,
 	Edge *e,
@@ -150,8 +148,6 @@ uint CreateEdge
 		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
 		EffectsBuffer_AddCreateEdgeEffect(eb, e);
 	}
-
-	return ATTRIBUTE_SET_COUNT(set);
 }
 
 // delete a node
@@ -231,18 +227,10 @@ void UpdateEntityProperties
 	GraphEntity *ge,              // updated entity
 	const AttributeSet set,       // new attributes
 	GraphEntityType entity_type,  // entity type
-	uint *props_set_count,        // number of attributes set
-	uint *props_removed_count,    // number of attributes removed
 	bool log                      // log update in undo-log
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(ge != NULL);
-	ASSERT(props_set_count     != NULL);
-	ASSERT(props_removed_count != NULL);
-
-	int set_props     = 0;
-	int removed_props = 0;
-	int intersection  = 0;
 
 	AttributeSet old_set = GraphEntity_GetAttributes(ge);
 
@@ -251,36 +239,89 @@ void UpdateEntityProperties
 		UndoLog_UpdateEntity(log, ge, old_set, entity_type);
 	}
 
-	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
-		Attribute *prop = set->attributes + i;
-
-		SIValue *v = AttributeSet_Get(old_set, prop->id);
-
-		if(v == ATTRIBUTE_NOTFOUND) {
-			set_props++;
-		} else if(SIValue_Compare(*v, prop->value, NULL) != 0) {
-			intersection++;
-			set_props++;
-			removed_props++;
-		} else {
-			intersection++;
-		}
-	}
-
-	removed_props += ATTRIBUTE_SET_COUNT(old_set) - intersection;
-
 	*ge->attributes = set;
 
-	if(set_props + removed_props > 0) {
-		if(entity_type == GETYPE_NODE) {
-			_AddNodeToIndices(gc, (Node *)ge);
-		} else {
-			_AddEdgeToIndices(gc, (Edge *)ge);
-		}
+	if(entity_type == GETYPE_NODE) {
+		_AddNodeToIndices(gc, (Node *)ge);
+	} else {
+		_AddEdgeToIndices(gc, (Edge *)ge);
+	}
+}
+
+void UpdateNodeProperty
+(
+	GraphContext *gc,             // graph context
+	NodeID id,                    // node ID
+	Attribute_ID attr_id,         // attribute ID
+	SIValue v                     // new attribute value
+) {
+	Node n;
+	int res = Graph_GetNode(gc->g, id, &n);
+
+	// make sure entity was found
+	UNUSED(res);
+	ASSERT(res == true);
+
+	if(attr_id == ATTRIBUTE_ID_ALL) {
+		AttributeSet_Free(n.attributes);
+	} else if(GraphEntity_GetProperty((GraphEntity *)&n, attr_id) == ATTRIBUTE_NOTFOUND) {
+		AttributeSet_AddNoClone(n.attributes, &attr_id, &v, 1, true);
+	} else {
+		AttributeSet_UpdateNoClone(n.attributes, attr_id, v);
 	}
 
-	*props_set_count = set_props;
-	*props_removed_count = removed_props;
+	// retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(gc->g, &n, label_count);
+
+	Schema *s;
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i];
+		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+		ASSERT(s != NULL);
+		Schema_AddNodeToIndices(s, &n);
+	}
+}
+
+void UpdateEdgeProperty
+(
+	GraphContext *gc,             // graph context
+	EdgeID id,                    // edge ID
+	RelationID r_id,              // relation ID
+	NodeID src_id,                // source node ID
+	NodeID dest_id,               // destination node ID
+	Attribute_ID attr_id,         // attribute ID
+	SIValue v                     // new attribute value
+) {
+	Edge e;                // edge to delete
+	Node s;                // edge src node
+	Node t;                // edge dest node
+
+	// get src node, dest node and edge from the graph
+	int res = Graph_GetNode(gc->g, src_id, &s);
+	ASSERT(res != 0);
+	res = Graph_GetNode(gc->g, dest_id, &t);
+	ASSERT(res != 0);
+	res = Graph_GetEdge(gc->g, id, &e);
+	ASSERT(res != 0);
+
+	// set edge relation, src and destination node
+	Edge_SetSrcNode(&e, &s);
+	Edge_SetDestNode(&e, &t);
+	Edge_SetRelationID(&e, r_id);
+
+
+	if(attr_id == ATTRIBUTE_ID_ALL) {
+		AttributeSet_Free(e.attributes);
+	} else if(GraphEntity_GetProperty((GraphEntity *)&e, attr_id) == ATTRIBUTE_NOTFOUND) {
+		AttributeSet_AddNoClone(e.attributes, &attr_id, &v, 1, true);
+	} else {
+		AttributeSet_UpdateNoClone(e.attributes, attr_id, v);
+	}
+
+	Schema *schema = GraphContext_GetSchemaByID(gc, r_id, SCHEMA_EDGE);
+	ASSERT(schema != NULL);
+	Schema_AddEdgeToIndices(schema, &e);
 }
 
 void UpdateNodeLabels
@@ -291,9 +332,8 @@ void UpdateNodeLabels
 	const char **remove_labels,  // labels to add to the node
 	uint n_add_labels,           // number of labels to add
 	uint n_remove_labels,        // number of labels to remove
-	uint *n_labels_added,        // number of labels added (out param)
-	uint *n_labels_removed,      // number of labels removed (out param)
-	bool log                     // log this operation in undo-log
+	bool log,                    // log this operation in undo-log
+	bool update_stats            // should statistics be updated
 ) {
 	ASSERT(gc   != NULL);
 	ASSERT(node != NULL);
@@ -345,15 +385,13 @@ void UpdateNodeLabels
 		}
 
 		if(add_labels_index > 0) {
-			*n_labels_added = add_labels_index;
-
 			// update node's labels
 			Graph_LabelNode(gc->g, node->id ,add_labels_ids, add_labels_index);
 			if(log == true) {
 				UndoLog_AddLabels(undo_log, node, add_labels_ids,
 						add_labels_index);
 				EffectsBuffer_AddLabelsEffect(eb, node, add_labels_ids,
-						add_labels_index);
+						add_labels_index, update_stats);
 			}
 		}
 	}
@@ -380,8 +418,6 @@ void UpdateNodeLabels
 		}
 
 		if(remove_labels_index > 0) {
-			*n_labels_removed = remove_labels_index;
-
 			// update node's labels
 			Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node),
 					remove_labels_ids, remove_labels_index);
@@ -389,7 +425,7 @@ void UpdateNodeLabels
 				UndoLog_RemoveLabels(undo_log, node, remove_labels_ids,
 						remove_labels_index);
 				EffectsBuffer_AddRemoveLabelsEffect(eb, node, remove_labels_ids,
-						remove_labels_index);
+						remove_labels_index, update_stats);
 			}
 		}
 	}
@@ -400,7 +436,7 @@ Schema *AddSchema
 	GraphContext *gc,   // graph context to add the schema
 	const char *label,  // schema label
 	SchemaType t,       // schema type (node/edge)
-	bool log            // should operation be logged in the undo-log      
+	bool log            // should operation be logged in the undo-log
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);

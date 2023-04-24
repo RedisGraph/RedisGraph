@@ -42,20 +42,15 @@ static bool _ValidateAttrType
 void CommitUpdates
 (
 	GraphContext *gc,
-	ResultSetStatistics *stats,
 	dict *updates,
-	EntityType type
+	EntityType type,
+	bool update_stats
 ) {
 	ASSERT(gc      != NULL);
-	ASSERT(stats   != NULL);
 	ASSERT(updates != NULL);
 	ASSERT(type    != ENTITY_UNKNOWN);
 
 	uint update_count         = HashTableElemCount(updates);
-	uint labels_added         = 0;
-	uint labels_removed       = 0;
-	uint properties_set       = 0;
-	uint properties_removed   = 0;
 	bool constraint_violation = false;
 
 	// return early if no updates are enqueued
@@ -69,28 +64,16 @@ void CommitUpdates
 		// if entity has been deleted, perform no updates
 		if(GraphEntity_IsDeleted(update->ge)) continue;
 		
-		uint _labels_added   = 0;
-		uint _labels_removed = 0;
-		uint _props_set      = 0;
-		uint _props_removed  = 0;
-
 		// update the attributes on the graph entity
 		UpdateEntityProperties(gc, update->ge, update->attributes,
-				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, &_props_set,
-				&_props_removed, true);
+				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, true);
 		update->attributes = NULL;
 
 		if(type == ENTITY_NODE) {
 			UpdateNodeLabels(gc, (Node*)update->ge, update->add_labels,
 				update->remove_labels, array_len(update->add_labels),
-				array_len(update->remove_labels), &_labels_added,
-				&_labels_removed, true);
+				array_len(update->remove_labels), true, update_stats);
 		}
-
-		labels_added       += _labels_added;
-		labels_removed     += _labels_removed;
-		properties_set     += _props_set;
-		properties_removed += _props_removed;
 
 		//----------------------------------------------------------------------
 		// enforce constraints
@@ -127,13 +110,6 @@ void CommitUpdates
 		}
 	}
 	HashTableReleaseIterator(it);
-
-	if(stats) {
-		stats->labels_added       += labels_added;
-		stats->labels_removed     += labels_removed;
-		stats->properties_set     += properties_set;
-		stats->properties_removed += properties_removed;
-	}
 }
 
 // build pending updates in the 'updates' array to match all
@@ -266,7 +242,7 @@ void EvalEntityUpdates
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
 			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
 				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id, v,
-						entity_type);
+						entity_type, AttributeSet_Get(*old_attributes, attr_id) == ATTRIBUTE_NOTFOUND);
 			}
 			SIValue_Free(v);
 			continue;
@@ -286,11 +262,8 @@ void EvalEntityUpdates
 		if(mode == UPDATE_REPLACE) {
 			// if this update replaces all existing properties
 			// enqueue a 'clear' update to do so
-			for (uint i = 0; i < ATTRIBUTE_SET_COUNT(update->attributes); i++) {
-				Attribute *attr = update->attributes->attributes + i;
-				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr->id,
-						SI_NullVal(), entity_type);
-			}
+			EffectsBuffer_AddUpdateEntityEffect(eb, update->ge,
+				ATTRIBUTE_ID_ALL, SI_NullVal(), entity_type, false);
 			AttributeSet_Free(&update->attributes);
 		}
 
@@ -319,7 +292,7 @@ void EvalEntityUpdates
 					// TODO: would have been nice we we just sent
 					// n = {}
 					EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id,
-							value, entity_type);
+							value, entity_type, mode == UPDATE_REPLACE || AttributeSet_Get(*old_attributes, attr_id) == ATTRIBUTE_NOTFOUND);
 				}
 			}
 
@@ -347,7 +320,7 @@ void EvalEntityUpdates
 			// simple assignment, no need to value validation
 			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
 				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id, v,
-						entity_type);
+						entity_type, mode == UPDATE_REPLACE || AttributeSet_Get(*old_attributes, attr_id) == ATTRIBUTE_NOTFOUND);
 			}
 		}
 	} // for loop end

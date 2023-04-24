@@ -14,7 +14,6 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
-static OpResult UpdateInit(OpBase *opBase);
 static Record UpdateConsume(OpBase *opBase);
 static OpResult UpdateReset(OpBase *opBase);
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase);
@@ -28,17 +27,39 @@ static Record _handoff(OpUpdate *op) {
 	return NULL;
 }
 
+// fake hash function
+// hash of key is simply key
+static uint64_t _id_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+// hashtable entry free callback
+static void freeCallback
+(
+	dict *d,
+	void *val
+) {
+	PendingUpdateCtx_Free((PendingUpdateCtx*)val);
+}
+
+// hashtable callbacks
+static dictType _dt = { _id_hash, NULL, NULL, NULL, NULL, freeCallback, NULL,
+	NULL, NULL, NULL};
+
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->gc                = QueryCtx_GetGraphCtx();
 	op->records           = array_new(Record, 64);
 	op->update_ctxs       = update_exps;
-	op->node_updates      = HashTableCreate(&default_dt);
-	op->edge_updates      = HashTableCreate(&default_dt);
+	op->node_updates      = HashTableCreate(&_dt);
+	op->edge_updates      = HashTableCreate(&_dt);
 	op->updates_committed = false;
 
 	// set our op operations
-	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
+	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", NULL, UpdateConsume,
 				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
 
 	// iterate over all update expressions
@@ -51,12 +72,6 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	}
 
 	return (OpBase *)op;
-}
-
-static OpResult UpdateInit(OpBase *opBase) {
-	OpUpdate *op = (OpUpdate *)opBase;
-	op->stats = QueryCtx_GetResultSetStatistics();
-	return OP_OK;
 }
 
 static Record UpdateConsume(OpBase *opBase) {
@@ -92,25 +107,11 @@ static Record UpdateConsume(OpBase *opBase) {
 		// lock everything
 		QueryCtx_LockForCommit();
 
-		CommitUpdates(op->gc, op->stats, op->node_updates, ENTITY_NODE);
-		CommitUpdates(op->gc, op->stats, op->edge_updates, ENTITY_EDGE);
+		CommitUpdates(op->gc, op->node_updates, ENTITY_NODE, true);
+		CommitUpdates(op->gc, op->edge_updates, ENTITY_EDGE, true);
 	}
 
-	dictIterator *it = HashTableGetIterator(op->node_updates);
-	dictEntry *entry;
-	while((entry = HashTableNext(it)) != NULL) {
-		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-		PendingUpdateCtx_Free(pending_update);
-	}
-	HashTableReleaseIterator(it);
 	HashTableEmpty(op->node_updates, NULL);
-
-	it = HashTableGetIterator(op->edge_updates);
-	while((entry = HashTableNext(it)) != NULL) {
-		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-		PendingUpdateCtx_Free(pending_update);
-	}
-	HashTableReleaseIterator(it);
 	HashTableEmpty(op->edge_updates, NULL);
 
 	op->updates_committed = true;
@@ -129,21 +130,7 @@ static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
-	dictIterator *it = HashTableGetIterator(op->node_updates);
-	dictEntry *entry;
-	while((entry = HashTableNext(it)) != NULL) {
-		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-		PendingUpdateCtx_Free(pending_update);
-	}
-	HashTableReleaseIterator(it);
 	HashTableEmpty(op->node_updates, NULL);
-
-	it = HashTableGetIterator(op->edge_updates);
-	while((entry = HashTableNext(it)) != NULL) {
-		PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-		PendingUpdateCtx_Free(pending_update);;
-	}
-	HashTableReleaseIterator(it);
 	HashTableEmpty(op->edge_updates, NULL);
 
 	op->updates_committed = false;
@@ -154,25 +141,11 @@ static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
 	if(op->node_updates) {
-		dictIterator *it = HashTableGetIterator(op->node_updates);
-		dictEntry *entry;
-		while((entry  = HashTableNext(it)) != NULL) {
-			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-			PendingUpdateCtx_Free(pending_update);
-		}
-		HashTableReleaseIterator(it);
 		HashTableRelease(op->node_updates);
 		op->node_updates = NULL;
 	}
 
 	if(op->edge_updates) {
-		dictIterator *it = HashTableGetIterator(op->edge_updates);
-		dictEntry *entry;
-		while((entry  = HashTableNext(it)) != NULL) {
-			PendingUpdateCtx *pending_update = HashTableGetVal(entry);
-			PendingUpdateCtx_Free(pending_update);
-		}
-		HashTableReleaseIterator(it);
 		HashTableRelease(op->edge_updates);
 		op->edge_updates = NULL;
 	}

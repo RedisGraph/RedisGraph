@@ -15,8 +15,7 @@
 // set the node labels and attributes
 // add the node to the relevant indexes
 // add node creation operation to undo-log
-// return the # of attributes set
-uint CreateNode
+void CreateNode
 (
 	GraphContext *gc,  // graph context to create the node
 	Node *n,           // output node created
@@ -30,8 +29,7 @@ uint CreateNode
 // set the edge src, dst endpoints and attributes
 // add the edge to the relevant indexes
 // add edge creation operation to undo-log
-// return the # of attributes set
-uint CreateEdge
+void CreateEdge
 (
 	GraphContext *gc,  // graph context to create the edge
 	Edge *e,           // output edge created
@@ -75,9 +73,34 @@ void UpdateEntityProperties
 	GraphEntity *ge,              // the entity to be updated
 	const AttributeSet set,       // attributes to update
 	GraphEntityType entity_type,  // the entity type (node/edge)
-	uint *props_set_count,        // number of properties set (out param)
-	uint *props_removed_count,    // number of properties removed (out param)
 	bool log                      // log this operation in undo-log
+);
+
+// update a node
+// update the node attributes
+// update the relevant indexes of the node
+// used from effects
+void UpdateNodeProperty
+(
+	GraphContext *gc,             // graph context
+	NodeID id,                    // node ID
+	Attribute_ID attr_id,         // attribute ID
+	SIValue v                     // new attribute value
+);
+
+// update an edge
+// update the edge attributes
+// update the relevant indexes of the edge
+// used from effects
+void UpdateEdgeProperty
+(
+	GraphContext *gc,             // graph context
+	EdgeID id,                    // edge ID
+	RelationID r_id,              // relation ID
+	NodeID src_id,                // source node ID
+	NodeID dest_id,               // destination node ID
+	Attribute_ID attr_id,         // attribute ID
+	SIValue v                     // new attribute value
 );
 
 // this function sets the labels given in the rax "labels" to the given node
@@ -92,9 +115,8 @@ void UpdateNodeLabels
 	const char **remove_labels,  // labels to add to the node
 	uint n_add_labels,           // number of labels to add
 	uint n_remove_labels,        // number of labels to remove
-	uint *n_labels_added,        // number of labels added (out param)
-	uint *n_labels_removed,      // number of labels removed (out param)
-	bool log                     // log this operation in undo-log
+	bool log,                    // log this operation in undo-log
+	bool update_stats            // should statistics be updated
 );
 
 // Adds a schema to the graph. The schema is tracked by the undo log
@@ -104,7 +126,7 @@ Schema *AddSchema
 	GraphContext *gc,   // graph context to add the schema
 	const char *label,  // schema label
 	SchemaType t,       // schema type (node/edge)
-	bool log            // should operation be logged in the undo-log      
+	bool log            // should operation be logged in the undo-log
 );
 
 // Find or adding attribute. If there is a need to add an attribute to the graph

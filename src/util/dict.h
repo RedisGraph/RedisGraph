@@ -76,8 +76,6 @@ static uint64_t nop_hash
 	return ((uint64_t)key);
 }
 
-extern const dictType default_dt;
-
 struct dict {
     const dictType *type;
 

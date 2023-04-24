@@ -21,9 +21,9 @@ typedef struct {
 void CommitUpdates
 (
 	GraphContext *gc,
-	ResultSetStatistics *stats,
 	dict *updates,
-	EntityType type
+	EntityType type,
+	bool update_stats
 );
 
 // build pending updates in the 'updates' array to match all

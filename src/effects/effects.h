@@ -91,7 +91,8 @@ void EffectsBuffer_AddUpdateEntityEffect
 	GraphEntity *entity,         // updated entity ID
 	Attribute_ID attr_id,        // updated attribute ID
  	SIValue value,               // value
-	GraphEntityType entity_type  // entity type
+	GraphEntityType entity_type, // entity type
+	bool added					 // attribute was added
 );
 
 // add a node add label effect to buffer
@@ -100,7 +101,8 @@ void EffectsBuffer_AddLabelsEffect
 	EffectsBuffer *buff,     // effect buffer
 	const Node *node,        // updated node
 	const LabelID *lbl_ids,  // added labels
-	size_t lbl_count         // number of removed labels
+	size_t lbl_count,        // number of removed labels
+	bool update_stats        // should statistics be updated
 );
 
 // add a node remove label effect to buffer
@@ -109,7 +111,8 @@ void EffectsBuffer_AddRemoveLabelsEffect
 	EffectsBuffer *buff,     // effect buffer
 	const Node *node,        // updated node
 	const LabelID *lbl_ids,  // removed labels
-	size_t lbl_count         // number of removed labels
+	size_t lbl_count,        // number of removed labels
+	bool update_stats        // should statistics be updated
 );
 
 // add a schema addition effect to buffer

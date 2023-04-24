@@ -91,14 +91,6 @@ static OpBase **_find_entities_solving_branches(rax *entities, OpBase *cp) {
 	int entities_count = raxSize(entities);
 	if(entities_count == 0) return NULL; // No dependencies in filters.
 
-	raxIterator iter;
-	raxStart(&iter, entities);
-	raxSeek(&iter, "^", NULL, 0);
-	while(raxNext(&iter)) {
-		const char *key = iter.key;
-		printf("key: %.*s", (int)iter.key_len, key);
-	}
-
 	OpBase **solving_branches = array_new(OpBase *, 1);
 	// Iterate over all the children or until all the entities are resolved.
 	for(int i = 0; i < cp->childCount && entities_count > 0; i++) {
@@ -115,12 +107,6 @@ static OpBase **_find_entities_solving_branches(rax *entities, OpBase *cp) {
 			// Add partially solving branch into the array.
 			array_append(solving_branches, branch);
 		}
-	}
-
-	raxSeek(&iter, "^", NULL, 0);
-	while(raxNext(&iter)) {
-		const char *key = iter.key;
-		printf("key: %.*s", (int)iter.key_len, key);
 	}
 
 	if(entities_count != 0) {

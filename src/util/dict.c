@@ -55,7 +55,6 @@
  * the number of elements and the buckets > dict_force_resize_ratio. */
 static HashTableResizeEnable dict_can_resize = DICT_RESIZE_ENABLE;
 static unsigned int dict_force_resize_ratio = 5;
-const dictType default_dt = {nop_hash, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 /* -------------------------- types ----------------------------------------- */
 

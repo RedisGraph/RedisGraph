@@ -30,7 +30,6 @@ typedef struct {
 	raxIterator on_create_it;                // Iterator for traversing ON CREATE update contexts.
 	dict *node_pending_updates;              // Pending updates to apply, generated 
 	dict *edge_pending_updates;              // Pending updates to apply, generated 
-	ResultSetStatistics *stats;              // Required for tracking statistics updates in ON MATCH.
 } OpMerge;
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create);
