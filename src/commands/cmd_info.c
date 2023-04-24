@@ -322,11 +322,14 @@ static int _reply_graph_query_info
 // Replies with the finished queries information.
 // This function is used as a callback for the circular buffer viewer.
 // This is a part of the "GRAPH.INFO QUERIES PREV" reply.
-static void _reply_finished_queries(void *user_data, const void *item) {
+static void _reply_finished_queries
+(
+    const void *item,
+    void *user_data
+) {
     ViewFinishedQueriesCallbackData *data
         = (ViewFinishedQueriesCallbackData*)user_data;
-    QueryInfo **finished
-        = (QueryInfo **)item;
+    QueryInfo **finished = (QueryInfo **)item;
 
     ASSERT(data != NULL);
     ASSERT(item != NULL);

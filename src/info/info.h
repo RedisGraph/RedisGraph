@@ -32,8 +32,7 @@ typedef enum QueryExecutionTypeFlag QueryExecutionTypeFlag;
 #define MILLIS_T_MAX UINT32_MAX
 typedef struct QueryCtx QueryCtx;
 // duplicate typedef from the circular buffer
-typedef void (*CircularBuffer_ReadCallback)(void *user_data,
-                                                  const void *item);
+typedef void (*CircularBuffer_ReadCallback)(const void *item, void *user_data);
 typedef QueryInfo** QueryInfoStorage;
 
 // holds query statistics per graph

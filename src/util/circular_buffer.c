@@ -43,6 +43,92 @@ CircularBuffer CircularBuffer_New
 	return cb;
 }
 
+// returns number of items in buffer
+int CircularBuffer_ItemCount
+(
+	CircularBuffer cb  // buffer to inspect
+) {
+	ASSERT(cb != NULL);
+
+	return cb->item_count;
+}
+
+uint CircularBuffer_ItemSize
+(
+	const CircularBuffer cb  // buffer
+) {
+	return cb->item_size;
+}
+
+// return true if buffer is empty
+inline bool CircularBuffer_Empty
+(
+	const CircularBuffer cb  // buffer to inspect
+) {
+	ASSERT(cb != NULL);
+
+	return cb->item_count == 0;
+}
+
+// returns true if buffer is full
+inline bool CircularBuffer_Full
+(
+	const CircularBuffer cb  // buffer to inspect
+) {
+	ASSERT(cb != NULL);
+
+	return cb->item_count == cb->item_cap;
+}
+
+void *CircularBuffer_Current
+(
+	const CircularBuffer cb
+) {
+	ASSERT(cb != NULL);
+	ASSERT(!CircularBuffer_Empty(cb));
+
+	return cb->read;
+}
+
+// traverse circular buffer cb, from n items before the last written item.
+// if n > # items in cb --> all items will be visited once
+// note: this function sets the read pointer
+void CircularBuffer_TraverseCBFromLast
+(
+	const CircularBuffer cb,               // buffer
+	uint n,                                // # of items to traverse
+	CircularBuffer_ReadCallback callback,  // callback called on elements
+	void *user_data                        // additional data for the callback
+) {
+	char *reader;
+
+	// set the read pointer to min(#items, n) items behind the write pointer
+	n = MIN(n, CircularBuffer_ItemCount(cb));
+
+	// compensate for circularity
+	uint write_ind = (cb->write - cb->data) / cb->item_size;
+	int sub = write_ind - n;
+	if(sub >= 0) {
+		reader = cb->write - n * cb->item_size;
+	} else {
+		reader = cb->end_marker + (sub * cb->item_size);
+	}
+
+	// visit items
+	while(n > 0) {
+		// apply callback
+		callback(reader, user_data);
+
+		reader += cb->item_size;
+
+		if(unlikely(reader >= cb->end_marker)) {
+			reader = cb->data;
+		}
+
+		n--;
+	}
+}
+
 // adds an item to buffer
 // returns 1 on success, 0 otherwise
 int CircularBuffer_Add
@@ -85,13 +171,17 @@ void CircularBuffer_AddForce
 	ASSERT(cb != NULL);
 	ASSERT(item != NULL);
 
-	// copy item into buffer
-	memcpy(cb->write, item, cb->item_size);
-
-	// atomic update buffer item count
-	if(!CircularBuffer_Full(cb)) {
+	if(CircularBuffer_Full(cb)) {
+		// free overriden item
+		if(cb->free_cb != NULL) {
+			cb->free_cb(*cb->write);
+		}
+	} else {
 		cb->item_count++;
 	}
+
+	// copy item into buffer
+	memcpy(cb->write, item, cb->item_size);
 
 	// advance write position
 	// circle back if write reached the end of the buffer
@@ -133,96 +223,6 @@ int CircularBuffer_Remove
 	return 1;
 }
 
-// returns a pointer to the element at the i'th position
-void *CircularBuffer_GetElement
-(
-	CircularBuffer cb,  // buffer
-	uint idx            // index of wanted element
-) {
-	ASSERT(cb != NULL);
-	ASSERT(idx < cb->item_cap);
-
-	return cb->data + idx * cb->item_size;
-}
-
-void *CircularBuffer_Current
-(
-	const CircularBuffer cb
-) {
-	ASSERT(cb != NULL);
-	ASSERT(!CircularBuffer_Empty(cb));
-
-	return cb->read;
-}
-
-// traverse circular buffer cb, from n items before the last written item.
-// if n > # items in cb --> all items will be visited once
-// note: this function sets the read pointer
-void CircularBuffer_TraverseCBFromLast
-(
-	CircularBuffer cb,                     // buffer
-	uint n,                                // # of items to traverse
-	CircularBuffer_ReadCallback callback,  // callback called on elements
-	void *user_data                        // additional data for the callback
-) {
-	// set the read pointer to min(#items, n) items behind the write pointer
-	uint n_items = CircularBuffer_ItemCount(cb);
-	uint n_items_back = MIN(n, n_items);
-
-	// compensate for circularity
-	uint write_ind = (cb->write - cb->data) / cb->item_size;
-	int sub = write_ind - n_items_back;
-	if(sub >= 0) {
-		cb->read = cb->write - n_items_back * cb->item_size;
-	} else {
-		cb->read = cb->end_marker + (sub * cb->item_size);
-	}
-
-	// visit items
-	while(n_items_back > 0) {
-		// apply callback
-		callback(user_data, cb->read);
-
-		cb->read += cb->item_size;
-
-		if(unlikely(cb->read >= cb->end_marker)) {
-			cb->read = cb->data;
-		}
-
-		n_items_back--;
-	}
-}
-
-// returns number of items in buffer
-int CircularBuffer_ItemCount
-(
-	CircularBuffer cb  // buffer to inspect
-) {
-	ASSERT(cb != NULL);
-
-	return cb->item_count;
-}
-
-// return true if buffer is empty
-inline bool CircularBuffer_Empty
-(
-	const CircularBuffer cb  // buffer to inspect
-) {
-	ASSERT(cb != NULL);
-
-	return cb->item_count == 0;
-}
-
-// returns true if buffer is full
-inline bool CircularBuffer_Full
-(
-	const CircularBuffer cb  // buffer to inspect
-) {
-	ASSERT(cb != NULL);
-
-	return cb->item_count == cb->item_cap;
-}
-
 // free buffer (does not free its elements if its free callback is NULL)
 void CircularBuffer_Free
 (
@@ -231,11 +231,15 @@ void CircularBuffer_Free
 	ASSERT(cb != NULL);
 
 	if(cb->free_cb != NULL) {
-		uint64_t read_offset = 0;
-		while (read_offset < cb->item_count) {
-			void **item = (void **)CircularBuffer_GetElement(cb, read_offset);
-			cb->free_cb(*item);
-			++read_offset;
+		void **reader = (void **)cb->read;
+		while (reader < (void **)cb->write) {
+			cb->free_cb(*reader);
+			reader += cb->item_size;
+
+			// "overflow"
+			if(reader >= (void **)cb->end_marker) {
+				reader = (void **)cb->data;
+			}
 		}
 	}
 

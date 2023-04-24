@@ -199,6 +199,9 @@ void test_CircularBuffer_traverseCallback(void) {
 	}
 	CircularBuffer_TraverseCBFromLast(buff, cap, _assert_val_cb, arr);
 
+	// -------------------------------------------------------------------------
+	// free the buffer and auxilary array
+	// -------------------------------------------------------------------------
 	array_free(arr);
 	CircularBuffer_Free(buff);
 }
