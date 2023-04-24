@@ -32,6 +32,7 @@ static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 QueryInfo *QueryInfo_Clone(QueryInfo *qi);
 void QueryInfo_CloneTo(const void *item_to_clone, void *destination_item,
     void *user_data);
+void QueryInfo_Deleter(void *info);
 typedef struct ViewFinishedQueriesCallbackData ViewFinishedQueriesCallbackData;
 
 // returns the total number of queries recorded
@@ -120,12 +121,12 @@ static void _FinishedQueryCounters_Increment
 
 static void _add_finished_query
 (
-	const QueryInfo *qi
+	QueryInfo *qi
 ) {
     int res = pthread_rwlock_wrlock(&finished_queries_rwlock);
 	ASSERT(res == 0);
 
-    CircularBuffer_AddForce(finished_queries, (void*)qi);
+    CircularBuffer_AddForce(finished_queries, (void *)qi);
 
     res = pthread_rwlock_unlock(&finished_queries_rwlock);
 	ASSERT(res == 0);

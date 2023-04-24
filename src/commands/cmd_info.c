@@ -331,9 +331,11 @@ static void _reply_finished_queries(void *user_data, const void *item) {
     ASSERT(data != NULL);
     ASSERT(item != NULL);
 
-    const QueryInfo info = **finished;
+    int res = _reply_graph_query_info(data->ctx, **finished);
 
-    int res = _reply_graph_query_info(data->ctx, info);
+    // update elements count
+    ++data->actual_elements_count;
+
     ASSERT(res == REDISMODULE_OK);
     UNUSED(res);
 }

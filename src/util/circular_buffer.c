@@ -86,7 +86,7 @@ void CircularBuffer_AddForce
 	ASSERT(item != NULL);
 
 	// copy item into buffer
-	memcpy(cb->write, item, cb->item_size);
+	memcpy(cb->write, &item, cb->item_size);
 
 	// atomic update buffer item count
 	if(!CircularBuffer_Full(cb)) {
@@ -180,10 +180,8 @@ void CircularBuffer_TraverseCBFromLast
 
 	// visit items
 	while(n_items_back > 0) {
-		void *curr = cb->read;
-
 		// apply callback
-		callback(user_data, curr);
+		callback(user_data, cb->read);
 
 		cb->read += cb->item_size;
 
