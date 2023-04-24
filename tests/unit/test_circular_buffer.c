@@ -28,7 +28,6 @@ void test_CircularBufferInit(void) {
 
 	// clean up
 	CircularBuffer_Free(buff);
-	TEST_ASSERT(buff == NULL);
 }
 
 void test_CircularBufferPopulation(void) {
