@@ -239,6 +239,11 @@ void EvalEntityUpdates
 			}
 
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
+
+			// attribute been either added or updated
+			bool added =
+				AttributeSet_Get(*entity->attributes, attr_id) == ATTRIBUTE_NOTFOUND;
+
 			if(AttributeSet_Set_Allow_Null(entity->attributes, attr_id, v)) {
 				bool removed = SIValue_IsNull(v);
 				if(removed) {
@@ -247,10 +252,6 @@ void EvalEntityUpdates
 							attr_id, entity_type);
 					continue;
 				}
-
-				// attribute been either added or updated
-				bool added =
-					AttributeSet_Get(*old_attrs, attr_id) == ATTRIBUTE_NOTFOUND;
 
 				if(added) {
 					// attribute added
@@ -306,11 +307,10 @@ void EvalEntityUpdates
 				}
 
 				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval, true);
+				bool added =
+					AttributeSet_Get(*entity->attributes, attr_id) == ATTRIBUTE_NOTFOUND;
 				if(AttributeSet_Set_Allow_Null(entity->attributes, attr_id, value)) {
 					// TODO: would have been nice we just sent n = {v:2}
-					bool added =
-						mode == UPDATE_REPLACE ||
-						AttributeSet_Get(*old_attrs, attr_id) == ATTRIBUTE_NOTFOUND;
 					if(added) {
 						// attribute added
 						EffectsBuffer_AddEntityAddAttributeEffect(eb, entity,
@@ -345,10 +345,9 @@ void EvalEntityUpdates
 			SIValue v = AttributeSet_GetIdx(set, j, &attr_id);
 
 			// simple assignment, no need to validate value
+			bool added =
+				AttributeSet_Get(*entity->attributes, attr_id) == ATTRIBUTE_NOTFOUND;
 			if(AttributeSet_Set_Allow_Null(entity->attributes, attr_id, v)) {
-				bool added =
-					mode == UPDATE_REPLACE ||
-					AttributeSet_Get(*old_attrs, attr_id) == ATTRIBUTE_NOTFOUND;
 				if(added) {
 					// attribute added
 					EffectsBuffer_AddEntityAddAttributeEffect(eb, entity,
