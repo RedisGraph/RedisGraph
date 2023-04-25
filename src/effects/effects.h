@@ -59,8 +59,10 @@ unsigned char *EffectsBuffer_Buffer
 // add a node creation effect to buffer
 void EffectsBuffer_AddCreateNodeEffect
 (
-	EffectsBuffer *buff,  // effect buffer
-	const Node *node      // node created
+	EffectsBuffer *buff,    // effect buffer
+	const Node *n,          // node created
+	const LabelID *labels,  // node labels
+	uint label_count        // number of labels
 );
 
 // add a edge creation effect to buffer

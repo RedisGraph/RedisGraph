@@ -321,8 +321,10 @@ unsigned char *EffectsBuffer_Buffer
 // add a node creation effect to buffer
 void EffectsBuffer_AddCreateNodeEffect
 (
-	EffectsBuffer *buff,  // effect buffer
-	const Node *n         // node created
+	EffectsBuffer *buff,    // effect buffer
+	const Node *n,          // node created
+	const LabelID *labels,  // node labels
+	uint label_count        // number of labels
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -344,17 +346,14 @@ void EffectsBuffer_AddCreateNodeEffect
 	// write label count
 	//--------------------------------------------------------------------------
 
-	Graph *g = QueryCtx_GetGraph();
-	ushort lbl_count;
-	NODE_GET_LABELS(g, n, lbl_count);
-	EffectsBuffer_WriteBytes(&lbl_count, sizeof(lbl_count), buff);
+	EffectsBuffer_WriteBytes(&label_count, sizeof(label_count), buff);
 
 	//--------------------------------------------------------------------------
 	// write labels
 	//--------------------------------------------------------------------------
 
-	if(lbl_count > 0) {
-		EffectsBuffer_WriteBytes(labels, sizeof(LabelID) * lbl_count, buff);
+	if(label_count > 0) {
+		EffectsBuffer_WriteBytes(labels, sizeof(LabelID) * label_count, buff);
 	}
 
 	//--------------------------------------------------------------------------

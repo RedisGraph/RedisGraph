@@ -116,7 +116,7 @@ void CreateNode
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_CreateNode(undo_log, n);
 		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
-		EffectsBuffer_AddCreateNodeEffect(eb, n);
+		EffectsBuffer_AddCreateNodeEffect(eb, n, labels, label_count);
 	}
 }
 
