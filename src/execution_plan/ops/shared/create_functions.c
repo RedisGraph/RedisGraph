@@ -334,6 +334,7 @@ void ConvertPropertyMap
 		// set the converted attribute
 		ids[attrs_count] = FindOrAddAttribute(gc, map->keys[i], true);
 		vals[attrs_count++] = SI_CloneValue(val);
+		SIValue_Free(val);
 	}
 	AttributeSet_AddNoClone(attributes, ids, vals, attrs_count, false);
 }
