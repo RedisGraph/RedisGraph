@@ -62,7 +62,7 @@ void EffectsBuffer_AddCreateNodeEffect
 	EffectsBuffer *buff,    // effect buffer
 	const Node *n,          // node created
 	const LabelID *labels,  // node labels
-	uint label_count        // number of labels
+	ushort label_count      // number of labels
 );
 
 // add a edge creation effect to buffer
