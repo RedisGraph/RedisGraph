@@ -6,6 +6,9 @@
 
 #pragma once
 
+#include <sys/types.h>
+
+#include <stdbool.h>
 #include "util/simple_timer.h"
 
 typedef uint32_t millis_t;
@@ -28,6 +31,7 @@ typedef struct QueryInfo {
     millis_t report_duration;    // reporting time
     QueryStage stage;            // query stage
     simple_timer_t stage_timer;  // timer
+    bool utilized_cache;         // utilized cache
 } QueryInfo;
 
 // creates a new, empty query info object
@@ -63,6 +67,13 @@ millis_t QueryInfo_GetExecutionTime
 millis_t QueryInfo_GetReportingTime
 (
 	const QueryInfo *qi
+);
+
+// sets the "utilized_cache" flag of a QueryInfo
+void QueryInfo_SetUtilizedCache
+(
+    QueryInfo *qi,  // query info
+    bool utilized   // cache utilized
 );
 
 // reads the stage timer and updates the waiting time with it

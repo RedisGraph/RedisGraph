@@ -97,6 +97,13 @@ int module_reply_key_value_string
     const char *value
 );
 
+int module_reply_key_value_string
+(
+    RedisModuleCtx *ctx,
+    const char *key,
+    const char *value
+);
+
 // Repleis with the boolean value. Supports RESP3 and RESP2.
 int module_reply_bool(
     RedisModuleCtx *ctx,
@@ -131,7 +138,15 @@ int ReplyRecorder_New
     RedisModuleCtx *ctx
 );
 
-// Adds a new number to the reply set.
+// adds a new boolean to the reply set
+int ReplyRecorder_AddBool
+(
+    ReplyRecorder *recorder,
+    const char *key,
+    const bool value
+);
+
+// adds a new number to the reply set
 int ReplyRecorder_AddNumber
 (
     ReplyRecorder *recorder,
@@ -139,7 +154,7 @@ int ReplyRecorder_AddNumber
     const long long value
 );
 
-// Adds a new C string to the reply set.
+// Adds a new C string to the reply set
 int ReplyRecorder_AddString
 (
     ReplyRecorder *recorder,
@@ -147,7 +162,7 @@ int ReplyRecorder_AddString
     const char *value
 );
 
-// Adds an array of numbers to the reply set.
+// Adds an array of numbers to the reply set
 int ReplyRecorder_AddNumbers
 (
     ReplyRecorder *recorder,
@@ -158,14 +173,14 @@ int ReplyRecorder_AddNumbers
 
 // Finishes the reply recorder. This action sets the length of the destination
 // data structure (a map or an array, depending on the compact mode), which,
-// also flushes the reply to a client.
+// also flushes the reply to a client
 void ReplyRecorder_Finish
 (
     const ReplyRecorder recorder
 );
 
 // This is a callback function for when the ReplyRecorder object goes out of
-// scope (object destructor).
+// scope (object destructor)
 void ReplyRecorder_Cleanup
 (
     ReplyRecorder *recorder

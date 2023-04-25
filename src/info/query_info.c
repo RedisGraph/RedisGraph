@@ -100,6 +100,15 @@ void QueryInfo_UpdateWaitingTime
     qi->wait_duration += QueryInfo_GetCountedMilliseconds(qi);
 }
 
+// sets the "utilized_cache" flag of a QueryInfo
+void QueryInfo_SetUtilizedCache
+(
+    QueryInfo *qi,  // query info
+    bool utilized   // cache utilized
+) {
+    qi->utilized_cache = utilized;
+}
+
 // reads the stage timer and updates the execution time with it.
 void QueryInfo_UpdateExecutionTime
 (
@@ -135,6 +144,7 @@ QueryInfo *QueryInfo_Clone
     clone->stage = qi->stage;
     clone->received_ts = qi->received_ts;
     clone->wait_duration = qi->wait_duration;
+    clone->utilized_cache = qi->utilized_cache;
     clone->report_duration = qi->report_duration;
     clone->execution_duration = qi->execution_duration;
     // clone timer will isn't relevant, stays {0}
@@ -156,6 +166,7 @@ void QueryInfo_CloneTo
     QueryInfo *source = (QueryInfo*)item_to_clone;
     QueryInfo *destination = (QueryInfo*)destination_item;
 
+    // copy the struct (shallow)
     *destination = *source;
 
     if (source->query_string != NULL) {

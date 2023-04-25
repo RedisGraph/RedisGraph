@@ -174,7 +174,7 @@ void CircularBuffer_AddForce
 	if(CircularBuffer_Full(cb)) {
 		// free overriden item
 		if(cb->free_cb != NULL) {
-			cb->free_cb(*cb->write);
+			cb->free_cb(*((void **)cb->write));
 		}
 	} else {
 		cb->item_count++;

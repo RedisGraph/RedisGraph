@@ -110,13 +110,24 @@ int module_reply_key_value_string
     ASSERT(key);
     ASSERT(value);
 
-    if (!ctx || !key || !value) {
-        return REDISMODULE_ERR;
-    }
-
     REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, key));
 
     REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, value));
+
+    return REDISMODULE_OK;
+}
+
+int module_reply_key_value_bool
+(
+    RedisModuleCtx *ctx,
+    const char *key,
+    const bool value
+) {
+    ASSERT(ctx);
+    ASSERT(key);
+
+    REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, key));
+    REDISMODULE_ASSERT(RedisModule_ReplyWithLongLong(ctx, value ? 1 : 0));
 
     return REDISMODULE_OK;
 }
@@ -162,6 +173,28 @@ int ReplyRecorder_New
         ctx,
         REDISMODULE_POSTPONED_LEN
     ));
+
+    return REDISMODULE_OK;
+}
+
+int ReplyRecorder_AddBool
+(
+    ReplyRecorder *recorder,
+    const char *key,
+    const bool value
+) {
+    ASSERT(recorder && key);
+    if (!recorder || !recorder->context) {
+        return REDISMODULE_ERR;
+    }
+
+    REDISMODULE_ASSERT(module_reply_key_value_bool(
+        recorder->context,
+        key,
+        value
+    ));
+
+    recorder->element_count++;
 
     return REDISMODULE_OK;
 }

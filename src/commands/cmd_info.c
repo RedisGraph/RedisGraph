@@ -28,6 +28,7 @@
 #define INFO_QUERIES_PREV_ARG "PREV"
 #define SUBCOMMAND_NAME_RESET "RESET"
 #define INFO_GET_STATISTICS_ARG "STAT"
+#define UTILIZED_CACHE "Utilized cache"
 #define GRAPH_NAME_KEY_NAME "Graph name"
 #define SUBCOMMAND_NAME_QUERIES "QUERIES"
 #define INFO_QUERIES_CURRENT_ARG "CURRENT"
@@ -316,6 +317,12 @@ static int _reply_graph_query_info
         info.report_duration
     ));
 
+    REDISMODULE_ASSERT(ReplyRecorder_AddBool(
+        &recorder,
+        UTILIZED_CACHE,
+        info.utilized_cache
+    ))
+
     return REDISMODULE_OK;
 }
 
@@ -565,7 +572,7 @@ static int _reply_graph_queries
     uint64_t count = 0;
     uint64_t current_limit = max_elements_count;
 
-    // TODO: Was this a mistake? Seems redundant.
+    // TODO: Seems redundant. Make sure this is the case.
     // _reply_queries_from_all_graphs(
     //     ctx,
     //     QueryStage_WAITING,
@@ -573,12 +580,12 @@ static int _reply_graph_queries
     //     &count
     // );
     // actual_elements_count += count;
-    if (current_limit >= count) {
-        current_limit -= count;
-    } else {
-        current_limit = 0;
-    }
-    count = 0;
+    // if (current_limit >= count) {
+    //     current_limit -= count;
+    // } else {
+    //     current_limit = 0;
+    // }
+    // count = 0;
 
     _reply_queries_from_all_graphs(
         ctx,

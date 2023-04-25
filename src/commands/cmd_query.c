@@ -489,6 +489,9 @@ void _query(bool profile, void *args) {
 	exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 	if(exec_ctx == NULL) goto cleanup;
 
+	// update cached flag
+	QueryInfo_SetUtilizedCache(qi, exec_ctx->cached);
+
 	ExecutionType exec_type = exec_ctx->exec_type;
 	bool readonly = AST_ReadOnly(exec_ctx->ast->root);
 	bool index_op = (exec_type == EXECUTION_TYPE_INDEX_CREATE ||
