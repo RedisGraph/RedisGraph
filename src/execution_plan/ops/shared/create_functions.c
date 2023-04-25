@@ -293,7 +293,7 @@ void ConvertPropertyMap
 			if(!SIValue_IsNull(val)) {
 				// if the value was a complex type, emit an exception
 				SIValue_Free(val);
-				for(int j = 0; j < property_count; j++) {
+				for(int j = 0; j < i; j++) {
 					SIValue_Free(vals[j]);
 				}
 				Error_InvalidPropertyValue();
@@ -304,7 +304,7 @@ void ConvertPropertyMap
 			// otherwise skip this value
 			if(fail_on_null) {
 				// emit an error and exit
-				for(int j = 0; j < property_count; j++) {
+				for(int j = 0; j < i; j++) {
 					SIValue_Free(vals[j]);
 				}
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
@@ -322,7 +322,7 @@ void ConvertPropertyMap
 			if(res) {
 				// validation failed
 				SIValue_Free(val);
-				for(int j = 0; j < property_count; j++) {
+				for(int j = 0; j < i; j++) {
 					SIValue_Free(vals[j]);
 				}
 				Error_InvalidPropertyValue();
@@ -332,6 +332,7 @@ void ConvertPropertyMap
 
 		// set the converted attribute
 		ids[i] = FindOrAddAttribute(gc, map->keys[i], true);
+		SIValue_Persist(&val);
 		vals[i] = val;
 	}
 	AttributeSet_AddNoClone(attributes, ids, vals, property_count, false);
