@@ -334,8 +334,7 @@ void UpdateNodeLabels
 	const char **remove_labels,  // labels to add to the node
 	uint n_add_labels,           // number of labels to add
 	uint n_remove_labels,        // number of labels to remove
-	bool log,                    // log this operation in undo-log
-	bool update_stats            // should statistics be updated
+	bool log                     // log this operation in undo-log
 ) {
 	ASSERT(gc   != NULL);
 	ASSERT(node != NULL);
@@ -398,7 +397,7 @@ void UpdateNodeLabels
 				UndoLog_AddLabels(undo_log, node, add_labels_ids,
 						add_labels_index);
 				EffectsBuffer_AddLabelsEffect(eb, node, add_labels_ids,
-						add_labels_index, update_stats);
+						add_labels_index);
 			}
 		}
 	}
@@ -432,7 +431,7 @@ void UpdateNodeLabels
 				UndoLog_RemoveLabels(undo_log, node, remove_labels_ids,
 						remove_labels_index);
 				EffectsBuffer_AddRemoveLabelsEffect(eb, node, remove_labels_ids,
-						remove_labels_index, update_stats);
+						remove_labels_index);
 			}
 		}
 	}

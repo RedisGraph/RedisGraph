@@ -71,7 +71,7 @@ void CommitUpdates
 		if(type == ENTITY_NODE) {
 			UpdateNodeLabels(gc, (Node*)update->ge, update->add_labels,
 				update->remove_labels, array_len(update->add_labels),
-				array_len(update->remove_labels), true, true);
+				array_len(update->remove_labels), true);
 		}
 
 		//----------------------------------------------------------------------
@@ -239,11 +239,28 @@ void EvalEntityUpdates
 			}
 
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
-			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
+			if(AttributeSet_Set_Allow_Null(entity->attributes, attr_id, v)) {
+				bool removed = SIValue_IsNull(v);
+				if(removed) {
+					// attribute removed
+					EffectsBuffer_AddEntityRemoveAttributeEffect(eb, entity,
+							attr_id, entity_type);
+					continue;
+				}
+
+				// attribute been either added or updated
 				bool added =
 					AttributeSet_Get(*old_attrs, attr_id) == ATTRIBUTE_NOTFOUND;
-				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id, v,
-						entity_type, added);
+
+				if(added) {
+					// attribute added
+					EffectsBuffer_AddEntityAddAttributeEffect(eb, entity,
+							attr_id, v, entity_type);
+				} else {
+					// attribute update
+					EffectsBuffer_AddEntityUpdateAttributeEffect(eb, entity,
+							attr_id, v, entity_type);
+				}
 			}
 			SIValue_Free(v);
 			continue;
@@ -263,9 +280,9 @@ void EvalEntityUpdates
 		if(mode == UPDATE_REPLACE) {
 			// if this update replaces all existing properties
 			// enqueue a 'clear' update to do so
-			EffectsBuffer_AddUpdateEntityEffect(eb, update->ge,
-				ATTRIBUTE_ID_ALL, SI_NullVal(), entity_type, false);
-			AttributeSet_Free(&update->attributes);
+			EffectsBuffer_AddEntityRemoveAttributeEffect(eb, entity,
+							ATTRIBUTE_ID_ALL, entity_type);
+			AttributeSet_Free(entity->attributes);
 		}
 
 		//----------------------------------------------------------------------
@@ -289,14 +306,20 @@ void EvalEntityUpdates
 				}
 
 				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval, true);
-				if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, value)) {
-					// TODO: would have been nice we we just sent
-					// n = {}
+				if(AttributeSet_Set_Allow_Null(entity->attributes, attr_id, value)) {
+					// TODO: would have been nice we just sent n = {v:2}
 					bool added =
 						mode == UPDATE_REPLACE ||
 						AttributeSet_Get(*old_attrs, attr_id) == ATTRIBUTE_NOTFOUND;
-					EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id,
-							value, entity_type, added);
+					if(added) {
+						// attribute added
+						EffectsBuffer_AddEntityAddAttributeEffect(eb, entity,
+								attr_id, value, entity_type);
+					} else {
+						// attribute update
+						EffectsBuffer_AddEntityUpdateAttributeEffect(eb, entity,
+								attr_id, value, entity_type);
+					}
 				}
 			}
 
@@ -321,19 +344,27 @@ void EvalEntityUpdates
 			Attribute_ID attr_id;
 			SIValue v = AttributeSet_GetIdx(set, j, &attr_id);
 
-			// simple assignment, no need to value validation
-			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
+			// simple assignment, no need to validate value
+			if(AttributeSet_Set_Allow_Null(entity->attributes, attr_id, v)) {
 				bool added =
 					mode == UPDATE_REPLACE ||
 					AttributeSet_Get(*old_attrs, attr_id) == ATTRIBUTE_NOTFOUND;
-				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id, v,
-						entity_type, added);
+				if(added) {
+					// attribute added
+					EffectsBuffer_AddEntityAddAttributeEffect(eb, entity,
+							attr_id, v, entity_type);
+				} else {
+					// attribute update
+					EffectsBuffer_AddEntityUpdateAttributeEffect(eb, entity,
+							attr_id, v, entity_type);
+				}
 			}
 		}
 	} // for loop end
 
 	// restore original attribute-set
 	// changes should not be visible prior to the commit phase
+	update->attributes = *entity->attributes;
 	entity->attributes = old_attrs;
 	if(t == REC_TYPE_NODE) {
 		Record_AddNode(r, ctx->record_idx, *(Node *)entity);

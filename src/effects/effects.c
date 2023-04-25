@@ -586,31 +586,61 @@ static void EffectsBuffer_AddEdgeUpdateEffect
 	EffectsBuffer_IncEffectCount(buff);
 }
 
-// add an entity update effect to buffer
-void EffectsBuffer_AddUpdateEntityEffect
+// add an entity attribute removal effect to buffer
+void EffectsBuffer_AddEntityRemoveAttributeEffect
 (
 	EffectsBuffer *buff,         // effect buffer
 	GraphEntity *entity,         // updated entity ID
 	Attribute_ID attr_id,        // updated attribute ID
- 	SIValue value,               // value
-	GraphEntityType entity_type, // entity type
-	bool added					 // attribute was added
+	GraphEntityType entity_type  // entity type
 ) {
-	if(SIValue_IsNull(value)) {
-		// attribute was deleted
-		if(attr_id == ATTRIBUTE_ID_ALL) {
-			QueryCtx_GetResultSetStatistics()->properties_removed += ATTRIBUTE_SET_COUNT(*entity->attributes);
-		} else {
-			QueryCtx_GetResultSetStatistics()->properties_removed++;
-		}
+	// attribute was deleted
+	int n = (attr_id == ATTRIBUTE_ID_ALL)
+		? ATTRIBUTE_SET_COUNT(*entity->attributes)
+		: 1;
+
+	ResultSetStatistics *stats = QueryCtx_GetResultSetStatistics();
+	stats->properties_removed += n;
+
+	SIValue v = SI_NullVal();
+	if(entity_type == GETYPE_NODE) {
+		EffectsBuffer_AddNodeUpdateEffect(buff, (Node*)entity, attr_id, v);
 	} else {
-		// attribute was set
-		QueryCtx_GetResultSetStatistics()->properties_set++;
-		if(!added) {
-			// old attribute was deleted
-			QueryCtx_GetResultSetStatistics()->properties_removed++;
-		}
+		EffectsBuffer_AddEdgeUpdateEffect(buff, (Edge*)entity, attr_id, v);
 	}
+}
+
+// add an entity add new attribute effect to buffer
+void EffectsBuffer_AddEntityAddAttributeEffect
+(
+	EffectsBuffer *buff,         // effect buffer
+	GraphEntity *entity,         // updated entity ID
+	Attribute_ID attr_id,        // updated attribute ID
+	SIValue value,               // value
+	GraphEntityType entity_type  // entity type
+) {
+	// attribute was added
+	QueryCtx_GetResultSetStatistics()->properties_set++;
+
+	if(entity_type == GETYPE_NODE) {
+		EffectsBuffer_AddNodeUpdateEffect(buff, (Node*)entity, attr_id, value);
+	} else {
+		EffectsBuffer_AddEdgeUpdateEffect(buff, (Edge*)entity, attr_id, value);
+	}
+}
+
+// add an entity update attribute effect to buffer
+void EffectsBuffer_AddEntityUpdateAttributeEffect
+(
+	EffectsBuffer *buff,         // effect buffer
+	GraphEntity *entity,         // updated entity ID
+	Attribute_ID attr_id,        // updated attribute ID
+	SIValue value,               // value
+	GraphEntityType entity_type  // entity type
+) {
+	ResultSetStatistics *stats = QueryCtx_GetResultSetStatistics();
+	stats->properties_set++; // attribute was set
+	stats->properties_removed++; // old attribute was deleted
 
 	if(entity_type == GETYPE_NODE) {
 		EffectsBuffer_AddNodeUpdateEffect(buff, (Node*)entity, attr_id, value);
@@ -656,8 +686,7 @@ void EffectsBuffer_AddLabelsEffect
 	EffectsBuffer *buff,     // effect buffer
 	const Node *node,        // updated node
 	const LabelID *lbl_ids,  // added labels
-	size_t lbl_count,        // number of removed labels
-	bool update_stats        // should statistics be updated
+	size_t lbl_count         // number of removed labels
 ) {
 	//--------------------------------------------------------------------------
 	// effect format:
@@ -667,9 +696,7 @@ void EffectsBuffer_AddLabelsEffect
 	//    label IDs
 	//--------------------------------------------------------------------------
 
-	if(update_stats) {
-		QueryCtx_GetResultSetStatistics()->labels_added += lbl_count;
-	}
+	QueryCtx_GetResultSetStatistics()->labels_added += lbl_count;
 
 	EffectType t = EFFECT_SET_LABELS;
 	EffectsBuffer_AddSetRemoveLabelsEffect(buff, node, lbl_ids, lbl_count, t);
@@ -683,12 +710,17 @@ void EffectsBuffer_AddRemoveLabelsEffect
 	EffectsBuffer *buff,     // effect buffer
 	const Node *node,        // updated node
 	const LabelID *lbl_ids,  // removed labels
-	size_t lbl_count,        // number of removed labels
-	bool update_stats        // should statistics be updated
+	size_t lbl_count         // number of removed labels
 ) {
-	if(update_stats) {
-		QueryCtx_GetResultSetStatistics()->labels_removed += lbl_count;
-	}
+	//--------------------------------------------------------------------------
+	// effect format:
+	//    effect type
+	//    node ID
+	//    labels count
+	//    label IDs
+	//--------------------------------------------------------------------------
+
+	QueryCtx_GetResultSetStatistics()->labels_removed += lbl_count;
 
 	EffectType t = EFFECT_REMOVE_LABELS;
 	EffectsBuffer_AddSetRemoveLabelsEffect(buff, node, lbl_ids, lbl_count, t);

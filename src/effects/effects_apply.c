@@ -234,7 +234,7 @@ static void ApplyLabels
 	//--------------------------------------------------------------------------
 
 	UpdateNodeLabels(gc, &n, add_labels, remove_labels, n_add_labels,
-			n_remove_labels, false, false);
+			n_remove_labels, false);
 }
 
 static void ApplyAddSchema

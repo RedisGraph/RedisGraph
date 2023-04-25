@@ -86,15 +86,33 @@ void EffectsBuffer_AddDeleteEdgeEffect
 	const Edge *edge      // edge deleted
 );
 
-// add an entity update effect to buffer
-void EffectsBuffer_AddUpdateEntityEffect
+// add an entity attribute removal effect to buffer
+void EffectsBuffer_AddEntityRemoveAttributeEffect
+(
+	EffectsBuffer *buff,         // effect buffer
+	GraphEntity *entity,         // updated entity ID
+	Attribute_ID attr_id,        // updated attribute ID
+	GraphEntityType entity_type  // entity type
+);
+
+// add an entity add new attribute effect to buffer
+void EffectsBuffer_AddEntityAddAttributeEffect
+(
+	EffectsBuffer *buff,         // effect buffer
+	GraphEntity *entity,         // updated entity ID
+	Attribute_ID attr_id,        // updated attribute ID
+	SIValue value,               // value
+	GraphEntityType entity_type  // entity type
+);
+
+// add an entity update attribute effect to buffer
+void EffectsBuffer_AddEntityUpdateAttributeEffect
 (
 	EffectsBuffer *buff,         // effect buffer
 	GraphEntity *entity,         // updated entity ID
 	Attribute_ID attr_id,        // updated attribute ID
  	SIValue value,               // value
-	GraphEntityType entity_type, // entity type
-	bool added					 // attribute was added
+	GraphEntityType entity_type  // entity type
 );
 
 // add a node add label effect to buffer
@@ -103,8 +121,7 @@ void EffectsBuffer_AddLabelsEffect
 	EffectsBuffer *buff,     // effect buffer
 	const Node *node,        // updated node
 	const LabelID *lbl_ids,  // added labels
-	size_t lbl_count,        // number of removed labels
-	bool update_stats        // should statistics be updated
+	size_t lbl_count         // number of removed labels
 );
 
 // add a node remove label effect to buffer
@@ -113,8 +130,7 @@ void EffectsBuffer_AddRemoveLabelsEffect
 	EffectsBuffer *buff,     // effect buffer
 	const Node *node,        // updated node
 	const LabelID *lbl_ids,  // removed labels
-	size_t lbl_count,        // number of removed labels
-	bool update_stats        // should statistics be updated
+	size_t lbl_count         // number of removed labels
 );
 
 // add a schema addition effect to buffer

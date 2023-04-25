@@ -115,8 +115,7 @@ void UpdateNodeLabels
 	const char **remove_labels,  // labels to add to the node
 	uint n_add_labels,           // number of labels to add
 	uint n_remove_labels,        // number of labels to remove
-	bool log,                    // log this operation in undo-log
-	bool update_stats            // should statistics be updated
+	bool log                     // log this operation in undo-log
 );
 
 // Adds a schema to the graph. The schema is tracked by the undo log
