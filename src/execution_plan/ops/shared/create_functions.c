@@ -282,6 +282,7 @@ void ConvertPropertyMap
 	uint property_count = array_len(map->keys);
 	SIValue vals[property_count];
 	Attribute_ID ids[property_count];
+	uint attrs_count = 0;
 	for(int i = 0; i < property_count; i++) {
 		// note that AR_EXP_Evaluate may raise a run-time exception
 		// in which case the allocations in this function will leak
@@ -331,11 +332,10 @@ void ConvertPropertyMap
 		}
 
 		// set the converted attribute
-		ids[i] = FindOrAddAttribute(gc, map->keys[i], true);
-		SIValue_Persist(&val);
-		vals[i] = val;
+		ids[attrs_count] = FindOrAddAttribute(gc, map->keys[i], true);
+		vals[attrs_count++] = SI_CloneValue(val);
 	}
-	AttributeSet_AddNoClone(attributes, ids, vals, property_count, false);
+	AttributeSet_AddNoClone(attributes, ids, vals, attrs_count, false);
 }
 
 // free all data associated with a completed create operation
