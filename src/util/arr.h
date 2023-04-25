@@ -327,11 +327,16 @@ __extension__({                                         \
 
 // dest = dest ∪ src
 // treats both src and dest as sets
+// [1,2,3] ∪ [2,4,4] = [1,2,3,4,4]
+// TODO: if either src or dest are large and we're allowed to rearrange
+// elements position then consider sorting
 #define array_union(dest, src, cmp)                  \
   __extension__({                                    \
-    for (uint i = 0; i < array_len((src)); i++) {    \
+	uint32_t src_len = array_len((src));             \
+	uint32_t dest_len = array_len((dest));           \
+    for (uint i = 0; i < src_len; i++) {             \
       bool found = false;                            \
-      for(uint j = 0; j < array_len((dest)); j++) {  \
+      for(uint j = 0; j < dest_len; j++) {           \
         if(cmp((dest)[j], (src)[i]) == 0) {          \
           found = true;                              \
           break;                                     \

@@ -43,8 +43,7 @@ void CommitUpdates
 (
 	GraphContext *gc,
 	dict *updates,
-	EntityType type,
-	bool update_stats
+	EntityType type
 ) {
 	ASSERT(gc      != NULL);
 	ASSERT(updates != NULL);
@@ -72,7 +71,7 @@ void CommitUpdates
 		if(type == ENTITY_NODE) {
 			UpdateNodeLabels(gc, (Node*)update->ge, update->add_labels,
 				update->remove_labels, array_len(update->add_labels),
-				array_len(update->remove_labels), true, update_stats);
+				array_len(update->remove_labels), true, true);
 		}
 
 		//----------------------------------------------------------------------
@@ -190,7 +189,7 @@ void EvalEntityUpdates
 	array_union(update->add_labels, ctx->add_labels, strcmp);
 	array_union(update->remove_labels, ctx->remove_labels, strcmp);
 
-	AttributeSet *old_attributes = entity->attributes;
+	AttributeSet *old_attrs = entity->attributes;
 	entity->attributes = &update->attributes;
 	if(t == REC_TYPE_NODE) {
 		Record_AddNode(r, ctx->record_idx, *(Node *)entity);
@@ -241,8 +240,10 @@ void EvalEntityUpdates
 
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
 			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
+				bool added =
+					AttributeSet_Get(*old_attrs, attr_id) == ATTRIBUTE_NOTFOUND;
 				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id, v,
-						entity_type, AttributeSet_Get(*old_attributes, attr_id) == ATTRIBUTE_NOTFOUND);
+						entity_type, added);
 			}
 			SIValue_Free(v);
 			continue;
@@ -291,8 +292,11 @@ void EvalEntityUpdates
 				if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, value)) {
 					// TODO: would have been nice we we just sent
 					// n = {}
+					bool added =
+						mode == UPDATE_REPLACE ||
+						AttributeSet_Get(*old_attrs, attr_id) == ATTRIBUTE_NOTFOUND;
 					EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id,
-							value, entity_type, mode == UPDATE_REPLACE || AttributeSet_Get(*old_attributes, attr_id) == ATTRIBUTE_NOTFOUND);
+							value, entity_type, added);
 				}
 			}
 
@@ -319,15 +323,18 @@ void EvalEntityUpdates
 
 			// simple assignment, no need to value validation
 			if(AttributeSet_Set_Allow_Null(&update->attributes, attr_id, v)) {
+				bool added =
+					mode == UPDATE_REPLACE ||
+					AttributeSet_Get(*old_attrs, attr_id) == ATTRIBUTE_NOTFOUND;
 				EffectsBuffer_AddUpdateEntityEffect(eb, update->ge, attr_id, v,
-						entity_type, mode == UPDATE_REPLACE || AttributeSet_Get(*old_attributes, attr_id) == ATTRIBUTE_NOTFOUND);
+						entity_type, added);
 			}
 		}
 	} // for loop end
 
-	// we need the pointer to the datablock in the commit phase
-	// and we don't want to expose the updated attributes before committing
-	entity->attributes = old_attributes;
+	// restore original attribute-set
+	// changes should not be visible prior to the commit phase
+	entity->attributes = old_attrs;
 	if(t == REC_TYPE_NODE) {
 		Record_AddNode(r, ctx->record_idx, *(Node *)entity);
 	} else {

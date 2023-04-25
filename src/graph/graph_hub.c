@@ -298,7 +298,10 @@ void UpdateEdgeProperty
 	Node t;                // edge dest node
 
 	// get src node, dest node and edge from the graph
-	int res = Graph_GetNode(gc->g, src_id, &s);
+	int res;
+	UNUSED(res);
+
+	res = Graph_GetNode(gc->g, src_id, &s);
 	ASSERT(res != 0);
 	res = Graph_GetNode(gc->g, dest_id, &t);
 	ASSERT(res != 0);
@@ -309,7 +312,6 @@ void UpdateEdgeProperty
 	Edge_SetSrcNode(&e, &s);
 	Edge_SetDestNode(&e, &t);
 	Edge_SetRelationID(&e, r_id);
-
 
 	if(attr_id == ATTRIBUTE_ID_ALL) {
 		AttributeSet_Free(e.attributes);
@@ -351,8 +353,13 @@ void UpdateNodeLabels
 	ASSERT((remove_labels != NULL && n_remove_labels > 0) ||
 		   (remove_labels == NULL && n_remove_labels == 0));
 
-	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
-	EffectsBuffer *eb = (log == true) ? QueryCtx_GetEffectsBuffer() : NULL;
+	EffectsBuffer *eb = NULL; 
+	UndoLog *undo_log = NULL;
+
+	if(log == true) {
+		eb = QueryCtx_GetEffectsBuffer();
+		undo_log = QueryCtx_GetUndoLog();
+	}
 
 	if(add_labels != NULL) {
 		int add_labels_ids[n_add_labels];

@@ -22,8 +22,7 @@ void CommitUpdates
 (
 	GraphContext *gc,
 	dict *updates,
-	EntityType type,
-	bool update_stats
+	EntityType type
 );
 
 // build pending updates in the 'updates' array to match all

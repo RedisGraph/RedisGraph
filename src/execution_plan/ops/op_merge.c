@@ -416,9 +416,9 @@ static Record MergeConsume
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		// lock everything
 		QueryCtx_LockForCommit(); {
-			CommitUpdates(gc, op->node_pending_updates, ENTITY_NODE, true);
+			CommitUpdates(gc, op->node_pending_updates, ENTITY_NODE);
 			if(likely(!ErrorCtx_EncounteredError())) {
-				CommitUpdates(gc, op->edge_pending_updates, ENTITY_EDGE, true);
+				CommitUpdates(gc, op->edge_pending_updates, ENTITY_EDGE);
 			}
 		}
 	}

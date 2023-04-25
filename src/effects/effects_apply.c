@@ -304,7 +304,6 @@ static void ApplyUpdateEdge
 	//    attribute value
 	//--------------------------------------------------------------------------
 	
-	bool res;
 	SIValue v;             // updated value
 	uint props_set;        // number of attributes updated
 	uint props_removed;    // number of attributes removed
