@@ -107,8 +107,8 @@ static Record UpdateConsume(OpBase *opBase) {
 		// lock everything
 		QueryCtx_LockForCommit();
 
-		CommitUpdates(op->gc, op->node_updates, ENTITY_NODE, true);
-		CommitUpdates(op->gc, op->edge_updates, ENTITY_EDGE, true);
+		CommitUpdates(op->gc, op->node_updates, ENTITY_NODE);
+		CommitUpdates(op->gc, op->edge_updates, ENTITY_EDGE);
 	}
 
 	HashTableEmpty(op->node_updates, NULL);
