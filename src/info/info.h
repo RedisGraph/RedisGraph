@@ -25,6 +25,7 @@
 #include "../util/num.h"
 #include "../util/dict.h"
 #include "../util/simple_timer.h"
+#include "../util/circular_buffer.h"
 
 typedef enum QueryExecutionStatus QueryExecutionStatus;
 typedef enum QueryExecutionTypeFlag QueryExecutionTypeFlag;
@@ -33,6 +34,7 @@ typedef enum QueryExecutionTypeFlag QueryExecutionTypeFlag;
 typedef struct QueryCtx QueryCtx;
 // duplicate typedef from the circular buffer
 typedef void (*CircularBuffer_ReadCallback)(const void *item, void *user_data);
+
 typedef QueryInfo** QueryInfoStorage;
 
 // holds query statistics per graph

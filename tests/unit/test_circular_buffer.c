@@ -167,13 +167,10 @@ void test_CircularBuffer_ForceWrite(void) {
 	CircularBuffer_Free(buff);
 }
 
-typedef void (*CircularBuffer_ReadCallback)(void *user_data,
-                                                  const void *item);
-
 void _assert_val_cb
 (
-	void *user_data,
-	const void *item
+	const void *item,
+	void *user_data
 ) {
 	int n = array_pop((int *)user_data);
 	TEST_ASSERT(n == *(int *)item);
