@@ -264,7 +264,6 @@ void EvalEntityUpdates
 							attr_id, v, entity_type);
 					break;
 				default:
-					ASSERT(false);
 					break;
 			}
 			SIValue_Free(v);
@@ -325,7 +324,6 @@ void EvalEntityUpdates
 								attr_id, value, entity_type);
 						break;
 					default:
-						ASSERT(false);
 						break;
 				}
 			}
@@ -365,7 +363,6 @@ void EvalEntityUpdates
 							attr_id, v, entity_type);
 					break;
 				default:
-					ASSERT(false);
 					break;
 			}
 		}
