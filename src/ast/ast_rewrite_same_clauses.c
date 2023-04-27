@@ -147,6 +147,7 @@ static void _replace_delete_clause
 					array_append(exps, cypher_ast_clone(exp));
 				}
 			} else {
+				// "MATCH p1=(n:N), p2=(m:M) DELETE nodes(p1)[0] DELETE nodes(p2)[0]"
 				array_append(exps, cypher_ast_clone(exp));
 			}
 		}
