@@ -146,6 +146,8 @@ static void _replace_delete_clause
 				if(raxTryInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL)) {
 					array_append(exps, cypher_ast_clone(exp));
 				}
+			} else {
+				array_append(exps, cypher_ast_clone(exp));
 			}
 		}
 	}
