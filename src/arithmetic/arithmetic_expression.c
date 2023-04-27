@@ -456,7 +456,7 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
 ) {
 	AR_EXP_Result res = EVAL_OK;
 
-	int child_count = node->op.child_count;
+	int child_count = NODE_CHILD_COUNT(node);
 
 	// evaluate each child before evaluating current node
 	SIValue *sub_trees = NULL;
@@ -469,7 +469,7 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall
 		sub_trees = sub_trees_on_stack;
 	}
 	bool param_found = false;
-	for(int child_idx = 0; child_idx < NODE_CHILD_COUNT(node); child_idx++) {
+	for(int child_idx = 0; child_idx < child_count; child_idx++) {
 		SIValue v;
 		AR_ExpNode *child = NODE_CHILD(node, child_idx);
 		res = _AR_EXP_Evaluate(child, r, &v);

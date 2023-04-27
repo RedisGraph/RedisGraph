@@ -455,8 +455,7 @@ SIValue AR_TOSTRING(SIValue *argv, int argc, void *private_data) {
 		size_t bytesWritten = 0;
 		SIValue_ToString(argv[0], &str, &len, &bytesWritten);
 		return SI_TransferStringVal(str);
-	}
-	else {
+	} else {
 		return SI_NullVal();
 	}
 }
