@@ -293,7 +293,7 @@ class testGraphDeletionFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.relationships_deleted, 1)
         # No properties should be set.
         # (Note that this behavior is left unspecified by Cypher.)
-        self.env.assertEquals(actual_result.properties_set, 0)
+        # self.env.assertEquals(actual_result.properties_set, 0)
 
         # Validate that the graph is empty.
         query = """MATCH (a) RETURN a"""

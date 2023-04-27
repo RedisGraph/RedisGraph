@@ -38,7 +38,7 @@ static void _CommitNodesBlueprint
 
 			if(s == NULL) {
 				s = AddSchema(gc, label, SCHEMA_NODE, true);
-				pending->stats->labels_added++;
+				QueryCtx_GetResultSetStatistics()->labels_added++;
 			}
 
 			node_ctx->labelsId[j] = s->id;
@@ -74,8 +74,7 @@ static void _CommitNodes
 		uint         label_count = array_len(labels);
 
 		// introduce node into graph
-		pending->stats->properties_set += CreateNode(gc, n, labels, label_count,
-				attr, true);
+		CreateNode(gc, n, labels, label_count, attr, true);
 
 		//----------------------------------------------------------------------
 		// enforce constraints
@@ -165,8 +164,7 @@ static void _CommitEdges
 		ASSERT(s != NULL);
 		int relation_id = Schema_GetID(s);
 
-		pending->stats->properties_set += CreateEdge(gc, e, srcNodeID,
-			destNodeID, relation_id, attr, true);
+		CreateEdge(gc, e, srcNodeID, destNodeID, relation_id, attr, true);
 
 		//----------------------------------------------------------------------
 		// enforce constraints
@@ -201,7 +199,6 @@ void NewPendingCreationsContainer
 	pending->created_edges   = array_new(Edge *, 0);
 	pending->node_attributes = array_new(AttributeSet, 0);
 	pending->edge_attributes = array_new(AttributeSet, 0);
-	pending->stats = NULL;
 }
 
 // Lock the graph and commit all changes introduced by the operation.
@@ -213,10 +210,6 @@ void CommitNewEntities
 	Graph *g = QueryCtx_GetGraph();
 	uint node_count = array_len(pending->created_nodes);
 	uint edge_count = array_len(pending->created_edges);
-
-	if(!pending->stats) {
-		pending->stats = QueryCtx_GetResultSetStatistics();
-	}
 
 	// lock everything
 	QueryCtx_LockForCommit();
@@ -244,9 +237,6 @@ void CommitNewEntities
 		if(unlikely(ErrorCtx_EncounteredError())) {
 			goto cleanup;
 		}
-
-		// update statistics
-		pending->stats->nodes_created += node_count;
 	}
 
 	//--------------------------------------------------------------------------
@@ -272,9 +262,6 @@ void CommitNewEntities
 		if(unlikely(ErrorCtx_EncounteredError())) {
 			goto cleanup;
 		}
-
-		// update statistics
-		pending->stats->relationships_created += edge_count;
 	}
 
 cleanup:
@@ -293,6 +280,9 @@ void ConvertPropertyMap
 	bool fail_on_null
 ) {
 	uint property_count = array_len(map->keys);
+	SIValue vals[property_count];
+	Attribute_ID ids[property_count];
+	uint attrs_count = 0;
 	for(int i = 0; i < property_count; i++) {
 		// note that AR_EXP_Evaluate may raise a run-time exception
 		// in which case the allocations in this function will leak
@@ -304,7 +294,9 @@ void ConvertPropertyMap
 			if(!SIValue_IsNull(val)) {
 				// if the value was a complex type, emit an exception
 				SIValue_Free(val);
-				AttributeSet_Free(attributes);
+				for(int j = 0; j < i; j++) {
+					SIValue_Free(vals[j]);
+				}
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
@@ -313,7 +305,9 @@ void ConvertPropertyMap
 			// otherwise skip this value
 			if(fail_on_null) {
 				// emit an error and exit
-				AttributeSet_Free(attributes);
+				for(int j = 0; j < i; j++) {
+					SIValue_Free(vals[j]);
+				}
 				ErrorCtx_RaiseRuntimeException("Cannot merge node using null property value");
 			}
 
@@ -329,17 +323,20 @@ void ConvertPropertyMap
 			if(res) {
 				// validation failed
 				SIValue_Free(val);
-				AttributeSet_Free(attributes);
+				for(int j = 0; j < i; j++) {
+					SIValue_Free(vals[j]);
+				}
 				Error_InvalidPropertyValue();
 				ErrorCtx_RaiseRuntimeException(NULL);
 			}
 		}
 
 		// set the converted attribute
-		Attribute_ID attribute_id = FindOrAddAttribute(gc, map->keys[i], true);
-		AttributeSet_Add(attributes, attribute_id, val);
+		ids[attrs_count] = FindOrAddAttribute(gc, map->keys[i], true);
+		vals[attrs_count++] = SI_CloneValue(val);
 		SIValue_Free(val);
 	}
+	AttributeSet_AddNoClone(attributes, ids, vals, attrs_count, false);
 }
 
 // free all data associated with a completed create operation
