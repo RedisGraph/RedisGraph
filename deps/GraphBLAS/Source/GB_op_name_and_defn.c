@@ -10,12 +10,11 @@
 #include "GB.h"
 #include <ctype.h>
 
-GrB_Info GB_op_name_and_defn
+void GB_op_name_and_defn
 (
     // output
     char *operator_name,        // op->name of the GrB operator struct
     char **operator_defn,       // op->defn of the GrB operator struct
-    size_t *operator_defn_size, // op->defn_size of the GrB operator struct
     // input
     const char *input_name,     // user-provided name, may be NULL
     const char *input_defn,     // user-provided name, may be NULL
@@ -31,15 +30,13 @@ GrB_Info GB_op_name_and_defn
     ASSERT (operator_name != NULL) ;
     ASSERT (operator_defn != NULL) ;
     ASSERT (typecast_name != NULL) ;
-    ASSERT (operator_defn_size != NULL) ;
-    (*operator_defn) = NULL ;
-    (*operator_defn_size) = 0 ;
 
     //--------------------------------------------------------------------------
-    // get the name of the operator
+    // find the name and definition of the operator
     //--------------------------------------------------------------------------
 
     memset (operator_name, 0, GxB_MAX_NAME_LEN) ;
+    (*operator_defn) = NULL ;               // defn currently unused
     if (input_name != NULL)
     {
         // copy the input_name into the working name
@@ -72,36 +69,5 @@ GrB_Info GB_op_name_and_defn
     }
     // ensure operator_name is null-terminated
     operator_name [GxB_MAX_NAME_LEN-1] = '\0' ;
-
-    //--------------------------------------------------------------------------
-    // get the definition of the operator, if present
-    //--------------------------------------------------------------------------
-
-    char *defn = NULL ;
-    size_t defn_size = 0 ;
-    if (input_defn != NULL)
-    { 
-        // determine the string length of the definition
-        size_t len = strlen (input_defn) ;
-
-        // allocate space for the definition
-        defn = GB_MALLOC (len+1, char, &defn_size) ;
-        if (defn == NULL)
-        { 
-            // out of memory
-            return (GrB_OUT_OF_MEMORY) ;
-        }
-
-        // copy the defintion into the new operator
-        memcpy (defn, input_defn, len+1) ;
-    }
-
-    //--------------------------------------------------------------------------
-    // return result
-    //--------------------------------------------------------------------------
-
-    (*operator_defn) = defn ;
-    (*operator_defn_size) = defn_size ;
-    return (GrB_SUCCESS) ;
 }
 

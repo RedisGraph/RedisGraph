@@ -2,7 +2,7 @@ function [m, n] = gb_parse_dimensions (arg1, arg2)
 %GB_GET_DIMENSIONS parse arguments for dimensions
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 switch (nargin)
 
@@ -22,10 +22,10 @@ switch (nargin)
             % C = ones ([m n])
             [m, n] = gb_get_2scalars (arg1) ;
         else
-            error ('GrB:error', 'invalid dimensions') ;
+            error ('invalid dimensions') ;
         end
 
-    otherwise
+    case { 2 }
 
         % C = ones (m, n)
         m = gb_get_scalar (arg1) ;

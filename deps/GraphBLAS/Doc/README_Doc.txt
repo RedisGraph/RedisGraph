@@ -30,8 +30,7 @@ Papers on SuiteSparse:GraphBLAS.  See the User Guide for the full citations.
                                  algorithms built on top of the GraphBLAS"
     HPEC20_Python_and_MATLAB.pdf    "GraphBLAS programmability", by Mattson
                                     Pelletier, and Davis.  HPEC'20
-    toms_parallel_grb2.pdf      2021 ACM TOMS paper on the parallel
-                                SuiteSparse:GraphBLAS (submitted July 2021,
-                                revised Aug 2022)
+    toms_parallel_grb.pdf       2021 ACM TOMS paper on the parallel
+                                SuiteSparse:GraphBLAS (submitted July 2021)
     The_GraphBLAS_in_Julia_and_Python_the_PageRank_and_Triangle_Centralities.pdf
 

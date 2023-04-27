@@ -41,10 +41,6 @@ GrB_Info GB_mxm                     // C<M> = A*B
 )
 {
 
-    #ifdef GB_TIMING
-    double ttt = omp_get_wtime ( ) ;
-    #endif
-
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
@@ -164,12 +160,6 @@ GrB_Info GB_mxm                     // C<M> = A*B
         GB_FREE_ALL ;
         GB_OK (GB_conform (C, Context)) ;
         ASSERT_MATRIX_OK (C, "C from GB_mxm (in-place)", GB0) ;
-
-        #ifdef GB_TIMING
-        ttt = omp_get_wtime ( ) - ttt ;
-        GB_Global_timing_add (0, ttt) ;
-        #endif
-
         return (info) ;
     }
 
@@ -214,8 +204,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
         ASSERT (GB_ZOMBIES_OK (C)) ;
         ASSERT (GB_JUMBLED_OK (C)) ;
         ASSERT (!GB_PENDING (C)) ;
-        info = GB_block (C, Context) ;
-
+        return (GB_block (C, Context)) ;
     }
     else
     { 
@@ -234,13 +223,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
             ASSERT (GB_PENDING_OK (C)) ;
         }
         #endif
+        return (info) ;
     }
-
-    #ifdef GB_TIMING
-    ttt = omp_get_wtime ( ) - ttt ;
-    GB_Global_timing_add (0, ttt) ;
-    #endif
-
-    return (info) ;
 }
 

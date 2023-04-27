@@ -2,7 +2,7 @@ function gbtest8
 %GBTEST8 test GrB.select
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 %   tril
 %   triu
@@ -170,9 +170,6 @@ A (3,4) = b ;
     assert (gbtest_eq (C1, C2))
 
     C2 = GrB.select (A, '>0') ;
-    assert (gbtest_eq (C1, C2))
-
-    C2 = GrB.select ('positive.double', A) ;
     assert (gbtest_eq (C1, C2))
 
 %-------------------------------------------------------------------------

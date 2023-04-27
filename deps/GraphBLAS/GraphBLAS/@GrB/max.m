@@ -19,7 +19,7 @@ function C = max (A, B, option)
 % See also GrB/min, GrB.argmax.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 if (isobject (A))
     A = A.opaque ;
@@ -27,7 +27,7 @@ end
 
 type = gbtype (A) ;
 if (gb_contains (type, 'complex'))
-    error ('GrB:error', 'complex matrices not yet supported') ;
+    error ('complex matrices not yet supported') ;
 elseif (isequal (type, 'logical'))
     op = '|.logical' ;
 else
@@ -46,8 +46,7 @@ elseif (nargin == 2)
 else
     % C = max (A, [ ], option)
     if (~isempty (B))
-        error ('GrB:error', ...
-            'dimension argument not allowed with 2 input matrices') ;
+        error ('dimension argument not allowed with 2 input matrices') ;
     end
     C = GrB (gb_max3 (op, A, option)) ;
 end

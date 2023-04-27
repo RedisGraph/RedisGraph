@@ -75,7 +75,7 @@ bool GB_iso_check               // return true if A is iso, false otherwise
 
     bool done = false ;
 
-    #ifndef GBCUDA_DEV
+    #ifndef GBCOMPACT
     {
 
         #define GB_GET_FIRST_VALUE(atype_t, a, Ax)                      \

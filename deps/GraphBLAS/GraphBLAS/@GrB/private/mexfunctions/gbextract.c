@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 //------------------------------------------------------------------------------
 
@@ -130,22 +130,18 @@ void mexFunction
     if (anrows == 1 && ncells == 1)
     { 
         // only J is present
-        J = gb_mxcell_to_index (Cell [0], base, ancols, &J_allocated, &nj,
-            NULL) ;
+        J = gb_mxcell_to_index (Cell [0], base, ancols, &J_allocated, &nj) ;
     }
     else if (ncells == 1)
     { 
         // only I is present
-        I = gb_mxcell_to_index (Cell [0], base, anrows, &I_allocated, &ni,
-            NULL) ;
+        I = gb_mxcell_to_index (Cell [0], base, anrows, &I_allocated, &ni) ;
     }
     else if (ncells == 2)
     { 
         // both I and J are present
-        I = gb_mxcell_to_index (Cell [0], base, anrows, &I_allocated, &ni,
-            NULL) ;
-        J = gb_mxcell_to_index (Cell [1], base, ancols, &J_allocated, &nj,
-            NULL) ;
+        I = gb_mxcell_to_index (Cell [0], base, anrows, &I_allocated, &ni) ;
+        J = gb_mxcell_to_index (Cell [1], base, ancols, &J_allocated, &nj) ;
     }
 
     //--------------------------------------------------------------------------

@@ -2,8 +2,7 @@ function C = subsref (A, S)
 %SUBSREF C = A(I,J) or C = A(I); extract submatrix.
 % C = A(I,J) extracts the A(I,J) submatrix of the GraphBLAS matrix A.
 % With a single index, C = A(I) extracts a subvector C of a vector A.
-% For linear indexing of a 2D matrix, only C=A(:) is currently supported.
-% C = A(I) is not yet supported if A is a 2D matrix.
+% Linear indexing of a matrix is not yet supported.
 %
 % x = A (M) for a logical matrix M constructs an nnz(M)-by-1 vector x, for
 % built-in-style logical indexing.  A or M may be built-in sparse or full
@@ -32,9 +31,9 @@ function C = subsref (A, S)
 % GrB.extract.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
-% FUTURE: add all forms of linear indexing.
+% FUTURE: add linear indexing.
 
 if (isobject (A))
     A = A.opaque ;
@@ -42,11 +41,11 @@ end
 [m, n] = gbsize (A) ;
 
 if (length (S) > 1)
-    error ('GrB:error', 'nested indexing not supported') ;
+    error ('nested indexing not supported') ;
 end
 
 if (~isequal (S.type, '()'))
-    error ('GrB:error', 'index type %s not supported', S.type) ;
+    error ('index type %s not supported', S.type) ;
 end
 
 ndims = length (S.subs) ;
@@ -63,9 +62,9 @@ if (ndims == 1)
         C = GrB (gblogextract (A, S)) ;
     else
         % C = A (I)
-        [I, whole] = gb_index (S) ;
         if (m == 1 || n == 1)
             % C = A (I) for a vector A
+            [I, whole] = gb_index (S) ;
             if (m > 1)
                 C = gbextract (A, I, { }) ;
             else
@@ -78,15 +77,7 @@ if (ndims == 1)
             C = GrB (C) ;
         else
             % C = A (I) for a matrix A
-            if (whole)
-                % C = A (:), whole matrix case
-                [~, mn] = gb_2d_to_1d (0, 0, m, n) ;
-                C = GrB (gbreshape (A, mn, 1, 'by column')) ;
-            else
-                % C = A (I), general case not yet supported
-                error ('GrB:error', ...
-                    'Except for C=A(:), linear indexing not yet supported') ;
-            end
+            error ('Linear indexing not yet supported') ;
         end
     end
 
@@ -97,8 +88,7 @@ elseif (ndims == 2)
 
 else
 
-    % sparse N-dimensional arrays for N > 2 will not be supported
-    error ('GrB:error', '%dD indexing not supported', ndims) ;
+    error ('%dD indexing not yet supported', ndims) ;
 
 end
 

@@ -531,7 +531,6 @@ GrB_Info GB_assign_prep
                     { 
                         GB_ENSURE_SPARSE (C) ;
                         GBURBLE ("C(:,j)=zombie ") ;
-                        GB_OK (GB_hyper_hash_build (C, Context)) ;
                         GB_assign_zombie1 (C, J [0], Context) ;
                     }
                 }
@@ -1138,7 +1137,8 @@ GrB_Info GB_assign_prep
         //----------------------------------------------------------------------
 
         if (!wait)
-        { 
+        {
+
             // ( delete ) will not occur, but new pending tuples may be added
             // via the action: ( insert ).  Check if the accum operator is the
             // same as the prior pending operator and ensure the types are
@@ -1147,18 +1147,33 @@ GrB_Info GB_assign_prep
             ASSERT (C->Pending != NULL) ;
             ASSERT (C->Pending->type != NULL) ;
 
-            wait =
+            if (atype != C->Pending->type)
+            { 
                 // entries in A are copied directly into the list of pending
                 // tuples for C, with no typecasting.  The type of the prior
-                // pending tuples must match the type of A.  If the types do
-                // not match, prior updates must be assembled first.
-                (atype != C->Pending->type)
-                // also wait if the pending operator has changed.
-                || !((accum == C->Pending->op)
+                // pending tuples must match the type of A.  Since the types
+                // do not match, prior updates must be assembled first.
+                wait = true ;
+            }
+            else if
+            (
+                // the types match, now check the pending operator
+                ! (
+                    // the operators are the same
+                    (accum == C->Pending->op)
+                    // or both operators are SECOND_Ctype, implicit or explicit
                     || (GB_op_is_second (accum, ctype) &&
-                        GB_op_is_second (C->Pending->op, ctype)))
-                // also wait if the iso property of C changes.
-                || (C->iso != C_iso_out) ;
+                        GB_op_is_second (C->Pending->op, ctype))
+                  )
+            )
+            { 
+                wait = true ;
+            }
+            else if (C->iso != C_iso_out)
+            { 
+                // the iso property of C is changing
+                wait = true ;
+            }
         }
     }
 

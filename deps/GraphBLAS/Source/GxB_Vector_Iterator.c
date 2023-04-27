@@ -28,11 +28,7 @@ GrB_Info GxB_Vector_Iterator_attach
         desc)) ;
 }
 
-GrB_Info GB_Vector_Iterator_bitmap_seek
-(
-    GxB_Iterator iterator,
-    GrB_Index unused // note: unused parameter to be removed in v8.x
-)
+GrB_Info GB_Vector_Iterator_bitmap_seek (GxB_Iterator iterator, GrB_Index p)
 {
     for ( ; iterator->p < iterator->pmax ; iterator->p++)
     {

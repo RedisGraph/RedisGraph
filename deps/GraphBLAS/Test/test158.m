@@ -94,6 +94,5 @@ for c = 1:3
     end
 
 end
-
 fprintf ('\ntest158: all tests passed\n') ;
 

@@ -13,9 +13,7 @@
 GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
 (
     GrB_Matrix C,                   // matrix to modify
-    const GrB_BinaryOp accum,       // if NULL: C(row,col) = scalar
-                                    // else: C(row,col) += scalar
-    const void *scalar,             // scalar to set
+    void *scalar,                   // scalar to set
     const GrB_Index row,            // row index
     const GrB_Index col,            // column index
     const GB_Type_code scalar_code, // type of the scalar

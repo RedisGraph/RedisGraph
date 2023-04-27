@@ -24,8 +24,6 @@
 #define GB_FREE_ALL                         \
 {                                           \
     GB_Matrix_free (&M2) ;                  \
-    GB_Matrix_free (&A2) ;                  \
-    GB_Matrix_free (&B2) ;                  \
     GB_WERK_POP (M_ek_slicing, int64_t) ;   \
     GB_WERK_POP (B_slice, int64_t) ;        \
     GB_WERK_POP (A_slice, int64_t) ;        \
@@ -35,19 +33,18 @@
 #include "GB_subref.h"
 #include "GB_ek_slice.h"
 #include "GB_bitmap_assign_methods.h"
-#include "GB_stringify.h"
 #include "GB_AxB__include1.h"
-#ifndef GBCUDA_DEV
+#ifndef GBCOMPACT
 #include "GB_AxB__include2.h"
 #endif
 
 GB_PUBLIC
-GrB_Info GB_AxB_dot2                // C=A'*B or C<#M>=A'*B, dot product method
+GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
 (
     GrB_Matrix C,                   // output matrix, static header
     const bool C_iso,               // true if C is iso
     const GB_void *cscalar,         // iso value of C
-    const GrB_Matrix M_in,          // mask matrix for C<#M>=A'*B, may be NULL
+    const GrB_Matrix M_in,          // mask matrix for C<!M>=A'*B, may be NULL
     const bool Mask_comp,           // if true, use !M
     const bool Mask_struct,         // if true, use the only structure of M
     const bool A_not_transposed,    // if true, C=A*B, else C=A'*B
@@ -82,8 +79,10 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<#M>=A'*B, dot product method
 
     ASSERT_SEMIRING_OK (semiring, "semiring for numeric A'*B", GB0) ;
 
-    struct GB_Matrix_opaque A2_header, B2_header, M2_header ;
-    GrB_Matrix M = NULL, M2 = NULL, A2 = NULL, B2 = NULL, A = NULL, B = NULL ;
+    GrB_Matrix M = NULL ;
+
+    struct GB_Matrix_opaque M2_header ;
+    GrB_Matrix M2 = NULL ;
     GB_WERK_DECLARE (A_slice, int64_t) ;
     GB_WERK_DECLARE (B_slice, int64_t) ;
     GB_WERK_DECLARE (M_ek_slicing, int64_t) ;
@@ -99,7 +98,7 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<#M>=A'*B, dot product method
         (GB_IS_SPARSE (B_in) || GB_IS_HYPERSPARSE (B_in)))) ;
 
     //--------------------------------------------------------------------------
-    // construct hyper_shallow versions of A and B, if hypersparse
+    // construct shallow copies of A and B, if hypersparse
     //--------------------------------------------------------------------------
 
     // If A_in is hypersparse, a new sparse matrix A is constructed with
@@ -118,31 +117,9 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<#M>=A'*B, dot product method
     bool A_or_B_hyper = A_is_hyper || B_is_hyper ;
     GrB_Index *restrict Ah = (GrB_Index *) A_in->h ;
     GrB_Index *restrict Bh = (GrB_Index *) B_in->h ;
-
-    if (A_is_hyper)
-    { 
-        // A = hypershallow version of A_in
-        GB_CLEAR_STATIC_HEADER (A2, &A2_header) ;
-        A = GB_hyper_shallow (A2, A_in) ;
-    }
-    else
-    { 
-        // use A_in as-is
-        A = A_in ;
-    }
-
-    if (B_is_hyper)
-    { 
-        // B = hypershallow version of B_in
-        GB_CLEAR_STATIC_HEADER (B2, &B2_header) ;
-        B = GB_hyper_shallow (B2, B_in) ;
-    }
-    else
-    { 
-        // use B_in as-is
-        B = B_in ;
-    }
-
+    struct GB_Matrix_opaque A_header, B_header ;
+    GrB_Matrix A = (A_is_hyper) ? GB_hyper_shallow (&A_header, A_in) : A_in ;
+    GrB_Matrix B = (B_is_hyper) ? GB_hyper_shallow (&B_header, B_in) : B_in ;
     ASSERT (!GB_IS_HYPERSPARSE (A)) ;
     ASSERT (!GB_IS_HYPERSPARSE (B)) ;
     ASSERT (GB_IMPLIES (A_not_transposed, !A_is_hyper && (A == A_in))) ;
@@ -360,11 +337,6 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<#M>=A'*B, dot product method
         M_is_sparse_or_hyper, B->hyper_switch, cnvec, cnz, true, C_iso,
         Context)) ;
 
-    #ifdef GB_DEBUGIFY_DEFN
-    GB_debugify_mxm (C_iso, C_sparsity, ctype, M,
-        Mask_struct, Mask_comp, semiring, flipxy, A, B) ;
-    #endif
-
     //--------------------------------------------------------------------------
     // if M is sparse/hyper, scatter it into the C bitmap
     //--------------------------------------------------------------------------
@@ -418,9 +390,10 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<#M>=A'*B, dot product method
         // C is non-iso
         //----------------------------------------------------------------------
 
+// double ttt = omp_get_wtime ( ) ;
         bool done = false ;
 
-        #ifndef GBCUDA_DEV
+        #ifndef GBCOMPACT
 
             //------------------------------------------------------------------
             // define the worker for the switch factory
@@ -454,6 +427,9 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<#M>=A'*B, dot product method
             ASSERT (info == GrB_SUCCESS || info == GrB_NO_VALUE) ;
 
         #endif
+// ttt = omp_get_wtime ( ) - ttt ;
+// printf ("dot2 time: %g sec\n", ttt) ;
+
 
         //----------------------------------------------------------------------
         // C = A'*B or A*B, using the dot product method, with typecasting

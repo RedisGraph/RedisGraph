@@ -30,7 +30,6 @@ GrB_Info GxB_Matrix_memoryUsage  // return # of bytes used for a matrix
 
     int64_t nallocs ;
     size_t mem_shallow ;
-    GB_memoryUsage (&nallocs, size, &mem_shallow, A) ;
-    return (GrB_SUCCESS) ;
+    return (GB_memoryUsage (&nallocs, size, &mem_shallow, A)) ;
 }
 

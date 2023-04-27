@@ -127,7 +127,6 @@ GrB_Info GB_subassign_08n
     const int64_t *restrict Ch = C->h ;
     const int64_t *restrict Cp = C->p ;
     const bool C_is_hyper = (Ch != NULL) ;
-    GB_GET_C_HYPER_HASH ;
     GB_GET_MASK ;
     GB_GET_A ;
     const int64_t *restrict Ah = A->h ;
@@ -146,7 +145,7 @@ GrB_Info GB_subassign_08n
     // same index i, the entry A(i,j) is accumulated or inserted into C.
 
     // The algorithm is very much like the eWise multiplication of A.*M, so the
-    // parallel scheduling relies on GB_emult_phase0 and GB_ewise_slice.
+    // parallel scheduling relies on GB_emult_08_phase0 and GB_ewise_slice.
 
     //--------------------------------------------------------------------------
     // Parallel: slice the eWiseMult of Z=A.*M (Method 08n only)
@@ -219,9 +218,8 @@ GrB_Info GB_subassign_08n
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            GB_LOOKUP_VECTOR_jC (fine_task, taskid) ;
+            GB_GET_jC ;
             bool cjdense = (pC_end - pC_start == Cvlen) ;
-
 
             //------------------------------------------------------------------
             // C(I,jC)<M(:,j)> += A(:,j) ; no S
@@ -355,7 +353,7 @@ GrB_Info GB_subassign_08n
             // get jC, the corresponding vector of C
             //------------------------------------------------------------------
 
-            GB_LOOKUP_VECTOR_jC (fine_task, taskid) ;
+            GB_GET_jC ;
             bool cjdense = (pC_end - pC_start == Cvlen) ;
             if (cjdense) continue ;
 

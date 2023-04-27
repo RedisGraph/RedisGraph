@@ -26,8 +26,6 @@
 // ...
 // GxB_COMPRESSION_LZ4HC 2009  // LZ4HC:9
 
-// GxB_COMPRESSION_ZSTD  3000  // ZSTD with default level 3
-
 #define USAGE "C = GB_mex_serialize (A, method)"
 
 #define FREE_ALL                        \

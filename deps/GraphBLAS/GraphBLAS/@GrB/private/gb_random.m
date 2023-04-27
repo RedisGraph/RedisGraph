@@ -3,7 +3,7 @@ function C = gb_random (varargin)
 % Implements C = GrB.random (...), C = sprand (...), C = sprand (...),
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 %---------------------------------------------------------------------------
 % parse inputs
@@ -32,13 +32,13 @@ for k = 1:nargin
                 end
                 [rm, rn, type] = gbsize (range) ;
                 if (rm*rn > 2)
-                    error ('GrB:error', 'range can contain at most 2 entries') ;
+                    error ('range must contain at most 2 entries') ;
                 end
                 range = gbfull (range, type, 0, struct ('kind', 'full')) ;
             case { 'unsymmetric', 'symmetric', 'hermitian' }
                 sym_option = arg ;
             otherwise
-                error ('GrB:error', 'unknown option') ;
+                error ('unknown option') ;
         end
     end
 end
@@ -60,7 +60,7 @@ if (firstchar == 2)
     end
     [m, n] = gbsize (A) ;
     if ((symmetric || hermitian) && (m ~= n))
-        error ('GrB:error', 'input matrix must be square') ;
+        error ('input matrix must be square') ;
     end
     [I, J] = gbextracttuples (A, desc) ;
     e = length (I) ;
@@ -92,7 +92,7 @@ elseif (firstchar == (4 - (symmetric || hermitian)))
 
 else
 
-    error ('GrB:error', 'invalid usage') ;
+    error ('invalid usage') ;
 
 end
 

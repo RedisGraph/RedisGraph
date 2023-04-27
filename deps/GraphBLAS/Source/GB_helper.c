@@ -93,12 +93,12 @@ void GB_helper1i             // convert zero-based indices to one-based
 // GB_helper3: convert 1-based indices to 0-based for gb_mxarray_to_list
 //------------------------------------------------------------------------------
 
-bool GB_helper3             // return true if OK, false on error
+bool GB_helper3              // return true if OK, false on error
 (
     int64_t *restrict List,             // size len, output array
     const double *restrict List_double, // size len, input array
     int64_t len,
-    int64_t *List_max       // also compute the max entry in the list (1-based)
+    int64_t *List_max               // also compute the max entry in the list
 )
 {
 
@@ -151,12 +151,12 @@ bool GB_helper3             // return true if OK, false on error
 // GB_helper3i: convert 1-based indices to 0-based for gb_mxarray_to_list
 //------------------------------------------------------------------------------
 
-bool GB_helper3i        // return true if OK, false on error
+bool GB_helper3i             // return true if OK, false on error
 (
     int64_t *restrict List,             // size len, output array
     const int64_t *restrict List_int64, // size len, input array
     int64_t len,
-    int64_t *List_max   // also compute the max entry in the list (1-based)
+    int64_t *List_max               // also compute the max entry in the list
 )
 {
 
@@ -194,15 +194,14 @@ bool GB_helper3i        // return true if OK, false on error
 }
 
 //------------------------------------------------------------------------------
-// GB_helper4: find the max entry in a list of type GrB_Index
+// GB_helper4: find the max entry in an index list for gbbuild
 //------------------------------------------------------------------------------
 
-bool GB_helper4             // return true if OK, false on error
+bool GB_helper4              // return true if OK, false on error
 (
     const GrB_Index *restrict I,    // array of size len
     const int64_t len,
-    GrB_Index *List_max     // also compute the max entry in the list (1-based,
-                            // which is max(I)+1)
+    GrB_Index *List_max             // find max (I) + 1
 )
 {
 
@@ -366,8 +365,8 @@ double GB_helper10       // norm (x-y,p), or -1 on error
     GB_NTHREADS (n) ;
     GB_ALLOCATE_WORK (double) ;
 
-    #define xx(k) x [x_iso ? 0 : k]
-    #define yy(k) y [y_iso ? 0 : k]
+    #define X(k) x [x_iso ? 0 : k]
+    #define Y(k) y [y_iso ? 0 : k]
 
     //--------------------------------------------------------------------------
     // each thread computes its partial norm
@@ -399,7 +398,7 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            float t = xx (k) ;
+                            float t = X (k) ;
                             my_s += (t*t) ;
                         }
                     }
@@ -407,7 +406,7 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            float t = (xx (k) - yy (k)) ;
+                            float t = (X (k) - Y (k)) ;
                             my_s += (t*t) ;
                         }
                     }
@@ -420,14 +419,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s += fabsf (xx (k)) ;
+                            my_s += fabsf (X (k)) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s += fabsf (xx (k) - yy (k)) ;
+                            my_s += fabsf (X (k) - Y (k)) ;
                         }
                     }
                 }
@@ -439,14 +438,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmaxf (my_s, fabsf (xx (k))) ;
+                            my_s = fmaxf (my_s, fabsf (X (k))) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmaxf (my_s, fabsf (xx (k) - yy (k))) ;
+                            my_s = fmaxf (my_s, fabsf (X (k) - Y (k))) ;
                         }
                     }
                 }
@@ -459,14 +458,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fminf (my_s, fabsf (xx (k))) ;
+                            my_s = fminf (my_s, fabsf (X (k))) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fminf (my_s, fabsf (xx (k) - yy (k))) ;
+                            my_s = fminf (my_s, fabsf (X (k) - Y (k))) ;
                         }
                     }
                 }
@@ -496,7 +495,7 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            double t = xx (k) ;
+                            double t = X (k) ;
                             my_s += (t*t) ;
                         }
                     }
@@ -504,7 +503,7 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            double t = (xx (k) - yy (k)) ;
+                            double t = (X (k) - Y (k)) ;
                             my_s += (t*t) ;
                         }
                     }
@@ -517,14 +516,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s += fabs (xx (k)) ;
+                            my_s += fabs (X (k)) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s += fabs (xx (k) - yy (k)) ;
+                            my_s += fabs (X (k) - Y (k)) ;
                         }
                     }
                 }
@@ -536,14 +535,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmax (my_s, fabs (xx (k))) ;
+                            my_s = fmax (my_s, fabs (X (k))) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmax (my_s, fabs (xx (k) - yy (k))) ;
+                            my_s = fmax (my_s, fabs (X (k) - Y (k))) ;
                         }
                     }
                 }
@@ -556,14 +555,14 @@ double GB_helper10       // norm (x-y,p), or -1 on error
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmin (my_s, fabs (xx (k))) ;
+                            my_s = fmin (my_s, fabs (X (k))) ;
                         }
                     }
                     else
                     {
                         for (int64_t k = k1 ; k < k2 ; k++)
                         {
-                            my_s = fmin (my_s, fabs (xx (k) - yy (k))) ;
+                            my_s = fmin (my_s, fabs (X (k) - Y (k))) ;
                         }
                     }
                 }

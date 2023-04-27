@@ -9,10 +9,8 @@
 
 // Change the size of the A->h and A->p hyperlist.
 // No change is made if A is not hypersparse.
-// No change is made to A->Y.
 
 #include "GB.h"
-#include "GB_unused.h"
 
 GrB_Info GB_hyper_realloc
 (
@@ -42,7 +40,6 @@ GrB_Info GB_hyper_realloc
 
         // old size of A->p and A->h
         int64_t plen_old = A->plen ;
-        plen_new = GB_IMAX (1, plen_new) ;
 
         // change the size of A->h and A->p
         bool ok1 = true, ok2 = true ;
@@ -56,7 +53,7 @@ GrB_Info GB_hyper_realloc
         if (!ok)
         { 
             // out of memory
-            GB_phybix_free (A) ;
+            GB_phbix_free (A) ;
             return (GrB_OUT_OF_MEMORY) ;
         }
 

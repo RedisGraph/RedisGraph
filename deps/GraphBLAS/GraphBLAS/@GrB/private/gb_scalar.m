@@ -6,7 +6,7 @@ function x = gb_scalar (A)
 % (the built-in sparse(0)), then x is returned as zero.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 [~, ~, x] = gbextracttuples (A) ;
 if (isempty (x))

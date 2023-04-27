@@ -29,8 +29,7 @@ int64_t GB_nnz_held
     else if (A->p != NULL)
     { 
         // A is sparse or hypersparse
-        ASSERT (A->nvals == A->p [A->nvec]) ;
-        return (A->nvals) ;
+        return (A->p [A->nvec]) ;
     }
     else
     { 

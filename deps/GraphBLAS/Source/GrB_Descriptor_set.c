@@ -135,11 +135,10 @@ GrB_Info GrB_Descriptor_set     // set a parameter in a descriptor
 
             GB_ERROR (GrB_INVALID_VALUE,
                 "invalid descriptor field [%d], must be one of:\n"
-                "GrB_OUTP [%d], GrB_MASK [%d], GrB_INP0 [%d], GrB_INP1 [%d], "
-                "GxB_AxB_METHOD [%d] or GxB_IMPORT [%d] (use GxB_Desc_set "
-                "for other descriptor settings)", (int) field, (int) GrB_OUTP,
+                "GrB_OUTP [%d], GrB_MASK [%d], GrB_INP0 [%d], GrB_INP1 [%d]"
+                "or GxB_AxB_METHOD [%d]", (int) field, (int) GrB_OUTP,
                 (int) GrB_MASK, (int) GrB_INP0, (int) GrB_INP1,
-                (int) GxB_AxB_METHOD, (int) GxB_IMPORT) ;
+                (int) GxB_AxB_METHOD) ;
     }
 
     return (GrB_SUCCESS) ;

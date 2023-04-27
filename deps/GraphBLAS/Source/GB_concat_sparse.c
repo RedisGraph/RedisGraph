@@ -22,11 +22,10 @@
 #define GB_FREE_ALL         \
 {                           \
     GB_FREE_WORKSPACE ;     \
-    GB_phybix_free (C) ;    \
+    GB_phbix_free (C) ;     \
 }
 
 #include "GB_concat.h"
-#include "GB_unused.h"
 
 GrB_Info GB_concat_sparse           // concatenate into a sparse matrix
 (
@@ -66,7 +65,7 @@ GrB_Info GB_concat_sparse           // concatenate into a sparse matrix
     float hyper_switch = C->hyper_switch ;
     float bitmap_switch = C->bitmap_switch ;
     int sparsity_control = C->sparsity_control ;
-    GB_phybix_free (C) ;
+    GB_phbix_free (C) ;
     // set C->iso = C_iso   OK
     GB_OK (GB_new_bix (&C, // existing header
         ctype, cvlen, cvdim, GB_Ap_malloc, csc, GxB_SPARSE, false,
@@ -227,8 +226,6 @@ GrB_Info GB_concat_sparse           // concatenate into a sparse matrix
     }
 
     GB_cumsum (Cp, cvdim, &(C->nvec_nonempty), nthreads_max, Context) ;
-    ASSERT (cnz == Cp [cvdim]) ;
-    C->nvals = cnz ;
 
     #pragma omp parallel for num_threads(nth) schedule(static)
     for (k = 0 ; k < cvdim ; k++)
@@ -334,7 +331,7 @@ GrB_Info GB_concat_sparse           // concatenate into a sparse matrix
             else
             {
 
-                #ifndef GBCUDA_DEV
+                #ifndef GBCOMPACT
                 if (ccode == acode)
                 {
                     // no typecasting needed

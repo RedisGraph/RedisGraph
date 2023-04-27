@@ -1,13 +1,8 @@
-function testcc(use_builtin)
+function testcc
 %TESTCC test complex transpose
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
 % SPDX-License-Identifier: Apache-2.0
-
-if (nargin < 1)
-    use_builtin = true ;
-end
-GB_builtin_complex_set (use_builtin) ;
 
 dt = struct ('inp0', 'tran') ;
 seed = 1 ;
@@ -35,4 +30,3 @@ end
 
 fprintf ('testcc: all complex transpose tests passed\n') ;
 
-GB_builtin_complex_set (true) ;

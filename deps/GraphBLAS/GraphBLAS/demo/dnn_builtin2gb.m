@@ -1,5 +1,5 @@
 function [W, bias, Y0] = dnn_builtin2gb (W, bias, Y0)
-%DNN_BUILTIN2GB convert sparse deep neural network from built-in to GraphBLAS
+%DNN_MAT2GB convert sparse deep neural network from built-in to GraphBLAS
 %
 % Usage:
 %
@@ -24,7 +24,7 @@ function [W, bias, Y0] = dnn_builtin2gb (W, bias, Y0)
 % See also GrB.dnn, dnn_builtin.
 
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2022, All Rights Reserved.
-% SPDX-License-Identifier: Apache-2.0
+% SPDX-License-Identifier: GPL-3.0-or-later
 
 fmt = 'by row' ;
 prec = 'single' ;
@@ -36,5 +36,4 @@ for k=1:length(W)
     W {k} = GrB (W {k}, prec, fmt) ;
     bias {k} = GrB.build (1:n, 1:n, bias {k}, n, n, '+', prec, d) ;
 end
-
 

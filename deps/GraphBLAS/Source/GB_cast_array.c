@@ -13,7 +13,7 @@
 // iso expansion is done.
 
 #include "GB.h"
-#ifndef GBCUDA_DEV
+#ifndef GBCOMPACT
 #include "GB_unop__include.h"
 #endif
 
@@ -52,7 +52,7 @@ void GB_cast_array              // typecast an array
     // typecast the array
     //--------------------------------------------------------------------------
 
-    #ifndef GBCUDA_DEV
+    #ifndef GBCOMPACT
 
         //----------------------------------------------------------------------
         // define the worker for the switch factory
@@ -79,7 +79,7 @@ void GB_cast_array              // typecast an array
     #endif
 
     //--------------------------------------------------------------------------
-    // generic worker: only used for GBCUDA_DEV case
+    // generic worker: only used for GBCOMPACT case
     //--------------------------------------------------------------------------
 
     int64_t csize = GB_code_size (code1, 0) ;

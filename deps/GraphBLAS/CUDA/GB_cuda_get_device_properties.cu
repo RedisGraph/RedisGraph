@@ -10,97 +10,88 @@
 
 #include "GB_cuda.h"
 
-//------------------------------------------------------------------------------
-// GB_cuda_get_device: get the current GPU
-//------------------------------------------------------------------------------
-
-bool GB_cuda_get_device (int &device)
-{
+bool GB_cuda_get_device ( int &device){
+    bool goodreturn = false;
     if (&device == NULL)
     {
         // invalid inputs
         return (false) ;
     }
-    CHECK_CUDA_SIMPLE (cudaGetDevice (&device)) ;
-    return (true) ;
+
+    CHECK_CUDA_SIMPLE ( cudaGetDevice( &device ) ); 
+    goodreturn = true;
+
+    return goodreturn;
+
 }
 
-//------------------------------------------------------------------------------
-// GB_cuda_set_device: set the current GPU
-//------------------------------------------------------------------------------
-
-bool GB_cuda_set_device (int device)
-{
+bool GB_cuda_set_device( int device) {
+    bool goodreturn = false;
     if (device < 0)
     {
         // invalid inputs
         return (false) ;
     }
-    CHECK_CUDA_SIMPLE (cudaSetDevice (device)) ;
-    return (true) ;
-}
 
-//------------------------------------------------------------------------------
-// GB_cuda_get_device_properties: determine all properties of a single GPU
-//------------------------------------------------------------------------------
+    CHECK_CUDA_SIMPLE ( cudaSetDevice( device ) ); 
+    goodreturn = true;
+
+    return goodreturn;
+}
 
 bool GB_cuda_get_device_properties  // true if OK, false if failure
 (
     int device,
-    GB_cuda_device *prop
+    rmm_device *prop
 )
 {
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
-
+    bool goodreturn = false;
     if (prop == NULL || device < 0)
     {
         // invalid inputs
         return (false) ;
     }
 
-    // clear the GPU settings
-    memset (prop, 0, sizeof (GB_cuda_device)) ;
+    int old_device;
+    CHECK_CUDA_SIMPLE ( cudaGetDevice( &old_device ) ) ; 
 
-    int old_device ;
-    CHECK_CUDA_SIMPLE ( cudaGetDevice( &old_device ) ) ;
 
     //--------------------------------------------------------------------------
     // get the properties
     //--------------------------------------------------------------------------
-
-    int num_sms, compute_capability_major, compute_capability_minor ;
-    size_t memfree, memtotal ;
+    int num_sms;
+    int compute_capability_major;
+    int compute_capability_minor;
+    size_t memfree, memtotal;
 
     CHECK_CUDA_SIMPLE( cudaDeviceGetAttribute (&num_sms,
                                          cudaDevAttrMultiProcessorCount,
-                                         device) ) ;
+                                         device) );
     CHECK_CUDA_SIMPLE( cudaDeviceGetAttribute (&compute_capability_major,
                                          cudaDevAttrComputeCapabilityMajor,
-                                         device) ) ;
+                                         device) );
     CHECK_CUDA_SIMPLE( cudaDeviceGetAttribute (&compute_capability_minor,
                                          cudaDevAttrComputeCapabilityMajor,
-                                         device) ) ;
+                                         device) );
 
-    CHECK_CUDA_SIMPLE ( cudaSetDevice( device ) ) ;
+    CHECK_CUDA_SIMPLE ( cudaSetDevice( device ) ); 
     CHECK_CUDA_SIMPLE ( cudaMemGetInfo( & memfree, &memtotal) ) ;
-    CHECK_CUDA_SIMPLE ( cudaSetDevice( old_device ) ) ;
+    CHECK_CUDA_SIMPLE ( cudaSetDevice( old_device ) ); 
 
-    prop->total_global_memory = memtotal ;
-    prop->number_of_sms = num_sms ;
-    prop->compute_capability_major = compute_capability_major ;
-    prop->compute_capability_minor = compute_capability_minor ;
-
-    printf ("Device: %d: memory: %ld SMs: %d compute: %d.%d\n",
-        device, prop->total_global_memory, prop->number_of_sms,
-        prop->compute_capability_major, prop->compute_capability_minor) ;
-
+    prop->total_global_memory = memtotal;
+    prop->number_of_sms = num_sms;
+    prop->compute_capability_major = compute_capability_major;
+    prop->compute_capability_minor = compute_capability_minor;
+    
+    goodreturn = true;
     //--------------------------------------------------------------------------
     // return result
     //--------------------------------------------------------------------------
 
-    return (true) ;
+    return  goodreturn;
 }
 
