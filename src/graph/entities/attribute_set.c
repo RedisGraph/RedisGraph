@@ -315,6 +315,41 @@ AttributeSet AttributeSet_Clone
     return clone;
 }
 
+// clones attribute set without si values
+AttributeSet AttributeSet_ShallowClone
+(
+	const AttributeSet set  // set to clone
+) {
+	if(set == NULL) return NULL;
+
+	size_t n = ATTRIBUTESET_BYTE_SIZE(set);
+	AttributeSet clone  = rm_malloc(n);
+	clone->attr_count   = set->attr_count;
+
+	for (uint16_t i = 0; i < set->attr_count; ++i) {
+		Attribute *attr        = set->attributes   + i;
+		Attribute *clone_attr  = clone->attributes + i;
+
+		clone_attr->id = attr->id;
+		clone_attr->value = SI_ShareValue(attr->value);
+	}
+
+    return clone;
+}
+
+void AttributeSet_PersistValues
+(
+	const AttributeSet set  // set to persist
+) {
+	if(set == NULL) return;
+
+	for (uint16_t i = 0; i < set->attr_count; ++i) {
+		Attribute *attr = set->attributes + i;
+
+		SIValue_Persist(&attr->value);
+	}
+}
+
 // free attribute set
 void AttributeSet_Free
 (

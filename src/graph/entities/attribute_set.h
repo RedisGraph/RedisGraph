@@ -101,6 +101,17 @@ AttributeSet AttributeSet_Clone
 	const AttributeSet set  // set to clone
 );
 
+// clones attribute set without si values
+AttributeSet AttributeSet_ShallowClone
+(
+	const AttributeSet set  // set to clone
+);
+
+void AttributeSet_PersistValues
+(
+	const AttributeSet set  // set to persist
+);
+
 // free attribute set
 void AttributeSet_Free
 (

@@ -415,7 +415,7 @@ size_t SIValue_StringJoinLen(SIValue *strings, unsigned int string_count, const 
 	/* Compute length. */
 	for(int i = 0; i < string_count; i ++) {
 		/* String elements representing bytes size strings,
-		 * for all other SIValue types 32 bytes should be enough. */
+		 * for all other SIValue types 64 bytes should be enough. */
 		elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + delimiter_len : 64;
 		length += elem_len;
 	}

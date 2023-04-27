@@ -57,11 +57,15 @@ void CommitUpdates
 
 	dictIterator *it = HashTableGetIterator(updates);
 	dictEntry *entry;
+	MATRIX_POLICY policy = Graph_GetMatrixPolicy(gc->g);
+	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
 	while((entry = HashTableNext(it)) != NULL) {
 		PendingUpdateCtx *update = HashTableGetVal(entry);
 
 		// if entity has been deleted, perform no updates
 		if(GraphEntity_IsDeleted(update->ge)) continue;
+
+		AttributeSet_PersistValues(update->attributes);
 		
 		// update the attributes on the graph entity
 		UpdateEntityProperties(gc, update->ge, update->attributes,
@@ -108,6 +112,7 @@ void CommitUpdates
 			}
 		}
 	}
+	Graph_SetMatrixPolicy(gc->g, policy);
 	HashTableReleaseIterator(it);
 }
 
@@ -168,7 +173,7 @@ void EvalEntityUpdates
 		// create a new update context
 		update = rm_malloc(sizeof(PendingUpdateCtx));
 		update->ge            = entity;
-		update->attributes    = AttributeSet_Clone(*entity->attributes);
+		update->attributes    = AttributeSet_ShallowClone(*entity->attributes);
 		update->add_labels    = NULL;
 		update->remove_labels = NULL;
 		// add update context to updates dictionary
