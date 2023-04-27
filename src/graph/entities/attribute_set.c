@@ -199,8 +199,10 @@ void AttributeSet_Add
 	*set = _set;
 }
 
-// adds or updates an attribute to the set null value allowed
-void AttributeSet_Set_Allow_Null
+// add, remove or update an attribute
+// this function allows NULL value to be added to the set
+// returns the type of change performed
+AttributeSetChangeType AttributeSet_Set_Allow_Null
 (
 	AttributeSet *set,     // set to update
 	Attribute_ID attr_id,  // attribute identifier
@@ -216,11 +218,20 @@ void AttributeSet_Set_Allow_Null
 
 	// update the attribute if it is already presented in the set
 	if(AttributeSet_Get(_set, attr_id) != ATTRIBUTE_NOTFOUND) {
-		AttributeSet_Update(&_set, attr_id, value);
-		// update pointer
-		*set = _set;
-		return;
+		if(AttributeSet_Update(&_set, attr_id, value)) {
+			// update pointer
+			*set = _set;
+			// if value is NULL, indicate attribute removal
+			// otherwise indicate attribute update
+			return SIValue_IsNull(value) ? CT_DEL : CT_UPDATE;
+		}
+
+		// value did not change, indicate no modification
+		return CT_NONE;
 	}
+
+	// can't remove a none existing attribute, indicate no modification
+	if(SIValue_IsNull(value)) return CT_NONE;
 
 	// allocate room for new attribute
 	_set = AttributeSet_AddPrepare(set, 1);
@@ -232,6 +243,9 @@ void AttributeSet_Set_Allow_Null
 
 	// update pointer
 	*set = _set;
+
+	// new attribute added, indicate attribute addition
+	return CT_ADD;
 }
 
 // updates existing attribute, return true if attribute been updated
@@ -310,6 +324,42 @@ AttributeSet AttributeSet_Clone
 	}
 
     return clone;
+}
+
+// clones attribute set without si values
+AttributeSet AttributeSet_ShallowClone
+(
+	const AttributeSet set  // set to clone
+) {
+	if(set == NULL) return NULL;
+
+	size_t n = ATTRIBUTESET_BYTE_SIZE(set);
+	AttributeSet clone  = rm_malloc(n);
+	clone->attr_count   = set->attr_count;
+
+	for (uint16_t i = 0; i < set->attr_count; ++i) {
+		Attribute *attr       = set->attributes   + i;
+		Attribute *clone_attr = clone->attributes + i;
+
+		clone_attr->id = attr->id;
+		clone_attr->value = SI_ShareValue(attr->value);
+	}
+
+    return clone;
+}
+
+// persists all attributes within given set
+void AttributeSet_PersistValues
+(
+	const AttributeSet set  // set to persist
+) {
+	if(set == NULL) return;
+
+	for (uint16_t i = 0; i < set->attr_count; ++i) {
+		Attribute *attr = set->attributes + i;
+
+		SIValue_Persist(&attr->value);
+	}
 }
 
 // free attribute set

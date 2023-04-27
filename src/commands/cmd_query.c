@@ -89,11 +89,12 @@ static bool _should_replicate_effects(void)
 	uint64_t effects_threshold;
 	Config_Option_get(Config_EFFECTS_THRESHOLD, &effects_threshold);
 
-	// compute average change time
-	double exec_time = QueryCtx_GetExecutionTime();   // query execution time
-	uint n = UndoLog_Length(*QueryCtx_GetUndoLog());  // number of modifications
+	// compute average change time:
+	// avg modification time = query execution time / #modifications
+	double exec_time = QueryCtx_GetExecutionTime();
+	uint64_t n = EffectsBuffer_Length(QueryCtx_GetEffectsBuffer());
 	ASSERT(n > 0);
-	double avg_mod_time = exec_time / n;              // avg modification time
+	double avg_mod_time = exec_time / n;
 
 	avg_mod_time *= 1000; // convert from ms to μs microseconds
 
@@ -397,12 +398,12 @@ static void _ExecuteQuery(void *args) {
 		// replicate if graph was modified
 		if(ResultSetStat_IndicateModification(&result_set->stats)) {
 			// determine rather or not to replicate via effects
-			if(UndoLog_Length(*QueryCtx_GetUndoLog()) > 0 &&
+			if(EffectsBuffer_Length(QueryCtx_GetEffectsBuffer()) > 0 &&
 			   _should_replicate_effects()) {
 				// compute effects buffer
 				size_t effects_len = 0;
-				u_char *effects = Effects_FromUndoLog(*QueryCtx_GetUndoLog(),
-						&effects_len);
+				u_char *effects = EffectsBuffer_Buffer(
+						QueryCtx_GetEffectsBuffer(), &effects_len);
 				ASSERT(effects_len > 0 && effects != NULL);
 
 				// replicate effects

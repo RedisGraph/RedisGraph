@@ -89,7 +89,7 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 	Schema_AddEdgeToIndices(s, e);
 }
 
-uint CreateNode
+void CreateNode
 (
 	GraphContext *gc,
 	Node *n,
@@ -117,13 +117,12 @@ uint CreateNode
 	if(log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_CreateNode(undo_log, n);
+		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
+		EffectsBuffer_AddCreateNodeEffect(eb, n, labels, label_count);
 	}
-
-	return prop_count;
 }
 
-
-uint CreateEdge
+void CreateEdge
 (
 	GraphContext *gc,
 	Edge *e,
@@ -150,9 +149,9 @@ uint CreateEdge
 	if(log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_CreateEdge(undo_log, e);
+		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
+		EffectsBuffer_AddCreateEdgeEffect(eb, e);
 	}
-
-	return prop_count;
 }
 
 // delete a node
@@ -170,6 +169,7 @@ void DeleteNodes
 	ASSERT(nodes != NULL);
 
 	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
+	EffectsBuffer *eb = (log == true) ? QueryCtx_GetEffectsBuffer() : NULL;
 	bool has_indices = GraphContext_HasIndices(gc);
 
 	if(log == true || has_indices) {
@@ -179,6 +179,7 @@ void DeleteNodes
 			if(log == true) {
 				// add node deletion operation to undo log
 				UndoLog_DeleteNode(undo_log, n);
+				EffectsBuffer_AddDeleteNodeEffect(eb, n);
 			}
 
 			GraphContext_DecreasePropertyNamesCount(
@@ -209,11 +210,13 @@ void DeleteEdges
 	bool has_indecise = GraphContext_HasIndices(gc);
 
 	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
+	EffectsBuffer *eb = (log == true) ? QueryCtx_GetEffectsBuffer() : NULL;
 
 	if(has_indecise == true || log == true) {
 		for (uint i = 0; i < n; i++) {
 			if(log == true) {
 				UndoLog_DeleteEdge(undo_log, edges + i);
+				EffectsBuffer_AddDeleteEdgeEffect(eb, edges + i);
 			}
 
 			if(has_indecise == true) {
@@ -225,58 +228,6 @@ void DeleteEdges
 	Graph_DeleteEdges(gc->g, edges, n);
 }
 
-// update entity attributes and update undo log
-// in case attr_id is ATTRIBUTE_ID_ALL clear all attributes values
-static void _Update_Entity_Property
-(
-	GraphContext *gc,
-	GraphEntity *ge,
-	Attribute_ID attr_id,
-	SIValue new_value,
-	GraphEntityType entity_type,
-	uint *props_set_count,
-	uint *props_removed_count,
-	bool log
-) {
-	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
-
-	if(log == true) {
-		UndoLog *undo_log = QueryCtx_GetUndoLog();
-		if(attr_id == ATTRIBUTE_ID_ALL) {
-			// we're requested to clear entitiy's attribute-set
-			// backup entity's attributes in case we'll need to roolback
-			const AttributeSet set = GraphEntity_GetAttributes(ge);
-			for(int i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
-				Attribute_ID id;
-				// add entity update operation to undo log
-				SIValue value = AttributeSet_GetIdx(set, i, &id);
-				UndoLog_UpdateEntity(undo_log, ge, id, value, entity_type);
-			}
-		} else {
-			// add entity update operation to undo log
-			UndoLog_UpdateEntity(undo_log, ge, attr_id, *old_value,
-					entity_type);
-		}
-	}
-
-	// update the property and set the appropriate counter
-	int updates = Graph_UpdateEntity(ge, attr_id, new_value, entity_type);
-
-	if(SIValue_IsNull(new_value)) {
-		// removal of an attribute
-		// in case the attribute is not present
-		// the update will not be counted (Graph_UpdateEntity logic)
-		*props_removed_count = updates;
-	} else {
-		// addition of an attribte
-		*props_set_count = updates;
-		// overwrite exiting attribute is considered a removal
-		if(old_value != ATTRIBUTE_NOTFOUND) {
-			*props_removed_count = updates;
-		}
-	}
-}
-
 // updates a graph entity attribute set. Returns as out params the number
 // of properties set and removed.
 void UpdateEntityProperties
@@ -285,40 +236,103 @@ void UpdateEntityProperties
 	GraphEntity *ge,              // updated entity
 	const AttributeSet set,       // new attributes
 	GraphEntityType entity_type,  // entity type
-	uint *props_set_count,        // number of attributes set
-	uint *props_removed_count,    // number of attributes removed
 	bool log                      // log update in undo-log
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(ge != NULL);
-	ASSERT(props_set_count     != NULL);
-	ASSERT(props_removed_count != NULL);
 
-	int set_props     = 0;
-	int removed_props = 0;
+	AttributeSet old_set = GraphEntity_GetAttributes(ge);
 
-	for (uint i = 0; i < ATTRIBUTE_SET_COUNT(set); i++) {
-		Attribute *prop = set->attributes + i;
-		uint _set_props     = 0;
-		uint _removed_props = 0;
-
-		_Update_Entity_Property(gc, ge, prop->id, prop->value, entity_type,
-				&_set_props, &_removed_props, log);
-
-		set_props     += _set_props;
-		removed_props += _removed_props;
+	if(log == true) {
+		UndoLog *log = QueryCtx_GetUndoLog();
+		UndoLog_UpdateEntity(log, ge, old_set, entity_type);
 	}
 
-	if(set_props + removed_props > 0) {
-		if(entity_type == GETYPE_NODE) {
-			_AddNodeToIndices(gc, (Node *)ge);
-		} else {
-			_AddEdgeToIndices(gc, (Edge *)ge);
-		}
+	*ge->attributes = set;
+
+	if(entity_type == GETYPE_NODE) {
+		_AddNodeToIndices(gc, (Node *)ge);
+	} else {
+		_AddEdgeToIndices(gc, (Edge *)ge);
+	}
+}
+
+void UpdateNodeProperty
+(
+	GraphContext *gc,             // graph context
+	NodeID id,                    // node ID
+	Attribute_ID attr_id,         // attribute ID
+	SIValue v                     // new attribute value
+) {
+	Node n;
+	int res = Graph_GetNode(gc->g, id, &n);
+
+	// make sure entity was found
+	UNUSED(res);
+	ASSERT(res == true);
+
+	if(attr_id == ATTRIBUTE_ID_ALL) {
+		AttributeSet_Free(n.attributes);
+	} else if(GraphEntity_GetProperty((GraphEntity *)&n, attr_id) == ATTRIBUTE_NOTFOUND) {
+		AttributeSet_AddNoClone(n.attributes, &attr_id, &v, 1, true);
+	} else {
+		AttributeSet_UpdateNoClone(n.attributes, attr_id, v);
 	}
 
-	*props_set_count = set_props;
-	*props_removed_count = removed_props;
+	// retrieve node labels
+	uint label_count;
+	NODE_GET_LABELS(gc->g, &n, label_count);
+
+	Schema *s;
+	for(uint i = 0; i < label_count; i++) {
+		int label_id = labels[i];
+		s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+		ASSERT(s != NULL);
+		Schema_AddNodeToIndices(s, &n);
+	}
+}
+
+void UpdateEdgeProperty
+(
+	GraphContext *gc,             // graph context
+	EdgeID id,                    // edge ID
+	RelationID r_id,              // relation ID
+	NodeID src_id,                // source node ID
+	NodeID dest_id,               // destination node ID
+	Attribute_ID attr_id,         // attribute ID
+	SIValue v                     // new attribute value
+) {
+	Edge e;                // edge to delete
+	Node s;                // edge src node
+	Node t;                // edge dest node
+
+	// get src node, dest node and edge from the graph
+	int res;
+	UNUSED(res);
+
+	res = Graph_GetNode(gc->g, src_id, &s);
+	ASSERT(res != 0);
+	res = Graph_GetNode(gc->g, dest_id, &t);
+	ASSERT(res != 0);
+	res = Graph_GetEdge(gc->g, id, &e);
+	ASSERT(res != 0);
+
+	// set edge relation, src and destination node
+	Edge_SetSrcNode(&e, &s);
+	Edge_SetDestNode(&e, &t);
+	Edge_SetRelationID(&e, r_id);
+
+	if(attr_id == ATTRIBUTE_ID_ALL) {
+		AttributeSet_Free(e.attributes);
+	} else if(GraphEntity_GetProperty((GraphEntity *)&e, attr_id) == ATTRIBUTE_NOTFOUND) {
+		AttributeSet_AddNoClone(e.attributes, &attr_id, &v, 1, true);
+	} else {
+		AttributeSet_UpdateNoClone(e.attributes, attr_id, v);
+	}
+
+	Schema *schema = GraphContext_GetSchemaByID(gc, r_id, SCHEMA_EDGE);
+	ASSERT(schema != NULL);
+	Schema_AddEdgeToIndices(schema, &e);
 }
 
 void UpdateNodeLabels
@@ -329,8 +343,6 @@ void UpdateNodeLabels
 	const char **remove_labels,  // labels to add to the node
 	uint n_add_labels,           // number of labels to add
 	uint n_remove_labels,        // number of labels to remove
-	uint *n_labels_added,        // number of labels added (out param)
-	uint *n_labels_removed,      // number of labels removed (out param)
 	bool log                     // log this operation in undo-log
 ) {
 	ASSERT(gc   != NULL);
@@ -349,7 +361,13 @@ void UpdateNodeLabels
 	ASSERT((remove_labels != NULL && n_remove_labels > 0) ||
 		   (remove_labels == NULL && n_remove_labels == 0));
 
-	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
+	EffectsBuffer *eb = NULL; 
+	UndoLog *undo_log = NULL;
+
+	if(log == true) {
+		eb = QueryCtx_GetEffectsBuffer();
+		undo_log = QueryCtx_GetUndoLog();
+	}
 
 	if(add_labels != NULL) {
 		int add_labels_ids[n_add_labels];
@@ -382,12 +400,12 @@ void UpdateNodeLabels
 		}
 
 		if(add_labels_index > 0) {
-			*n_labels_added = add_labels_index;
-
 			// update node's labels
 			Graph_LabelNode(gc->g, node->id ,add_labels_ids, add_labels_index);
 			if(log == true) {
 				UndoLog_AddLabels(undo_log, node, add_labels_ids,
+						add_labels_index);
+				EffectsBuffer_AddLabelsEffect(eb, node, add_labels_ids,
 						add_labels_index);
 			}
 		}
@@ -415,13 +433,13 @@ void UpdateNodeLabels
 		}
 
 		if(remove_labels_index > 0) {
-			*n_labels_removed = remove_labels_index;
-
 			// update node's labels
 			Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node),
 					remove_labels_ids, remove_labels_index);
 			if(log == true) {
 				UndoLog_RemoveLabels(undo_log, node, remove_labels_ids,
+						remove_labels_index);
+				EffectsBuffer_AddRemoveLabelsEffect(eb, node, remove_labels_ids,
 						remove_labels_index);
 			}
 		}
@@ -433,7 +451,7 @@ Schema *AddSchema
 	GraphContext *gc,   // graph context to add the schema
 	const char *label,  // schema label
 	SchemaType t,       // schema type (node/edge)
-	bool log            // should operation be logged in the undo-log      
+	bool log            // should operation be logged in the undo-log
 ) {
 	ASSERT(gc != NULL);
 	ASSERT(label != NULL);
@@ -442,6 +460,8 @@ Schema *AddSchema
 	if(log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_AddSchema(undo_log, s->id, s->type);
+		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
+		EffectsBuffer_AddNewSchemaEffect(eb, Schema_GetName(s), s->type);
 	}
 
 	return s;
@@ -462,6 +482,8 @@ Attribute_ID FindOrAddAttribute
 	if(created == true && log == true) {
 		UndoLog *undo_log = QueryCtx_GetUndoLog();
 		UndoLog_AddAttribute(undo_log, attr_id);
+		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
+		EffectsBuffer_AddNewAttributeEffect(eb, attribute);
 	}
 	return attr_id;
 }

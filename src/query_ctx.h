@@ -14,7 +14,8 @@
 #include "resultset/resultset.h"
 #include "commands/cmd_context.h"
 #include "execution_plan/ops/op.h"
-
+#include "undo_log/undo_log.h"
+#include "effects/effects.h"
 #include <pthread.h>
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
@@ -63,6 +64,7 @@ typedef struct QueryCtx {
 	UndoLog undo_log;                           // Undo log for updates, used in the case of write query can fail and rollback is needed.
 	QueryExecutionStatus status;                // The query execution status.
 	QueryExecutionTypeFlag flags;               // The execution flags.
+  EffectsBuffer *effects_buffer;              // effects-buffer for replication, used when write query succeed and replication is needed
 	QueryCtx_QueryData query_data;              // The data related to the query syntax.
 	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
 	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
@@ -95,22 +97,24 @@ void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the parameters map. */
 void QueryCtx_SetParams(rax *params);
 
-/* Getters */
-/* Retrieve the AST. */
+// getters
+// retrieve the AST
 AST *QueryCtx_GetAST(void);
-/* Retrieve the query parameters values map. */
+// retrieve the query parameters values map
 rax *QueryCtx_GetParams(void);
-/* Retrieve the Graph object. */
+// retrieve the Graph object
 Graph *QueryCtx_GetGraph(void);
-// Retrieve undo log
+// retrieve undo log
 UndoLog *QueryCtx_GetUndoLog(void);
-/* Retrieve the GraphCtx. */
+// retrieve effects-buffer
+EffectsBuffer *QueryCtx_GetEffectsBuffer(void);
+// retrieve the GraphCtx
 GraphContext *QueryCtx_GetGraphCtx(void);
-/* Retrieve the Redis module context. */
+// retrieve the Redis module context
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
-/* Retrive the resultset. */
+// retrive the resultset
 ResultSet *QueryCtx_GetResultSet(void);
-/* Retrive the resultset statistics. */
+// retrive the resultset statistics
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
 
 // print the current query
