@@ -70,3 +70,13 @@ class testGraphInfo(FlowTestsBase):
         info = self.execute_get_dict(INFO_QUERIES_CURRENT_PREV_COMMAND_1)
         first_query = list_to_dict(info['Queries'][0])
         self.assertEquals(first_query['Query'], query)
+
+    def test03_current_query(self):
+        """Tests that the current query is returned by the `CURRENT` command"""
+
+        # issue a "heavy" query
+        query = "UNWIND range(1, 10000000) as x CREATE (:Node {val: x})"
+        graph.query(query)
+        info = self.execute_get_dict(INFO_QUERIES_CURRENT_COMMAND)
+        first_query = list_to_dict(info['Queries'][0])
+        self.env.assertEquals(first_query['Query'], query)

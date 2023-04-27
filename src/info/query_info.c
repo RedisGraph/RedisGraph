@@ -4,6 +4,8 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
+#include <sys/types.h>
+
 #include "query_info.h"
 #include "../util/simple_timer.h"
 #include "../graph/graphcontext.h"

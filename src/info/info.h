@@ -140,13 +140,6 @@ void Info_IncrementNumberOfQueries
     const QueryExecutionStatus
 );
 
-// Locks the info object for external reading. Only one concurrent read is
-// allowed at the same time.
-bool Info_Lock
-(
-    Info *info
-);
-
 // Unlocks the info object from exclusive external reading.
 bool Info_Unlock
 (
@@ -160,20 +153,6 @@ void Info_GetQueries
     Info *info,                 // info
     QueryStage stage,           // wanted stage
     QueryInfoStorage *storage  // result container
-);
-
-// returns a pointer to the underlying storage for all the waiting queries.
-// Must be accessed within the Info_Lock and Info_Unlock
-QueryInfoStorage* Info_GetWaitingQueriesStorage
-(
-    Info *info
-);
-
-// Returns a pointer to the underlying working queries storage per thread.
-// Must be accessed within the Info_Lock and Info_Unlock.
-QueryInfoStorage* Info_GetWorkingQueriesStorage
-(
-    Info *info
 );
 
 // views the circular buffer of finished queries

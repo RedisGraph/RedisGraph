@@ -119,17 +119,19 @@ static void _FinishedQueryCounters_Increment
     ASSERT(false && "Handle unknown flag.");
 }
 
-static void _add_finished_query
+static bool _Info_LockWaiting
 (
-	QueryInfo *qi
+    bool write
 ) {
-    int res = pthread_rwlock_wrlock(&finished_queries_rwlock);
-	ASSERT(res == 0);
+    if(write) {
+        return !pthread_rwlock_wrlock(&finished_queries_rwlock);
+    } else {
+        return !pthread_rwlock_rdlock(&finished_queries_rwlock);
+    }
+}
 
-    CircularBuffer_AddForce(finished_queries, (void *)&qi);
-
-    res = pthread_rwlock_unlock(&finished_queries_rwlock);
-	ASSERT(res == 0);
+static bool _Info_UnlockWaiting(void) {
+    return !pthread_rwlock_unlock(&finished_queries_rwlock);
 }
 
 static bool _Info_LockEverything
@@ -138,7 +140,11 @@ static bool _Info_LockEverything
 ) {
 	ASSERT(info != NULL);
 
-	return !pthread_mutex_lock(&info->mutex);
+    int res = _Info_LockWaiting(true);
+    ASSERT(res == 1);
+    UNUSED(res);
+
+    return !pthread_mutex_lock(&info->mutex);
 }
 
 static bool _Info_UnlockEverything
@@ -146,7 +152,24 @@ static bool _Info_UnlockEverything
 	Info *info
 ) {
     ASSERT(info != NULL);
+
+    int res = _Info_UnlockWaiting();
+    ASSERT(res == 1);
+
     return !pthread_mutex_unlock(&info->mutex);
+}
+
+static void _add_finished_query
+(
+	QueryInfo *qi
+) {
+    int res = _Info_LockWaiting(true);
+	ASSERT(res == 1);
+
+    CircularBuffer_AddForce(finished_queries, (void *)&qi);
+
+    res = _Info_UnlockWaiting();
+	ASSERT(res == 1);
 }
 
 Info *Info_New(void) {
@@ -435,15 +458,6 @@ void Info_IncrementNumberOfQueries
     _FinishedQueryCounters_Increment(&info->counters, flags, status);
 }
 
-// locks the info object for external reading. Only one concurrent read is
-// allowed at the same time
-bool Info_Lock
-(
-    Info *info
-) {
-    return _Info_LockEverything(info);
-}
-
 // unlocks the info object from exclusive external reading
 bool Info_Unlock(Info *info) {
     return _Info_UnlockEverything(info);
@@ -462,35 +476,39 @@ void Info_GetQueries
     QueryStage stage,           // wanted stage
     QueryInfoStorage *storage   // result container
 ) {
-    QueryInfoStorage st = *storage;
+    // QueryInfoStorage st = *storage;
+    bool waiting = (stage == QueryStage_WAITING);
 
-    _Info_LockEverything(info);
+    bool res = _Info_LockEverything(info);
+    ASSERT(res == true);
 
     // get the number of queries to traverse and copy (waiting or executing)
-    uint n_queries = (stage == QueryStage_WAITING ?
-        HashTableElemCount(info->waiting_queries) :
-        ThreadPools_ThreadCount() + 1);
+    uint n_queries = (waiting ? HashTableElemCount(info->waiting_queries) :
+                                ThreadPools_ThreadCount() + 1);
 
-    //--------------------------------------------------------------------------
-    // waiting queries
-    //--------------------------------------------------------------------------
-    QueryInfo *qi;
-    dictIterator *it = HashTableGetIterator(info->waiting_queries);
-    while((qi = (QueryInfo*)HashTableNext(it)) != NULL) {
-		array_append(st, QueryInfo_Clone(qi));
-    }
-
-    //--------------------------------------------------------------------------
-    // executing queries
-    //--------------------------------------------------------------------------
-    for(uint i = 0; i < n_queries; i++) {
-        // append a clone of the current query to st
-        if(info->working_queries[i] != NULL) {
-            array_append(st, QueryInfo_Clone(info->working_queries[i]));
+    if(waiting) {
+        //--------------------------------------------------------------------------
+        // waiting queries
+        //--------------------------------------------------------------------------
+        QueryInfo *qi;
+        dictIterator *it = HashTableGetIterator(info->waiting_queries);
+        while((qi = (QueryInfo*)HashTableNext(it)) != NULL) {
+            array_append(*storage, QueryInfo_Clone(qi));
+        }
+    } else {
+        //--------------------------------------------------------------------------
+        // executing queries
+        //--------------------------------------------------------------------------
+        for(uint i = 0; i < n_queries; i++) {
+            // append a clone of the current query to st
+            if(info->working_queries[i] != NULL) {
+                array_append(*storage, QueryInfo_Clone(info->working_queries[i]));
+            }
         }
     }
 
-    _Info_UnlockEverything(info);
+    res = _Info_UnlockEverything(info);
+    ASSERT(res == true);
 }
 
 // views the circular buffer of finished queries
@@ -505,15 +523,15 @@ void Info_ViewFinishedQueries
         return;
     }
 
-    int res = pthread_rwlock_rdlock(&finished_queries_rwlock);
-    ASSERT(res == 0);
+    int res = _Info_LockWaiting(false);
+    ASSERT(res == 1);
 
 	// read items from the circular buffer, calling callback on each one
     CircularBuffer_TraverseCBFromLast(finished_queries, n_items, callback,
         user_data);
 
-    res = pthread_rwlock_unlock(&finished_queries_rwlock);
-    ASSERT(res == 0);
+    res = _Info_UnlockWaiting();
+    ASSERT(res == 1);
 }
 
 void Info_Free
