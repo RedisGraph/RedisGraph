@@ -252,7 +252,6 @@ void EvalEntityUpdates
 					EffectsBuffer_AddEntityRemoveAttributeEffect(eb, entity,
 							attr_id, entity_type);
 					continue;
-					break;
 				case CT_ADD:
 					// attribute added
 					EffectsBuffer_AddEntityAddAttributeEffect(eb, entity,
@@ -313,6 +312,11 @@ void EvalEntityUpdates
 				// TODO: would have been nice we just sent n = {v:2}
 				switch (AttributeSet_Set_Allow_Null(entity->attributes, attr_id, value))
 				{
+					case CT_DEL:
+						// attribute removed
+						EffectsBuffer_AddEntityRemoveAttributeEffect(eb, entity,
+								attr_id, entity_type);
+						break;
 					case CT_ADD:
 						// attribute added
 						EffectsBuffer_AddEntityAddAttributeEffect(eb, entity,
