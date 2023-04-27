@@ -14,6 +14,7 @@
 #include "resultset/resultset.h"
 #include "execution_plan/ops/op.h"
 #include "undo_log/undo_log.h"
+#include "effects/effects.h"
 #include <pthread.h>
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
@@ -39,11 +40,12 @@ typedef struct {
 } QueryCtx_GlobalExecCtx;
 
 typedef struct {
-	QueryCtx_QueryData query_data;              // The data related to the query syntax.
-	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
-	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
-	GraphContext *gc;                           // The GraphContext associated with this query's graph.
-	UndoLog undo_log;                           // Undo log for updates, used in the case of write query can fail and rollback is needed.
+	QueryCtx_QueryData query_data;              // the data related to the query syntax
+	QueryCtx_InternalExecCtx internal_exec_ctx; // the data related to internal query execution
+	QueryCtx_GlobalExecCtx global_exec_ctx;     // the data rlated to global redis execution
+	GraphContext *gc;                           // the GraphContext associated with this query's graph
+	UndoLog undo_log;                           // undo log for updates, used in the case of write query can fail and rollback is needed
+	EffectsBuffer *effects_buffer;              // effects-buffer for replication, used when write query succeed and replication is needed
 } QueryCtx;
 
 /* Instantiate the thread-local QueryCtx on module load. */
@@ -73,22 +75,24 @@ void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the parameters map. */
 void QueryCtx_SetParams(rax *params);
 
-/* Getters */
-/* Retrieve the AST. */
+// getters
+// retrieve the AST
 AST *QueryCtx_GetAST(void);
-/* Retrieve the query parameters values map. */
+// retrieve the query parameters values map
 rax *QueryCtx_GetParams(void);
-/* Retrieve the Graph object. */
+// retrieve the Graph object
 Graph *QueryCtx_GetGraph(void);
-// Retrieve undo log
+// retrieve undo log
 UndoLog *QueryCtx_GetUndoLog(void);
-/* Retrieve the GraphCtx. */
+// retrieve effects-buffer
+EffectsBuffer *QueryCtx_GetEffectsBuffer(void);
+// retrieve the GraphCtx
 GraphContext *QueryCtx_GetGraphCtx(void);
-/* Retrieve the Redis module context. */
+// retrieve the Redis module context
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
-/* Retrive the resultset. */
+// retrive the resultset
 ResultSet *QueryCtx_GetResultSet(void);
-/* Retrive the resultset statistics. */
+// retrive the resultset statistics
 ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
 
 // print the current query
