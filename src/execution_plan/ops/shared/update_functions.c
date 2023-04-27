@@ -245,28 +245,27 @@ void EvalEntityUpdates
 
 			Attribute_ID attr_id = FindOrAddAttribute(gc, attribute, true);
 
-			// attribute been either added or updated
-			bool added =
-				AttributeSet_Get(*entity->attributes, attr_id) == ATTRIBUTE_NOTFOUND;
-
-			if(AttributeSet_Set_Allow_Null(entity->attributes, attr_id, v)) {
-				bool removed = SIValue_IsNull(v);
-				if(removed) {
+			switch (AttributeSet_Set_Allow_Null(entity->attributes, attr_id, v))
+			{
+				case CT_DEL:
 					// attribute removed
 					EffectsBuffer_AddEntityRemoveAttributeEffect(eb, entity,
 							attr_id, entity_type);
 					continue;
-				}
-
-				if(added) {
+					break;
+				case CT_ADD:
 					// attribute added
 					EffectsBuffer_AddEntityAddAttributeEffect(eb, entity,
 							attr_id, v, entity_type);
-				} else {
+					break;
+				case CT_UPDATE:
 					// attribute update
 					EffectsBuffer_AddEntityUpdateAttributeEffect(eb, entity,
 							attr_id, v, entity_type);
-				}
+					break;
+				default:
+					ASSERT(false);
+					break;
 			}
 			SIValue_Free(v);
 			continue;
@@ -312,19 +311,22 @@ void EvalEntityUpdates
 				}
 
 				Attribute_ID attr_id = FindOrAddAttribute(gc, key.stringval, true);
-				bool added =
-					AttributeSet_Get(*entity->attributes, attr_id) == ATTRIBUTE_NOTFOUND;
-				if(AttributeSet_Set_Allow_Null(entity->attributes, attr_id, value)) {
-					// TODO: would have been nice we just sent n = {v:2}
-					if(added) {
+				// TODO: would have been nice we just sent n = {v:2}
+				switch (AttributeSet_Set_Allow_Null(entity->attributes, attr_id, value))
+				{
+					case CT_ADD:
 						// attribute added
 						EffectsBuffer_AddEntityAddAttributeEffect(eb, entity,
 								attr_id, value, entity_type);
-					} else {
+						break;
+					case CT_UPDATE:
 						// attribute update
 						EffectsBuffer_AddEntityUpdateAttributeEffect(eb, entity,
 								attr_id, value, entity_type);
-					}
+						break;
+					default:
+						ASSERT(false);
+						break;
 				}
 			}
 
@@ -350,18 +352,21 @@ void EvalEntityUpdates
 			SIValue v = AttributeSet_GetIdx(set, j, &attr_id);
 
 			// simple assignment, no need to validate value
-			bool added =
-				AttributeSet_Get(*entity->attributes, attr_id) == ATTRIBUTE_NOTFOUND;
-			if(AttributeSet_Set_Allow_Null(entity->attributes, attr_id, v)) {
-				if(added) {
+			switch (AttributeSet_Set_Allow_Null(entity->attributes, attr_id, v))
+			{
+				case CT_ADD:
 					// attribute added
 					EffectsBuffer_AddEntityAddAttributeEffect(eb, entity,
 							attr_id, v, entity_type);
-				} else {
+					break;
+				case CT_UPDATE:
 					// attribute update
 					EffectsBuffer_AddEntityUpdateAttributeEffect(eb, entity,
 							attr_id, v, entity_type);
-				}
+					break;
+				default:
+					ASSERT(false);
+					break;
 			}
 		}
 	} // for loop end

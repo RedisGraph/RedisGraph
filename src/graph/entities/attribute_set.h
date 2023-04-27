@@ -20,6 +20,13 @@
 
 typedef unsigned short Attribute_ID;
 
+typedef enum {
+	CT_NONE,
+	CT_ADD,
+	CT_UPDATE,
+	CT_DEL
+} ChangeType;
+
 typedef struct {
 	Attribute_ID id;  // attribute identifier
 	SIValue value;    // attribute value
@@ -69,8 +76,8 @@ void AttributeSet_Add
 
 // add or update an attribute
 // this function allows NULL value to be added to the set
-// returns true if the value was added, updated or deleted otherwise false
-bool AttributeSet_Set_Allow_Null
+// returns if the attribute has been added, updated, deleted or unchanged
+ChangeType AttributeSet_Set_Allow_Null
 (
 	AttributeSet *set,     // set to update
 	Attribute_ID attr_id,  // attribute identifier
