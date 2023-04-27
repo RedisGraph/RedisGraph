@@ -244,9 +244,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	ExecutorThread exec_thread = main_thread ? EXEC_THREAD_MAIN : EXEC_THREAD_READER;
 
 	// initialize the query context
-	QueryCtx *query_ctx = rm_calloc(1, sizeof(QueryCtx));
-	query_ctx->undo_log = UndoLog_New();
-	query_ctx->qi = QueryInfo_New();
+	QueryCtx *query_ctx = QueryCtx_GetQueryCtx_NoSet();
 
 	Command_Handler handler = get_command_handler(cmd);
 	if(exec_thread == EXEC_THREAD_MAIN) {

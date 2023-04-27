@@ -6,9 +6,10 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <stdbool.h>
 #include <sys/types.h>
 
-#include <stdbool.h>
 #include "util/simple_timer.h"
 
 typedef uint32_t millis_t;

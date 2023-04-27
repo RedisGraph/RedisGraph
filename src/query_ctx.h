@@ -64,9 +64,9 @@ typedef struct QueryCtx {
 	UndoLog undo_log;                           // Undo log for updates, used in the case of write query can fail and rollback is needed.
 	QueryExecutionStatus status;                // The query execution status.
 	QueryExecutionTypeFlag flags;               // The execution flags.
-  EffectsBuffer *effects_buffer;              // effects-buffer for replication, used when write query succeed and replication is needed
+  	EffectsBuffer *effects_buffer;              // effects-buffer for replication, used when write query succeed and replication is needed
 	QueryCtx_QueryData query_data;              // The data related to the query syntax.
-	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
+	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data related to global redis execution.
 	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
 } QueryCtx;
 
@@ -74,7 +74,11 @@ typedef struct QueryCtx {
 bool QueryCtx_Init(void);
 
 /* Retrieve this thread's QueryCtx. */
-QueryCtx *QueryCtx_GetQueryCtx();
+QueryCtx *QueryCtx_GetQueryCtx(void);
+
+// Retrieve this thread's QueryCtx if exists, or create the and retrieve the ctx
+// without setting it.
+QueryCtx *QueryCtx_GetQueryCtx_NoSet(void);
 
 /* Set the provided QueryCtx in this thread's storage key. */
 void QueryCtx_SetTLS(QueryCtx *query_ctx);

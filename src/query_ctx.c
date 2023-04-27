@@ -20,9 +20,10 @@ pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 // retrieve or instantiate new QueryCtx
 static inline QueryCtx *_QueryCtx_GetCreateCtx(void) {
 	QueryCtx *ctx = pthread_getspecific(_tlsQueryCtxKey);
-	if(!ctx) {
+	if(ctx == NULL) {
 		// Set a new thread-local QueryCtx if one has not been created.
 		ctx = rm_calloc(1, sizeof(QueryCtx));
+		ctx->qi = QueryInfo_New();
 		ctx->undo_log = UndoLog_New();
 		ctx->effects_buffer = EffectsBuffer_New();
 		pthread_setspecific(_tlsQueryCtxKey, ctx);
@@ -47,8 +48,20 @@ bool QueryCtx_Init(void) {
 	return (pthread_key_create(&_tlsQueryCtxKey, NULL) == 0);
 }
 
-inline QueryCtx *QueryCtx_GetQueryCtx() {
+inline QueryCtx *QueryCtx_GetQueryCtx(void) {
 	return _QueryCtx_GetCreateCtx();
+}
+
+inline QueryCtx *QueryCtx_GetQueryCtx_NoSet(void) {
+	// QueryCtx *ctx = pthread_getspecific(_tlsQueryCtxKey);
+	// if(ctx == NULL) {
+		// Set a new thread-local QueryCtx if one has not been created.
+		QueryCtx *ctx = rm_calloc(1, sizeof(QueryCtx));
+		ctx->qi = QueryInfo_New();
+		ctx->undo_log = UndoLog_New();
+		ctx->effects_buffer = EffectsBuffer_New();
+	// }
+	return ctx;
 }
 
 inline void QueryCtx_SetTLS(QueryCtx *query_ctx) {
