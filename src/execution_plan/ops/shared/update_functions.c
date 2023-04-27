@@ -55,10 +55,11 @@ void CommitUpdates
 	// return early if no updates are enqueued
 	if(update_count == 0) return;
 
-	dictIterator *it = HashTableGetIterator(updates);
 	dictEntry *entry;
+	dictIterator *it = HashTableGetIterator(updates);
 	MATRIX_POLICY policy = Graph_GetMatrixPolicy(gc->g);
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
+
 	while((entry = HashTableNext(it)) != NULL) {
 		PendingUpdateCtx *update = HashTableGetVal(entry);
 

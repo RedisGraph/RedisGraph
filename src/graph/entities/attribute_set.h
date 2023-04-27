@@ -20,12 +20,13 @@
 
 typedef unsigned short Attribute_ID;
 
+// type of change performed on the attribute-set
 typedef enum {
-	CT_NONE,
-	CT_ADD,
-	CT_UPDATE,
-	CT_DEL
-} ChangeType;
+	CT_NONE,    // no change
+	CT_ADD,     // attribute been added
+	CT_UPDATE,  // attribute been updated
+	CT_DEL      // attribute been deleted
+} AttributeSetChangeType;
 
 typedef struct {
 	Attribute_ID id;  // attribute identifier
@@ -74,10 +75,10 @@ void AttributeSet_Add
 	SIValue value          // attribute value
 );
 
-// add or update an attribute
+// add, remove or update an attribute
 // this function allows NULL value to be added to the set
-// returns if the attribute has been added, updated, deleted or unchanged
-ChangeType AttributeSet_Set_Allow_Null
+// returns the type of change performed
+AttributeSetChangeType AttributeSet_Set_Allow_Null
 (
 	AttributeSet *set,     // set to update
 	Attribute_ID attr_id,  // attribute identifier
@@ -114,6 +115,7 @@ AttributeSet AttributeSet_ShallowClone
 	const AttributeSet set  // set to clone
 );
 
+// persists all attributes within given set
 void AttributeSet_PersistValues
 (
 	const AttributeSet set  // set to persist
