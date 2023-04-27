@@ -92,7 +92,12 @@ GrB_Info RG_MatrixTupleIter_iterate_range
 	GrB_Index startRowIdx,      // row index to start with
 	GrB_Index endRowIdx         // row index to finish with
 ) {
-	if(IS_DETACHED(iter)) return GrB_NULL_POINTER ;
+	if(IS_DETACHED(iter)) {
+		return GrB_NULL_POINTER ;
+	}
+
+	GrB_Info info = RG_MatrixTupleIter_attach(iter, iter->A) ;
+	ASSERT(info == GrB_SUCCESS);
 
 	iter->min_row = startRowIdx ;
 	iter->max_row = endRowIdx ;
