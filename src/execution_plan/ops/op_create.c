@@ -56,11 +56,11 @@ static void _CreateNodes(OpCreate *op, Record r, GraphContext *gc) {
 		Node newNode = GE_NEW_NODE();
 
 		// add new node to Record and save a reference to it
-		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
+		Node *node_ref = Record_AddNode(r, n->node_idx, newNode);
 
 		// convert query-level properties
 		AttributeSet converted_attr = NULL;
-		PropertyMap *map = op->pending.nodes_to_create[i].properties;
+		PropertyMap *map = n->properties;
 		if(map != NULL) {
 			ConvertPropertyMap(gc, &converted_attr, r, map, false);
 		}
