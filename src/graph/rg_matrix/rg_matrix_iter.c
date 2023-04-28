@@ -302,7 +302,7 @@ bool RG_MatrixTupleIter_is_attached
 // update iterator to scan given matrix
 GrB_Info RG_MatrixTupleIter_attach
 (
-	RG_MatrixTupleIter *iter,       // iterator to update
+	RG_MatrixTupleIter *iter,      // iterator to update
 	const RG_Matrix A              // matrix to scan
 ) {
 	return RG_MatrixTupleIter_AttachRange(iter, A, RG_ITER_MIN_ROW,
