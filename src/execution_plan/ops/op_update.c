@@ -14,7 +14,6 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
-static OpResult UpdateInit(OpBase *opBase);
 static Record UpdateConsume(OpBase *opBase);
 static OpResult UpdateReset(OpBase *opBase);
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase);
@@ -28,17 +27,39 @@ static Record _handoff(OpUpdate *op) {
 	return NULL;
 }
 
+// fake hash function
+// hash of key is simply key
+static uint64_t _id_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+// hashtable entry free callback
+static void freeCallback
+(
+	dict *d,
+	void *val
+) {
+	PendingUpdateCtx_Free((PendingUpdateCtx*)val);
+}
+
+// hashtable callbacks
+static dictType _dt = { _id_hash, NULL, NULL, NULL, NULL, freeCallback, NULL,
+	NULL, NULL, NULL};
+
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
-	op->records            =  NULL;
-	op->node_updates       =  NULL;
-	op->edge_updates       =  NULL;
-	op->updates_committed  =  false;
-	op->update_ctxs        =  update_exps;
-	op->gc                 =  QueryCtx_GetGraphCtx();
+	op->gc                = QueryCtx_GetGraphCtx();
+	op->records           = array_new(Record, 64);
+	op->update_ctxs       = update_exps;
+	op->node_updates      = HashTableCreate(&_dt);
+	op->edge_updates      = HashTableCreate(&_dt);
+	op->updates_committed = false;
 
 	// set our op operations
-	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
+	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", NULL, UpdateConsume,
 				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
 
 	// iterate over all update expressions
@@ -51,17 +72,6 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	}
 
 	return (OpBase *)op;
-}
-
-static OpResult UpdateInit(OpBase *opBase) {
-	OpUpdate *op = (OpUpdate *)opBase;
-
-	op->stats         =  QueryCtx_GetResultSetStatistics();
-	op->records       =  array_new(Record, 64);
-	op->node_updates  =  array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
-	op->edge_updates  =  array_new(PendingUpdateCtx, raxSize(op->update_ctxs));
-
-	return OP_OK;
 }
 
 static Record UpdateConsume(OpBase *opBase) {
@@ -82,14 +92,14 @@ static Record UpdateConsume(OpBase *opBase) {
 		raxSeek(&op->it, "^", NULL, 0);
 		while(raxNext(&op->it)) {
 			EntityUpdateEvalCtx *ctx = op->it.data;
-			EvalEntityUpdates(op->gc, &op->node_updates, &op->edge_updates, r, ctx, true);
+			EvalEntityUpdates(op->gc, op->node_updates, op->edge_updates, r, ctx, true);
 		}
 
 		array_append(op->records, r);
 	}
 	
-	uint node_updates_count = array_len(op->node_updates);
-	uint edge_updates_count = array_len(op->edge_updates);
+	uint node_updates_count = HashTableElemCount(op->node_updates);
+	uint edge_updates_count = HashTableElemCount(op->edge_updates);
 
 	if(node_updates_count > 0 || edge_updates_count > 0) {
 		// done reading; we're not going to call Consume any longer
@@ -100,22 +110,12 @@ static Record UpdateConsume(OpBase *opBase) {
 		// lock everything
 		QueryCtx_LockForCommit();
 
-		CommitUpdates(op->gc, op->stats, op->node_updates, ENTITY_NODE);
-		CommitUpdates(op->gc, op->stats, op->edge_updates, ENTITY_EDGE);
+		CommitUpdates(op->gc, op->node_updates, ENTITY_NODE);
+		CommitUpdates(op->gc, op->edge_updates, ENTITY_EDGE);
 	}
 
-	for(uint i = 0; i < node_updates_count; i ++) {
-		PendingUpdateCtx *pending_update = op->node_updates + i;
-		AttributeSet_Free(&pending_update->attributes);
-	}
-		
-	for(uint i = 0; i < edge_updates_count; i ++) {
-		PendingUpdateCtx *pending_update = op->edge_updates + i;
-		AttributeSet_Free(&pending_update->attributes);
-	}
-
-	array_clear(op->node_updates);
-	array_clear(op->edge_updates);
+	HashTableEmpty(op->node_updates, NULL);
+	HashTableEmpty(op->edge_updates, NULL);
 
 	op->updates_committed = true;
 
@@ -133,19 +133,8 @@ static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
-	uint node_updates_count = array_len(op->node_updates);
-	for(uint i = 0; i < node_updates_count; i ++) {
-		PendingUpdateCtx *pending_update = op->node_updates + i;
-		AttributeSet_Free(&pending_update->attributes);
-	}
-	array_clear(op->node_updates);
-
-	uint edge_updates_count = array_len(op->edge_updates);
-	for(uint i = 0; i < edge_updates_count; i ++) {
-		PendingUpdateCtx *pending_update = op->edge_updates + i;
-		AttributeSet_Free(&pending_update->attributes);
-	}
-	array_clear(op->edge_updates);
+	HashTableEmpty(op->node_updates, NULL);
+	HashTableEmpty(op->edge_updates, NULL);
 
 	op->updates_committed = false;
 	return OP_OK;
@@ -155,22 +144,12 @@ static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
 	if(op->node_updates) {
-		uint node_updates_count = array_len(op->node_updates);
-		for(uint i = 0; i < node_updates_count; i ++) {
-			PendingUpdateCtx *pending_update = op->node_updates + i;
-			AttributeSet_Free(&pending_update->attributes);
-		}
-		array_free(op->node_updates);
+		HashTableRelease(op->node_updates);
 		op->node_updates = NULL;
 	}
 
 	if(op->edge_updates) {
-		uint edge_updates_count = array_len(op->edge_updates);
-		for(uint i = 0; i < edge_updates_count; i ++) {
-			PendingUpdateCtx *pending_update = op->edge_updates + i;
-			AttributeSet_Free(&pending_update->attributes);
-		}
-		array_free(op->edge_updates);
+		HashTableRelease(op->edge_updates);
 		op->edge_updates = NULL;
 	}
 

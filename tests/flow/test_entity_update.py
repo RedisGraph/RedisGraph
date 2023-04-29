@@ -540,7 +540,19 @@ class testEntityUpdate():
         result = graph.query("MATCH (v) RETURN v")
         self.env.assertEqual(result.header, [[1, 'v']])
 
-    def test_38_remove_property_from_null(self):
+    def test38_accumulating_updates(self):
+        """Tests that updates are performed relative to the latest update"""
+        graph.delete()
+
+        # create a node with property `v` with value 1
+        graph.query("CREATE ({v: 1})")
+
+        res = graph.query("MATCH (n) UNWIND [0, 1, 2, 3] AS x SET n.v = n.v + x RETURN n")
+
+        # assert results
+        self.env.assertEquals(res.result_set[0][0], Node(properties={'v': 7}))
+
+    def test_39_remove_property_from_null(self):
         graph.delete()
         result = graph.query("REMOVE null.v")
         self.env.assertEqual(result.header, [])

@@ -30,7 +30,7 @@ typedef enum {
 	UNDO_SET_LABELS,    // undo set labels
 	UNDO_REMOVE_LABELS, // undo remove labels
 	UNDO_ADD_SCHEMA,    // undo schema addition
-	UNDO_ADD_ATTRIBUTE   // undo property addition
+	UNDO_ADD_ATTRIBUTE  // undo property addition
 } UndoOpType;
 
 //------------------------------------------------------------------------------
@@ -73,8 +73,7 @@ struct UndoUpdateOp {
 		Edge e;
 	};
 	GraphEntityType entity_type;  // node/edge
-	Attribute_ID attr_id;         // attribute update
-	SIValue orig_value;           // attribute original value
+	AttributeSet set;             // old attribute set
 };
 
 typedef struct UndoLabelsOp UndoLabelsOp;
@@ -158,8 +157,7 @@ void UndoLog_UpdateEntity
 (
 	UndoLog *log,                // undo log
 	GraphEntity *ge,             // updated entity
-	Attribute_ID attr_id,        // updated attribute ID
-	SIValue orig_value,          // attribute original value
+	AttributeSet set,            // old attribute set
 	GraphEntityType entity_type  // entity type
 );
 
