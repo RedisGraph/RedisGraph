@@ -67,8 +67,17 @@ typedef struct dictType {
 #define DICTHT_SIZE(exp) ((exp) == -1 ? 0 : (unsigned long)1<<(exp))
 #define DICTHT_SIZE_MASK(exp) ((exp) == -1 ? 0 : (DICTHT_SIZE(exp))-1)
 
+// fake hash function
+// hash of key is simply key
+static uint64_t nop_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
 struct dict {
-    dictType *type;
+    const dictType *type;
 
     dictEntry **ht_table[2];
     unsigned long ht_used[2];
@@ -83,6 +92,9 @@ struct dict {
                                  * pointer-aligned address) of size as defined
                                  * by dictType's dictEntryBytes. */
 };
+
+// global default dictType with identity hash function
+dictType def_dt;
 
 /* If safe is set to 1 this is a safe iterator, that means, you can call
  * dictAdd, dictFind, and other functions against the dictionary even while
@@ -145,7 +157,7 @@ typedef enum {
 } HashTableResizeEnable;
 
 /* API */
-dict *HashTableCreate(dictType *type);
+dict *HashTableCreate(const dictType *type);
 unsigned long HashTableElemCount(const dict *d);
 int HashTableExpand(dict *d, unsigned long size);
 void *HashTableMetadata(dict *d);

@@ -1246,7 +1246,7 @@ static inline void GB_Global_free_pool_check (void *p, int k, char *where)
 // free_pool_get: get a block from the free_pool, or return NULL if none
 void *GB_Global_free_pool_get (int k)
 { 
-    #ifdef _OPENMP
+    #if defined _MEMPOOL && defined _OPENMP
         void *p = NULL ;
         ASSERT (k >= 3 && k < 64) ;
         #pragma omp critical(GB_free_pool)
@@ -1277,7 +1277,7 @@ void *GB_Global_free_pool_get (int k)
 // free_pool_put: put a block in the free_pool, unless it is full
 bool GB_Global_free_pool_put (void *p, int k)
 { 
-    #ifdef _OPENMP
+    #if defined _MEMPOOL && defined _OPENMP
         #ifdef GB_DEBUG
         GB_Global_free_pool_check (p, k, "put") ;
         #endif
@@ -1308,7 +1308,7 @@ bool GB_Global_free_pool_put (void *p, int k)
 // free_pool_dump: check the validity of the free_pool
 void GB_Global_free_pool_dump (int pr)
 {
-    #ifdef _OPENMP
+    #if defined _MEMPOOL && defined _OPENMP
     #ifdef GB_DEBUG
     bool fail = false ;
     #pragma omp critical(GB_free_pool)
@@ -1351,7 +1351,7 @@ void GB_Global_free_pool_dump (int pr)
 
 // free_pool_limit_get: get the limit on the # of blocks in the kth pool
 int64_t GB_Global_free_pool_limit_get (int k)
-{ 
+{
     int64_t limit ;
     if (k < 3) return (0) ;
     GB_ATOMIC_READ
@@ -1380,7 +1380,7 @@ void GB_Global_free_pool_limit_set (int64_t *limit)
 int64_t GB_Global_free_pool_nblocks_total (void)
 {
     int64_t nblocks = 0 ;
-    #ifdef _OPENMP
+    #if defined _MEMPOOL && defined _OPENMP
     #pragma omp critical(GB_free_pool)
     {
         for (int k = 0 ; k < 64 ; k++)
