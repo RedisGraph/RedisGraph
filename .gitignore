@@ -49,8 +49,6 @@ deps/GraphBLAS/Config/GraphBLAS.h.tmp
 
 # Additional suffixes
 *.pyc
-*.cmake
-*.make
 *.xml
 *.iml
 *.d

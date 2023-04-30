@@ -310,8 +310,8 @@
 // #define GxB_NO_COPYSIGN  1
 #define GxB_NO_LDEXP     1
 
-// #define GxB_NO_CMPLX     1
-// #define GxB_NO_POW       1
+#define GxB_NO_CMPLX     1
+#define GxB_NO_POW       1
 
 // #define GxB_NO_FIRSTI    1
 // #define GxB_NO_FIRSTI1   1
@@ -2392,4 +2392,3 @@
    #define GxB_NO_TIMES_SECONDJ_INT64   1
    #define GxB_NO_TIMES_SECONDJ1_INT32  1
    #define GxB_NO_TIMES_SECONDJ1_INT64  1
-
