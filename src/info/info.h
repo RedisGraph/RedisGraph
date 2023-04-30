@@ -105,6 +105,12 @@ void Info_IndicateQueryFinishedReporting
     Info *info
 );
 
+// indicates that the query has finished due to an error
+void Info_IndicateQueryFinishedAfterError
+(
+    Info *info
+);
+
 // return the number of queries currently waiting to be executed
 // requires a pointer to mutable, for it changes the state of the locks
 uint64_t Info_GetWaitingQueriesCount

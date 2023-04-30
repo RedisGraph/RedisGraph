@@ -16,6 +16,9 @@ INFO_QUERIES_CURRENT_COMMAND = 'GRAPH.INFO QUERIES CURRENT'
 INFO_QUERIES_CURRENT_PREV_COMMAND_1 = 'GRAPH.INFO QUERIES CURRENT PREV 1'
 INFO_QUERIES_CURRENT_PREV_COMMAND_5 = 'GRAPH.INFO QUERIES CURRENT PREV 5'
 
+# Keys
+GLOBAL_INFO_KEY_NAME = 'Global info'
+
 def get_unix_timestamp_milliseconds():
     return (int)(time.time_ns() / 1000000)
 
@@ -73,17 +76,49 @@ class testGraphInfo(FlowTestsBase):
         redis_con = self.env.getConnection()
         graph = Graph(redis_con, GRAPH_ID)
 
-    def get_total_executing_queries_from_info_cmd_result(self, info):
-        """Returns the total number of executing queries from the result of an
-        INFO QUERIES command"""
-        return info[1][5]
+    def _assert_executed_query(self, query_info, expected_query_info, assert_receive_time=None):
+        """Validate that query_info dictionary coincides with the expected result for a single query.
+        Additionally, validates the duration numbers: Total = Wait + Execution + Report
+        Optionally, checks for the receive time: all queries are checked to have
+        been received after the passed "assert_receive_time"""
+
+        if assert_receive_time is not None:
+            self.env.assertGreaterEqual(query_info['Received at'], assert_receive_time, depth=1)
+
+        # Assert Equals only for the keys that exists in expected_query_info.
+        self.env.assertEquals(query_info, (query_info | expected_query_info), depth=1)
+
+        # Validate duration data
+        duration = query_info['Wait duration'] + query_info['Execution duration'] + query_info['Report duration']
+        self.env.assertEquals(query_info['Total duration'], duration, depth=1)
+
+    def execute_get_dict(self, query):
+        """Executes a query and returns the result as a dictionary"""
+        res = graph.execute_command(query)
+        return list_to_dict(res)
+
+    def _wait_till_query_info_changes(self, timeout=2):
+        wait_step = 0.01
+        waited_time = 0
+        prev_info = self.execute_get_dict(INFO_QUERIES_CURRENT_COMMAND)
+        while True:
+            info = self.execute_get_dict(INFO_QUERIES_CURRENT_COMMAND)
+            # Search for changes
+            if (info[GLOBAL_INFO_KEY_NAME]!=None and
+                prev_info[GLOBAL_INFO_KEY_NAME] != info[GLOBAL_INFO_KEY_NAME]):
+                return info
+            time.sleep(wait_step)
+            waited_time += wait_step
+            prev_info = info
+            if waited_time >= timeout:
+                return None
 
     def _wait_till_queries_start_being_executed(self, query_count=1, timeout=2):
         wait_step = 0.01
         waited_time = 0
         while True:
-            info = self.conn.execute_command(INFO_QUERIES_CURRENT_COMMAND)
-            count = self.get_total_executing_queries_from_info_cmd_result(info)
+            info = self.execute_get_dict(INFO_QUERIES_CURRENT_COMMAND)
+            count = info[GLOBAL_INFO_KEY_NAME]['Total executing queries count']
             if count >= query_count:
                 # Found the query being executed.
                 return info
@@ -102,14 +137,6 @@ class testGraphInfo(FlowTestsBase):
             if waited_time >= timeout:
                 return False
         return True
-
-    def execute_get_dict(self, query):
-        """Executes a query and returns the result as a dictionary"""
-        res = graph.execute_command(query)
-        return list_to_dict(res)
-
-    def assertEquals(self, a, b):
-        self.env.assertEquals(a, b)
 
     def test01_empty_info(self):
         """Tests that when no queries were executed, the 'CURRENT' info command
@@ -138,7 +165,7 @@ class testGraphInfo(FlowTestsBase):
         graph.query(query)
         info = self.execute_get_dict(INFO_QUERIES_CURRENT_PREV_COMMAND_1)
         first_query = list_to_dict(info['Queries'][0])
-        self.assertEquals(first_query['Query'], query)
+        self.env.assertEquals(first_query['Query'], query)
 
     def test03_current_query(self):
         """Tests that the current query is returned by the `CURRENT` command"""
@@ -159,22 +186,117 @@ class testGraphInfo(FlowTestsBase):
         info = self._wait_till_queries_start_being_executed(timeout=10)
         self.env.assertIsNotNone(info)
 
+        # validate that the running query appears in the statistics
+        expected_global_info = {
+            'Current maximum query wait duration': 0,
+            'Total waiting queries count': 0,
+            'Total executing queries count': 1,
+            'Total reporting queries count' : 0
+        }
+        self.env.assertEquals(info[GLOBAL_INFO_KEY_NAME], expected_global_info)
+
         # wait for the heavy query to finish
         async_res.wait()
 
         # assert the correctness of the results
-        current_query = list_to_dict(list_to_dict(info)['Queries'][-1])
-        self.env.assertGreaterEqual(current_query['Received at'],
-            query_issue_timestamp_ms, depth=1)
-        self.env.assertEqual(current_query['Stage'], QUERY_STAGE_EXECUTING,
-            depth=1)
-        self.env.assertEqual(current_query['Graph name'], GRAPH_ID, depth=1)
-        self.env.assertEqual(current_query['Query'], query, depth=1)
+        current_query = list_to_dict(info['Queries'][-1])
+        expected_query_info = {
+                'Stage' : QUERY_STAGE_EXECUTING,
+                'Query' : query,
+                'Graph name' : GRAPH_ID,
+                'Utilized cache' : 0
+            }
+        self._assert_executed_query(current_query, expected_query_info, query_issue_timestamp_ms)
 
+    def test04_query_with_errors(self):
+        """Test that queries with errors does not affect the global info"""
 
+        query = "NULL QUERY"
+        try:
+            graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertContains("Invalid input", str(e))
 
+        expected_global_info = {
+            'Current maximum query wait duration': 0,
+            'Total waiting queries count': 0,
+            'Total executing queries count': 0,
+            'Total reporting queries count' : 0
+        }
+        info = self.execute_get_dict(INFO_QUERIES_CURRENT_PREV_COMMAND_1)
+        self.env.assertEquals(info[GLOBAL_INFO_KEY_NAME], expected_global_info)
 
+    def test05_query_info_single_query(self):
+        """Test that valid query execution is reflected in query information"""
 
+        # test twice to test the use of cache
+        for cache in [0, 1]:
+            # issue a query that returns results
+            query = "UNWIND range(1,50000) AS i CREATE(n:N {id:i, v:rand()}) RETURN n.v"
+            query_issue_timestamp_ms = get_unix_timestamp_milliseconds()
+            graph.query(query)
+
+            expected_query_info = {
+                'Stage' : QUERY_STAGE_FINISHED,
+                'Query' : query,
+                'Graph name' : GRAPH_ID,
+                'Utilized cache' : cache
+            }
+            info = self.execute_get_dict(INFO_QUERIES_CURRENT_PREV_COMMAND_1)
+            first_query_dict = list_to_dict(info['Queries'][0])
+            self._assert_executed_query(first_query_dict, expected_query_info, query_issue_timestamp_ms)
+
+    def test06_query_info_parallel_execution_queries(self):
+        """Test that global info matches with query details information"""
+
+        # run queries in parallel
+        query = """CYPHER end=100000 UNWIND (range(0, $end)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
+        async_res0 = run_separate_client([query] * 2)
+        async_res1 = run_separate_client([query] * 2)
+        async_res2 = run_separate_client([query] * 1)
+
+        # Wait for two clients connected
+        self.env.assertTrue(self._wait_for_number_of_clients(2), depth=1)
+
+        for i in range(1, 5):
+            # Wait until some change is global info is detected
+            info = self._wait_till_query_info_changes(timeout=3)
+            info = self.execute_get_dict(INFO_QUERIES_CURRENT_PREV_COMMAND_5)
+            self.env.assertIsNotNone(info)
+
+            nqueries = len(info['Queries'])
+            waiting_queries = 0
+            executing_queries = 0
+            reporting_queries = 0
+            for j in range(1, nqueries):
+                current_query = list_to_dict(info['Queries'][j])
+                if(current_query['Stage'] == QUERY_STAGE_WAITING):
+                    waiting_queries += 1
+                if(current_query['Stage'] == QUERY_STAGE_EXECUTING):
+                    executing_queries += 1
+                if(current_query['Stage'] == QUERY_STAGE_REPORTING):
+                    reporting_queries += 1
+
+            # Assert that global info matches with query info details
+            self.env.assertEqual(info[GLOBAL_INFO_KEY_NAME]['Total waiting queries count'], waiting_queries)
+            self.env.assertEqual(info[GLOBAL_INFO_KEY_NAME]['Total executing queries count'], executing_queries)
+            self.env.assertEqual(info[GLOBAL_INFO_KEY_NAME]['Total reporting queries count'], reporting_queries)
+
+        # Wait to finish the execution
+        async_res0.wait();
+        async_res1.wait();
+        async_res2.wait();
+
+        # Assert that all queries stopped
+        info = self.execute_get_dict(INFO_QUERIES_COMMAND)
+        self.env.assertIsNotNone(info, depth=1)
+        expected_global_info = {
+            'Total waiting queries count': 0,
+            'Total executing queries count': 0,
+            'Total reporting queries count' : 0
+        }
+        self.env.assertEquals(info[GLOBAL_INFO_KEY_NAME], (info[GLOBAL_INFO_KEY_NAME] | expected_global_info), depth=1)
 
 
 

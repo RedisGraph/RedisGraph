@@ -545,7 +545,10 @@ void _query(bool profile, void *args) {
 
 cleanup:
 	// if there were any query compile time errors, report them
-	if(ErrorCtx_EncounteredError()) ErrorCtx_EmitException();
+	if(ErrorCtx_EncounteredError()) {
+		ErrorCtx_EmitException();
+		Info_IndicateQueryFinishedAfterError(gc->info);
+	}
 
 	// Cleanup routine invoked after encountering errors in this function.
 	ExecutionCtx_Free(exec_ctx);

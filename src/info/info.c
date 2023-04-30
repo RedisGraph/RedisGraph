@@ -334,12 +334,35 @@ void Info_IndicateQueryFinishedReporting
     QueryInfo *qi = info->working_queries[tid];
 	ASSERT(qi != NULL);
 
-    info->working_queries[tid] = NULL;  
+    info->working_queries[tid] = NULL;
 	ASSERT(qi->stage == QueryStage_REPORTING);
 
 	// update stage to finished and add to finished buffer
     qi->stage = QueryStage_FINISHED;
     QueryInfo_UpdateReportingTime(qi);
+
+    _add_finished_query(qi);
+}
+
+// indicates that the query has finished due to an error
+void Info_IndicateQueryFinishedAfterError
+(
+    Info *info
+) {
+    ASSERT(info != NULL);
+
+	//--------------------------------------------------------------------------
+	// remove query info from working queries
+	//--------------------------------------------------------------------------
+
+    const int tid = ThreadPools_GetThreadID();
+    QueryInfo *qi = info->working_queries[tid];
+	ASSERT(qi != NULL);
+
+    info->working_queries[tid] = NULL;
+
+	// update stage to finished and add to finished buffer
+    qi->stage = QueryStage_FINISHED;
 
     _add_finished_query(qi);
 }
