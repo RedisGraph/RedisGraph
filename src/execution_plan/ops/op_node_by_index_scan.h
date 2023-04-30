@@ -18,7 +18,7 @@ typedef struct {
 	Graph *g;
 	bool rebuild_index_query;           // should we rebuild RediSearch index query for each input record
 	RSIndex *idx;                       // index to query
-	NodeScanCtx n;                      // label data of node being scanned
+	NodeScanCtx *n;                     // label data of node being scanned
 	uint nodeRecIdx;                    // index of the node being scanned in the Record
 	RSResultsIterator *iter;            // rediSearch iterator over an index with the appropriate filters
 	FT_FilterNode *filter;              // filter from which to compose index query
@@ -27,6 +27,6 @@ typedef struct {
 } IndexScan;
 
 // creates a new IndexScan operation
-OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n,
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx *n,
 		RSIndex *idx, FT_FilterNode *filter);
 

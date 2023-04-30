@@ -501,7 +501,10 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 // Execution plan free functions
 //------------------------------------------------------------------------------
 
-static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
+static void _ExecutionPlan_FreeInternals
+(
+	ExecutionPlan *plan
+) {
 	if(plan == NULL) return;
 
 	if(plan->connected_components) {
@@ -527,39 +530,67 @@ static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 	rm_free(plan);
 }
 
-// Free an op tree and its associated ExecutionPlan segments.
-static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
-	if(op == NULL) return NULL;
-	ExecutionPlan *child_plan = NULL;
-	ExecutionPlan *prev_child_plan = NULL;
-	// Store a reference to the current plan.
-	ExecutionPlan *current_plan = (ExecutionPlan *)op->plan;
-	for(uint i = 0; i < op->childCount; i ++) {
-		child_plan = _ExecutionPlan_FreeOpTree(op->children[i]);
-		// In most cases all children will share the same plan, but if they don't
-		// (for an operation like UNION) then free the now-obsolete previous child plan.
-		if(prev_child_plan != child_plan && prev_child_plan != current_plan) {
-			_ExecutionPlan_FreeInternals(prev_child_plan);
-			prev_child_plan = child_plan;
-		}
+// free the execution plans and all of the operations
+void ExecutionPlan_Free
+(
+	ExecutionPlan *plan
+) {
+	ASSERT(plan != NULL);
+	if(plan->root == NULL) {
+		_ExecutionPlan_FreeInternals(plan);
+		return;
 	}
 
-	// Free this op.
-	OpBase_Free(op);
+	// -------------------------------------------------------------------------
+	// free op tree and collect execution-plans
+	// -------------------------------------------------------------------------
 
-	// Free each ExecutionPlan segment once all ops associated with it have been freed.
-	if(current_plan != child_plan) _ExecutionPlan_FreeInternals(child_plan);
+	// traverse the execution-plan graph (DAG -> no endless cycles), while
+	// collecting the different segments, and freeing the op tree
+	dict *plans = HashTableCreate(&def_dt);
+	OpBase **visited = array_new(OpBase *, 1);
+	OpBase **to_visit = array_new(OpBase *, 1);
 
-	return current_plan;
+	OpBase *op = plan->root;
+	array_append(to_visit, op);
+
+	while(array_len(to_visit) > 0) {
+		op = array_pop(to_visit);
+
+		// add the plan this op is affiliated with
+		HashTableAdd(plans, (void *)op->plan, (void *)op->plan);
+
+		// add all direct children of op to to_visit
+		for(uint i = 0; i < op->childCount; i++) {
+			if(op->children[i] != NULL) {
+				array_append(to_visit, op->children[i]);
+			}
+		}
+
+		// add op to `visited` array
+		array_append(visited, op);
+	}
+
+	// free the collected ops
+	for(int i = array_len(visited)-1; i >= 0; i--) {
+		op = visited[i];
+		OpBase_Free(op);
+	}
+	array_free(visited);
+	array_free(to_visit);
+
+	// -------------------------------------------------------------------------
+	// free internals of the plans
+	// -------------------------------------------------------------------------
+
+	dictEntry *entry;
+	ExecutionPlan *curr_plan;
+	dictIterator *it = HashTableGetIterator(plans);
+	while((entry = HashTableNext(it)) != NULL) {
+		curr_plan = (ExecutionPlan *)HashTableGetVal(entry);
+		_ExecutionPlan_FreeInternals(curr_plan);
+	}
+
+	HashTableReleaseIterator(it);
+	HashTableRelease(plans);
 }
-
-void ExecutionPlan_Free(ExecutionPlan *plan) {
-	if(plan == NULL) return;
-
-	// Free all ops and ExecutionPlan segments.
-	_ExecutionPlan_FreeOpTree(plan->root);
-
-	// Free the final ExecutionPlan segment.
-	_ExecutionPlan_FreeInternals(plan);
-}
-

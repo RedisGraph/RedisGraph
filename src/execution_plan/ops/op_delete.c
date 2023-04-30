@@ -16,7 +16,6 @@
 
 // forward declarations
 static Record DeleteConsume(OpBase *opBase);
-static OpResult DeleteInit(OpBase *opBase);
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static OpResult DeleteReset(OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
@@ -115,20 +114,14 @@ static void _DeleteEntities
 
 			// delete edges
 			if(edge_count > 0) {
-				DeleteEdges(gc, distinct_edges, edge_count);
+				DeleteEdges(gc, distinct_edges, edge_count, true);
 				edge_deleted = edge_count;
 			}
 
 			// delete nodes
 			if(node_count > 0) {
-				DeleteNodes(gc, distinct_nodes, node_count);
+				DeleteNodes(gc, distinct_nodes, node_count, true);
 				node_deleted = node_count;
-			}
-
-			// stats must be updated under lock due to for replication
-			if(op->stats != NULL) {
-				op->stats->nodes_deleted         += node_deleted;
-				op->stats->relationships_deleted += edge_deleted;
 			}
 		}
 	}
@@ -143,22 +136,15 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	op->gc = QueryCtx_GetGraphCtx();
 	op->exps = exps;
-	op->stats = NULL;
 	op->exp_count = array_len(exps);
 	op->deleted_nodes = array_new(Node, 32);
 	op->deleted_edges = array_new(Edge, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", DeleteInit, DeleteConsume,
+	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
 				DeleteReset, NULL, DeleteClone, DeleteFree, true, plan);
 
 	return (OpBase *)op;
-}
-
-static OpResult DeleteInit(OpBase *opBase) {
-	OpDelete *op = (OpDelete *)opBase;
-	op->stats = QueryCtx_GetResultSetStatistics();
-	return OP_OK;
 }
 
 static Record DeleteConsume(OpBase *opBase) {

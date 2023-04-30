@@ -1224,7 +1224,7 @@ YIELD modifiers are only required if explicitly specified; by default the value 
 ### Algorithms
 
 #### BFS
-The breadth-first-search algorithm accepts 4 arguments:
+The breadth-first-search algorithm accepts 3 arguments:
 
 `source-node (node)` - The root of the search.
 
