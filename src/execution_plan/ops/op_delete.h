@@ -21,8 +21,6 @@ typedef struct {
 	uint exp_count;         // Number of expressions.
 	Node *deleted_nodes;    // Array of nodes to be removed.
 	Edge *deleted_edges;    // Array of edges to be removed.
-
-	ResultSetStatistics *stats;
 } OpDelete;
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps);

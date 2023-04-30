@@ -67,8 +67,17 @@ typedef struct dictType {
 #define DICTHT_SIZE(exp) ((exp) == -1 ? 0 : (unsigned long)1<<(exp))
 #define DICTHT_SIZE_MASK(exp) ((exp) == -1 ? 0 : (DICTHT_SIZE(exp))-1)
 
+// fake hash function
+// hash of key is simply key
+static uint64_t nop_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
 struct dict {
-    dictType *type;
+    const dictType *type;
 
     dictEntry **ht_table[2];
     unsigned long ht_used[2];
@@ -148,7 +157,7 @@ typedef enum {
 } HashTableResizeEnable;
 
 /* API */
-dict *HashTableCreate(dictType *type);
+dict *HashTableCreate(const dictType *type);
 unsigned long HashTableElemCount(const dict *d);
 int HashTableExpand(dict *d, unsigned long size);
 void *HashTableMetadata(dict *d);
