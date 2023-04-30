@@ -136,10 +136,10 @@ void ProjectBindToPlan
 	}
 	op->record_offsets = array_new(uint, op->exp_count);
 	for(uint i = 0; i < op->exp_count; i ++) {
-	// The projected record will associate values with their resolved name
-	// to ensure that space is allocated for each entry.
-	int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
-	array_append(op->record_offsets, record_idx);
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+		array_append(op->record_offsets, record_idx);
 	}
 }
 

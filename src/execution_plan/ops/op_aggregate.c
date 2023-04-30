@@ -392,6 +392,35 @@ void AggregateAddProjections
 	op->key_count += exp_count;
 }
 
+// bind the Aggregate operation to the execution plan
+void AggregateBindToPlan
+(
+	OpBase *opBase,      // op to bind
+	ExecutionPlan *plan  // plan to bind the op to
+) {
+	OpAggregate *op = (OpAggregate *)opBase;
+	opBase->plan = plan;
+
+	// introduce the projected aliases to the plan record-mapping, and reset the
+	// record offsets to the correct indexes
+	if(op->record_offsets) {
+		array_free(op->record_offsets);
+	}
+	op->record_offsets = array_new(uint, op->key_count);
+	for(uint i = 0; i < op->key_count; i ++) {
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		int record_idx = OpBase_Modifies((OpBase *)op, op->key_exps[i]->resolved_name);
+		array_append(op->record_offsets, record_idx);
+	}
+	for(uint i = 0; i < op->aggregate_count; i++) {
+		// store the index of each aggregating expression
+		int record_idx = OpBase_Modifies((OpBase *)op,
+				op->aggregate_exps[i]->resolved_name);
+		array_append(op->record_offsets, record_idx);
+	}
+}
+
 static void AggregateFree
 (
 	OpBase *opBase

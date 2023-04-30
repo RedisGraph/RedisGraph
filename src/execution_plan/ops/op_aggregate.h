@@ -36,3 +36,10 @@ void AggregateAddProjections
 	char **names,       // variable names
 	char **alias_names  // projected variable names
 );
+
+// bind the Aggregate operation to the execution plan
+void AggregateBindToPlan
+(
+	OpBase *opBase,      // op to bind
+	ExecutionPlan *plan  // plan to bind the op to
+);
