@@ -77,9 +77,9 @@ typedef enum InfoQueriesFlag {
     InfoQueriesFlag_PREV = 1 << 1,
 } InfoQueriesFlag;
 
-// The data we need to extract from the callback for the circular buffer which
-// we later print out in the reply of the "GRAPH.INFO QUERIES PREV".
-// It is used as a "user data" field in the view callback.
+// the data we need to extract from the callback for the circular buffer which
+// we later print out in the reply of the "GRAPH.INFO QUERIES PREV"
+// it is used as a "user data" field in the view callback
 typedef struct ViewFinishedQueriesCallbackData {
     RedisModuleCtx *ctx;
     uint64_t actual_elements_count;
@@ -345,10 +345,8 @@ static int _reply_with_queries_info_prev
     const uint64_t max_count,
     uint64_t *actual_element_count
 ) {
-    ASSERT(ctx && max_count);
-    if (!ctx || !max_count) {
-        return REDISMODULE_ERR;
-    }
+    ASSERT(ctx != NULL);
+    ASSERT(max_count > 0);
 
     ViewFinishedQueriesCallbackData user_data = {
         .ctx = ctx,
@@ -374,26 +372,29 @@ static int _parse_and_reply_info_queries_prev
     const int argc,
     uint64_t *actual_element_count
 ) {
+    ASSERT(argc > 0);
     ASSERT(ctx  != NULL);
     ASSERT(argv != NULL);
-    ASSERT(argc > 0);
+	ASSERT(actual_element_count != NULL);
+
+	*actual_element_count = 0;
 
     // we expect the count as the last argument
-    const char *arg_count = RedisModule_StringPtrLen(argv[argc - 1], NULL);
-    if (arg_count && !isdigit(arg_count[0])) {
+	if(RedisModule_StringToDouble(argv[argc-1], actual_element_count)
+			!= REDISMODULE_OK) {
         RedisModule_ReplyWithError(ctx, INVALID_COUNT_PARAMETER_FOR_PREV_MESSAGE);
-        if (actual_element_count) {
-            *actual_element_count = 1;
-        }
         return REDISMODULE_ERR;
     }
 
-    const long long max_count = MIN(atoll(arg_count), _info_queries_max_count());
-    if (max_count > 0) {
-        REDISMODULE_ASSERT(_reply_with_queries_info_prev(
-            ctx,
-            max_count,
-            actual_element_count
+	// TODO: validate actual_element_count > 0
+
+    const long long max_count = MIN(*actual_element_count,
+			_info_queries_max_count());
+
+	REDISMODULE_ASSERT(_reply_with_queries_info_prev(
+				ctx,
+				max_count,
+				actual_element_count
         ));
     }
 
