@@ -65,7 +65,6 @@ static inline void GB_cast_one  // z = 1 with typecasting zcode
 
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_cast_array              // typecast an array
 (
     GB_void *Cx,                // output array
