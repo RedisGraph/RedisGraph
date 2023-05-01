@@ -328,9 +328,6 @@ static void _buildCallSubqueryPlan
 	ExecutionPlan *embedded_plan = NewExecutionPlan();
 	QueryCtx_SetAST(orig_ast);
 
-	// // release artificial clauses array
-	// array_free(clauses);
-
 	// find the deepest op in the embedded plan
 	OpBase *deepest = embedded_plan->root;
 	while(deepest->childCount > 0) {
@@ -363,6 +360,7 @@ static void _buildCallSubqueryPlan
 	if(is_returning) {
 		// remove the Results op from the execution-plan
 		ExecutionPlan_RemoveOp(embedded_plan, embedded_plan->root);
+		OPType return_types[] = {OPType_PROJECT, OPType_AGGREGATE};
 
 		// if the embedded plan is not eager, do not propagate input records
 		if(!is_eager) {
@@ -371,15 +369,17 @@ static void _buildCallSubqueryPlan
 			// 	OPType_PROJECT);
 			OpBase *returning_op =
 				ExecutionPlan_LocateOpMatchingType(embedded_plan->root,
-					OPType_PROJECT | OPType_AGGREGATE, 2);
+					return_types, 2);
 
 			// bind the returning projection to the outer plan
 				// TODO: Do this later (after affecting the projections), and modify this so that the Project record_offsets
 				// change accordingly to the new plan, and it calls OpBase_Modifies() on all its projections!!
 				// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
+
 			OpBase_Type(returning_op) == OPType_PROJECT ?
-				ProjectBindToParent(returning_op, plan) :
-				AggregateBindToParent(returning_op, plan);
+				ProjectBindToPlan(returning_op, plan) :
+				AggregateBindToPlan(returning_op, plan);
+
 			goto skip_projections_modification;
 		}
 
@@ -397,6 +397,10 @@ static void _buildCallSubqueryPlan
 		raxStart(&it, outer_mapping);
 		raxSeek(&it, "^", NULL, 0);
 		while(raxNext(&it)) {
+			// avoid multiple internal representations of the same alias
+			if(it.key[0] == '@') {
+				continue;
+			}
 			// const char *curr = (const char *)it.key;
 			char *curr = rm_strndup((const char *)it.key, it.key_len);
 			// think about working with sds
@@ -413,12 +417,8 @@ static void _buildCallSubqueryPlan
 			OpBase_AliasModifier(plan->root, names[i], inter_names[i], false);
 		}
 
-		// modify the first projection (imports) to contain the transformation `n`-->`_n`
-		OpBase *import_proj = deepest;
-
 		// find the 'first' Project op in the embedded execution-plan (RETURN)
-		OPType return_types[] = {OPType_PROJECT, OPType_AGGREGATE};
-		OpBase *returning_op = 
+		OpBase *returning_op =
 			ExecutionPlan_LocateOpMatchingType(embedded_plan->root,
 				return_types, 2);
 		OPType returning_op_type = OpBase_Type(returning_op);
@@ -431,8 +431,9 @@ static void _buildCallSubqueryPlan
 			ProjectAddProjections(returning_op, names, inter_names) :
 			AggregateAddProjections(returning_op, names, inter_names);
 
-		// modify intermediate projections in the body of the subquery, except the last Return projection (first in exec-plan),
-		// to contain projections of the outer scope variables to themselves ('_alias' --> '_alias')
+		// modify import and intermediate projections in the body of the
+		// subquery (all but return projection) to contain projections of the
+		// outer scope variables to themselves ('_alias' --> '_alias')
 		OpBase **intermediate_projections = array_new(OpBase *, 1);
 
 		// collect all the intermediate Project ops (from the child of the
@@ -440,9 +441,6 @@ static void _buildCallSubqueryPlan
 		if(returning_op->childCount > 0) {
 			ExecutionPlan_LocateOps(&intermediate_projections,
 				returning_op->children[0], OPType_PROJECT);
-
-			// the 'last' projection is the importing projection, pop it
-			// array_pop(intermediate_projections);
 
 			// modify projected expressions of the intermediate projections if exist
 			for(uint i = 0; i < array_len(intermediate_projections); i++) {
