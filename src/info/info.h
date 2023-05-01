@@ -49,7 +49,7 @@ typedef struct FinishedQueryCounters {
 
 // information about a graph
 typedef struct Info {
-    dict *waiting_queries;                     // waiting queries
+    dict *waiting_queries;                    // waiting queries
     QueryInfoStorage working_queries;         // executing and reporting queries
     atomic_uint_fast64_t max_query_time;      // slowest query time
     FinishedQueryCounters counters;           // counters with states

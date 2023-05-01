@@ -119,7 +119,7 @@ static void _FinishedQueryCounters_Increment
     ASSERT(false && "Handle unknown flag.");
 }
 
-static bool _Info_LockWaiting
+static bool _Info_LockFinished
 (
     bool write
 ) {
@@ -130,19 +130,16 @@ static bool _Info_LockWaiting
     }
 }
 
-static bool _Info_UnlockWaiting(void) {
+static bool _Info_UnlockFinished(void) {
     return !pthread_rwlock_unlock(&finished_queries_rwlock);
 }
 
+// TODO: Update to lock waiting and executing (if this is still needed.. I think not)
 static bool _Info_LockEverything
 (
 	Info *info
 ) {
 	ASSERT(info != NULL);
-
-    int res = _Info_LockWaiting(true);
-    ASSERT(res == 1);
-    UNUSED(res);
 
     return !pthread_mutex_lock(&info->mutex);
 }
@@ -153,9 +150,6 @@ static bool _Info_UnlockEverything
 ) {
     ASSERT(info != NULL);
 
-    int res = _Info_UnlockWaiting();
-    ASSERT(res == 1);
-
     return !pthread_mutex_unlock(&info->mutex);
 }
 
@@ -163,12 +157,12 @@ static void _add_finished_query
 (
 	QueryInfo *qi
 ) {
-    int res = _Info_LockWaiting(true);
+    int res = _Info_LockFinished(true);
 	ASSERT(res == 1);
 
     CircularBuffer_AddForce(finished_queries, (void *)&qi);
 
-    res = _Info_UnlockWaiting();
+    res = _Info_UnlockFinished();
 	ASSERT(res == 1);
 }
 
@@ -375,6 +369,7 @@ uint64_t Info_GetWaitingQueriesCount
 ) {
     ASSERT(info != NULL);
 
+    // TODO: Lock only the waiting_queries mutex
     bool res = _Info_LockEverything(info);
 	ASSERT(res == true);
 
@@ -440,15 +435,17 @@ millis_t Info_GetMaxQueryWaitTime
 	QueryInfo *qi = NULL;
 	millis_t max_time = 0;
 
-	// TODO: lock waiting
+	// TODO: lock waiting only
     bool res = _Info_LockEverything(info);
     ASSERT(res == true);
 
     dictIterator *it = HashTableGetIterator(info->waiting_queries);
     while((qi = (QueryInfo*)HashTableNext(it)) != NULL) {
 		QueryInfo_UpdateWaitingTime(qi);
-		// TODO: consider introducing if condition...
-        max_time = MAX(max_time, QueryInfo_GetWaitingTime(qi));
+        millis_t waiting_time = QueryInfo_GetWaitingTime(qi);
+        if(waiting_time > max_time) {
+            max_time = waiting_time;
+        }
     }
 
     HashTableReleaseIterator(it);
@@ -493,6 +490,7 @@ void Info_GetQueries
     // QueryInfoStorage st = *storage;
     bool waiting = (stage == QueryStage_WAITING);
 
+    // TODO: Lock waiting and executing separately.
     bool res = _Info_LockEverything(info);
     ASSERT(res == true);
 
@@ -532,19 +530,16 @@ void Info_ViewFinishedQueries
     void *user_data,                       // additional data for callback
     uint n_items                           // number of items to view
 ) {
-    ASSERT(finished_queries);
-    if (!finished_queries) {
-        return;
-    }
+    ASSERT(finished_queries != NULL);
 
-    int res = _Info_LockWaiting(false);
+    int res = _Info_LockFinished(false);
     ASSERT(res == 1);
 
 	// read items from the circular buffer, calling callback on each one
     CircularBuffer_TraverseCBFromLast(finished_queries, n_items, callback,
         user_data);
 
-    res = _Info_UnlockWaiting();
+    res = _Info_UnlockFinished();
     ASSERT(res == 1);
 }
 

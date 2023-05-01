@@ -693,11 +693,24 @@ static int _info_queries
     const RedisModuleString **argv,
     const int argc
 ) {
-	// TODO: document response format
-	// top level array 3 entries
-	//    1 entry: global aggregated values
-	//    2...
-	//    3...
+    // an example for a command and reply:
+    // command:
+    // GRAPH.INFO queries current prev 5
+    // reply:
+    // "Global info"
+    //     "Current maximum query wait duration"
+    //     "Total waiting queries count"
+    //     "Total executing queries count"
+    //     "Total reporting queries count"
+    // "Queries"
+    //     "Received at"
+    //     "Stage"
+    //     "Graph name"
+    //     "Query"
+    //     "Total duration"
+    //     "Wait duration"
+    //     "Execution duration"
+    //     "Report duration"
     ASSERT(ctx != NULL);
 
     uint8_t top_level_count = 1;  // ?
