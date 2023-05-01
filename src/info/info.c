@@ -395,10 +395,9 @@ void Info_GetExecutingReportingQueriesCount
 ) {
     ASSERT(info != NULL);
 
-    bool res = _Info_LockEverything(info);
-    ASSERT(res == true);
-
     uint n = ThreadPools_ThreadCount() + 1;
+
+    ASSERT(res == true);
 
 	for(uint i = 0; i < n; i++) {
 		QueryInfo *qi = info->working_queries[i];
@@ -411,7 +410,6 @@ void Info_GetExecutingReportingQueriesCount
         }
 	}
 
-    res = _Info_UnlockEverything(info);
     ASSERT(res == true);
 }
 
@@ -432,35 +430,28 @@ uint64_t Info_GetTotalQueriesCount
     return waiting + executing + reporting;
 }
 
-// return the maximum registered time a query was spent waiting
-// taking into account all currently waiting, executing and reporting queries
+// return the maximum registered time a query spent waiting
 millis_t Info_GetMaxQueryWaitTime
 (
     Info *info
 ) {
     ASSERT(info != NULL);
 
-	uint n = ThreadPools_ThreadCount() + 1;
 	QueryInfo *qi = NULL;
 	millis_t max_time = 0;
 
+	// TODO: lock waiting
     bool res = _Info_LockEverything(info);
     ASSERT(res == true);
 
     dictIterator *it = HashTableGetIterator(info->waiting_queries);
     while((qi = (QueryInfo*)HashTableNext(it)) != NULL) {
 		QueryInfo_UpdateWaitingTime(qi);
+		// TODO: consider introducing if condition...
         max_time = MAX(max_time, QueryInfo_GetWaitingTime(qi));
     }
 
     HashTableReleaseIterator(it);
-
-	for(uint i = 0; i < n; i++) {
-		qi = info->working_queries[i];
-		if(qi != NULL) {
-			max_time = MAX(max_time, QueryInfo_GetWaitingTime(qi));
-		}
-	}
 
     res = _Info_UnlockEverything(info);
     ASSERT(res == true);

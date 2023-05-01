@@ -102,7 +102,7 @@ static uint64_t _info_queries_max_count() {
     return max_elements_count;
 }
 
-static bool _collect_queries_info_from_graph
+static void _collect_queries_info_from_graph
 (
     RedisModuleCtx *ctx,
     GraphContext *gc,
@@ -118,17 +118,16 @@ static bool _collect_queries_info_from_graph
     Info_GetExecutingReportingQueriesCount(gc->info, &executing, &reporting);
     uint64_t max_wait_time = Info_GetMaxQueryWaitTime(gc->info);
 
-    global_info->total_waiting_queries_count = waiting;
-	global_info->total_executing_queries_count = executing;
-    global_info->total_reporting_queries_count = reporting;
+	global_info->total_waiting_queries_count   += waiting;
+	global_info->total_executing_queries_count += executing;
+	global_info->total_reporting_queries_count += reporting;
+
 	global_info->max_query_wait_time = MAX(max_wait_time,
 			global_info->max_query_wait_time);
-
-    return true;
 }
 
 // collects all the global information from all the graphs
-static bool _collect_global_info
+static void _collect_global_info
 (
     RedisModuleCtx *ctx,
     GlobalInfo *global_info
@@ -144,26 +143,18 @@ static bool _collect_global_info
         GraphContext *gc = graphs_in_keyspace[i];
 		ASSERT(gc != NULL);
 
-        if (!_collect_queries_info_from_graph(ctx, gc, global_info)) {
-            RedisModule_ReplyWithError(ctx, "Error while collecting data.");
-            return false;
-        }
+        _collect_queries_info_from_graph(ctx, gc, global_info);
     }
-
-    return true;
 }
 
-// Replies with the global information about the graphs, the output is a part
-// of the "GRAPH.INFO QUERIES" with no flags.
+// replies with the global information about the graphs
+// the output is a part of the "GRAPH.INFO QUERIES" command
 static int _reply_global_info
 (
     RedisModuleCtx *ctx,
-    const GlobalInfo global_info
+    const GlobalInfo *global_info
 ) {
     ASSERT(ctx);
-    if (!ctx) {
-        return REDISMODULE_ERR;
-    }
 
     ReplyRecorder recorder REPLY_AUTO_FINISH;
     REDISMODULE_ASSERT(ReplyRecorder_New(&recorder, ctx));
@@ -196,7 +187,7 @@ static int _reply_global_info
 }
 
 // replies with the global query information
-// this is a part of the "GRAPH.INFO QUERIES" information
+// this is part of the "GRAPH.INFO QUERIES" information
 static int _reply_with_queries_info_global
 (
     RedisModuleCtx *ctx
@@ -204,12 +195,10 @@ static int _reply_with_queries_info_global
     ASSERT(ctx != NULL);
 
     GlobalInfo global_info;
-    if (!_collect_global_info(ctx, &global_info)) {
-        return REDISMODULE_ERR;
-    }
+    _collect_global_info(ctx, &global_info);
 
     REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, GLOBAL_INFO_KEY_NAME));
-    REDISMODULE_ASSERT(_reply_global_info(ctx, global_info));
+    REDISMODULE_ASSERT(_reply_global_info(ctx, &global_info));
 
     return REDISMODULE_OK;
 }
@@ -239,11 +228,9 @@ static InfoQueriesFlag _parse_info_queries_flags_from_args
         return flags;
     }
 
-    int read = 0;
-    while(read < argc) {
-        const char *arg = RedisModule_StringPtrLen(argv[read], NULL);
+    while(argc--) {
+        const char *arg = RedisModule_StringPtrLen(argv[argc], NULL);
         flags |= _parse_info_queries_flag_from_string(arg);
-        read++;
     }
 
     return flags;
@@ -639,7 +626,7 @@ static int _reply_with_queries_info_from_all_graphs
     return REDISMODULE_OK;
 }
 
-// Parses and handles the "GRAPH.INFO QUERIES" command.
+// parses and handles the "GRAPH.INFO QUERIES <CURRENT/PREV>" command
 static int _reply_with_queries
 (
     RedisModuleCtx *ctx,
@@ -705,6 +692,11 @@ static int _info_queries
     const RedisModuleString **argv,
     const int argc
 ) {
+	// TODO: document response format
+	// top level array 3 entries
+	//    1 entry: global aggregated values
+	//    2...
+	//    3...
     ASSERT(ctx != NULL);
 
     uint8_t top_level_count = 1;  // ?
@@ -739,7 +731,7 @@ static bool _dispatch_subcommand
     const char *subcmd,              // sub command
     int *result                      // [output] result
 ) {
-    ASSERT(ctx != NULL);
+    ASSERT(ctx    != NULL);
     ASSERT(result != NULL);
     ASSERT(subcmd != NULL);
 
@@ -754,10 +746,10 @@ static bool _dispatch_subcommand
     return true;
 }
 
-// GRAPH.INFO key
-// GRAPH.INFO key RESET
-// GRAPH.INFO key STATS
-// GRAPH.INFO key QUERIES
+// GRAPH.INFO QUERIES
+// GRAPH.INFO QUERIES CURRENT
+// GRAPH.INFO QUERIES PREV num
+// GRAPH.INFO QUERIES CURRENT PREV num
 // dispatch the subcommand
 int Graph_Info
 (
@@ -765,7 +757,7 @@ int Graph_Info
     const RedisModuleString **argv,
     const int argc
 ) {
-    ASSERT(ctx);
+    ASSERT(ctx != NULL);
 
     if (argc < 2) {
         return RedisModule_WrongArity(ctx);
