@@ -162,25 +162,25 @@ static int _reply_global_info
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         MAX_QUERY_WAIT_TIME_KEY_NAME,
-        global_info.max_query_wait_time
+        global_info->max_query_wait_time
     ));
 
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         TOTAL_WAITING_QUERIES_COUNT_KEY_NAME,
-        global_info.total_waiting_queries_count
+        global_info->total_waiting_queries_count
     ));
 
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME,
-        global_info.total_executing_queries_count
+        global_info->total_executing_queries_count
     ));
 
     REDISMODULE_ASSERT(ReplyRecorder_AddNumber(
         &recorder,
         TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME,
-        global_info.total_reporting_queries_count
+        global_info->total_reporting_queries_count
     ));
 
     return REDISMODULE_OK;
@@ -220,7 +220,7 @@ static InfoQueriesFlag _parse_info_queries_flag_from_string
 static InfoQueriesFlag _parse_info_queries_flags_from_args
 (
     const RedisModuleString **argv,
-    const int argc
+    int argc
 ) {
     InfoQueriesFlag flags = InfoQueriesFlag_NONE;
 
@@ -389,14 +389,13 @@ static int _parse_and_reply_info_queries_prev
 	// TODO: validate actual_element_count > 0
 
     const long long max_count = MIN(*actual_element_count,
-			_info_queries_max_count());
+        _info_queries_max_count());
 
 	REDISMODULE_ASSERT(_reply_with_queries_info_prev(
-				ctx,
-				max_count,
-				actual_element_count
-        ));
-    }
+        ctx,
+        max_count,
+        actual_element_count
+    ));
 
     return REDISMODULE_OK;
 }
