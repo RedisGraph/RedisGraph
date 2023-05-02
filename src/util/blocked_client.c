@@ -6,13 +6,19 @@
 
 #include "blocked_client.h"
 
+// create blocked client and report start time
 RedisModuleBlockedClient *RedisGraph_BlockClient
 (
-    RedisModuleCtx *ctx
+    RedisModuleCtx *ctx,
+    FreePrivDataFunc free_privdata
 ) {
     ASSERT(ctx != NULL);
 
-    RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
+    // TODO: Add an option to add the free_privdata() function and add it to the
+    // RedisModule_BlockClient() function call below (last arg).
+    // sig: void (*free_privdata)(RedisModuleCtx*,void*)
+
+    RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, free_privdata, 0);
     if(RedisModule_BlockedClientMeasureTimeStart) {
         // report block client start time
         RedisModule_BlockedClientMeasureTimeStart(bc);
@@ -20,9 +26,11 @@ RedisModuleBlockedClient *RedisGraph_BlockClient
     return bc;
 }
 
+// unblock blocked client and report end time
 void RedisGraph_UnblockClient
 (
-    RedisModuleBlockedClient *bc
+    RedisModuleBlockedClient *bc,
+    void *privdata
 ) {
     ASSERT(bc != NULL);
 
@@ -30,5 +38,5 @@ void RedisGraph_UnblockClient
         // report block client end time
         RedisModule_BlockedClientMeasureTimeEnd(bc);
     }
-    RedisModule_UnblockClient(bc, NULL);
+    RedisModule_UnblockClient(bc, privdata);
 }

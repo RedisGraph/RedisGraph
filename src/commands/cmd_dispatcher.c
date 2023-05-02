@@ -8,6 +8,7 @@
 #include "commands.h"
 #include "cmd_context.h"
 #include "../util/time.h"
+#include "../info/query_info.h"
 #include "../util/thpool/pools.h"
 #include "../util/simple_timer.h"
 #include "../util/blocked_client.h"
@@ -256,7 +257,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		handler(context);
 	} else {
 		// run query on a dedicated thread
-		RedisModuleBlockedClient *bc = RedisGraph_BlockClient(ctx);
+		RedisModuleBlockedClient *bc = RedisGraph_BlockClient(ctx, 
+			QueryInfo_submit_qi_and_free);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
 								 is_replicated, compact, timeout, timeout_rw,
 								 timer, received_milliseconds,

@@ -56,6 +56,8 @@ typedef struct Info {
     pthread_mutex_t mutex;                    // info lock
 } Info;
 
+const char *GRAPH_INFO_STREAM_NAME = "graph_info_stream";
+
 // create a new info structure
 // returns true on successful creation
 Info *Info_New(void);

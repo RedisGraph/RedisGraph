@@ -6,9 +6,10 @@
 
 #include <sys/types.h>
 
-#include "query_info.h"
+#include "qi.h"
 #include "../util/simple_timer.h"
 #include "../graph/graphcontext.h"
+#include "../commands/cmd_context.h"
 
 // resets the stage timer and returns the milliseconds it had recorded before
 // having been reset
@@ -178,6 +179,86 @@ void QueryInfo_CloneTo
     if (source->graph_name != NULL) {
         destination->graph_name = strdup(source->graph_name);
     }
+}
+
+static void _write_query_info_to_stream
+(
+    RedisModuleCtx *ctx,
+    QueryInfo *qi
+){
+    // TODO: Write the info in pd->qi to the stream
+    // use the RedisModuleCall-- function to call "XADD MAXLEN = Config_CMD_INFO_MAX_QUERY_COUNT"
+    // so that the length of the stream does not exceed its max.
+
+    // lock GIL
+    RedisModule_ThreadSafeContextLock(ctx);
+
+    // open stream key
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, GRAPH_INFO_STREAM_NAME, REDISMODULE_WRITE);
+    // TODO: validate (?)
+
+    // write to stream
+        // "Received at"
+        // value
+        // "Stage"
+        // value
+        // "Graph name"
+        // value
+        // "Query"
+        // value
+        // "Total duration"
+        // value
+        // "Wait duration"
+        // value
+        // "Execution duration"
+        // value
+        // "Report duration"
+        // value
+        // "Cache utilized"
+        // value
+    // Open the stream for writing
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, RedisModule_CreateString(ctx, GRAPH_INFO_STREAM_NAME, strlen(GRAPH_INFO_STREAM_NAME)), REDISMODULE_WRITE);
+    
+    // Get the current stream ID for the "append" operation
+    RedisModuleCallReply *reply = RedisModule_Call(ctx,
+    "XADD",
+    "scc",     // Fix format string
+    GRAPH_INFO_STREAM_NAME,
+    "*",
+    "graph_name", qi->graph_name,
+    "query_string", qi->query_string,
+    "received_ts", (long long)qi->received_ts,
+    "wait_duration", (long long)qi->wait_duration,
+    "execution_duration", (long long)qi->execution_duration,
+    "report_duration", (long long)qi->report_duration,
+    "stage", qi->stage,
+    "utilized_cache", qi->utilized_cache ? "true" : "false");
+    
+    // Check for errors and clean up
+    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_ERROR) {
+        RedisModule_Log(ctx, "error", "failed to append to stream: %s", RedisModule_CallReplyStringPtr(reply, NULL));
+    }
+    RedisModule_FreeCallReply(reply);
+    RedisModule_CloseKey(key);
+
+    // release GIL
+    RedisModule_ThreadSafeContextUnlock(ctx);
+
+    return;
+}
+
+// write the info stored in a Queryinfo to a stream and free it
+// executed by the main-thread when the client is unblocked
+void QueryInfo_submit_qi_and_free
+(
+    RedisModuleCtx *ctx,  // module context
+    void *privdata        // private data
+) {
+    QueryInfo *qi = (QueryInfo *)privdata;
+    _write_query_info_to_stream(ctx, qi);
+
+    // free the QueryInfo
+    QueryInfo_Free(qi);
 }
 
 // QueryInfo deleter callback

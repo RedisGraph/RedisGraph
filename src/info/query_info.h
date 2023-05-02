@@ -109,6 +109,14 @@ void QueryInfo_CloneTo
     void *user_data
 );
 
+// write the info stored in a Queryinfo to a stream and free it
+// executed by the main-thread when the client is unblocked
+void QueryInfo_submit_qi_and_free
+(
+    RedisModuleCtx *ctx,  // module context
+    void *privdata        // private data
+);
+
 // QueryInfo deleter callback
 void QueryInfo_Deleter
 (

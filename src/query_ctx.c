@@ -282,8 +282,6 @@ void QueryCtx_Free(void) {
 		ctx->query_data.params = NULL;
 	}
 
-	// TODO: Free QueryInfo here (?)
-
 	rm_free(ctx);
 	// NULL-set the context for reuse the next time this thread receives a query
 	QueryCtx_RemoveFromTLS();

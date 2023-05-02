@@ -153,19 +153,6 @@ static bool _Info_UnlockEverything
     return !pthread_mutex_unlock(&info->mutex);
 }
 
-static void _add_finished_query
-(
-	QueryInfo *qi
-) {
-    int res = _Info_LockFinished(true);
-	ASSERT(res == 1);
-
-    CircularBuffer_AddForce(finished_queries, (void *)&qi);
-
-    res = _Info_UnlockFinished();
-	ASSERT(res == 1);
-}
-
 Info *Info_New(void) {
     // HACK: compensate for the main thread
     const uint64_t thread_count = ThreadPools_ThreadCount() + 1;
@@ -335,7 +322,8 @@ void Info_IndicateQueryFinishedReporting
     qi->stage = QueryStage_FINISHED;
     QueryInfo_UpdateReportingTime(qi);
 
-    _add_finished_query(qi);
+    // no need to do anything now, as the main-thread will write qi to the
+    // stream once the client will be awaken
 }
 
 // indicates that the query has finished due to an error
@@ -343,22 +331,7 @@ void Info_IndicateQueryFinishedAfterError
 (
     Info *info
 ) {
-    ASSERT(info != NULL);
-
-	//--------------------------------------------------------------------------
-	// remove query info from working queries
-	//--------------------------------------------------------------------------
-
-    const int tid = ThreadPools_GetThreadID();
-    QueryInfo *qi = info->working_queries[tid];
-	ASSERT(qi != NULL);
-
-    info->working_queries[tid] = NULL;
-
-	// update stage to finished and add to finished buffer
-    qi->stage = QueryStage_FINISHED;
-
-    _add_finished_query(qi);
+    Info_IndicateQueryFinishedReporting(info);
 }
 
 // return the number of queries currently waiting to be executed

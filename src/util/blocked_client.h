@@ -6,14 +6,18 @@
 
 #include "RG.h"
 
+typedef void (*FreePrivDataFunc)(RedisModuleCtx*,void*);
+
 // create blocked client and report start time
 RedisModuleBlockedClient *RedisGraph_BlockClient
 (
-    RedisModuleCtx *ctx
+    RedisModuleCtx *ctx,
+    FreePrivDataFunc free_privdata
 );
 
 // unblock blocked client and report end time
 void RedisGraph_UnblockClient
 (
-    RedisModuleBlockedClient *bc
+    RedisModuleBlockedClient *bc,
+    void *privdata
 );
