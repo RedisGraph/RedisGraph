@@ -51,9 +51,14 @@ class testRelationPattern(FlowTestsBase):
         query = """MATCH (a)-[*1]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
         result_d = redis_graph.query(query)
 
+        # Conditional traversal with minimum length by default
+        query = """MATCH (a)-[*..1]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        result_e = redis_graph.query(query)
+
         self.env.assertEquals(result_b.result_set, result_a.result_set)
         self.env.assertEquals(result_c.result_set, result_a.result_set)
         self.env.assertEquals(result_d.result_set, result_a.result_set)
+        self.env.assertEquals(result_e.result_set, result_a.result_set)
 
     # Test patterns that traverse 2 edges.
     def test02_two_hop_traversals(self):
@@ -300,3 +305,19 @@ class testRelationPattern(FlowTestsBase):
             res = g.query(q.format(L0=perm[0], L1=perm[1], L2=perm[2]))
             self.env.assertEquals(res.result_set, expected_result)
 
+    # Test patterns with length less than zero
+    def test11_lt_zero_hop_traversals(self):
+        # Construct a simple graph: ()
+        g = Graph(redis_con, "lt_zero_hop_traversals")
+        q = "MERGE ()"
+        g.query(q)
+
+        queries = [
+            "MATCH p=()-[*..0]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[*1..0]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[*2..1]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[*20..10]->() RETURN nodes(p) AS nodes",
+        ]
+        for query in queries:
+            actual_result = g.query(query)
+            self.env.assertEquals(actual_result.result_set, [])
