@@ -296,9 +296,9 @@ static void _buildCallSubqueryPlan
 	*ref_count = 1;
 
 	AST *subquery_ast = rm_malloc(sizeof(AST));
-	subquery_ast->free_root = true;
-	subquery_ast->parse_result = NULL;
-	subquery_ast->ref_count = ref_count;
+	subquery_ast->free_root           = true;
+	subquery_ast->ref_count           = ref_count;
+	subquery_ast->parse_result        = NULL;
 	subquery_ast->params_parse_result = NULL;
 	subquery_ast->referenced_entities = NULL;
 	subquery_ast->anot_ctx_collection = orig_ast->anot_ctx_collection;
@@ -336,8 +336,7 @@ static void _buildCallSubqueryPlan
 
 	// if no variables are imported, add an 'empty' projection so that the
 	// records within the subquery will not carry unnecessary entries
-	if(cypher_astnode_type(cypher_astnode_get_child(clause, 0)) !=
-		CYPHER_AST_WITH) {
+	if(cypher_astnode_type(clauses[0]) != CYPHER_AST_WITH) {
 		OpBase *implicit_proj =
 			NewProjectOp(embedded_plan, array_new(AR_ExpNode *, 0));
 		ExecutionPlan_AddOp(deepest, implicit_proj);
@@ -345,6 +344,7 @@ static void _buildCallSubqueryPlan
 	}
 
 	// characterize whether the query is eager or not
+	// TODO: is OPType_CallSubquery need to be added?
 	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_FOREACH,
 					  OPType_MERGE, OPType_SORT, OPType_AGGREGATE};
 
@@ -359,24 +359,25 @@ static void _buildCallSubqueryPlan
 	// -------------------------------------------------------------------------
 	if(is_returning) {
 		// remove the Results op from the execution-plan
+		OpBase *results_op = embedded_plan->root;
 		ExecutionPlan_RemoveOp(embedded_plan, embedded_plan->root);
+		OpBase_Free(results_op);
 		OPType return_types[] = {OPType_PROJECT, OPType_AGGREGATE};
+
+		// bind the returning projection op to the outer plan
+		OpBase *returning_op =
+			ExecutionPlan_LocateOpMatchingType(embedded_plan->root,
+				return_types, 2);
+		OPType returning_op_type = OpBase_Type(returning_op);
 
 		// if the embedded plan is not eager, do not propagate input records
 		if(!is_eager) {
-			// bind the returning projection op to the outer plan
-			// OpBase *returning_proj = ExecutionPlan_LocateOp(embedded_plan->root,
-			// 	OPType_PROJECT);
-			OpBase *returning_op =
-				ExecutionPlan_LocateOpMatchingType(embedded_plan->root,
-					return_types, 2);
-
 			// bind the returning projection to the outer plan
-				// TODO: Do this later (after affecting the projections), and modify this so that the Project record_offsets
-				// change accordingly to the new plan, and it calls OpBase_Modifies() on all its projections!!
-				// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
+			// TODO: Do this later (after affecting the projections), and modify this so that the Project record_offsets
+			// change accordingly to the new plan, and it calls OpBase_Modifies() on all its projections!!
+			// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
 
-			OpBase_Type(returning_op) == OPType_PROJECT ?
+			returning_op_type == OPType_PROJECT ?
 				ProjectBindToPlan(returning_op, plan) :
 				AggregateBindToPlan(returning_op, plan);
 
@@ -417,16 +418,10 @@ static void _buildCallSubqueryPlan
 			OpBase_AliasModifier(plan->root, names[i], inter_names[i], false);
 		}
 
-		// find the 'first' Project op in the embedded execution-plan (RETURN)
-		OpBase *returning_op =
-			ExecutionPlan_LocateOpMatchingType(embedded_plan->root,
-				return_types, 2);
-		OPType returning_op_type = OpBase_Type(returning_op);
-
 		// Add to the RETURN projection (the 'first' projection in the embedded plan)
 		// the mapping of the internal representation of the outer-scope
 		// variables to their original names ('_alias' --> 'alias')
-			// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
+		// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
 		returning_op_type == OPType_PROJECT ?
 			ProjectAddProjections(returning_op, names, inter_names) :
 			AggregateAddProjections(returning_op, names, inter_names);
@@ -459,6 +454,10 @@ static void _buildCallSubqueryPlan
 					inter_names, inter_names);
 			}
 		}
+
+		array_free(names);
+		array_free(inter_names);
+		array_free(intermediate_projections);
 
 		// bind the RETURN projection (last one) to the outer plan ('plan')
 		// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
