@@ -214,3 +214,27 @@ class testVariableLengthTraversals(FlowTestsBase):
         for query, expected_result in query_to_expected_result.items():
             actual_result = redis_graph.query(query)
             self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Test path with ghost edges
+    def test12_ghost_edge(self):
+        # clear previous data
+        conn = self.env.getConnection()
+        conn.flushall()
+
+        # populate graph
+        # create a graph with 2 nodes, 2 edges
+        # a->a
+        # b->a
+        query = "CREATE (a:A)-[:R1]->(a)<-[:R2]-(b)"
+        actual_result = redis_graph.query(query)
+
+        # validation queries
+        query_to_expected_result = {
+            "MATCH p = ()--(:A)<-[*0]-() RETURN length(p)": [[1], [1]],
+            "MATCH p = ()-[*0]->(:A)--() RETURN length(p)": [[1], [1]],
+        }
+
+        # validate query results
+        for query, expected_result in query_to_expected_result.items():
+            actual_result = redis_graph.query(query)
+            self.env.assertEquals(actual_result.result_set, expected_result)
