@@ -332,6 +332,7 @@ static void _buildCallSubqueryPlan
 	OpBase *deepest = embedded_plan->root;
 	while(deepest->childCount > 0) {
 		deepest = deepest->children[0];
+		if(OpBase_Type(deepest) == OPType_CallSubquery && deepest->childCount == 1) break;
 	}
 
 	// if no variables are imported, add an 'empty' projection so that the
@@ -344,7 +345,6 @@ static void _buildCallSubqueryPlan
 	}
 
 	// characterize whether the query is eager or not
-	// TODO: is OPType_CallSubquery need to be added?
 	OPType types[] = {OPType_CREATE, OPType_UPDATE, OPType_FOREACH,
 					  OPType_MERGE, OPType_SORT, OPType_AGGREGATE};
 

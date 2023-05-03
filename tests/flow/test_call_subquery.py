@@ -548,17 +548,17 @@ updating clause.")
 
     def test14_nested_call_subquery(self):
         query_to_expected_result = {
-            # """
-            # UNWIND [0, 1, 2] AS x
-            # CALL {
-            #     CALL {
-            #         RETURN 1 AS One
-            #     }
-            #     RETURN 2 AS Two
-            # }
-            # RETURN 0
-            # """
-            # : [[0],[0],[0]],
+            """
+            UNWIND [0, 1, 2] AS x
+            CALL {
+                CALL {
+                    RETURN 1 AS One
+                }
+                RETURN 2 AS Two
+            }
+            RETURN 0
+            """
+            : [[0],[0],[0]],
             """
             UNWIND [0, 1, 2] AS x 
             CALL { 
