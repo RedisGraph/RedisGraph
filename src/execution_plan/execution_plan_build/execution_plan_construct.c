@@ -393,7 +393,6 @@ static void _buildCallSubqueryPlan
 		// of the original names and the internal (temporary) representation of them.
 		char **names = array_new(char *, mapping_size);
 		char **inter_names = array_new(char *, mapping_size);
-		AR_ExpNode **new_exps = array_new(AR_ExpNode *, mapping_size);
 		raxIterator it;
 		raxStart(&it, outer_mapping);
 		raxSeek(&it, "^", NULL, 0);
