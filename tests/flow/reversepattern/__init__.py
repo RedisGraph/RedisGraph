@@ -60,8 +60,9 @@ class ReversePattern(object):
 
         # Find the leftmost node.
         start = q.find("(")
+        prefix = start
 
-        stop_words = ["WHERE", "RETURN", "SET", "DELETE"]
+        stop_words = ["WITH", "WHERE", "RETURN", "SET", "DELETE"]
         for stop in stop_words:
             end = q.find(stop)
             if end != -1:
@@ -96,5 +97,5 @@ class ReversePattern(object):
             if entity == None:
                 break
 
-        reversed_query = "MATCH" + reversed_query + q[end:]
+        reversed_query = q[:prefix-1] + reversed_query + q[end:]
         return reversed_query
