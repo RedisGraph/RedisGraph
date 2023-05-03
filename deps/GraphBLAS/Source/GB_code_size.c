@@ -11,7 +11,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 size_t GB_code_size             // return the size of a type, given its code
 (
     const GB_Type_code code,    // input code of the type to find the size of

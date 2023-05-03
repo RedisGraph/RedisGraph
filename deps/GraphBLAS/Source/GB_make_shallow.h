@@ -9,6 +9,6 @@
 
 #ifndef GB_MAKE_SHALLOW_H
 #define GB_MAKE_SHALLOW_H
-GB_PUBLIC void GB (make_shallow) (GrB_Matrix A) ;
+void GB (make_shallow) (GrB_Matrix A) ;
 #endif
 

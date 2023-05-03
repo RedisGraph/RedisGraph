@@ -101,7 +101,6 @@ GrB_Info GB_ewise_slice
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 void GB_slice_vector
 (
     // output: return i, pA, and pB

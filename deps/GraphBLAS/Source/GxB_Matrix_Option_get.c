@@ -7,7 +7,117 @@
 
 //------------------------------------------------------------------------------
 
+// GxB_Matrix_Option_get is a single va_arg-based method for any matrix option,
+// of any type.  The following functions are alternative methods that do not
+// use va_arg (useful for compilers and interfaces that do not support va_arg):
+//
+//  GxB_Matrix_Option_get_INT32         int32_t scalars
+//  GxB_Matrix_Option_get_FP64          double scalars
+
 #include "GB.h"
+
+//------------------------------------------------------------------------------
+// GxB_Matrix_Option_get_INT32: get matrix options (int32_t scalars)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Matrix_Option_get_INT32    // gets the current option of a matrix
+(
+    GrB_Matrix A,                   // matrix to query
+    GxB_Option_Field field,         // option to query
+    int32_t *value                  // return value of the matrix option
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Matrix_Option_get_INT32 (A, field, &value)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
+    ASSERT_MATRIX_OK (A, "A to get option", GB0) ;
+    GB_RETURN_IF_NULL (value) ;
+
+    //--------------------------------------------------------------------------
+    // get the option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_SPARSITY_CONTROL : 
+
+            (*value) = A->sparsity_control ;
+            break ;
+
+        case GxB_SPARSITY_STATUS : 
+
+            (*value) = GB_sparsity (A) ;
+            break ;
+
+        case GxB_FORMAT : 
+
+            (*value) = (int32_t) ((A->is_csc) ? GxB_BY_COL : GxB_BY_ROW) ;
+            break ;
+
+        default : 
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    #pragma omp flush
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Matrix_Option_get_FP64: get matrix options (double scalars)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Matrix_Option_get_FP64     // gets the current option of a matrix
+(
+    GrB_Matrix A,                   // matrix to query
+    GxB_Option_Field field,         // option to query
+    double *value                   // return value of the matrix option
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Matrix_Option_get_FP64 (A, field, &value)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
+    ASSERT_MATRIX_OK (A, "A to get option", GB0) ;
+    GB_RETURN_IF_NULL (value) ;
+
+    //--------------------------------------------------------------------------
+    // get the option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_HYPER_SWITCH : 
+
+            (*value) = (double) A->hyper_switch ;
+            break ;
+
+        case GxB_BITMAP_SWITCH : 
+
+            (*value) = (double) A->bitmap_switch ;
+            break ;
+
+        default : 
+
+            return (GrB_INVALID_VALUE) ;
+    }
+
+    #pragma omp flush
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Matrix_Option_get: based on va_arg
+//------------------------------------------------------------------------------
 
 GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
 (

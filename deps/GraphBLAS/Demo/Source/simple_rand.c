@@ -22,12 +22,11 @@
 #include "simple_rand.h"
 
 // simple_rand is not thread-safe
-uint64_t simple_rand_next = 1 ;
+static uint64_t simple_rand_next = 1 ;
 
 #define SIMPLE_RAND_MAX 32767
 
 // return a random number between 0 and SIMPLE_RAND_MAX
-GB_PUBLIC
 uint64_t simple_rand (void)
 {
    simple_rand_next = simple_rand_next * 1103515245 + 12345 ;
@@ -35,21 +34,18 @@ uint64_t simple_rand (void)
 }
 
 // set the seed
-GB_PUBLIC
 void simple_rand_seed (uint64_t seed)
 {
    simple_rand_next = seed ;
 }
 
 // get the seed
-GB_PUBLIC
 uint64_t simple_rand_getseed (void)
 {
    return (simple_rand_next) ;
 }
 
 // return a random uint64_t
-GB_PUBLIC
 uint64_t simple_rand_i ( )
 {
     uint64_t i = 0 ;
@@ -61,7 +57,6 @@ uint64_t simple_rand_i ( )
 }
 
 // return a random double between 0 and 1, inclusive
-GB_PUBLIC
 double simple_rand_x ( )
 {
     return (((double) simple_rand_i ( )) / ((double) UINT64_MAX)) ;

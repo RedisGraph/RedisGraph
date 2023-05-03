@@ -19,15 +19,12 @@
     if (J != NULL) free (J) ;       \
     if (X != NULL) free (X) ;
 
-#undef GB_PUBLIC
-#define GB_LIBRARY
 #include "graphblas_demos.h"
 
 //------------------------------------------------------------------------------
 // create a random matrix
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 GrB_Info random_matrix      // create a random double-precision matrix
 (
     GrB_Matrix *A_output,   // handle of matrix to create
