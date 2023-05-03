@@ -442,14 +442,20 @@ void Info_IncrementNumberOfQueries
     _FinishedQueryCounters_Increment(&info->counters, flags, status);
 }
 
-// unlocks the info object from exclusive external reading
-bool Info_Unlock(Info *info) {
-    return _Info_UnlockEverything(info);
+// locks the info object for exclusive external reading
+bool Info_Lock
+(
+    Info *info  // info
+) {
+    return _Info_LockEverything(info);
 }
 
-dict* Info_GetWaitingQueries(Info *info) {
-    ASSERT(info != NULL);
-    return info->waiting_queries;
+// unlocks the info object from exclusive external reading
+bool Info_Unlock
+(
+    Info *info // info
+) {
+    return _Info_UnlockEverything(info);
 }
 
 // stores clones of queries of a certain state among the waiting and the

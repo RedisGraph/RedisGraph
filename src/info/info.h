@@ -150,6 +150,12 @@ void Info_IncrementNumberOfQueries
     const QueryExecutionStatus
 );
 
+// locks the info object for exclusive external reading
+bool Info_Lock
+(
+    Info *info  // info
+);
+
 // Unlocks the info object from exclusive external reading.
 bool Info_Unlock
 (

@@ -193,9 +193,11 @@ static void _write_query_info_to_stream
     // lock GIL
     RedisModule_ThreadSafeContextLock(ctx);
 
-    // open stream key
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, GRAPH_INFO_STREAM_NAME, REDISMODULE_WRITE);
-    // TODO: validate (?)
+    // Open the stream for writing
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, RedisModule_CreateString(ctx,
+        GRAPH_INFO_STREAM_NAME, strlen(GRAPH_INFO_STREAM_NAME)),
+        REDISMODULE_WRITE);
+    // TODO: validate key (?)
 
     // write to stream
         // "Received at"
@@ -216,13 +218,11 @@ static void _write_query_info_to_stream
         // value
         // "Cache utilized"
         // value
-    // Open the stream for writing
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, RedisModule_CreateString(ctx, GRAPH_INFO_STREAM_NAME, strlen(GRAPH_INFO_STREAM_NAME)), REDISMODULE_WRITE);
-    
+
     // Get the current stream ID for the "append" operation
     RedisModuleCallReply *reply = RedisModule_Call(ctx,
     "XADD",
-    "scc",     // Fix format string
+    "ccccccclclclclclcl",
     GRAPH_INFO_STREAM_NAME,
     "*",
     "graph_name", qi->graph_name,
@@ -236,15 +236,14 @@ static void _write_query_info_to_stream
     
     // Check for errors and clean up
     if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_ERROR) {
-        RedisModule_Log(ctx, "error", "failed to append to stream: %s", RedisModule_CallReplyStringPtr(reply, NULL));
+        // RedisModule_Log(ctx, "error", "failed to append to stream: %s", RedisModule_CallReplyStringPtr(reply, NULL));
+        RedisModule_ReplyWithError(ctx, "failed to append to stream");
     }
     RedisModule_FreeCallReply(reply);
     RedisModule_CloseKey(key);
 
     // release GIL
     RedisModule_ThreadSafeContextUnlock(ctx);
-
-    return;
 }
 
 // write the info stored in a Queryinfo to a stream and free it
