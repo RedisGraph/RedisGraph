@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
+#include "../redismodule.h"
 #include "util/simple_timer.h"
 
 typedef uint32_t millis_t;
@@ -98,29 +99,15 @@ void QueryInfo_UpdateReportingTime
 // clone a QueryInfo
 QueryInfo *QueryInfo_Clone
 (
-    QueryInfo *qi
-);
-
-// used as a callback for the circular buffer
-void QueryInfo_CloneTo
-(
-    const void *item_to_clone,
-    void *destination_item,
-    void *user_data
+    const QueryInfo *qi
 );
 
 // write the info stored in a Queryinfo to a stream and free it
 // executed by the main-thread when the client is unblocked
-void QueryInfo_submit_qi_and_free
+void QueryInfo_ReportAndFree
 (
     RedisModuleCtx *ctx,  // module context
     void *privdata        // private data
-);
-
-// QueryInfo deleter callback
-void QueryInfo_Deleter
-(
-    void *info
 );
 
 // free a QueryInfo

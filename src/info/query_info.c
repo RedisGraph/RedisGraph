@@ -6,10 +6,10 @@
 
 #include <sys/types.h>
 
-#include "qi.h"
 #include "../util/simple_timer.h"
 #include "../graph/graphcontext.h"
 #include "../commands/cmd_context.h"
+#include "../configuration/config.h"
 
 // resets the stage timer and returns the milliseconds it had recorded before
 // having been reset
@@ -151,32 +151,6 @@ QueryInfo *QueryInfo_Clone
     return clone;
 }
 
-// used as a callback for the circular buffer
-void QueryInfo_CloneTo
-(
-    const void *item_to_clone,
-    void *destination_item,
-    void *user_data
-) {
-    ASSERT(item_to_clone);
-    ASSERT(destination_item);
-    UNUSED(user_data);
-
-    QueryInfo *source = (QueryInfo*)item_to_clone;
-    QueryInfo *destination = (QueryInfo*)destination_item;
-
-    // copy the struct (shallow)
-    *destination = *source;
-
-    if (source->query_string != NULL) {
-        destination->query_string = strdup(source->query_string);
-    }
-
-    if (source->graph_name != NULL) {
-        destination->graph_name = strdup(source->graph_name);
-    }
-}
-
 static void _write_query_info_to_stream
 (
     RedisModuleCtx *ctx,
@@ -245,16 +219,6 @@ void QueryInfo_ReportAndFree
     _write_query_info_to_stream(ctx, qi);
 
     // free the QueryInfo
-    QueryInfo_Free(qi);
-}
-
-// QueryInfo deleter callback
-void QueryInfo_Deleter
-(
-    void *info
-) {
-    ASSERT(info != NULL);
-    QueryInfo *qi = (QueryInfo *)info;
     QueryInfo_Free(qi);
 }
 

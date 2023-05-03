@@ -10,6 +10,9 @@
 */
 
 
+#include <string.h>
+#include <sys/types.h>
+
 #include "RG.h"
 #include "info.h"
 #include "util/arr.h"
@@ -17,23 +20,7 @@
 #include "../util/dict.h"
 #include "../query_ctx.h"
 #include "util/thpool/pools.h"
-#include "util/circular_buffer.h"
 // #include "hdr/hdr_histogram.h"
-
-#include <string.h>
-#include <sys/types.h>
-
-#define INITIAL_QUERY_INFO_CAPACITY 100
-
-static CircularBuffer finished_queries;
-static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
-
-// forward declaration
-QueryInfo *QueryInfo_Clone(QueryInfo *qi);
-void QueryInfo_CloneTo(const void *item_to_clone, void *destination_item,
-    void *user_data);
-void QueryInfo_Deleter(void *info);
-typedef struct ViewFinishedQueriesCallbackData ViewFinishedQueriesCallbackData;
 
 // returns the total number of queries recorded
 uint64_t FinishedQueryCounters_GetTotalCount
@@ -46,7 +33,7 @@ uint64_t FinishedQueryCounters_GetTotalCount
         counters->ro_failed_n        +
         counters->write_succeeded_n  +
         counters->ro_timedout_n      +
-        counters->ro_succeeded_n ;
+        counters->ro_succeeded_n;
 }
 
 void FinishedQueryCounters_Add
@@ -119,21 +106,6 @@ static void _FinishedQueryCounters_Increment
     ASSERT(false && "Handle unknown flag.");
 }
 
-static bool _Info_LockFinished
-(
-    bool write
-) {
-    if(write) {
-        return !pthread_rwlock_wrlock(&finished_queries_rwlock);
-    } else {
-        return !pthread_rwlock_rdlock(&finished_queries_rwlock);
-    }
-}
-
-static bool _Info_UnlockFinished(void) {
-    return !pthread_rwlock_unlock(&finished_queries_rwlock);
-}
-
 // TODO: Update to lock waiting and executing (if this is still needed.. I think not)
 static bool _Info_LockEverything
 (
@@ -171,15 +143,6 @@ Info *Info_New(void) {
     ASSERT(res == 0);
 
     return info;
-}
-
-// create the finished queries storage (circular buffer)
-void Info_SetFinishedQueriesStorage
-(
-    const uint n  // size of circular buffer
-) {
-    finished_queries = CircularBuffer_New(sizeof(QueryInfo *), n,
-        QueryInfo_Deleter);
 }
 
 // add a query to the waiting list for the first time (from dispatcher)
@@ -381,23 +344,6 @@ void Info_GetExecutingReportingQueriesCount
     ASSERT(res == true);
 }
 
-// return the total number of queries currently queued or being executed
-uint64_t Info_GetTotalQueriesCount
-(
-	Info *info
-) {
-    ASSERT(info != NULL);
-
-    GraphContext *gc = QueryCtx_GetGraphCtx();
-
-    uint64_t executing = 0;
-    uint64_t reporting = 0;
-    uint64_t waiting = Info_GetWaitingQueriesCount(gc->info);
-    Info_GetExecutingReportingQueriesCount(gc->info, &executing, &reporting);
-
-    return waiting + executing + reporting;
-}
-
 // return the maximum registered time a query spent waiting
 millis_t Info_GetMaxQueryWaitTime
 (
@@ -458,70 +404,6 @@ bool Info_Unlock
     return _Info_UnlockEverything(info);
 }
 
-// stores clones of queries of a certain state among the waiting and the
-// executing stages in storage
-void Info_GetQueries
-(
-    Info *info,                 // info
-    QueryStage stage,           // wanted stage
-    QueryInfoStorage *storage   // result container
-) {
-    // QueryInfoStorage st = *storage;
-    bool waiting = (stage == QueryStage_WAITING);
-
-    // TODO: Lock waiting and executing separately.
-    bool res = _Info_LockEverything(info);
-    ASSERT(res == true);
-
-    // get the number of queries to traverse and copy (waiting or executing)
-    uint n_queries = (waiting ? HashTableElemCount(info->waiting_queries) :
-                                ThreadPools_ThreadCount() + 1);
-
-    if(waiting) {
-        //--------------------------------------------------------------------------
-        // waiting queries
-        //--------------------------------------------------------------------------
-        QueryInfo *qi;
-        dictIterator *it = HashTableGetIterator(info->waiting_queries);
-        while((qi = (QueryInfo*)HashTableNext(it)) != NULL) {
-            array_append(*storage, QueryInfo_Clone(qi));
-        }
-    } else {
-        //--------------------------------------------------------------------------
-        // executing queries
-        //--------------------------------------------------------------------------
-        for(uint i = 0; i < n_queries; i++) {
-            // append a clone of the current query to st
-            if(info->working_queries[i] != NULL) {
-                array_append(*storage, QueryInfo_Clone(info->working_queries[i]));
-            }
-        }
-    }
-
-    res = _Info_UnlockEverything(info);
-    ASSERT(res == true);
-}
-
-// views the circular buffer of finished queries
-void Info_ViewFinishedQueries
-(
-    CircularBuffer_ReadCallback callback,  // callback
-    void *user_data,                       // additional data for callback
-    uint n_items                           // number of items to view
-) {
-    ASSERT(finished_queries != NULL);
-
-    int res = _Info_LockFinished(false);
-    ASSERT(res == 1);
-
-	// read items from the circular buffer, calling callback on each one
-    CircularBuffer_TraverseCBFromLast(finished_queries, n_items, callback,
-        user_data);
-
-    res = _Info_UnlockFinished();
-    ASSERT(res == 1);
-}
-
 void Info_Free
 (
 	Info *info
@@ -534,6 +416,7 @@ void Info_Free
 
     int res = pthread_mutex_destroy(&info->mutex);
     ASSERT(res == 0);
+    UNUSED(res);
 
 	rm_free(info);
 }
