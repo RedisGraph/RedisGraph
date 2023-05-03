@@ -18,7 +18,8 @@ RedisModuleBlockedClient *RedisGraph_BlockClient
     // RedisModule_BlockClient() function call below (last arg).
     // sig: void (*free_privdata)(RedisModuleCtx*,void*)
 
-    RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, free_privdata, 0);
+    RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL,
+        free_privdata, 0);
     if(RedisModule_BlockedClientMeasureTimeStart) {
         // report block client start time
         RedisModule_BlockedClientMeasureTimeStart(bc);

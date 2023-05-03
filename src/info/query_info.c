@@ -135,22 +135,18 @@ void QueryInfo_UpdateReportingTime
 // clone a QueryInfo
 QueryInfo *QueryInfo_Clone
 (
-    QueryInfo *qi
+    const QueryInfo *qi
 ) {
-    QueryInfo *clone = rm_calloc(1, sizeof(QueryInfo));
+    ASSERT(qi != NULL);
+    QueryInfo *clone = rm_malloc(sizeof(QueryInfo));
+    *clone = *qi;
+
     if(qi->graph_name != NULL) {
         clone->graph_name = strdup(qi->graph_name);
     }
     if(qi->query_string != NULL) {
         clone->query_string = strdup(qi->query_string);
     }
-    clone->stage = qi->stage;
-    clone->received_ts = qi->received_ts;
-    clone->wait_duration = qi->wait_duration;
-    clone->utilized_cache = qi->utilized_cache;
-    clone->report_duration = qi->report_duration;
-    clone->execution_duration = qi->execution_duration;
-    // clone timer will isn't relevant, stays {0}
 
     return clone;
 }
@@ -186,18 +182,11 @@ static void _write_query_info_to_stream
     RedisModuleCtx *ctx,
     QueryInfo *qi
 ){
+    ASSERT(qi != NULL);
+
     // TODO: Write the info in pd->qi to the stream
     // use the RedisModuleCall-- function to call "XADD MAXLEN = Config_CMD_INFO_MAX_QUERY_COUNT"
     // so that the length of the stream does not exceed its max.
-
-    // lock GIL
-    RedisModule_ThreadSafeContextLock(ctx);
-
-    // Open the stream for writing
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, RedisModule_CreateString(ctx,
-        GRAPH_INFO_STREAM_NAME, strlen(GRAPH_INFO_STREAM_NAME)),
-        REDISMODULE_WRITE);
-    // TODO: validate key (?)
 
     // write to stream
         // "Received at"
@@ -219,11 +208,15 @@ static void _write_query_info_to_stream
         // "Cache utilized"
         // value
 
+    int limit;
+    Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &limit);
+
     // Get the current stream ID for the "append" operation
     RedisModuleCallReply *reply = RedisModule_Call(ctx,
     "XADD",
-    "ccccccclclclclclcl",
+    "cclcccccclclclclclcl",
     GRAPH_INFO_STREAM_NAME,
+    "MAXLEN", limit,
     "*",
     "graph_name", qi->graph_name,
     "query_string", qi->query_string,
@@ -233,22 +226,17 @@ static void _write_query_info_to_stream
     "report_duration", (long long)qi->report_duration,
     "stage", qi->stage,
     "utilized_cache", qi->utilized_cache ? "true" : "false");
-    
+
     // Check for errors and clean up
     if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_ERROR) {
-        // RedisModule_Log(ctx, "error", "failed to append to stream: %s", RedisModule_CallReplyStringPtr(reply, NULL));
-        RedisModule_ReplyWithError(ctx, "failed to append to stream");
+        RedisModule_Log(ctx, "error", "failed to append to stream: %s", RedisModule_CallReplyStringPtr(reply, NULL));
     }
     RedisModule_FreeCallReply(reply);
-    RedisModule_CloseKey(key);
-
-    // release GIL
-    RedisModule_ThreadSafeContextUnlock(ctx);
 }
 
 // write the info stored in a Queryinfo to a stream and free it
 // executed by the main-thread when the client is unblocked
-void QueryInfo_submit_qi_and_free
+void QueryInfo_ReportAndFree
 (
     RedisModuleCtx *ctx,  // module context
     void *privdata        // private data

@@ -20,7 +20,6 @@
 #include <stdlib.h>
 
 #define QUERYINFO_NUMFIELDS 8
-#define INFO_RESPONSE_LENGTH 2
 #define QUERY_KEY_NAME "Query"
 #define STAGE_KEY_NAME "Stage"
 #define ALL_GRAPH_KEYS_MASK "*"
@@ -30,13 +29,11 @@
 #define INFO_GET_COUNTS_ARG "COUNTS"
 #define INFO_QUERIES_PREV_ARG "PREV"
 #define SUBCOMMAND_NAME_RESET "RESET"
-#define GLOBAL_INFO_RESPONSE_LENGTH 4
 #define INFO_GET_STATISTICS_ARG "STAT"
 #define UTILIZED_CACHE "Utilized cache"
 #define GRAPH_NAME_KEY_NAME "Graph name"
 #define SUBCOMMAND_NAME_QUERIES "QUERIES"
 #define INFO_QUERIES_CURRENT_ARG "CURRENT"
-#define GLOBAL_INFO_KEY_NAME "Global info"
 #define WAIT_DURATION_KEY_NAME "Wait duration"
 #define TOTAL_DURATION_KEY_NAME "Total duration"
 #define RECEIVED_TIMESTAMP_KEY_NAME "Received at"
@@ -200,7 +197,7 @@ static void _reply_global_info
     ASSERT(ctx != NULL);
     ASSERT(global_info != NULL);
 
-    int res = RedisModule_ReplyWithArray(ctx, 2 * GLOBAL_INFO_RESPONSE_LENGTH);
+    int res = RedisModule_ReplyWithArray(ctx, 2 * 4);
     ASSERT(res == REDISMODULE_OK);
 
     res = RedisModule_ReplyWithCString(ctx, MAX_QUERY_WAIT_TIME_KEY_NAME);
@@ -489,8 +486,6 @@ static int _parse_and_reply_info_queries_prev
         return REDISMODULE_ERR;
     }
 
-	// TODO: validate actual_element_count > 0
-
     const long long max_count = MIN(*actual_element_count,
         _info_queries_max_count());
 
@@ -662,21 +657,6 @@ static int _reply_graph_queries
     uint64_t count = 0;
     uint64_t current_limit = max_elements_count;
 
-    // TODO: Seems redundant. Make sure this is the case.
-    // _reply_queries_from_all_graphs(
-    //     ctx,
-    //     QueryStage_WAITING,
-    //     current_limit,
-    //     &count
-    // );
-    // actual_elements_count += count;
-    // if (current_limit >= count) {
-    //     current_limit -= count;
-    // } else {
-    //     current_limit = 0;
-    // }
-    // count = 0;
-
     _reply_queries_from_all_graphs(
         ctx,
         QueryStage_EXECUTING,
@@ -729,64 +709,6 @@ static int _reply_with_queries_info_from_all_graphs
     return REDISMODULE_OK;
 }
 
-// parses and handles the "GRAPH.INFO QUERIES <CURRENT/PREV>" command
-static int _reply_with_queries
-(
-    RedisModuleCtx *ctx,
-    const RedisModuleString **argv,
-    const int argc,
-    uint8_t *top_level_count
-) {
-    ASSERT(ctx != NULL);
-
-    const InfoQueriesFlag flags = _parse_info_queries_flags_from_args(argv,
-			argc);
-
-    if (flags == InfoQueriesFlag_NONE) {
-        return REDISMODULE_OK;
-    }
-
-    REDISMODULE_ASSERT(RedisModule_ReplyWithCString(ctx, QUERIES_KEY_NAME));
-
-    if (*top_level_count) {
-        // We count the array below.
-        ++*top_level_count;
-    }
-
-    REDISMODULE_ASSERT(RedisModule_ReplyWithArray(
-        ctx,
-        REDISMODULE_POSTPONED_LEN));
-
-    uint64_t actual_element_count = 0;
-
-    if (CHECK_FLAG(flags, InfoQueriesFlag_PREV)) {
-        const int ret = _parse_and_reply_info_queries_prev(
-            ctx,
-            argv,
-            argc,
-            &actual_element_count
-        );
-
-        if (ret != REDISMODULE_OK) {
-            RedisModule_ReplySetArrayLength(ctx, actual_element_count);
-            return ret;
-        }
-    }
-
-    if (CHECK_FLAG(flags, InfoQueriesFlag_CURRENT)) {
-        uint64_t element_count = 0;
-        REDISMODULE_DO(_reply_with_queries_info_from_all_graphs(
-            ctx,
-            &element_count
-        ));
-        actual_element_count += element_count;
-    }
-
-    RedisModule_ReplySetArrayLength(ctx, actual_element_count);
-
-    return REDISMODULE_OK;
-}
-
 // returns a QueryInfo with the information stored in entry
 static QueryInfo *_collect_query_info_from_stream_entry
 (
@@ -805,17 +727,21 @@ static QueryInfo *_collect_query_info_from_stream_entry
 
 static void _collect_current_queries
 (
-    GraphContext *gc,
-    QueryInfo ***current_queries
+    const GraphContext *gc,
+    QueryInfo **current_queries,
+    int *current_queries_count
 ) {
     Info *info = gc->info;
     // lock info
     Info_Lock(info);
 
     // append clones of the working QueryInfo's
-    for(int i = 0; i < array_len(info->working_queries); i++) {
+    int n_threads = ThreadPools_ThreadCount() + 1;
+    for(int i = 0; i < n_threads; i++) {
         QueryInfo *qi = *(QueryInfo**)array_elem(info->working_queries, i);
-        array_append(*current_queries, QueryInfo_Clone(qi));
+        if(qi != NULL && *current_queries_count < n_threads) {
+            current_queries[*current_queries_count++] = QueryInfo_Clone(qi);
+        }
     }
 
     // unlock info
@@ -824,8 +750,8 @@ static void _collect_current_queries
 
 // handles the "GRAPH.INFO QUERIES" subcommand
 // the format is "GRAPH.INFO QUERIES [CURRENT] [PREV <count>]"
-// TODO: Once things are working without the additional key (<key> / *), change
-// to "GRAPH.INFO QUERIES <key>/* [CURRENT] [PREV <count>]"
+    // TODO: Once things are working without the additional key (<key> / *), change
+    // to "GRAPH.INFO QUERIES <key>/* [CURRENT] [PREV <count>]"
 static int _info_queries
 (
     RedisModuleCtx *ctx,
@@ -834,7 +760,7 @@ static int _info_queries
 ) {
     // an example for a command and reply:
     // command:
-    // GRAPH.INFO queries current prev 5
+    // GRAPH.INFO QUERIES CURRENT PREV 5
     // reply:
     // "Global info"
     //     "Current maximum query wait duration"
@@ -842,15 +768,17 @@ static int _info_queries
     //     "Total executing queries count"
     //     "Total reporting queries count"
     // "Queries"
-    //     "Received at"
-    //     "Stage"
-    //     "Graph name"
-    //     "Query"
-    //     "Total duration"
-    //     "Wait duration"
-    //     "Execution duration"
-    //     "Report duration"
-    //     "Cache utilized"
+    //     [
+    //         "Received at"
+    //          "Stage"
+    //          "Graph name"
+    //          "Query"
+    //          "Total duration"
+    //          "Wait duration"
+    //          "Execution duration"
+    //          "Report duration"
+    //          "Cache utilized"
+    //     ] X n
 
     ASSERT(ctx != NULL);
 
@@ -859,45 +787,52 @@ static int _info_queries
 
     // parse arguments and validate the command
     if (_parse_and_validate(ctx, argv, argc, &flags, &prev_cnt) ==
-        REDISMODULE_ERR) {
-            return REDISMODULE_ERR;
+            REDISMODULE_ERR) {
+                return REDISMODULE_ERR;
     }
 
     // set high-level response array
         // Global Info
-        // Queries
-    RedisModule_ReplyWithArray(ctx, 2 * INFO_RESPONSE_LENGTH);
+        // Queries (if CURRENT or PREV <cnt> where specified)
+    bool only_global = (flags == InfoQueriesFlag_NONE);
+    only_global ? RedisModule_ReplyWithArray(ctx, 2 * 1) 
+                : RedisModule_ReplyWithArray(ctx, 2 * 2);
 
     // -------------------------------------------------------------------------
     // global information
     // -------------------------------------------------------------------------
-    const uint32_t graphs_count = array_len(graphs_in_keyspace);
-    // TBD (using the current implementation - easy)
-        // change implementation of _collect_global_info() to get an optional
-        // argument specifying a graph name, in case we don't want info from all
-        // graphs, and reply without postponed length
 
-        GlobalInfo global_info;
-        _collect_global_info(ctx, &global_info);
+    GlobalInfo global_info;
+    _collect_global_info(ctx, &global_info);
 
-        // reply with "Global Info"
-        RedisModule_ReplyWithCString(ctx, GLOBAL_INFO_KEY_NAME);
+    // reply with "Global Info"
+    RedisModule_ReplyWithCString(ctx, "Global info");
 
-        // reply with global information
-        _reply_global_info(ctx, &global_info);
+    // reply with global information
+    _reply_global_info(ctx, &global_info);
+
+    if(!only_global) {
+        RedisModule_ReplyWithCString(ctx, "Queries");
+    }
 
     // -------------------------------------------------------------------------
     // CURRENT queries information
     // -------------------------------------------------------------------------
     long long current_cnt = 0;
-    QueryInfo **current_queries = NULL;
+    int n_threads = ThreadPools_ThreadCount() + 1;
+    QueryInfo *current_queries[n_threads];
+    int current_queries_count = 0;
     if(CHECK_FLAG(flags, InfoQueriesFlag_CURRENT)) {
-        // traverse graphs, collecting working queries information
-        for (uint32_t i = 0; i < graphs_count; ++i) {
-            GraphContext *gc = graphs_in_keyspace[i];
-            ASSERT(gc != NULL);
 
-            _collect_current_queries(gc, &current_queries);
+        const uint32_t graphs_count = array_len(graphs_in_keyspace);
+        // traverse graphs, collecting working queries information
+        for (uint32_t i = 0; i < graphs_count &&
+            current_queries_count < n_threads; ++i) {
+                GraphContext *gc = graphs_in_keyspace[i];
+                ASSERT(gc != NULL);
+
+                _collect_current_queries(gc, current_queries,
+                    &current_queries_count);
         }
 
         // set current_cnt to the number of CURRENT queries to reply
@@ -908,11 +843,9 @@ static int _info_queries
     // PREV queries information
     // -------------------------------------------------------------------------
     if(CHECK_FLAG(flags, InfoQueriesFlag_PREV)) {
-        // lock the GIL
-        RedisModule_ThreadSafeContextLock(ctx);
-        
         RedisModuleKey *stream_key =
             RedisModule_OpenKey(ctx, GRAPH_INFO_STREAM_NAME, REDISMODULE_READ);
+        // TODO: Check if the stream doesn't exist yet - if so - return nothing.
         if (RedisModule_KeyType(stream_key) != REDISMODULE_KEYTYPE_STREAM) {
             RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
             RedisModule_CloseKey(stream_key);
@@ -920,25 +853,11 @@ static int _info_queries
         }
 
         // ---------------------------------------------------------------------
-        // set prev_cnt to the relevant number of elements to traverse
-        // ---------------------------------------------------------------------
-        RedisModuleCallReply *reply = RedisModule_Call(ctx, "XLEN", "s",
-            stream_key);
-        if (reply == NULL ||
-            RedisModule_CallReplyType(reply) != REDISMODULE_REPLY_INTEGER) {
-                RedisModule_ReplyWithError(ctx,
-                    "ERR failed to get stream length");
-        }
-        long long stream_len = RedisModule_CallReplyInteger(reply);
-        RedisModule_FreeCallReply(reply);
-        prev_cnt = MIN(stream_len, prev_cnt);
-
-        // ---------------------------------------------------------------------
         // iterate over the last prev_cnt elements from the stream, collecting
         // the relevant information
         // ---------------------------------------------------------------------
-        reply = RedisModule_Call(ctx, "XREVRANGE",
-            "ssssl", GRAPH_INFO_STREAM_NAME, "+", "-", "COUNT", prev_cnt);
+        RedisModuleCallReply *reply = RedisModule_Call(ctx, "XREVRANGE",
+            "ccccl", GRAPH_INFO_STREAM_NAME, "+", "-", "COUNT", prev_cnt);
 
         // Check if the reply is valid
         if (RedisModule_CallReplyType(reply) != REDISMODULE_REPLY_ARRAY) {
@@ -947,26 +866,19 @@ static int _info_queries
         }
 
         // make sure prev_cnt elements were read
-        size_t len = RedisModule_CallReplyLength(reply);
-        if((long long)len != prev_cnt) {
-            char *errmsg;
-            int rc __attribute__((unused));
-            rc = asprintf(&errmsg,
-                "Failed to read %lld elements from the stream", prev_cnt);
-            RedisModule_ReplyWithError(ctx, errmsg);
-        }
-
-        // reply with "Queries"
-        RedisModule_ReplyWithCString(ctx, QUERIES_KEY_NAME);
-
-        // set response array for queries information
-        RedisModule_ReplyWithArray(ctx, prev_cnt + current_cnt);
+        prev_cnt = (long long)RedisModule_CallReplyLength(reply);
 
         // Iterate over the entries in the reply
-        for (size_t i = 0; i < len; i++) {
+        for (int i = 0; i < prev_cnt; i++) {
             RedisModuleCallReply *entry = RedisModule_CallReplyArrayElement(reply, i);
 
             // collect data from the entry
+            // TODO: See if we can just use RedisModule_CallReplyWithReply and return that instead of the parsing!!
+            // Just need to see how the current blends with it, and deal with the response length.
+            // One important thing: The entry-id will be returned as well - 
+                // But this is fine since we want to introduce a query-id per-query (will be saved 
+                // in the QueryInfo struct) so we will later set it. At the moment, work with the entry-id.
+                // So TODO: Add an incremental query-id to the QueryInfo struct.
             QueryInfo *qi = _collect_query_info_from_stream_entry(entry);
             _reply_finished_query(ctx, qi);
         }
@@ -976,23 +888,17 @@ static int _info_queries
 
         // close the stream key
         RedisModule_CloseKey(stream_key);
-
-        // release the GIL
-        RedisModule_ThreadSafeContextUnlock(ctx);
     }
 
-    if(prev_cnt == 0 && current_cnt != 0) {
-        // reply with "Queries"
-        RedisModule_ReplyWithCString(ctx, QUERIES_KEY_NAME);
+    // set response array for queries information
+    if(!only_global) {
+        RedisModule_ReplyWithArray(ctx, current_cnt + prev_cnt);
 
-        // set response array for queries information
-        RedisModule_ReplyWithArray(ctx, current_cnt);
-    }
-
-    // reply with the CURRENT queries
-    if(current_queries != NULL) {
-        for(int i = 0; i < current_cnt; i++) {
-            _reply_finished_query(ctx, current_queries[i]);
+        // reply with the CURRENT queries
+        if(current_queries_count > 0) {
+            for(int i = 0; i < current_cnt; i++) {
+                _reply_finished_query(ctx, current_queries[i]);
+            }
         }
     }
 
@@ -1024,7 +930,7 @@ static bool _dispatch_subcommand
     return true;
 }
 
-// TODO: Update to the new API (<key> or * specified)
+// TODO: Update to the new API (<key> or * specified) once things work well with this one.
 // GRAPH.INFO QUERIES
 // GRAPH.INFO QUERIES CURRENT
 // GRAPH.INFO QUERIES PREV num

@@ -257,8 +257,9 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		handler(context);
 	} else {
 		// run query on a dedicated thread
+		// TODO: Add condition checking if the tracking is enabled.
 		RedisModuleBlockedClient *bc = RedisGraph_BlockClient(ctx, 
-			QueryInfo_submit_qi_and_free);
+			QueryInfo_ReportAndFree);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
 								 is_replicated, compact, timeout, timeout_rw,
 								 timer, received_milliseconds,
