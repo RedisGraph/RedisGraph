@@ -22,6 +22,8 @@
 #include "util/thpool/pools.h"
 // #include "hdr/hdr_histogram.h"
 
+const char *GRAPH_INFO_STREAM_NAME = "graph_info_stream";
+
 // returns the total number of queries recorded
 uint64_t FinishedQueryCounters_GetTotalCount
 (
