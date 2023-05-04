@@ -656,3 +656,40 @@ class testForeachFlow():
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
             self.env.assertIn("n not defined", str(e))
+
+    def test15_foreach_and_index_scan(self):
+        query = """UNWIND range(1,9) AS i 
+                   CREATE (n:N {v:i})-[:R]->(m:M {v:(i+1)})"""
+        graph.query(query)
+        query = """CREATE INDEX FOR (n:N) ON (n.v)"""
+        graph.query(query)
+        query = """MATCH p=(n:N)-[:R]->(:M) WHERE n.v <= 5 
+                   FOREACH( n in nodes(p) | SET n.x = 3) RETURN count(n.v)"""
+        result = graph.query(query)
+        expected_result = [[5]]
+        self.env.assertEquals(result.result_set, expected_result)
+
+    def test16_accumulate_updates(self):
+        """Tests that updates in between cycles of body execution are treated
+        correctly"""
+
+        # clear db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create a node with property `v` initialized with value 1
+        res = graph.query("CREATE (:N {v: 1})")
+        self.env.assertEquals(res.nodes_created, 1)
+
+        query = """
+        CYPHER li=[0, 1, 2, 3]
+        MATCH (n)
+        FOREACH(x in $li |
+            SET n.v = n.v + x
+        )
+        RETURN n.v
+        """
+
+        res = graph.query(query)
+        # check that the `v` property of the node is now 1 + 0 + 1 + 2 + 3 = 7
+        self.env.assertEquals(res.result_set[0][0], 7)

@@ -197,7 +197,7 @@ static void ApplyLabels
 	// read labels count
 	//--------------------------------------------------------------------------
 
-	ushort lbl_count;
+	uint8_t lbl_count;
 	fread_assert(&lbl_count, sizeof(lbl_count), stream);
 	ASSERT(lbl_count > 0);
 
@@ -233,10 +233,8 @@ static void ApplyLabels
 	// update node labels
 	//--------------------------------------------------------------------------
 
-	uint labels_added_count;
-	uint labels_removed_count;
 	UpdateNodeLabels(gc, &n, add_labels, remove_labels, n_add_labels,
-			n_remove_labels, &labels_added_count, &labels_removed_count, false);
+			n_remove_labels, false);
 }
 
 static void ApplyAddSchema
@@ -302,17 +300,10 @@ static void ApplyUpdateEdge
 	//--------------------------------------------------------------------------
 	// effect format:
 	//    edge ID
-	//    relation ID
-	//    src ID
-	//    dest ID
-	//    attribute id
+	//    attribute ID
 	//    attribute value
 	//--------------------------------------------------------------------------
 	
-	bool res;
-	Edge e;                // edge to delete
-	Node s;                // edge src node
-	Node t;                // edge dest node
 	SIValue v;             // updated value
 	uint props_set;        // number of attributes updated
 	uint props_removed;    // number of attributes removed
@@ -322,7 +313,6 @@ static void ApplyUpdateEdge
 	NodeID     t_id = INVALID_ENTITY_ID;       // edge dest node ID
 	RelationID r_id = GRAPH_UNKNOWN_RELATION;  // edge rel-type
 
-	Graph *g = gc->g;
 	EntityID id = INVALID_ENTITY_ID;
 
 	//--------------------------------------------------------------------------
@@ -358,7 +348,6 @@ static void ApplyUpdateEdge
 	//--------------------------------------------------------------------------
 
 	fread_assert(&attr_id, sizeof(Attribute_ID), stream);
-	ASSERT(attr_id != ATTRIBUTE_ID_ALL && attr_id != ATTRIBUTE_ID_NONE);
 
 	//--------------------------------------------------------------------------
 	// read attribute value
@@ -366,34 +355,9 @@ static void ApplyUpdateEdge
 
 	v = SIValue_FromBinary(stream);
 	ASSERT(SI_TYPE(v) & (SI_VALID_PROPERTY_VALUE | T_NULL));
+	ASSERT((attr_id != ATTRIBUTE_ID_ALL || SIValue_IsNull(v)) && attr_id != ATTRIBUTE_ID_NONE);
 
-	//--------------------------------------------------------------------------
-	// fetch updated entity
-	//--------------------------------------------------------------------------
-
-	// get src node, dest node and edge from the graph
-	res = Graph_GetNode(g, s_id, &s);
-	ASSERT(res != 0);
-	res = Graph_GetNode(g, t_id, &t);
-	ASSERT(res != 0);
-	res = Graph_GetEdge(g, id, &e);
-	ASSERT(res != 0);
-
-	// set edge relation, src and destination node
-	Edge_SetSrcNode(&e, &s);
-	Edge_SetDestNode(&e, &t);
-	Edge_SetRelationID(&e, r_id);
-
-	// construct update attribute-set
-	AttributeSet set = NULL;
-	AttributeSet_AddNoClone(&set, &attr_id, &v, 1, true);
-
-	// perform update
-	UpdateEntityProperties(gc, (GraphEntity*)&e, set, GETYPE_EDGE, &props_set,
-			&props_removed, false);
-
-	// clean up
-	AttributeSet_Free(&set);
+	UpdateEdgeProperty(gc, id, r_id, s_id, t_id, attr_id, v);	
 }
 
 // process UpdateNode effect
@@ -414,7 +378,6 @@ static void ApplyUpdateNode
 	uint props_removed;    // number of attributes removed
 	Attribute_ID attr_id;  // entity ID
 
-	Graph *g = gc->g;
 	EntityID id = INVALID_ENTITY_ID;
 
 	//--------------------------------------------------------------------------
@@ -430,32 +393,14 @@ static void ApplyUpdateNode
 	fread_assert(&attr_id, sizeof(Attribute_ID), stream);
 
 	//--------------------------------------------------------------------------
-	// read attribute value
+	// read attribute ID
 	//--------------------------------------------------------------------------
 
 	v = SIValue_FromBinary(stream);
+	ASSERT(SI_TYPE(v) & (SI_VALID_PROPERTY_VALUE | T_NULL));
+	ASSERT((attr_id != ATTRIBUTE_ID_ALL || SIValue_IsNull(v)) && attr_id != ATTRIBUTE_ID_NONE);
 
-	//--------------------------------------------------------------------------
-	// fetch updated entity
-	//--------------------------------------------------------------------------
-
-	Node n;
-	int res = Graph_GetNode(g, id, &n);
-
-	// make sure entity was found
-	UNUSED(res);
-	ASSERT(res == true);
-
-	// construct update attribute-set
-	AttributeSet set = NULL;
-	AttributeSet_AddNoClone(&set, &attr_id, &v, 1, true);
-
-	// perform update
-	UpdateEntityProperties(gc, (GraphEntity*)&n, set, GETYPE_NODE, &props_set,
-			&props_removed, false);
-
-	// clean up
-	AttributeSet_Free(&set);
+	UpdateNodeProperty(gc, id, attr_id, v);
 }
 
 // process DeleteNode effect
@@ -513,16 +458,16 @@ static void ApplyDeleteEdge
 	Graph *g = gc->g;  // graph to delete edge from
 
 	// read edge ID
-	fread_assert(&id, fldsiz(UndoDeleteEdgeOp, id), stream);
+	fread_assert(&id, sizeof(EntityID), stream);
 
 	// read relation ID
-	fread_assert(&r_id, fldsiz(UndoDeleteEdgeOp, relationID), stream);
+	fread_assert(&r_id, sizeof(RelationID), stream);
 
 	// read src node ID
-	fread_assert(&s_id, fldsiz(UndoDeleteEdgeOp, srcNodeID), stream);
+	fread_assert(&s_id, sizeof(EntityID), stream);
 
 	// read dest node ID
-	fread_assert(&t_id, fldsiz(UndoDeleteEdgeOp, destNodeID), stream);
+	fread_assert(&t_id, sizeof(EntityID), stream);
 
 	// get src node, dest node and edge from the graph
 	res = Graph_GetNode(g, s_id, (Node*)&s);

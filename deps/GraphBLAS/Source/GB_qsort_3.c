@@ -43,7 +43,6 @@
 
 #include "GB_qsort_template.c"
 
-GB_PUBLIC
 void GB_qsort_3     // sort array A of size 3-by-n, using 3 keys (A [0:2][])
 (
     int64_t *restrict A_0,      // size n array

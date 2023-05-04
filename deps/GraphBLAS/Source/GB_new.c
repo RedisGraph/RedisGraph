@@ -33,7 +33,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 GrB_Info GB_new                 // create matrix, except for indices & values
 (
     GrB_Matrix *Ahandle,        // handle of matrix to create

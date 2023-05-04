@@ -78,7 +78,6 @@ GB_saxpy3task_struct ;
 // GB_AxB_saxpy3_flopcount:  compute flops for GB_AxB_saxpy3
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 GrB_Info GB_AxB_saxpy3_flopcount
 (
     int64_t *Mwork,             // amount of work to handle the mask M
@@ -117,6 +116,7 @@ GrB_Info GB_AxB_saxpy3_slice_balanced
     const GrB_Matrix A,             // input matrix A
     const GrB_Matrix B,             // input matrix B
     GrB_Desc_Value AxB_method,      // Default, Gustavson, or Hash
+    bool builtin_semiring,          // if true, semiring is builtin
     // outputs
     GB_saxpy3task_struct **SaxpyTasks_handle,
     size_t *SaxpyTasks_size_handle,

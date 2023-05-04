@@ -13,7 +13,7 @@
 #endif
 
 // #define N 65536
-   #define N 16384
+   #define N 16382
 
 int main (void)
 {

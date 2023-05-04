@@ -113,7 +113,6 @@ static void GB_pslice_worker
 // GB_pslice: partition Ap for a set of tasks
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 void GB_pslice                      // slice Ap
 (
     int64_t *restrict Slice,     // size ntasks+1

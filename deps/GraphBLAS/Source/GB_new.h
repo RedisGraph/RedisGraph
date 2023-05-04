@@ -18,7 +18,6 @@ typedef enum                    // input parameter to GB_new and GB_new_bix
 }
 GB_Ap_code ;
 
-GB_PUBLIC
 GrB_Info GB_Matrix_new          // create a new matrix with no entries
 (
     GrB_Matrix *A,              // handle of matrix to create
@@ -28,7 +27,6 @@ GrB_Info GB_Matrix_new          // create a new matrix with no entries
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 GrB_Info GB_new                 // create matrix, except for indices & values
 (
     GrB_Matrix *Ahandle,        // handle of matrix to create
@@ -64,7 +62,6 @@ GrB_Info GB_new_bix             // create a new matrix, incl. A->b, A->i, A->x
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 GrB_Info GB_bix_alloc       // allocate A->b, A->i, and A->x space in a matrix
 (
     GrB_Matrix A,           // matrix to allocate space for
@@ -77,7 +74,6 @@ GrB_Info GB_bix_alloc       // allocate A->b, A->i, and A->x space in a matrix
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 GrB_Info GB_ix_realloc      // reallocate space in a matrix
 (
     GrB_Matrix A,               // matrix to allocate space for
@@ -85,19 +81,16 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 void GB_bix_free                // free A->b, A->i, and A->x of a matrix
 (
     GrB_Matrix A                // matrix with content to free
 ) ;
 
-GB_PUBLIC
 void GB_phy_free                // free A->p, A->h, and A->Y of a matrix
 (
     GrB_Matrix A                // matrix with content to free
 ) ;
 
-GB_PUBLIC
 void GB_hyper_hash_free         // free the A->Y hyper_hash of a matrix
 (
     GrB_Matrix A                // matrix with content to free

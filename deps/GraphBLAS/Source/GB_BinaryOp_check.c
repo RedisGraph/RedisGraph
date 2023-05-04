@@ -9,7 +9,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
 (
     const GrB_BinaryOp op,  // GraphBLAS operator to print and check

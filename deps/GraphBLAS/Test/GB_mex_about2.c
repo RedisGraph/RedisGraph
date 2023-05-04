@@ -114,7 +114,7 @@ void mexFunction
 
     int n = 10 ;
     OK (GrB_Matrix_new (&A, GxB_FC32, n, n)) ;
-    OK (GxB_Matrix_Option_set_(A, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
+    OK (GxB_Matrix_Option_set_INT32 (A, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
 
     OK (GrB_Matrix_new (&C, GxB_FC32, n, n)) ;
     OK (GrB_Scalar_new (&scalar, GxB_FC32)) ;
@@ -148,8 +148,11 @@ void mexFunction
 
     double bswitch = 1 ;
     OK (GrB_Matrix_new (&A, GrB_INT32, n, n)) ;
-    OK (GxB_Matrix_Option_set_(A, GxB_BITMAP_SWITCH, 0.125)) ;
+    OK (GxB_Matrix_Option_set_FP64 (A, GxB_BITMAP_SWITCH, 0.125)) ;
     OK (GxB_Matrix_Option_get_(A, GxB_BITMAP_SWITCH, &bswitch)) ;
+    CHECK (fabs (bswitch - 0.125) < 1e-5) ;
+    bswitch = 1 ;
+    OK (GxB_Matrix_Option_get_FP64 (A, GxB_BITMAP_SWITCH, &bswitch)) ;
     CHECK (fabs (bswitch - 0.125) < 1e-5) ;
 
     OK (GxB_Matrix_Option_set_(A, GxB_SPARSITY_CONTROL, GxB_SPARSE)) ;
@@ -296,10 +299,18 @@ void mexFunction
 
     OK (GxB_Desc_get (NULL, GxB_AxB_METHOD, &method)) ;
     CHECK (method == GxB_DEFAULT) ;
+    method = -1 ;
+    OK (GxB_Desc_get_INT32 (NULL, GxB_AxB_METHOD, &method)) ;
+    CHECK (method == GxB_DEFAULT) ;
     OK (GxB_Desc_set (desc, GxB_AxB_METHOD, GxB_AxB_GUSTAVSON)) ;
     OK (GxB_Descriptor_fprint (desc, "descriptor", GxB_COMPLETE, NULL)) ;
     OK (GxB_Desc_get (desc, GxB_AxB_METHOD, &method)) ;
     CHECK (method == GxB_AxB_GUSTAVSON) ;
+
+    OK (GxB_Desc_set_INT32 (desc, GxB_AxB_METHOD, GxB_AxB_SAXPY)) ;
+    OK (GxB_Descriptor_fprint (desc, "descriptor", GxB_COMPLETE, NULL)) ;
+    OK (GxB_Desc_get_INT32 (desc, GxB_AxB_METHOD, &method)) ;
+    CHECK (method == GxB_AxB_SAXPY) ;
 
     desc->mask = GrB_REPLACE ;
     expected = GrB_INVALID_OBJECT ;
@@ -331,6 +342,10 @@ void mexFunction
     OK (GrB_Vector_new (&victor, GrB_INT32, n)) ;
     OK (GxB_Vector_Option_get_(victor, GxB_BITMAP_SWITCH, &bswitch)) ;
     printf ("vector bitmap switch: %g\n\n", bswitch) ;
+
+    double b2 = 0 ;
+    OK (GxB_Vector_Option_get_FP64 (victor, GxB_BITMAP_SWITCH, &b2)) ;
+    CHECK (bswitch == b2) ;
 
     expected = GrB_NOT_IMPLEMENTED ;
     ERR (GrB_Matrix_reduce_BinaryOp (victor, NULL, NULL, GxB_FIRSTI_INT32,
@@ -431,6 +446,12 @@ void mexFunction
     double bitmap_switch = 8 ;
     OK (GxB_Vector_Option_get (victor, GxB_BITMAP_SWITCH, &bitmap_switch)) ;
     CHECK (bitmap_switch == 4.5) ;
+
+    OK (GxB_Vector_Option_set_FP64 (victor, GxB_BITMAP_SWITCH, (double) 5.25)) ;
+    bitmap_switch = 8 ;
+    OK (GxB_Vector_Option_get_FP64 (victor, GxB_BITMAP_SWITCH, &bitmap_switch)) ;
+    CHECK (bitmap_switch == 5.25) ;
+
     GrB_Vector_free (&victor) ;
 
     //--------------------------------------------------------------------------

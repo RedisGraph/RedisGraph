@@ -11,7 +11,6 @@
 
 #define GB_FREE_ALL ;
 
-GB_PUBLIC
 GrB_Info GB_block   // apply all pending computations if blocking mode enabled
 (
     GrB_Matrix A,
