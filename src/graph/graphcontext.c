@@ -103,8 +103,6 @@ GraphContext *GraphContext_New
 	gc->slowlog               = SlowLog_New();
 	gc->ref_count             = 0;  // no refences
 	gc->attributes            = raxNew();
-	gc->node_attributes_count = 0;
-	gc->edge_attributes_count = 0;
 	gc->index_count           = 0;  // no indicies
 	gc->string_mapping        = array_new(char *, 64);
 	gc->encoding_context      = GraphEncodeContext_New();
@@ -241,16 +239,6 @@ XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
 	return gc->version;
 }
 
-uint64_t GraphContext_AllNodePropertyNamesCount(const GraphContext *gc) {
-	ASSERT(gc);
-	return gc->node_attributes_count;
-}
-
-uint64_t GraphContext_AllEdgePropertyNamesCount(const GraphContext *gc) {
-	ASSERT(gc);
-	return gc->edge_attributes_count;
-}
-
 // get graph from graph context
 Graph *GraphContext_GetGraph
 (
@@ -259,6 +247,16 @@ Graph *GraphContext_GetGraph
 	ASSERT(gc != NULL);
 	
 	return gc->g;
+}
+
+// get graph info
+Info *GraphContext_GetInfo
+(
+	const GraphContext *gc
+) {
+	ASSERT(gc != NULL);
+
+	return gc->info;
 }
 
 // Update graph context version
@@ -279,38 +277,6 @@ static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str) {
 	XXH32_update(state, str, strlen(str));
 	gc->version = XXH32_digest(state);
 	XXH32_freeState(state);
-}
-
-void GraphContext_IncreasePropertyNamesCount
-(
-	GraphContext *gc,
-	const uint64_t count,
-	const GraphEntityType entity_type
-) {
-	ASSERT(gc);
-	ASSERT(entity_type != GETYPE_UNKNOWN);
-
-	if (entity_type == GETYPE_EDGE) {
-		gc->edge_attributes_count += count;
-	} else if (entity_type == GETYPE_NODE) {
-		gc->node_attributes_count += count;
-	}
-}
-
-void GraphContext_DecreasePropertyNamesCount
-(
-	GraphContext *gc,
-	const uint64_t count,
-	const GraphEntityType entity_type
-) {
-	ASSERT(gc);
-	ASSERT(entity_type != GETYPE_UNKNOWN);
-
-	if (entity_type == GETYPE_EDGE) {
-		gc->edge_attributes_count -= count;
-	} else if (entity_type == GETYPE_NODE) {
-		gc->node_attributes_count -= count;
-	}
 }
 
 //------------------------------------------------------------------------------

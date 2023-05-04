@@ -30,8 +30,6 @@ typedef struct {
 	Graph *g;                                          // container for all matrices and entity properties
 	int ref_count;                                     // number of active references
 	rax *attributes;                                   // from strings to attribute IDs
-	uint64_t node_attributes_count;                    // counter of attributes related to nodes
-	uint64_t edge_attributes_count;                    // counter of attributes related to edges
 	pthread_rwlock_t _attribute_rwlock;                // read-write lock to protect access to the attribute maps
 	char *graph_name;                                  // string associated with graph
 	char **string_mapping;                             // from attribute IDs to strings
@@ -104,30 +102,14 @@ XXH32_hash_t GraphContext_GetVersion
 	const GraphContext *gc
 );
 
-uint64_t GraphContext_AllNodePropertyNamesCount
-(
-	const GraphContext *gc
-);
-uint64_t GraphContext_AllEdgePropertyNamesCount
-(
-	const GraphContext *gc
-);
-
-void GraphContext_IncreasePropertyNamesCount
-(
-	GraphContext *gc,
-	const uint64_t count,
-	const GraphEntityType entity_type
-);
-
-void GraphContext_DecreasePropertyNamesCount
-(
-	GraphContext *gc,
-	const uint64_t count,
-	const GraphEntityType entity_type
-);
 // get graph from graph context
 Graph *GraphContext_GetGraph
+(
+	const GraphContext *gc
+);
+
+// get graph info
+Info *GraphContext_GetInfo
 (
 	const GraphContext *gc
 );
