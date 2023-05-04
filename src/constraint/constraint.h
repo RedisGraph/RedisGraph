@@ -16,11 +16,22 @@
 typedef struct _Constraint *Constraint;
 
 // constraint enforcement callback function
-typedef bool (*EnforcementCB)
+typedef bool (*Constraint_EnforcementCB)
 (
 	const Constraint c,
 	const GraphEntity *e,
 	char **err_msg
+);
+
+typedef void (*Constraint_SetPrivateDataCB)
+(
+	Constraint c,  // constraint to update
+	void *pdata    // private data
+);
+
+typedef void* (*Constraint_GetPrivateDataCB)
+(
+	Constraint c  // constraint to get private data from
 );
 
 // different states a constraint can be at
@@ -53,6 +64,18 @@ Constraint Constraint_New
 	uint8_t n_fields,         // number of fields
 	GraphEntityType et,       // entity type
 	const char **err_msg      // error message
+);
+
+// enable constraint
+void Constraint_Enable
+(
+	Constraint c  // constraint to enable
+);
+
+// disable constraint
+void Constraint_Disable
+(
+	Constraint c  // constraint to disable
 );
 
 // returns constraint type
@@ -89,6 +112,19 @@ void Constraint_SetStatus
 	ConstraintStatus status  // new status
 );
 
+// sets constraint private data
+void Constraint_SetPrivateData
+(
+	Constraint c,  // constraint to update
+	void *pdata    // private data
+);
+
+// get constraint private data
+void *Constraint_GetPrivateData
+(
+	Constraint c  // constraint from which to get private data
+);
+
 // returns a shallow copy of constraint attributes
 uint8_t Constraint_GetAttributes
 (
@@ -120,6 +156,14 @@ void Constraint_IncPendingChanges
 void Constraint_DecPendingChanges
 (
 	Constraint c  // constraint to update
+);
+
+// replicate constraint to both persistency and replicas
+void Constraint_Replicate
+(
+	RedisModuleCtx *ctx,           // redis module context
+	const Constraint c,            // constraint to replicate
+	const struct GraphContext *gc  // graph context
 );
 
 // tries to enforce constraint on all relevant entities

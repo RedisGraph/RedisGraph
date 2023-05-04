@@ -51,7 +51,6 @@
 #include "GB_export.h"
 #define GB_FREE_ALL ;
 
-GB_PUBLIC
 GrB_Info GxB_unpack_HyperHash       // move A->Y into Y
 (
     GrB_Matrix A,                   // matrix to modify

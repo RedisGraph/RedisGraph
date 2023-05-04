@@ -31,7 +31,6 @@
     GB_phybix_free (C) ;                        \
 }
 
-GB_PUBLIC
 GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
 (
     GrB_Matrix C,                   // output matrix, static header

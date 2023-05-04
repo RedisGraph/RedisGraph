@@ -9,7 +9,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 GrB_Info GB_IndexUnaryOp_check  // check a GraphBLAS index_unary operator
 (
     const GrB_IndexUnaryOp op,  // GraphBLAS operator to print and check

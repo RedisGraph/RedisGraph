@@ -13,7 +13,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 GrB_Info GB_ix_realloc      // reallocate space in a matrix
 (
     GrB_Matrix A,               // matrix to allocate space for

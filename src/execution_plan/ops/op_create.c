@@ -56,11 +56,11 @@ static void _CreateNodes(OpCreate *op, Record r, GraphContext *gc) {
 		Node newNode = GE_NEW_NODE();
 
 		// add new node to Record and save a reference to it
-		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
+		Node *node_ref = Record_AddNode(r, n->node_idx, newNode);
 
 		// convert query-level properties
 		AttributeSet converted_attr = NULL;
-		PropertyMap *map = op->pending.nodes_to_create[i].properties;
+		PropertyMap *map = n->properties;
 		if(map != NULL) {
 			ConvertPropertyMap(gc, &converted_attr, r, map, false);
 		}
@@ -76,8 +76,13 @@ static void _CreateNodes(OpCreate *op, Record r, GraphContext *gc) {
 	}
 }
 
-// Prepare to create all edges for the current Record.
-static void _CreateEdges(OpCreate *op, Record r, GraphContext *gc) {
+// prepare to create all edges for the current Record
+static void _CreateEdges
+(
+	OpCreate *op,
+	Record r,
+	GraphContext *gc
+) {
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);
 	for(uint i = 0; i < edges_to_create_count; i++) {
 		// get specified edge to create
@@ -86,9 +91,11 @@ static void _CreateEdges(OpCreate *op, Record r, GraphContext *gc) {
 		// retrieve source and dest nodes
 		Node *src_node = Record_GetNode(r, e->src_idx);
 		Node *dest_node = Record_GetNode(r, e->dest_idx);
-		// verify that the endpoints of the new edge resolved properly; fail otherwise
+		// verify that the endpoints of the new edge resolved properly
+		// fail otherwise
 		if(!src_node || !dest_node) {
-			ErrorCtx_RaiseRuntimeException("Failed to create relationship; endpoint was not found.");
+			ErrorCtx_RaiseRuntimeException(
+					"Failed to create relationship; endpoint was not found.");
 		}
 
 		// create the actual edge
@@ -115,9 +122,7 @@ static void _CreateEdges(OpCreate *op, Record r, GraphContext *gc) {
 
 // Return mode, emit a populated Record.
 static Record _handoff(OpCreate *op) {
-	Record r = NULL;
-	if(array_len(op->records)) r = array_pop(op->records);
-	return r;
+	return array_pop(op->records);
 }
 
 static Record CreateConsume(OpBase *opBase) {
@@ -129,6 +134,9 @@ static Record CreateConsume(OpBase *opBase) {
 
 	// Consume mode.
 	op->records = array_new(Record, 32);
+	// initialize the records array with NULL, which will terminate execution
+	// upon depletion
+	array_append(op->records, NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	OpBase *child = NULL;
@@ -185,7 +193,7 @@ static void CreateFree(OpBase *ctx) {
 
 	if(op->records) {
 		uint rec_count = array_len(op->records);
-		for(uint i = 0; i < rec_count; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 1; i < rec_count; i++) OpBase_DeleteRecord(op->records[i]);
 		array_free(op->records);
 		op->records = NULL;
 	}

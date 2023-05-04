@@ -18,7 +18,6 @@
 
 typedef void (*GB_cast_function) (void *, const void *, size_t) ;
 
-GB_PUBLIC
 GB_cast_function GB_cast_factory   // returns pointer to function to cast x to z
 (
     const GB_Type_code code1,      // the type of z, the output value

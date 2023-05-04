@@ -10,7 +10,6 @@
 #ifndef GB_SLICE_H
 #define GB_SLICE_H
 
-GB_PUBLIC
 void GB_pslice                      // slice Ap
 (
     int64_t *restrict Slice,     // size ntasks+1

@@ -14,7 +14,7 @@
 // 10 binary functions, z=f(x,y), where CxC -> C
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
+extern
 GrB_BinaryOp Complex_first , Complex_second , Complex_min ,
              Complex_max   , Complex_plus   , Complex_minus ,
              Complex_times , Complex_div    , Complex_rdiv  ,
@@ -24,7 +24,7 @@ GrB_BinaryOp Complex_first , Complex_second , Complex_min ,
 // 6 binary comparators, z=f(x,y), where CxC -> C
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
+extern
 GrB_BinaryOp Complex_iseq , Complex_isne ,
              Complex_isgt , Complex_islt ,
              Complex_isge , Complex_isle ;
@@ -33,14 +33,14 @@ GrB_BinaryOp Complex_iseq , Complex_isne ,
 // 3 binary boolean functions, z=f(x,y), where CxC -> C
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
+extern
 GrB_BinaryOp Complex_or , Complex_and , Complex_xor ;
 
 //------------------------------------------------------------------------------
 // 6 binary comparators, z=f(x,y), where CxC -> bool
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
+extern
 GrB_BinaryOp Complex_eq , Complex_ne ,
              Complex_gt , Complex_lt ,
              Complex_ge , Complex_le ;
@@ -49,13 +49,13 @@ GrB_BinaryOp Complex_eq , Complex_ne ,
 // 1 binary function, z=f(x,y), where double x double -> C
 //------------------------------------------------------------------------------
 
-GB_PUBLIC GrB_BinaryOp Complex_complex ;
+extern GrB_BinaryOp Complex_complex ;
 
 //------------------------------------------------------------------------------
 // 5 unary functions, z=f(x) where C -> C
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
+extern
 GrB_UnaryOp  Complex_identity , Complex_ainv , Complex_minv ,
              Complex_not ,      Complex_conj,
              Complex_one ,      Complex_abs  ;
@@ -64,7 +64,7 @@ GrB_UnaryOp  Complex_identity , Complex_ainv , Complex_minv ,
 // 4 unary functions, z=f(x) where C -> double
 //------------------------------------------------------------------------------
 
-GB_PUBLIC 
+extern
 GrB_UnaryOp Complex_real, Complex_imag,
             Complex_cabs, Complex_angle ;
 
@@ -72,17 +72,18 @@ GrB_UnaryOp Complex_real, Complex_imag,
 // 2 unary functions, z=f(x) where double -> C
 //------------------------------------------------------------------------------
 
-GB_PUBLIC GrB_UnaryOp Complex_complex_real, Complex_complex_imag ;
+extern GrB_UnaryOp Complex_complex_real, Complex_complex_imag ;
 
 //------------------------------------------------------------------------------
 // Complex type, scalars, monoids, and semiring
 //------------------------------------------------------------------------------
 
-GB_PUBLIC GrB_Type Complex ;
-GB_PUBLIC GrB_Monoid   Complex_plus_monoid, Complex_times_monoid ;
-GB_PUBLIC GrB_Semiring Complex_plus_times ;
-GB_PUBLIC GrB_Info Complex_init (bool builtin_complex) ;
-GB_PUBLIC GrB_Info Complex_finalize ( ) ;
+extern GrB_Type Complex ;
+extern GrB_Monoid   Complex_plus_monoid, Complex_times_monoid ;
+extern GrB_Semiring Complex_plus_times ;
+
+GrB_Info Complex_init (bool builtin_complex) ;
+GrB_Info Complex_finalize ( ) ;
 
 //------------------------------------------------------------------------------
 // C++ compatibility

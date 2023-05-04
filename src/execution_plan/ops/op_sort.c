@@ -93,6 +93,7 @@ OpBase *NewSortOp
 	op->exps       = exps;
 	op->heap       = NULL;
 	op->skip       = 0;
+	op->first      = true;
 	op->limit      = UNLIMITED;
 	op->buffer     = NULL;
 	op->record_idx = 0;
@@ -135,9 +136,14 @@ static OpResult SortInit(OpBase *opBase) {
 
 static Record SortConsume(OpBase *opBase) {
 	OpSort *op = (OpSort *)opBase;
-	Record r = _handoff(op);
-	if(r) return r;
 
+	if(!op->first) {
+		return _handoff(op);
+	}
+	// make sure consume will not be called on children again, as their depleted
+	op->first = false;
+
+	Record r;
 	// if we're here, we don't have any records to return
 	// try to get records
 	OpBase *child = op->op.children[0];
