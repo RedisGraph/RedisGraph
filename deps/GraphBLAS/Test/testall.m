@@ -75,6 +75,7 @@ GB_mex_hack (hack) ;
 % tests with high rates (over 100/sec)
 %----------------------------------------
 
+logstat ('test247',t) ; % GrB_mxm: fine Hash method
 logstat ('test246',t) ; % GrB_mxm parallelism (changes slice_balanced)
 logstat ('test01' ,t) ; % error handling
 logstat ('test245',t) ; % test complex row/col scale

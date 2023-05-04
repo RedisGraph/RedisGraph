@@ -13,7 +13,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 void GB_hyper_hash_free         // free the A->Y hyper_hash of a matrix
 (
     GrB_Matrix A                // matrix with content to free

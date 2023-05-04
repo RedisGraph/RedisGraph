@@ -51,10 +51,11 @@ GrB_Info GB_deserialize             // deserialize a matrix from a blob
         return (GrB_INVALID_OBJECT)  ;
     }
 
-    GB_BLOB_READ (blob_size2, size_t) ;
+    GB_BLOB_READ (blob_size2, uint64_t) ;
     GB_BLOB_READ (typecode, int32_t) ;
+    uint64_t blob_size1 = (uint64_t) blob_size ;
 
-    if (blob_size != blob_size2
+    if (blob_size1 != blob_size2
         || typecode < GB_BOOL_code || typecode > GB_UDT_code
         || (typecode == GB_UDT_code &&
             blob_size < GB_BLOB_HEADER_SIZE + GxB_MAX_NAME_LEN))

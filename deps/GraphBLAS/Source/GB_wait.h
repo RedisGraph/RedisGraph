@@ -10,14 +10,12 @@
 #ifndef GB_WAIT_H
 #define GB_WAIT_H
 
-GB_PUBLIC
 GrB_Info GB_block   // apply all pending computations if blocking mode enabled
 (
     GrB_Matrix A,
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 GrB_Info GB_wait                // finish all pending computations
 (
     GrB_Matrix A,               // matrix with pending computations

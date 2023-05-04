@@ -23,7 +23,6 @@
 // TODO: also pass in the user's C and the accum operator, and done_in_place,
 // like GB_AxB_dot4.
 
-GB_PUBLIC                           // for testing only
 GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap
 (
     GrB_Matrix C,                   // output matrix, static header

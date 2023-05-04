@@ -20,7 +20,6 @@ typedef struct {
 	int **node_labels;
 	Node **created_nodes;
 	Edge **created_edges;
-	ResultSetStatistics *stats;
 } PendingCreations;
 
 // initialize all variables for storing pending creations

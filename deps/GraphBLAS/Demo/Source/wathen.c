@@ -11,8 +11,6 @@
 // wathen.m.
 
 #include "GraphBLAS.h"
-#undef GB_PUBLIC
-#define GB_LIBRARY
 #include "graphblas_demos.h"
 
 //------------------------------------------------------------------------------
@@ -29,7 +27,6 @@ void rho_scale (double *f, const double *e)
 // Wathen function
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 GrB_Info wathen             // construct a random Wathen matrix
 (
     GrB_Matrix *A_output,   // output matrix

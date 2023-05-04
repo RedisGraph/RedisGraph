@@ -23,5 +23,5 @@ clientconfig:
     - random-int-max: 262016
     - random-seed: 12345
     - queries:
-      - { q: "MATCH (n)-[:IS_CONNECTED*2]->(z) WHERE ID(n) = __rand_int__ RETURN ID(n), count(z)", ratio: 0.75 }
+      - { q: "CYPHER Id1=__rand_int__ MATCH (n)-[:IS_CONNECTED*2]->(z) WHERE ID(n) = $Id1 RETURN ID(n), count(z)", ratio: 0.75 }
       - { q: "CYPHER Id1=__rand_int__ Id2=__rand_int__ MATCH (n1:Node {external_id: $Id1}) MATCH (n2:Node {external_id: $Id2}) MERGE (n1)-[rel:IS_CONNECTED]->(n2)", ratio: 0.25 }

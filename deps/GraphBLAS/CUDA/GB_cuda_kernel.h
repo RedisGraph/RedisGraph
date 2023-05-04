@@ -124,7 +124,7 @@
         GB_ADD (c, c, x_op_y) ;             /* c += x_op_y  */          \
     }
 
-    #define GB_DOT_TERMINAL( c ) GB_IF_TERMINAL_BREAK (c)
+    #define GB_DOT_TERMINAL( c ) GB_IF_TERMINAL_BREAK ( c, z )
 
     #if GB_IS_PLUS_PAIR_REAL_SEMIRING
 
@@ -184,8 +184,6 @@
 #define GB_XSTR(x) GB_STR(x)
 #define GB_STR(x) #x
 
-#undef  GB_PUBLIC
-#define GB_PUBLIC extern
 #undef  GxB_MAX_NAME_LEN
 #define GxB_MAX_NAME_LEN 128
 

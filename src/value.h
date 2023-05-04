@@ -207,20 +207,6 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state);
 /* Returns a hash code for a given SIValue. */
 XXH64_hash_t SIValue_HashCode(SIValue v);
 
-// returns the number of bytes required to represent `v` in a binary
-//  format
-size_t SIValue_BinarySize
-(
-	const SIValue *v
-);
-
-// writes a binary representation of `v` into `stream`
-void SIValue_ToBinary
-(
-	FILE *stream,
-	const SIValue *v
-);
-
 // reads SIValue off of binary stream
 SIValue SIValue_FromBinary
 (

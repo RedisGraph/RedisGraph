@@ -196,6 +196,7 @@ GrB_Info GB_AxB_saxpy3_slice_balanced
     const GrB_Matrix A,             // input matrix A
     const GrB_Matrix B,             // input matrix B
     GrB_Desc_Value AxB_method,      // Default, Gustavson, or Hash
+    bool builtin_semiring,          // if true, semiring is builtin
     // outputs
     GB_saxpy3task_struct **SaxpyTasks_handle,
     size_t *SaxpyTasks_size_handle,
@@ -240,7 +241,12 @@ GrB_Info GB_AxB_saxpy3_slice_balanced
     //--------------------------------------------------------------------------
 
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
-    chunk = chunk * 8 ;
+    bool bitmap_or_full = (GB_IS_FULL (A) || GB_IS_BITMAP (A)
+                        || GB_IS_FULL (B) || GB_IS_BITMAP (B)) ;
+    if (builtin_semiring && bitmap_or_full)
+    { 
+        chunk = chunk * 8 ;
+    }
 
     //--------------------------------------------------------------------------
     // define result and workspace
@@ -449,7 +455,17 @@ GrB_Info GB_AxB_saxpy3_slice_balanced
     double target_fine_size = target_task_size / GB_FINE_WORK ;
     target_fine_size = GB_IMAX (target_fine_size, chunk) ;
     double very_costly = GB_Global_hack_get (0) ;       // modified for testing
-    if (very_costly <= GxB_DEFAULT) very_costly = 8 ;   // default is 8
+    if (very_costly <= GxB_DEFAULT)
+    {
+        if (bitmap_or_full)
+        { 
+            very_costly = 8 ;   // default is 8 if A and/or B are full/bitmap
+        }
+        else
+        { 
+            very_costly = 2 ;   // default is 2 otherwise
+        }
+    }
 
     //--------------------------------------------------------------------------
     // determine # of parallel tasks

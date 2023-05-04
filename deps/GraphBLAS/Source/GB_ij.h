@@ -12,7 +12,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 void GB_ijlength            // get the length and kind of an index list I
 (
     const GrB_Index *I,     // list of indices (actual or implicit)
