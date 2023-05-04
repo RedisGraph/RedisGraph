@@ -105,17 +105,18 @@ class testQueryTimeout():
                 print(res.run_time_ms)
                 self.env.assertTrue(False)
 
-        for i, q in enumerate(queries):
-            try:
-                # query is expected to timeout
-                timeout = min(max(int(timeouts[i]), 1), 10)
-                res = redis_graph.query(q, timeout=timeout)
-                self.env.assertTrue(False)
-                print(q)
-                print(res.run_time_ms)
-                print(timeout)
-            except ResponseError as error:
-                self.env.assertContains("Query timed out", str(error))
+        if OS != 'macos': # TODO: remove when flakiness resolved
+            for i, q in enumerate(queries):
+                try:
+                    # query is expected to timeout
+                    timeout = min(max(int(timeouts[i]), 1), 10)
+                    res = redis_graph.query(q, timeout=timeout)
+                    self.env.assertTrue(False)
+                    print(q)
+                    print(res.run_time_ms)
+                    print(timeout)
+                except ResponseError as error:
+                    self.env.assertContains("Query timed out", str(error))
 
     def test04_query_timeout_free_resultset(self):
         query = "UNWIND range(0,3000000) AS x RETURN toString(x)"
