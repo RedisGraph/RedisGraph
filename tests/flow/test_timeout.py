@@ -13,7 +13,7 @@ class testQueryTimeout():
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1000")
 
         # TODO: remove when flakiness resolved
-        if os == 'macos':
+        if OS == 'macos':
             self.env.skip()
 
         # skip test if we're running under Valgrind

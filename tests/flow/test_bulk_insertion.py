@@ -22,7 +22,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         self.env = Env(decodeResponses=True)
 
         # TODO: remove when flakiness resolved
-        if os == 'macos':
+        if OS == 'macos':
             self.env.skip()
 
         # skip test if we're running under Valgrind
