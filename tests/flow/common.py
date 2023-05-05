@@ -34,20 +34,13 @@ def skip(always=False, on_cluster=False, on_macos=False):
     def decorate(f):
         @wraps(f)
         def wrapper(x, *args, **kwargs):
-            if isinstance(x, Env):
-                env = x
-                x = None
-            else:
-                env = x.env
+            env = x if isinstance(x, Env) else x.env
             if always:
                 env.skip()
             if on_cluster and env.isCluster():
                 env.skip()
             if on_macos and OS == 'macos':
                 env.skip()
-            if x is None:
-                return f(env, *args, **kwargs)
-            else:
-                return f(x, *args, **kwargs)
+            return f(x, *args, **kwargs)
         return wrapper
     return decorate
