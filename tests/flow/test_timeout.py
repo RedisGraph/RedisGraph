@@ -7,9 +7,14 @@ redis_graph = None
 
 GRAPH_ID = "timeout"
 
+
 class testQueryTimeout():
     def __init__(self):
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1000")
+
+        # TODO: remove when flakiness resolved
+        if os == 'macos':
+            self.env.skip()
 
         # skip test if we're running under Valgrind
         if VALGRIND or SANITIZER != "":
@@ -21,9 +26,6 @@ class testQueryTimeout():
         redis_graph = Graph(redis_con, GRAPH_ID)
 
     def test01_read_write_query_timeout(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         query = "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x"
         try:
             # The query is expected to timeout
@@ -47,9 +49,6 @@ class testQueryTimeout():
             self.env.assertTrue(False)
 
     def test02_configured_timeout(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         # Verify that the module-level timeout is set to the default of 0
         response = redis_con.execute_command("GRAPH.CONFIG GET timeout")
         self.env.assertEquals(response[1], 1000)
@@ -67,9 +66,6 @@ class testQueryTimeout():
             self.env.assertContains("Query timed out", str(error))
 
     def test03_timeout_index_scan(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         # set timeout to unlimited
         redis_con.execute_command("GRAPH.CONFIG SET timeout 0")
 
@@ -127,9 +123,6 @@ class testQueryTimeout():
                 self.env.assertContains("Query timed out", str(error))
 
     def test04_query_timeout_free_resultset(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         query = "UNWIND range(0,3000000) AS x RETURN toString(x)"
 
         res = None
@@ -147,9 +140,6 @@ class testQueryTimeout():
             self.env.assertContains("Query timed out", str(error))
 
     def test05_invalid_loadtime_config(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         self.env.flush()
         self.env.stop()
 
@@ -161,9 +151,6 @@ class testQueryTimeout():
             self.env.assertTrue(True)
 
     def test06_error_timeout_default_higher_than_timeout_max(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
 
         # get current timeout configuration
@@ -206,9 +193,6 @@ class testQueryTimeout():
             self.env.assertTrue(False)
 
     def test07_read_write_query_timeout_default(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         queries = [
             "UNWIND range(0,1000000) AS x WITH x AS x WHERE x = 10000 RETURN x",
             "UNWIND range(0,1000000) AS x CREATE (:N {v: x})"
@@ -232,9 +216,6 @@ class testQueryTimeout():
         redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_DEFAULT", 10)
 
     def test08_enforce_timeout_configuration(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         read_q = "RETURN 1"
         write_q = "CREATE ()"
         queries = [read_q, write_q]
@@ -250,9 +231,6 @@ class testQueryTimeout():
                 self.env.assertContains("The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value", str(error))
 
     def test09_fallback(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         self.env.flush()
         self.env.stop()
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1")
@@ -281,9 +259,6 @@ class testQueryTimeout():
                 self.env.assertTrue(False)
 
     def test10_set_old_timeout_when_new_config_set(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         redis_con.execute_command("GRAPH.CONFIG", "SET", "TIMEOUT_DEFAULT", 10)
 
         # try to set timeout
@@ -296,9 +271,6 @@ class testQueryTimeout():
     # When timeout occurs while executing a PROFILE command, only the error-message
     # should return to user
     def test11_profile_no_double_response(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         # reset timeout params to default
         self.env.flush()
         self.env.stop()
@@ -320,9 +292,6 @@ class testQueryTimeout():
         self.env.assertEquals(res.result_set[0][0], 1)
 
     def test12_concurrent_timeout(self):
-        if OS == 'macos': # TODO: remove when flakiness resolved
-            self.env.skip()
-
         # skip test if we're running under Valgrind
         if VALGRIND or "to_thread" not in dir(asyncio):
             self.env.skip() # valgrind is not working correctly with multi processing
