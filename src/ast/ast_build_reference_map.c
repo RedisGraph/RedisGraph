@@ -486,6 +486,9 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 	} else if(type == CYPHER_AST_FOREACH) {
 		// add referenced aliases for a FOREACH clause
 		_AST_MapForeachClauseReferences(ast, clause);
+	} else if(type == CYPHER_AST_CALL_SUBQUERY) {
+		// add referenced aliases for a CALL {} clause
+		_AST_MapCallSubqueryReferences(ast, clause);
 	}
 }
 
