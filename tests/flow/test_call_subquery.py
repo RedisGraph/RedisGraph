@@ -867,3 +867,24 @@ updating clause.")
         # assert results
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(res.result_set[0][0], '11')
+
+    def test23_multiple_segments(self):
+        """Tests that multiple segments within a subquery are handled properly"""
+
+        # for the following query, we expect the deepest projection (implicit,
+        # i.e., manually added to 'clean' the environment) to be bound to the
+        # embedded plan
+        query = """
+        CALL {
+            UNWIND ['s', 't'] AS l1
+            OPTIONAL MATCH (n:S)
+            WITH n
+            RETURN n
+        }
+        RETURN n"""
+
+        # assert results
+        res = graph.query(query)
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0], None)
+        self.env.assertEquals(res.result_set[1][0], None)
