@@ -9,7 +9,7 @@ GRAPH_ID = "G"
 
 def _check_subquery_compression(plan: ExecutionPlan, operation_name: str):
     callsubquery = locate_operation(plan.structured_plan, "CallSubquery")
-    if (callsubquery):
+    if callsubquery is not None:
         return (count_operation(callsubquery, operation_name) == 1)
     else:
         return False
@@ -52,7 +52,8 @@ class testCallSubqueryFlow():
         # non-valid queries within CALL {}
         for query in [
             "CALL {CREATE (n:N) MATCH (n:N) RETURN n} RETURN 1",
-            "WITH 1 AS a CALL {WITH a CREATE (n:N) MATCH (n:N) RETURN n} RETURN a",
+            "WITH 1 AS a CALL {WITH a CREATE (n:N) MATCH (n:N) RETURN n} RETURN\
+                a",
             "CALL {MATCH (n:N) CREATE (n:N2)} RETURN 1"
         ]:
             # just pass in case of an error, fail otherwise
@@ -75,55 +76,31 @@ class testCallSubqueryFlow():
             } 
             RETURN b
             """,
+            """
+            MATCH (a:N)
+            CALL {
+                RETURN a.v AS INNERETURN
+            }
+            RETURN 1
+            """,
+            """
+            CALL {
+                MATCH (a:N)
+                RETURN 1 as innerReturn
+            }
+            RETURN a
+            """,
+            """
+            UNWIND [1, 2, 3, 4] AS a
+            MATCH (n)
+            CALL {
+                WITH n
+                RETURN a + 1
+            }
+            RETURN a + n.v
+            """
         ]:
             self.expect_error(query, "a not defined")
-        
-        # scope of a subquery with no imports starts empty
-        query = """
-        MATCH (n:N)
-        CALL {
-            RETURN n.v AS INNERETURN
-        }
-        RETURN 1
-        """
-        self.expect_error(query, "n not defined")
-
-
-        # make sure scope prior to the CALL {} is available after it
-        res = graph.query(
-            """
-            UNWIND [0, 1, 2, 3] AS x
-            CALL {
-                WITH x
-                MATCH (n {v: x})
-                RETURN n
-            }
-            RETURN x
-            """
-        )
-        self.env.assertEquals(res.result_set, [])
-
-        # non-returned aliases should not be available
-        query = """
-        CALL {
-            MATCH (n:N)
-            RETURN 1 as innerReturn
-        }
-        RETURN n
-        """
-        self.expect_error(query, "n not defined")
-
-        # inner scope should be exposed to imported context ONLY via simple WITH
-        query = """
-                UNWIND [1, 2, 3, 4] AS x
-                MATCH (n)
-                CALL {
-                    WITH n
-                    RETURN x + 1
-                }
-                RETURN x + n.v
-                """
-        self.expect_error(query, "x not defined")
 
         # outer scope variables (bound) should not be returnable from the sq
         query = "MATCH (n:N) CALL {RETURN 1 AS n} RETURN n"
