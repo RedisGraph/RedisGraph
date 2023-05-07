@@ -28,7 +28,6 @@ typedef struct {
 	uint record_cap;            // Max number of records to process.
 	Record *records;            // Array of records.
 	Record r;                   // Currently selected record.
-	bool depleted;              // depleted
 } OpCondTraverse;
 
 /* Creates a new Traverse operation */
