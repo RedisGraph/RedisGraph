@@ -858,3 +858,85 @@ updating clause.")
     #     Node(label='N', properties={'name': 'Raz', 'v': 1}))
     #     self.env.assertEquals(res.result_set[1][0],
     #     Node(label='N', properties={'name': 'Raz', 'v': 4}))
+
+    def test22_indexes(self):
+        """Test that operations on indexes are properly executed (and reseted)
+        in subqueries"""
+
+        # clear the db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # polulate the graph
+        query = """UNWIND range(10,20) AS i
+            CREATE (n:N {v:tostring(i)})-[:R]->(m:M {v:tostring(i+1)})"""
+        graph.query(query)
+        query = """CREATE INDEX ON :N(v)"""
+        graph.query(query)
+
+        # ----------------------------------------------------------------------
+        # search subquery, utilizing the index
+        # ----------------------------------------------------------------------
+        query = """
+        CALL {
+            MATCH (n:N {v:'10'})-[:R]->(m:M)
+            RETURN m.v AS v
+        }
+        RETURN v
+        """
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], '11')
+
+        # ----------------------------------------------------------------------
+        # search and update subquery, utilizing the index
+        # ----------------------------------------------------------------------
+        query = """
+        CALL {
+            MATCH (s:M {v:'12'})
+            CREATE (:N {v:'10'})-[:R]->(s)
+            RETURN s.v AS v
+        }
+        RETURN v
+        """
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], '12')
+
+        # the same, when the MATCH clause is outside the subquery
+        query = """
+        MATCH (s:M {v:'13'})
+        CALL {
+            WITH s
+            CREATE (:N {v:'10'})-[:R]->(s)
+            RETURN s.v AS v
+        }
+        RETURN v
+        """
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], '13')
+
+        # the same, when the CREATE (and RETURN) clause is outside the subquery
+        query = """
+        CALL {
+            MATCH (s:M {v:'14'})
+            RETURN s
+        }
+        CREATE (:N {v:'14'})-[:R]->(s)
+        RETURN s.v AS v
+        """
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], '14')
+
+        # TODO: Add tests like `union_with_index_scan` in test_union.py once
+        # UNION is supported in subqueries
