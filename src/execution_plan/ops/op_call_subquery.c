@@ -228,8 +228,9 @@ static Record CallSubqueryConsume
     // (the latter case will happen AT MOST once)
     if(op->lhs) {
         op->r = OpBase_Consume(op->lhs);
-    } else {
+    } else if(op->first){
         op->r = OpBase_CreateRecord(op->body);
+        op->first = false;
     }
 
     // plant the record consumed at the Argument op

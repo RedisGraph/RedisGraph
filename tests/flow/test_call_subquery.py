@@ -624,7 +624,7 @@ updating clause.")
         """Tests that rewrite same clauses works properly on clauses in a
         subquery"""
 
-        # Test CREATE
+        # Test CREATE compression
         query = """
             CALL {
                 CREATE (x:X)
@@ -635,7 +635,7 @@ updating clause.")
         # make sure that CREATE is called only once
         self.env.assertTrue(_check_subquery_compression(plan, "Create"))
 
-        # Test SET
+        # Test SET compression
         query = """
             CALL {
                 MATCH (x:X)
@@ -646,7 +646,7 @@ updating clause.")
         # make sure that Update is called only once
         self.env.assertTrue(_check_subquery_compression(plan, "Update"))
 
-        # Test REMOVE
+        # Test REMOVE compression
         query = """
             CALL {
                 MATCH (x:X)
@@ -657,19 +657,18 @@ updating clause.")
         # make sure that Update is called only once
         self.env.assertTrue(_check_subquery_compression(plan, "Update"))
 
-        # TODO: Test failing. Fix and add.
-        # # Test DELETE
-        # query = """
-        #     CALL {
-        #         MATCH (x:X)
-        #         MATCH (m:M)
-        #         DELETE x
-        #         DELETE m
-        #     }
-        #     """
-        # plan = graph.explain(query)
-        # # make sure that DELETE is called only once
-        # self.env.assertTrue(_check_subquery_compression(plan, "Update"))
+        # Test DELETE compression
+        query = """
+            CALL {
+                MATCH (x:X)
+                MATCH (m:M)
+                DELETE x
+                DELETE m
+            }
+            """
+        plan = graph.explain(query)
+        # make sure that DELETE is called only once
+        self.env.assertTrue(_check_subquery_compression(plan, "Delete"))
 
     def test17_leading_with(self):
         # valid leading WITH queries
@@ -888,3 +887,20 @@ updating clause.")
         self.env.assertEquals(len(res.result_set), 2)
         self.env.assertEquals(res.result_set[0][0], None)
         self.env.assertEquals(res.result_set[1][0], None)
+
+    def test24_nonEager_consumption_first(self):
+        """Tests that non-eager consumption of the CallSubquery operation is
+        handled properly when it is the first operation of the plan"""
+
+        # clear the db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create a node with label N
+        graph.query("CREATE (:N)")
+
+        res = graph.query("CALL {MATCH (n) DELETE n}")
+
+        # assert results
+        self.env.assertEquals(res.nodes_deleted, 1)
+        self.env.assertEquals(len(res.result_set), 0)
