@@ -347,6 +347,20 @@ static void _AST_MapForeachClauseReferences
 	}
 }
 
+// maps entities in a CALL {} clause
+static void _AST_MapCallSubqueryReferences
+(
+	AST *ast,                                    // AST
+	const cypher_astnode_t *callsubquery_clause  // clause
+) {
+	uint n_clauses = cypher_ast_call_subquery_nclauses(callsubquery_clause);
+	for(uint i = 0; i < n_clauses; i++) {
+		const cypher_astnode_t *clause =
+			cypher_ast_call_subquery_get_clause(callsubquery_clause, i);
+		_ASTClause_BuildReferenceMap(ast, clause);
+	}
+}
+
 // maps entities in DELETE clause
 static void _AST_MapDeleteClauseReferences
 (

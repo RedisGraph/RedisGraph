@@ -326,6 +326,7 @@ static void _buildCallSubqueryPlan
 	// -------------------------------------------------------------------------
 	QueryCtx_SetAST(subquery_ast);
 	ExecutionPlan *embedded_plan = NewExecutionPlan();
+	// free the AST
 	AST_Free(subquery_ast);
 	QueryCtx_SetAST(orig_ast);
 
