@@ -341,7 +341,7 @@ static void _buildCallSubqueryPlan
 	// records within the subquery will not carry unnecessary entries
 	if(cypher_astnode_type(clauses[0]) != CYPHER_AST_WITH) {
 		OpBase *implicit_proj =
-			NewProjectOp(embedded_plan, array_new(AR_ExpNode *, 0));
+			NewProjectOp(deepest->plan, array_new(AR_ExpNode *, 0));
 		ExecutionPlan_AddOp(deepest, implicit_proj);
 		deepest = implicit_proj;
 	}
