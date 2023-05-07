@@ -127,6 +127,8 @@ static Record CallSubqueryConsumeEager
         while((r = OpBase_Consume(op->lhs))) {
             array_append(op->records, r);
         }
+        // propagate reset to lhs, to release RediSearch index locks (if any)
+        OpBase_PropagateReset(op->lhs);
     } else {
         r = OpBase_CreateRecord(op->body);
         array_append(op->records, r);
@@ -234,7 +236,7 @@ static Record CallSubqueryConsume
     if(op->r) {
         Argument_AddRecord(op->argument, OpBase_DeepCloneRecord(op->r));
     } else {
-        // no records
+        // no records - lhs depleted
         return NULL;
     }
 
