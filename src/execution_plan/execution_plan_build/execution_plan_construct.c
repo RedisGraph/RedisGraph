@@ -326,6 +326,8 @@ static void _buildCallSubqueryPlan
 	// -------------------------------------------------------------------------
 	QueryCtx_SetAST(subquery_ast);
 	ExecutionPlan *embedded_plan = NewExecutionPlan();
+	AST_Free(subquery_ast);
+	embedded_plan->ast_segment = NULL;
 	QueryCtx_SetAST(orig_ast);
 
 	// find the deepest op in the embedded plan
