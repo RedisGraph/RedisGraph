@@ -144,10 +144,10 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		// Managed to get a tuple, break.
 		if(info == GrB_SUCCESS) break;
 
-		// if depleted, do not try to consume more
-		if(op->depleted) {
-			return NULL;
-		}
+		// // if depleted, do not try to consume more
+		// if(op->depleted) {
+		// 	return NULL;
+		// }
 
 		/* Run out of tuples, try to get new data.
 		 * Free old records. */
