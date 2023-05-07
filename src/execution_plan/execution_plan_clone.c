@@ -4,9 +4,10 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "execution_plan_clone.h"
 #include "../RG.h"
+#include "../util/dict.h"
 #include "../query_ctx.h"
+#include "execution_plan_clone.h"
 #include "../util/rax_extensions.h"
 #include "execution_plan_build/execution_plan_modify.h"
 
@@ -28,15 +29,15 @@ static ExecutionPlan *_ClonePlanInternals(const ExecutionPlan *template) {
 }
 
 static OpBase *_CloneOpTree(OpBase *template_parent, OpBase *template_current,
-							OpBase *clone_parent) {
+							OpBase *clone_parent, dict* old_to_new) {
 	const ExecutionPlan *plan_segment;
-	if(!template_parent || (template_current->plan != template_parent->plan)) {
-		/* If this is the first operation or it was built using a different ExecutionPlan
-		 * segment than its parent, clone the ExecutionPlan segment. */
+
+	dictEntry *entry = HashTableFind(old_to_new, template_current->plan);
+	if(entry == NULL) {
 		plan_segment = _ClonePlanInternals(template_current->plan);
+		HashTableAdd(old_to_new, (void *)template_current->plan, (void *)plan_segment);
 	} else {
-		// This op was built as part of the same segment as its parent, don't change ExecutionPlans.
-		plan_segment = clone_parent->plan;
+		plan_segment = (const ExecutionPlan *)HashTableGetVal(entry);
 	}
 
 	// Temporarily set the thread-local AST to be the one referenced by this ExecutionPlan segment.
@@ -47,7 +48,8 @@ static OpBase *_CloneOpTree(OpBase *template_parent, OpBase *template_current,
 
 	for(uint i = 0; i < template_current->childCount; i++) {
 		// Recursively visit and clone the op's children.
-		OpBase *child_op = _CloneOpTree(template_current, template_current->children[i], clone_current);
+		OpBase *child_op = _CloneOpTree(template_current,
+			template_current->children[i], clone_current, old_to_new);
 		ExecutionPlan_AddOp(clone_current, child_op);
 	}
 
@@ -55,7 +57,10 @@ static OpBase *_CloneOpTree(OpBase *template_parent, OpBase *template_current,
 }
 
 static ExecutionPlan *_ExecutionPlan_Clone(const ExecutionPlan *template) {
-	OpBase *clone_root = _CloneOpTree(NULL, template->root, NULL);
+	// create mapping from old exec-plans to the ones
+	dict *old_to_new = HashTableCreate(&def_dt);
+
+	OpBase *clone_root = _CloneOpTree(NULL, template->root, NULL, old_to_new);
 	// The "master" execution plan is the one constructed with the root op.
 	ExecutionPlan *clone = (ExecutionPlan *)clone_root->plan;
 	// The root op is currently NULL; set it now.
