@@ -24,16 +24,9 @@ static void CondVarLenTraverseFree(OpBase *opBase);
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
 	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph, AlgebraicExpression_Edge(op->ae));
+	ASSERT(e->minHops <= e->maxHops);
 	op->minHops = e->minHops;
 	op->maxHops = e->maxHops;
-
-	// Return quickly because there is not need to traverse:
-	// ()-[*..0]->()
-	// ()-[*2..1]->()
-	if(e->minHops > e->maxHops) {
-		op->edgeRelationCount = 0;
-		return;
-	}
 
 	uint reltype_count = QGEdge_RelationCount(e);
 	if(reltype_count == 0) {

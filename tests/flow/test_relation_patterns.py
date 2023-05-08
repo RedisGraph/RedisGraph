@@ -33,6 +33,13 @@ class testRelationPattern(FlowTestsBase):
 
         redis_graph.commit()
 
+    def expect_error(self, query, expected_err_msg):
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn(expected_err_msg, str(e))
+
     # Test patterns that traverse 1 edge.
     def test01_one_hop_traversals(self):
         # Conditional traversal with label
@@ -307,17 +314,17 @@ class testRelationPattern(FlowTestsBase):
 
     # Test patterns with length less than zero
     def test11_lt_zero_hop_traversals(self):
-        # Construct a simple graph: ()
         g = Graph(redis_con, "lt_zero_hop_traversals")
-        q = "MERGE ()"
-        g.query(q)
 
         queries = [
             "MATCH p=()-[*..0]->() RETURN nodes(p) AS nodes",
             "MATCH p=()-[*1..0]->() RETURN nodes(p) AS nodes",
             "MATCH p=()-[*2..1]->() RETURN nodes(p) AS nodes",
-            "MATCH p=()-[*20..10]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[e*20..10]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[e:R*20..10]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[]->()-[*1..0]->() RETURN nodes(p) AS nodes",
         ]
         for query in queries:
             actual_result = g.query(query)
-            self.env.assertEquals(actual_result.result_set, [])
+            self.expect_error(query, 
+                "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.")

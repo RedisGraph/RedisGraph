@@ -802,28 +802,31 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 	}
 
 	const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(n);
-	if(!alias_node) {
-		return VISITOR_RECURSE; // Skip unaliased entities.
-	}
-	const char *alias = cypher_ast_identifier_get_name(alias_node);
-	void *alias_type = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
-	if(alias_type == raxNotFound) {
-		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)T_EDGE, NULL);
-		return VISITOR_RECURSE;
+	if(!alias_node && !range) {
+		return VISITOR_RECURSE; // Skip unaliased, single-hop entities.
 	}
 
-	if(alias_type != (void *)T_EDGE && alias_type != NULL) {
-		ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
-		return VISITOR_BREAK;
-	}
+	if(alias_node) {
+		const char *alias = cypher_ast_identifier_get_name(alias_node);
+		void *alias_type = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
+		if(alias_type == raxNotFound) {
+			raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)T_EDGE, NULL);
+			return VISITOR_RECURSE;
+		}
 
-	if(vctx->clause == CYPHER_AST_MATCH && alias_type != NULL) {
-		ErrorCtx_SetError("Cannot use the same relationship variable '%s' for multiple patterns.", alias);
-		return VISITOR_BREAK;
-	}
+		if(alias_type != (void *)T_EDGE && alias_type != NULL) {
+			ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
+			return VISITOR_BREAK;
+		}
 
+		if(vctx->clause == CYPHER_AST_MATCH && alias_type != NULL) {
+			ErrorCtx_SetError("Cannot use the same relationship variable '%s' for multiple patterns.", alias);
+			return VISITOR_BREAK;
+		}
+	}
+	
 	// If this is a multi-hop traversal, validate it accordingly
-	if(range && _ValidateMultiHopTraversal(n, range) == AST_VALID) {
+	if(range && _ValidateMultiHopTraversal(n, range) == AST_INVALID) {
 		return VISITOR_BREAK;
 	}
 
