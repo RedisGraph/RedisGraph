@@ -320,11 +320,11 @@ class testRelationPattern(FlowTestsBase):
             "MATCH p=()-[*..0]->() RETURN nodes(p) AS nodes",
             "MATCH p=()-[*1..0]->() RETURN nodes(p) AS nodes",
             "MATCH p=()-[*2..1]->() RETURN nodes(p) AS nodes",
-            "MATCH p=()-[e*20..10]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[e*2..1]->() RETURN nodes(p) AS nodes",
             "MATCH p=()-[e:R*20..10]->() RETURN nodes(p) AS nodes",
             "MATCH p=()-[]->()-[*1..0]->() RETURN nodes(p) AS nodes",
         ]
         for query in queries:
-            actual_result = g.query(query)
+
             self.expect_error(query, 
                 "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.")

@@ -214,7 +214,7 @@ static AST_Validation _ValidateMultiHopTraversal
 	
 	const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
 	ErrorCtx_SetError("RedisGraph does not support alias of variable-length traversal edges '%s'. \
-	Instead, use a query in the style of: 'MATCH p = (a)-[*]->(b) RETURN relationships(p)'.",
+Instead, use a query in the style of: 'MATCH p = (a)-[*]->(b) RETURN relationships(p)'.",
 						identifier);
 	return AST_INVALID;
 }
@@ -806,12 +806,17 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 		return VISITOR_RECURSE; // Skip unaliased, single-hop entities.
 	}
 
+	// If this is a multi-hop traversal, validate it accordingly
+	if(range && _ValidateMultiHopTraversal(n, range) == AST_INVALID) {
+		return VISITOR_BREAK;
+	}
+
 	if(alias_node) {
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		void *alias_type = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
 		if(alias_type == raxNotFound) {
 			raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)T_EDGE, NULL);
-			return VISITOR_RECURSE;
+				return VISITOR_RECURSE;
 		}
 
 		if(alias_type != (void *)T_EDGE && alias_type != NULL) {
@@ -823,11 +828,6 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 			ErrorCtx_SetError("Cannot use the same relationship variable '%s' for multiple patterns.", alias);
 			return VISITOR_BREAK;
 		}
-	}
-	
-	// If this is a multi-hop traversal, validate it accordingly
-	if(range && _ValidateMultiHopTraversal(n, range) == AST_INVALID) {
-		return VISITOR_BREAK;
 	}
 
 	return VISITOR_RECURSE;

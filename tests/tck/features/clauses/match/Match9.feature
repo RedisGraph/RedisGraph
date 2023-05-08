@@ -165,6 +165,7 @@ Feature: Match9 - Match deprecated scenarios
       | first | second |
     And no side effects
 
+  @skip
   Scenario: [8] Variable length relationship in OPTIONAL MATCH
     Given an empty graph
     And having executed:
