@@ -380,7 +380,7 @@ static int _parse_and_reply_info_queries_prev
 	*actual_element_count = 0;
 
     // we expect the count as the last argument
-	if(RedisModule_StringToDouble(argv[argc-1], actual_element_count)
+	if(RedisModule_StringToLongLong(argv[argc-1], (long long *)actual_element_count)
 			!= REDISMODULE_OK) {
         RedisModule_ReplyWithError(ctx, INVALID_COUNT_PARAMETER_FOR_PREV_MESSAGE);
         return REDISMODULE_ERR;

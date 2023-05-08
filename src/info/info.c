@@ -392,8 +392,6 @@ void Info_GetExecutingReportingQueriesCount
 
     uint n = ThreadPools_ThreadCount() + 1;
 
-    ASSERT(res == true);
-
 	for(uint i = 0; i < n; i++) {
 		QueryInfo *qi = info->working_queries[i];
         if(qi != NULL) {
@@ -404,8 +402,6 @@ void Info_GetExecutingReportingQueriesCount
             }
         }
 	}
-
-    ASSERT(res == true);
 }
 
 // return the total number of queries currently queued or being executed

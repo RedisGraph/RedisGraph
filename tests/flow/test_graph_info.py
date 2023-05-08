@@ -85,19 +85,26 @@ class testGraphInfo(FlowTestsBase):
         graph = Graph(redis_con, GRAPH_1)
 
     def _assert_executed_query(self, query_info, expected_query_info, assert_receive_time=None):
-        """Validate that query_info dictionary coincides with the expected result for a single query.
-        Additionally, validates the duration numbers: Total = Wait + Execution + Report
-        Optionally, checks for the receive time: all queries are checked to have
-        been received after the passed "assert_receive_time"""
+        """Validates a query_info response of a single query, against the
+        non-empty entries of the expected_query_info dictionary.
+        Validates the duration numbers:
+            Total = Wait + Execution + Report
+        Validates that the timestamp of the received query is valid
+        """
 
+        # assert that the timestamp of the received query is valid
         if assert_receive_time is not None:
-            self.env.assertGreaterEqual(query_info['Received at'], assert_receive_time, depth=1)
+            self.env.assertGreaterEqual(query_info['Received at'],
+                assert_receive_time, depth=1)
 
-        # Assert Equals only for the keys that exists in expected_query_info.
-        self.env.assertEquals(query_info, (query_info | expected_query_info), depth=1)
+        # assert Equals only for the keys that exists in expected_query_info
+        self.env.assertEquals(query_info, (query_info | expected_query_info),
+            depth=1)
 
-        # Validate duration data
-        duration = query_info['Wait duration'] + query_info['Execution duration'] + query_info['Report duration']
+        # validate duration data
+        duration = query_info['Wait duration']      + \
+                   query_info['Execution duration'] + \
+                   query_info['Report duration']
         self.env.assertEquals(query_info['Total duration'], duration, depth=1)
 
     def execute_get_dict(self, query):
@@ -106,9 +113,12 @@ class testGraphInfo(FlowTestsBase):
         return list_to_dict(res)
 
     def _wait_till_query_info_changes(self, timeout = 2, graph_name = GRAPH_X):
+        """Waits until a change is registered to the global info"""
+
         wait_step = 0.01
         waited_time = 0
-        prev_info = self.execute_get_dict(INFO_QUERIES_CURRENT_COMMAND % graph_name)
+        prev_info = \
+            self.execute_get_dict(INFO_QUERIES_CURRENT_COMMAND % graph_name)
         while True:
             info = self.execute_get_dict(INFO_QUERIES_CURRENT_COMMAND % graph_name)
             # Search for changes
@@ -122,6 +132,9 @@ class testGraphInfo(FlowTestsBase):
                 return None
 
     def _wait_till_queries_start_being_executed(self, query_count = 1, timeout = 2, graph_name = GRAPH_X):
+        """Waits until a query is being executed, and returns the response of
+        the GRAPH.INFO QUERIES CURRENT command once that state is reached"""
+
         wait_step = 0.01
         waited_time = 0
         while True:
@@ -136,6 +149,8 @@ class testGraphInfo(FlowTestsBase):
                 return None
 
     def _wait_for_number_of_clients(self, clients_count, timeout=2):
+        """Waits until clients_count clients are connected to the server"""
+
         wait_step = 0.1
         waited_time = 0
         lookup_string = 'connected_clients:%d' % clients_count
@@ -278,12 +293,14 @@ class testGraphInfo(FlowTestsBase):
                 self.env.assertIn(expected_err_msg, str(e))
 
     def test06_query_info_single_query(self):
-        """Test that valid query execution is reflected in query information"""
+        """Test that valid query execution is reflected in query information,
+        and that the cache flag is set correctly"""
 
         # test twice to test the use of cache
         for cache in [0, 1]:
             # issue a query that returns results
-            query = "UNWIND range(1,5000) AS i CREATE(n:N {id:i, v:rand()}) RETURN n.v"
+            query = "UNWIND range(1,5000) AS i CREATE(n:N {id:i, v:rand()}) \
+RETURN n.v"
             query_issue_timestamp_ms = get_unix_timestamp_milliseconds()
             graph.query(query)
 
@@ -293,15 +310,18 @@ class testGraphInfo(FlowTestsBase):
                 'Graph name' : GRAPH_1,
                 'Utilized cache' : cache
             }
-            info = self.execute_get_dict(INFO_QUERIES_CURRENT_PREV_COMMAND_1 % GRAPH_X)
+            info = self.execute_get_dict(INFO_QUERIES_CURRENT_PREV_COMMAND_1 %
+                GRAPH_X)
             first_query_dict = list_to_dict(info['Queries'][0])
-            self._assert_executed_query(first_query_dict, expected_query_info, query_issue_timestamp_ms)
+            self._assert_executed_query(first_query_dict,
+                expected_query_info, query_issue_timestamp_ms)
 
     def test07_query_info_parallel_execution_queries(self):
-        """Test that global info matches with query details information"""
+        """Tests that global info matches with query details information"""
 
         # run queries in parallel
-        query = """CYPHER end=100000 UNWIND (range(0, $end)) AS x WITH x AS x WHERE (x / 90000) = 1 RETURN x"""
+        query = """CYPHER end=100000 UNWIND (range(0, $end)) AS x WITH x AS x \
+WHERE (x / 90000) = 1 RETURN x"""
         async_res0 = run_separate_client([query] * 2)
         async_res1 = run_separate_client([query] * 2)
         async_res2 = run_separate_client([query] * 1)
