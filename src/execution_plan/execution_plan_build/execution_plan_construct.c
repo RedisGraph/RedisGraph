@@ -280,6 +280,40 @@ static void _buildForeachOp
 	ExecutionPlan_AddOp(foreach, embedded_plan->root);
 }
 
+// look for the returning projections/aggregations from a given operation.
+// do not recurse into nested Call {} clauses
+static void collectReturningProjections
+(
+	OpBase *root,            // root from which to start looking
+	OpBase ***returning_ops  // [OUTPUT] returning projections/aggregations
+) {
+	OPType return_types[] = {OPType_PROJECT, OPType_AGGREGATE};
+
+	// check if there is a Union operation (from UNION or UNION ALL)
+	OpBase *union_op = NULL;
+	if(root->type == OPType_JOIN) {
+		union_op = root;
+	} else if(root->children[0]->type == OPType_JOIN) {
+		union_op = root->children[0];
+	}
+
+	// if there is a Union operation, we need to look at all branches
+	if(union_op == NULL) {
+		// only one returning projection/aggregation
+		OpBase *returning_op =
+			ExecutionPlan_LocateOpMatchingType(root, return_types, 2);
+		array_append(*returning_ops, returning_op);
+		return;
+	}
+	// multiple returning projections/aggregations
+	for(uint i = 0; i < union_op->childCount; i++) {
+		OpBase *child = union_op->children[i];
+		OpBase *returning_op =
+			ExecutionPlan_LocateOpMatchingType(child, return_types, 2);
+		array_append(*returning_ops, returning_op);
+	}
+}
+
 static void _buildCallSubqueryPlan
 (
 	ExecutionPlan *plan,            // execution plan to add plan to
@@ -364,25 +398,21 @@ static void _buildCallSubqueryPlan
 		OpBase *results_op = embedded_plan->root;
 		ExecutionPlan_RemoveOp(embedded_plan, embedded_plan->root);
 		OpBase_Free(results_op);
-		OPType return_types[] = {OPType_PROJECT, OPType_AGGREGATE};
 
-		// bind the returning projection op to the outer plan
-		OpBase *returning_op =
-			ExecutionPlan_LocateOpMatchingType(embedded_plan->root,
-				return_types, 2);
-		OPType returning_op_type = OpBase_Type(returning_op);
+		OpBase **returning_ops = array_new(OpBase *, 1);
+		collectReturningProjections(embedded_plan->root, &returning_ops);
+		uint n_returning_ops = array_len(returning_ops);
 
 		// if the embedded plan is not eager, do not propagate input records
 		if(!is_eager) {
-			// bind the returning projection to the outer plan
-			// TODO: Do this later (after affecting the projections), and modify this so that the Project record_offsets
-			// change accordingly to the new plan, and it calls OpBase_Modifies() on all its projections!!
-			// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
-
-			returning_op_type == OPType_PROJECT ?
-				ProjectBindToPlan(returning_op, plan) :
-				AggregateBindToPlan(returning_op, plan);
-
+			// bind the RETURN projections/aggregations to the outer plan ('plan')
+			for(uint i = 0; i < n_returning_ops; i++) {
+				OPType returning_op_type = OpBase_Type(returning_ops[0]);
+				returning_op_type == OPType_PROJECT ?
+					ProjectBindToPlan(returning_ops[i], plan) :
+					AggregateBindToPlan(returning_ops[i], plan);
+			}
+			array_free(returning_ops);
 			goto skip_projections_modification;
 		}
 
@@ -421,11 +451,13 @@ static void _buildCallSubqueryPlan
 
 		// Add to the RETURN projection (the 'first' projection in the embedded plan)
 		// the mapping of the internal representation of the outer-scope
-		// variables to their original names ('_alias' --> 'alias')
-		// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
-		returning_op_type == OPType_PROJECT ?
-			ProjectAddProjections(returning_op, names, inter_names) :
-			AggregateAddProjections(returning_op, names, inter_names);
+		// variables to their original names ('@alias' --> 'alias')
+		for(uint i = 0; i < n_returning_ops; i++) {
+			OPType returning_op_type = OpBase_Type(returning_ops[0]);
+			returning_op_type == OPType_PROJECT ?
+				ProjectAddProjections(returning_ops[i], inter_names, names) :
+				AggregateAddProjections(returning_ops[i], inter_names, names);
+		}
 
 		// modify import and intermediate projections in the body of the
 		// subquery (all but return projection) to contain projections of the
@@ -434,40 +466,42 @@ static void _buildCallSubqueryPlan
 
 		// collect all the intermediate Project ops (from the child of the
 		// return projection)
-		if(returning_op->childCount > 0) {
-			ExecutionPlan_LocateOps(&intermediate_projections,
-				returning_op->children[0], OPType_PROJECT);
+		for(uint i = 0; i < n_returning_ops; i++) {
+			OpBase *returning_op = returning_ops[i];
+			if(returning_op->childCount > 0) {
+				ExecutionPlan_LocateOps(&intermediate_projections,
+					returning_op->children[0], OPType_PROJECT);
 
-			// modify projected expressions of the intermediate projections if exist
-			for(uint i = 0; i < array_len(intermediate_projections); i++) {
-				ProjectAddProjections(intermediate_projections[i],
-					inter_names, inter_names);
-				// TODO: Add support for UNIONs
-			}
+				// modify projected expressions of the intermediate projections if exist
+				for(uint i = 0; i < array_len(intermediate_projections); i++) {
+					ProjectAddProjections(intermediate_projections[i],
+						inter_names, inter_names);
+				}
+				array_clear(intermediate_projections);
 
-			array_clear(intermediate_projections);
+				ExecutionPlan_LocateOps(&intermediate_projections,
+					returning_op->children[0], OPType_AGGREGATE);
 
-			ExecutionPlan_LocateOps(&intermediate_projections,
-				returning_op->children[0], OPType_AGGREGATE);
-
-			for(uint i = 0; i < array_len(intermediate_projections); i++) {
-				AggregateAddProjections(intermediate_projections[i],
-					inter_names, inter_names);
+				for(uint i = 0; i < array_len(intermediate_projections); i++) {
+					AggregateAddProjections(intermediate_projections[i],
+						inter_names, inter_names);
+				}
+				array_clear(intermediate_projections);
 			}
 		}
+
+		// bind the RETURN projections/aggregations to the outer plan ('plan')
+		for(uint i = 0; i < n_returning_ops; i++) {
+			OPType returning_op_type = OpBase_Type(returning_ops[0]);
+			returning_op_type == OPType_PROJECT ?
+				ProjectBindToPlan(returning_ops[i], plan) :
+				AggregateBindToPlan(returning_ops[i], plan);
+		}
+		array_free(returning_ops);
 
 		array_free(names);
 		array_free(inter_names);
 		array_free(intermediate_projections);
-
-		// bind the RETURN projection (last one) to the outer plan ('plan')
-		// TODO: Add support for UNIONs (at the moment assumes ONLY ONE returning projection)
-		returning_op_type == OPType_PROJECT ?
-			ProjectBindToPlan(returning_op, plan) :
-			AggregateBindToPlan(returning_op, plan);
-
-		// TODO: Extend this to support UNION as well (unique exec-plan, which
-		// this mechanism is not yet good for)
 	}
 
 skip_projections_modification:
