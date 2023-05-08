@@ -13,7 +13,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 void GB_phy_free                // free A->p, A->h, and A->Y of a matrix
 (
     GrB_Matrix A                // matrix with content to free

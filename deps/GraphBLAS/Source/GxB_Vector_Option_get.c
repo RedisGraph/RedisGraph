@@ -9,6 +9,116 @@
 
 #include "GB.h"
 
+//------------------------------------------------------------------------------
+
+// GxB_Vector_Option_get is a single va_arg-based method for any vector option,
+// of any type.  The following functions are alternative methods that do not
+// use va_arg (useful for compilers and interfaces that do not support va_arg):
+//
+//  GxB_Vector_Option_get_INT32         int32_t scalars
+//  GxB_Vector_Option_get_FP64          double scalars
+
+//------------------------------------------------------------------------------
+// GxB_Vector_Option_get_INT32: get vector options (int32_t scalars)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Vector_Option_get_INT32    // gets the current option of a vector
+(
+    GrB_Vector v,                   // vector to query
+    GxB_Option_Field field,         // option to query
+    int32_t *value                  // return value of the vector option
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Vector_Option_get_INT32 (v, field, &value)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (v) ;
+    ASSERT_VECTOR_OK (v, "v to get option", GB0) ;
+    GB_RETURN_IF_NULL (value) ;
+
+    //--------------------------------------------------------------------------
+    // get the option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_SPARSITY_CONTROL : 
+
+            (*value) = v->sparsity_control ;
+            break ;
+
+        case GxB_SPARSITY_STATUS : 
+
+            (*value) = GB_sparsity ((GrB_Matrix) v) ;
+            break ;
+
+        case GxB_FORMAT : 
+
+            // a GrB_Vector is always stored by-column
+            (*value) = (int32_t) GxB_BY_COL ;
+            break ;
+
+        default : 
+
+            return (GrB_INVALID_VALUE) ;
+
+    }
+
+    #pragma omp flush
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Vector_Option_get_FP64: get vector options (double scalars)
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Vector_Option_get_FP64      // gets the current option of a vector
+(
+    GrB_Vector v,                   // vector to query
+    GxB_Option_Field field,         // option to query
+    double *value                   // return value of the vector option
+)
+{
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE1 ("GxB_Vector_Option_get_FP64 (v, field, &value)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (v) ;
+    ASSERT_VECTOR_OK (v, "v to get option", GB0) ;
+    GB_RETURN_IF_NULL (value) ;
+
+    //--------------------------------------------------------------------------
+    // get the option
+    //--------------------------------------------------------------------------
+
+    switch (field)
+    {
+
+        case GxB_BITMAP_SWITCH : 
+
+            (*value) = (double) v->bitmap_switch ;
+            break ;
+
+        default : 
+
+            return (GrB_INVALID_VALUE) ;
+
+    }
+
+    #pragma omp flush
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// GxB_Vector_Option_get: based on va_arg
+//------------------------------------------------------------------------------
+
 GrB_Info GxB_Vector_Option_get      // gets the current option of a vector
 (
     GrB_Vector v,                   // vector to query

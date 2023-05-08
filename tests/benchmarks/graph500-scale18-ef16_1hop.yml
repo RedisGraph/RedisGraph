@@ -24,7 +24,7 @@ clientconfig:
     - random-int-max: 262016
     - random-seed: 12345
     - queries:
-      - { q: "MATCH (n)-[:IS_CONNECTED]->(z) WHERE ID(n) = __rand_int__ RETURN ID(n), count(z)", ratio: 1.0 }
+      - { q: "CYPHER Id1=__rand_int__ MATCH (n)-[:IS_CONNECTED]->(z) WHERE ID(n) = $Id1 RETURN ID(n), count(z)", ratio: 1.0 }
 kpis:
   - le: { $.OverallClientLatencies.Total.q50: 5.0 }
   - ge: { $.OverallQueryRates.Total: 8000 }

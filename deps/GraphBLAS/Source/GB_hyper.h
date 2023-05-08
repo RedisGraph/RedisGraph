@@ -10,7 +10,6 @@
 #ifndef GB_HYPER_H
 #define GB_HYPER_H
 
-GB_PUBLIC
 int64_t GB_nvec_nonempty        // return # of non-empty vectors
 (
     const GrB_Matrix A,         // input matrix to examine

@@ -16,7 +16,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 GrB_Type GB_code_type           // return the GrB_Type corresponding to the code
 (
     const GB_Type_code code,    // type code to convert

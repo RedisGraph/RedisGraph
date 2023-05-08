@@ -12,7 +12,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 bool GB_Type_compatible             // check if two types can be typecast
 (
     const GrB_Type atype,

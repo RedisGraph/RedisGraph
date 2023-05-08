@@ -35,7 +35,6 @@ GrB_BinaryOp GB_flip_binop  // flip a binary operator
     bool *flipxy            // true on input, set to false if op is flipped
 ) ;
 
-GB_PUBLIC
 GB_Opcode GB_boolean_rename     // renamed opcode
 (
     const GB_Opcode opcode      // opcode to rename

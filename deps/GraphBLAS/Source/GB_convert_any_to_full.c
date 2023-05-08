@@ -14,7 +14,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 void GB_convert_any_to_full     // convert any matrix to full
 (
     GrB_Matrix A                // matrix to convert to full

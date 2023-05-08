@@ -23,5 +23,5 @@ clientconfig:
     - random-int-max: 262016
     - random-seed: 12345
     - queries:
-      - { q: "MATCH (n)-[:IS_CONNECTED*2]->(z) WHERE ID(n) = __rand_int__ RETURN ID(n), count(z)", ratio: 1.0 }
+      - { q: "CYPHER Id1=__rand_int__ MATCH (n)-[:IS_CONNECTED*2]->(z) WHERE ID(n) = $Id1 RETURN ID(n), count(z)", ratio: 1.0 }
 

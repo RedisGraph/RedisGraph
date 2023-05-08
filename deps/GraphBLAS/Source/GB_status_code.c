@@ -11,7 +11,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 const char *GB_status_code (GrB_Info info)
 {
     switch (info)

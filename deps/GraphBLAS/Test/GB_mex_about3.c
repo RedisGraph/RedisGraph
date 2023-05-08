@@ -86,13 +86,17 @@ void mexFunction
     OK (GxB_Global_Option_set (GxB_PRINTF, myprintf)) ;
     OK (GxB_Global_Option_set (GxB_FLUSH, myflush)) ;
 
-    printf_func_t mypr ;
+    printf_func_t mypr, mypr2 ;
     OK (GxB_Global_Option_get (GxB_PRINTF, &mypr)) ;
+    OK (GxB_Global_Option_get_FUNCTION (GxB_PRINTF, (void **) &mypr2)) ;
     CHECK (mypr == myprintf) ;
+    CHECK (mypr2 == myprintf) ;
 
-    flush_func_t myfl ;
+    flush_func_t myfl, myfl2 ;
     OK (GxB_Global_Option_get (GxB_FLUSH, &myfl)) ;
+    OK (GxB_Global_Option_get_FUNCTION (GxB_FLUSH, (void **) &myfl2)) ;
     CHECK (myfl == myflush) ;
+    CHECK (myfl2 == myflush) ;
 
     printf ("\nBurble with myprintf/myflush:\n") ;
     OK (GrB_Matrix_nvals (&nvals, C)) ;
@@ -102,44 +106,79 @@ void mexFunction
     OK (GxB_Global_Option_set (GxB_PRINTF, printf)) ;
     OK (GxB_Global_Option_set (GxB_FLUSH, NULL)) ;
 
+    OK (GxB_Global_Option_set_FUNCTION (GxB_PRINTF, myprintf)) ;
+    OK (GxB_Global_Option_set_FUNCTION (GxB_FLUSH, myflush)) ;
+
+    OK (GxB_Global_Option_get_FUNCTION (GxB_PRINTF, (void **) &mypr2)) ;
+    OK (GxB_Global_Option_get_FUNCTION (GxB_FLUSH, (void **) &myfl2)) ;
+    CHECK (mypr2 == myprintf) ;
+    CHECK (myfl2 == myflush) ;
+
+    OK (GxB_Global_Option_set (GxB_PRINTF, printf)) ;
+    OK (GxB_Global_Option_set (GxB_FLUSH, NULL)) ;
+
     //--------------------------------------------------------------------------
     // test GxB_set/get for free_pool_limit
     //--------------------------------------------------------------------------
 
-    int64_t free_pool_limit [64] ;
+    int64_t free_pool_limit [64], free_pool_limit2 [64] ;
+    int64_t free_pool_defaults [64] ;
+    for (int k = 0 ; k < 64 ; k++)
+    {
+        free_pool_limit [k] = k+1 ;
+        free_pool_limit2 [k] = 3*k + 4 ;
+    }
+
     OK (GxB_Global_Option_set (GxB_MEMORY_POOL, NULL)) ;
-    OK (GxB_Global_Option_get (GxB_MEMORY_POOL, free_pool_limit)) ;
+    OK (GxB_Global_Option_get (GxB_MEMORY_POOL, free_pool_defaults)) ;
+    OK (GxB_Global_Option_get_INT64 (GxB_MEMORY_POOL, free_pool_limit2)) ;
     printf ("\ndefault memory pool limits:\n") ;
     for (int k = 0 ; k < 64 ; k++)
     {
-        if (free_pool_limit [k] > 0)
+        if (free_pool_defaults [k] > 0)
         {
-            printf ("pool %2d: limit %ld\n", k, free_pool_limit [k]) ;
+            printf ("pool %2d: limit %ld\n", k, free_pool_defaults [k]) ;
         }
+        CHECK (free_pool_defaults [k] == free_pool_limit2 [k]) ;
     }
+
     for (int k = 0 ; k < 64 ; k++)
     {
         free_pool_limit [k] = k ;
     }
     OK (GxB_Global_Option_set (GxB_MEMORY_POOL, free_pool_limit)) ;
     OK (GxB_Global_Option_get (GxB_MEMORY_POOL, free_pool_limit)) ;
+    OK (GxB_Global_Option_get_INT64 (GxB_MEMORY_POOL, free_pool_limit2)) ;
     for (int k = 0 ; k < 3 ; k++)
     {
         CHECK (free_pool_limit [k] == 0) ;
+        CHECK (free_pool_limit2 [k] == 0) ;
     }
     for (int k = 3 ; k < 64 ; k++)
     {
         CHECK (free_pool_limit [k] == k) ;
+        CHECK (free_pool_limit2 [k] == k) ;
     }
     for (int k = 0 ; k < 64 ; k++)
     {
         free_pool_limit [k] = 0 ;
+        free_pool_limit2 [k] = 0 ;
     }
+
     OK (GxB_Global_Option_set (GxB_MEMORY_POOL, free_pool_limit)) ;
     OK (GxB_Global_Option_get (GxB_MEMORY_POOL, free_pool_limit)) ;
+    OK (GxB_Global_Option_get_INT64 (GxB_MEMORY_POOL, free_pool_limit2)) ;
     for (int k = 0 ; k < 64 ; k++)
     {
         CHECK (free_pool_limit [k] == 0) ;
+        CHECK (free_pool_limit2 [k] == 0) ;
+    }
+
+    OK (GxB_Global_Option_set_INT64_ARRAY (GxB_MEMORY_POOL, NULL)) ;
+    OK (GxB_Global_Option_get_INT64 (GxB_MEMORY_POOL, free_pool_limit2)) ;
+    for (int k = 0 ; k < 64 ; k++)
+    {
+        CHECK (free_pool_defaults [k] == free_pool_limit2 [k]) ;
     }
 
     //--------------------------------------------------------------------------
@@ -739,7 +778,7 @@ void mexFunction
 
     int64_t nallocs ;
     size_t mem_deep, mem_shallow ;
-    GB_memoryUsage (&nallocs, &mem_deep, &mem_shallow, NULL) ;
+    GB_memoryUsage (&nallocs, &mem_deep, &mem_shallow, NULL, false) ;
     CHECK (nallocs == 0) ;
     CHECK (mem_deep == 0) ;
     CHECK (mem_shallow == 0) ;

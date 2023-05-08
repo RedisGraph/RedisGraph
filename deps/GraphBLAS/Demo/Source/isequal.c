@@ -20,8 +20,6 @@
 // returns true if x and y are both NaN.
 
 #include "GraphBLAS.h"
-#undef GB_PUBLIC
-#define GB_LIBRARY
 #include "graphblas_demos.h"
 
 // call a GraphBLAS method and return if an error occurs
@@ -41,7 +39,6 @@
 // isequal_type: check two matrices, works in any GraphBLAS
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 GrB_Info isequal_type       // return GrB_SUCCESS if successful
 (
     bool *result,           // true if A == B, false if A != B or error

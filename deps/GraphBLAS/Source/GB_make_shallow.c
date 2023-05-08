@@ -10,7 +10,7 @@
 #include "GB.h"
 #include "GB_make_shallow.h"
 
-GB_PUBLIC void GB (make_shallow) (GrB_Matrix A)
+void GB (make_shallow) (GrB_Matrix A)
 {
     if (A == NULL) return ;
     A->p_shallow = (A->p != NULL) ;

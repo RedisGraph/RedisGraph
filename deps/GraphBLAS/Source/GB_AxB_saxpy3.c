@@ -300,6 +300,7 @@ GrB_Info GB_AxB_saxpy3              // C = A*B using Gustavson+Hash
         // the general case.  This may select a single task for a single thread
         // anyway, but this decision would be based on the analysis.
         info = GB_AxB_saxpy3_slice_balanced (C, M, Mask_comp, A, B, AxB_method,
+            builtin_semiring,
             &SaxpyTasks, &SaxpyTasks_size, &apply_mask, &M_in_place,
             &ntasks, &nfine, &nthreads, Context) ;
     }
