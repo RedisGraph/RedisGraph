@@ -55,6 +55,25 @@ void VersionBroker_RegisterObj
 	free_cb cb         // object free function
 );
 
+//------------------------------------------------------------------------------
+// debug functionality
+//------------------------------------------------------------------------------
+
+// returns all active versions
+uint VersionBroker_Versions
+(
+	const VersionBroker vb,  // version broker to query
+	int64_t **versions,      // array of active versions
+	int64_t **ref_counts,    // versions reference count
+	int64_t **obj_counts     // versions object count
+);
+
+// print versions information
+void VersionBroker_Print
+(
+	const VersionBroker vb  // version broker to print
+);
+
 // free version broker
 void VersionBroker_Free
 (

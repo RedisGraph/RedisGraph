@@ -299,6 +299,67 @@ void VersionBroker_RegisterObj
 	array_append(_v->objects, vo);
 }
 
+//------------------------------------------------------------------------------
+// debug functionality
+//------------------------------------------------------------------------------
+
+// returns all active versions
+uint VersionBroker_Versions
+(
+	const VersionBroker vb,  // version broker to query
+	int64_t **versions,      // array of active versions
+	int64_t **ref_counts,    // versions reference count
+	int64_t **obj_counts     // versions object count
+) {
+	ASSERT(vb != NULL);
+
+	// acquire READ lock
+	pthread_rwlock_rdlock(&vb->rwlock);
+
+	uint n = array_len(vb->active_versions);
+	*versions   = rm_malloc(sizeof(int64_t) * n);
+	*ref_counts = rm_malloc(sizeof(int64_t) * n);
+	*obj_counts = rm_malloc(sizeof(int64_t) * n);
+
+	for(uint i = 0; i < n; i++) {
+		Version *v = vb->active_versions + i;
+		*versions[i]   = v->v;
+		*ref_counts[i] = atomic_load(&v->ref_count);
+		*obj_counts[i] = array_len(v->objects);
+	}
+
+	// release READ lock
+	pthread_rwlock_unlock(&vb->rwlock);
+
+	return n;
+}
+
+// print versions information
+void VersionBroker_Print
+(
+	const VersionBroker vb  // version broker to print
+) {
+	ASSERT(vb != NULL);
+
+	printf("Version Broker\n");
+
+	// acquire READ lock
+	pthread_rwlock_rdlock(&vb->rwlock);
+
+	uint n = array_len(vb->active_versions);
+	printf("%d active versions\n", n);
+
+	for(uint i = 0; i < n; i++) {
+		Version *v = vb->active_versions + i;
+		uint obj_count = array_len(v->objects);
+		printf("\tversion: %lld reference count: %d obj count:%d\n",
+				v->v, atomic_load(&v->ref_count), obj_count);
+	}
+
+	// release READ lock
+	pthread_rwlock_unlock(&vb->rwlock);
+}
+
 // free version broker
 void VersionBroker_Free
 (
