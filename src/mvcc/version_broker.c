@@ -46,7 +46,7 @@ static Version *_GetVersion
 	int *idx                 // version index
 ) {
 	ASSERT(vb != NULL);
-	ASSERT(v  <= vb->version);
+	ASSERT(v  <= vb->latest_version);
 
 	int i = 0;
 	Version *_v = NULL;
@@ -82,7 +82,7 @@ static Version *_AddVersion
 	ASSERT(_GetVersion(vb, v, NULL) == NULL);
 
 	// create and add a new version
-	Version _v = {v, ATOMIC_VAR_INIT(0), array_new(VersionedObj, 1)};
+	Version _v = {v, ATOMIC_VAR_INIT(1), array_new(VersionedObj, 1)};
 
 	// acquire WRITE lock
 	pthread_rwlock_wrlock(&vb->rwlock);
@@ -227,10 +227,7 @@ int64_t VersionBroker_GetWriteVersion
 	int64_t v = vb->latest_version + 1;
 
 	// create new version
-	Version *_v = _AddVersion(vb, v);
-
-	// increase version's ref count
-	atomic_fetch_add(&_v->ref_count, 1);
+	_AddVersion(vb, v);
 
 	// set thread local storage
 	pthread_setspecific(tls_mvcc_version, (void*)v);
@@ -259,7 +256,7 @@ void VersionBroker_ReturnWriteVersion
 	// decrease prev version reference count
 	Version *_prev_v = _GetVersion(vb, v - 1, NULL);
 	int prev_ref_count = atomic_fetch_sub(&_prev_v->ref_count, 1);
-	ASSERT(ref_count >= 0);
+	ASSERT(prev_ref_count >= 0);
 
 	// release READ lock
 	pthread_rwlock_unlock(&vb->rwlock);
