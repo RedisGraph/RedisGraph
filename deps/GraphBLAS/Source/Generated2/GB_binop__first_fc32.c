@@ -118,7 +118,7 @@
 
 // disable this operator and use the generic case if these conditions hold
 #define GB_DISABLE \
-    (GxB_NO_FIRST || GxB_NO_FC32 || GxB_NO_FIRST_FC32)
+    (GxB_NO_FIRST || GxB_NO_FC32 || GxB_NO_FIRST_FC32 || GB_COMPILER_MSC_2019_OR_NEWER)
 
 //------------------------------------------------------------------------------
 // C += A+B, all 3 matrices dense

@@ -41,7 +41,6 @@
 #include "GB_AxB__include2.h"
 #endif
 
-GB_PUBLIC
 GrB_Info GB_AxB_dot2                // C=A'*B or C<#M>=A'*B, dot product method
 (
     GrB_Matrix C,                   // output matrix, static header

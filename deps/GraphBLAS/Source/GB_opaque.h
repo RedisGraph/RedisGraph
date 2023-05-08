@@ -364,7 +364,7 @@ int64_t GB_positional_offset        // return the positional thunk
 ) ;
 
 // for internal use only
-GB_PUBLIC GrB_IndexUnaryOp GxB_FLIPDIAGINDEX_INT32, GxB_FLIPDIAGINDEX_INT64 ;
+GB_GLOBAL GrB_IndexUnaryOp GxB_FLIPDIAGINDEX_INT32, GxB_FLIPDIAGINDEX_INT64 ;
 
 //------------------------------------------------------------------------------
 // opaque content of GraphBLAS objects

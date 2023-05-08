@@ -11,7 +11,6 @@
 #define GB_AXB_BITMAP_SAXPY_H
 #include "GB_mxm.h"
 
-GB_PUBLIC                           // for testing only
 GrB_Info GB_bitmap_AxB_saxpy        // C = A*B where C is bitmap
 (
     GrB_Matrix C,                   // output matrix, static header

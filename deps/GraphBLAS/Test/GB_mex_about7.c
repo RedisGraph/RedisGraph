@@ -70,6 +70,7 @@ void mexFunction
     OK (GrB_Matrix_free (&(A->Y))) ;
     A->Y = Y_mangled ;
     ERR (GxB_Matrix_fprint (A, "A with invalid A->Y (wrong type)", 3, NULL)) ;
+    A->Y = NULL ;
 
     OK (GrB_Matrix_free (&A)) ;
 
@@ -81,6 +82,7 @@ void mexFunction
 
     A->Y = Y_mangled ;
     ERR (GxB_Matrix_fprint (A, "A with invalid A->Y (not hyper)", 3, NULL)) ;
+    A->Y = NULL ;
 
     OK (GrB_Matrix_free (&Y_mangled)) ;
     OK (GrB_Matrix_free (&A)) ;

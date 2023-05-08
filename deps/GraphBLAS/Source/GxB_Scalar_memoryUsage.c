@@ -30,7 +30,7 @@ GrB_Info GxB_Scalar_memoryUsage  // return # of bytes used for a scalar
 
     int64_t nallocs ;
     size_t mem_shallow ;
-    GB_memoryUsage (&nallocs, size, &mem_shallow, (GrB_Matrix) s) ;
+    GB_memoryUsage (&nallocs, size, &mem_shallow, (GrB_Matrix) s, false) ;
     return (GrB_SUCCESS) ;
 }
 
