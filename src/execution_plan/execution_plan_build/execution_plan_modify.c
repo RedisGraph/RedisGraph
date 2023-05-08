@@ -297,33 +297,29 @@ OpBase *ExecutionPlan_LocateReferences
 			   root, recurse_limit, NULL, 0, refs_to_resolve);
 }
 
-void _ExecutionPlan_LocateTaps
+static bool _ExecutionPlan_HasLocateTaps
 (
-	OpBase *root,
-	OpBase ***taps
+	OpBase *root
 ) {
-	if(root == NULL) {
-		return;
-	}
-
-	if(root->childCount == 0) {
-		// op Argument isn't considered a tap
-		if(root->type != OPType_ARGUMENT) {
-			array_append(*taps, root);
-		}
+	if((root->childCount == 0 && root->type != OPType_ARGUMENT
+			&& root->type != OPType_ARGUMENT_LIST)
+		|| root->type == OPType_FOREACH
+		|| root->type == OPType_CallSubquery) {
+			return true;
 	}
 
 	// recursively visit children
 	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlan_LocateTaps(root->children[i], taps);
+		if(_ExecutionPlan_HasLocateTaps(root->children[i])) {
+			return true;
+		}
 	}
 }
 
-OpBase **ExecutionPlan_LocateTaps(const ExecutionPlan *plan) {
+bool ExecutionPlan_HasLocateTaps(ExecutionPlan *plan) {
 	ASSERT(plan != NULL);
-	OpBase **taps = array_new(OpBase *, 1);
-	_ExecutionPlan_LocateTaps(plan->root, &taps);
-	return taps;
+
+	return _ExecutionPlan_HasLocateTaps(plan->root);
 }
 
 static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, int type_count,
