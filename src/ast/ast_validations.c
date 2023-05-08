@@ -345,7 +345,7 @@ static AST_Validation _Validate_referred_identifier
 ) {
 	int len = strlen(identifier);
 	if(raxFind(defined_identifiers, (unsigned char *)identifier, len) == raxNotFound) {
-		ErrorCtx_SetError("%.*s not defined", len, identifier);
+		ErrorCtx_SetError("'%.*s' not defined", len, identifier);
 		return AST_INVALID;
 	}
 

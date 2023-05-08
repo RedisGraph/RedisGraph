@@ -36,28 +36,22 @@ class testCallSubqueryFlow():
 
     # validate the non-valid queries don't pass validations
     def test01_test_validations(self):
-        # non-simple imports
-        for query in [
-            "WITH 1 AS a CALL {WITH a+1 AS b RETURN b} RETURN b",
-            "WITH 1 AS a CALL {WITH a AS b RETURN b} RETURN b",
-            "WITH 1 AS a CALL {WITH a LIMIT 5 RETURN a} RETURN a",
-            "WITH 1 AS a CALL {WITH a ORDER BY a.v RETURN a} RETURN a",
-            "WITH 1 AS a CALL {WITH a WHERE a > 5 RETURN a} RETURN a",
-            "WITH 1 AS a CALL {WITH a SKIP 5 RETURN a} RETURN a",
-            "WITH true AS a CALL {WITH NOT(a) AS b RETURN b} RETURN b",
-        ]:
-            self.expect_error(query,
-                "WITH imports in CALL {} must be simple ('WITH a')")
-
-        # non-valid queries within CALL {}
-        for query in [
-            "CALL {CREATE (n:N) MATCH (n:N) RETURN n} RETURN 1",
-            "WITH 1 AS a CALL {WITH a CREATE (n:N) MATCH (n:N) RETURN n} RETURN\
-                a",
-            "CALL {MATCH (n:N) CREATE (n:N2)} RETURN 1"
-        ]:
-            # just pass in case of an error, fail otherwise
-            self.expect_error(query, "")
+        import_error = "WITH imports in CALL {} must be simple ('WITH a')"
+        match_after_updating = "A WITH clause is required to introduce MATCH after an updating clause"
+        queries_errors = {
+            "WITH 1 AS a CALL {WITH a+1 AS b RETURN b} RETURN b" : import_error,
+            "WITH 1 AS a CALL {WITH a AS b RETURN b} RETURN b" : import_error,
+            "WITH 1 AS a CALL {WITH a LIMIT 5 RETURN a} RETURN a" : import_error,
+            "WITH 1 AS a CALL {WITH a ORDER BY a.v RETURN a} RETURN a" : import_error,
+            "WITH 1 AS a CALL {WITH a WHERE a > 5 RETURN a} RETURN a" : import_error,
+            "WITH 1 AS a CALL {WITH a SKIP 5 RETURN a} RETURN a" : import_error,
+            "WITH true AS a CALL {WITH NOT(a) AS b RETURN b} RETURN b" : import_error,
+            "CALL {CREATE (n:N) MATCH (n:N) RETURN n} RETURN 1" : match_after_updating,
+            "WITH 1 AS a CALL {WITH a CREATE (n:N) MATCH (n:N) RETURN n} RETURN a" : match_after_updating,
+            "CALL {MATCH (n:N) CREATE (n:N2)} RETURN 1 ": "The bound variable 'n' can't be redeclared in a CREATE clause",
+        }
+        for query, err in queries_errors.items():
+            self.expect_error(query, err)
 
         # non-valid queries: import an undefined identifier
         for query in [
@@ -100,7 +94,7 @@ class testCallSubqueryFlow():
             RETURN a + n.v
             """
         ]:
-            self.expect_error(query, "a not defined")
+            self.expect_error(query, "'a' not defined")
 
         # outer scope variables (bound) should not be returnable from the sq
         query = "MATCH (n:N) CALL {RETURN 1 AS n} RETURN n"
