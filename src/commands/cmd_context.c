@@ -171,8 +171,7 @@ uint64_t CommandCtx_GetReceivedTimestamp
 
 void CommandCtx_Free(CommandCtx *command_ctx) {
 	if(command_ctx->bc) {
-
-		RedisGraph_UnblockClient(command_ctx->bc, (void *)command_ctx->query_ctx->qi);
+		RedisGraph_UnblockClient(command_ctx->bc);
 		if(command_ctx->ctx) {
 			RedisModule_FreeThreadSafeContext(command_ctx->ctx);
 		}

@@ -138,6 +138,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	bool cmd_info_enabled = false;
 	if (Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled) {
 		uint32_t info_max_query_count = 0;
+		if (Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &info_max_query_count)) {
+			Info_SetFinishedQueriesStorage(info_max_query_count);
+		}
 		RedisModule_Log(ctx, "notice", "Maximum number of info queries for history is %u", info_max_query_count);
 	}
 
@@ -201,8 +204,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.INFO", Graph_Info, "readonly", 0, 0,
-								0) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.INFO", Graph_Info, "readonly", 1, 1,
+								1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 

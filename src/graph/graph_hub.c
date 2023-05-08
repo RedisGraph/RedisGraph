@@ -103,6 +103,8 @@ void CreateNode
 
 	Graph_CreateNode(gc->g, n, labels, label_count);
 	*n->attributes = set;
+	const uint32_t prop_count = ATTRIBUTE_SET_COUNT(set);
+	GraphContext_IncreasePropertyNamesCount(gc, prop_count, GETYPE_NODE);
 
 	// add node labels
 	for(uint i = 0; i < label_count; i++) {
@@ -135,6 +137,8 @@ void CreateEdge
 
 	Graph_CreateEdge(gc->g, src, dst, r, e);
 	*e->attributes = set;
+	const uint32_t prop_count = ATTRIBUTE_SET_COUNT(set);
+	GraphContext_IncreasePropertyNamesCount(gc, prop_count, GETYPE_EDGE);
 
 	Schema *s = GraphContext_GetSchemaByID(gc, r, SCHEMA_EDGE);
 	// all schemas have been created in the edge blueprint loop or earlier
@@ -178,6 +182,10 @@ void DeleteNodes
 				EffectsBuffer_AddDeleteNodeEffect(eb, n);
 			}
 
+			GraphContext_DecreasePropertyNamesCount(
+			gc,
+			ATTRIBUTE_SET_COUNT(*n->attributes),
+			GETYPE_NODE);
 			if(has_indices) {
 				_DeleteNodeFromIndices(gc, n);
 			}

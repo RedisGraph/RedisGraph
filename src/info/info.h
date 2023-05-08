@@ -25,6 +25,7 @@
 #include "../util/num.h"
 #include "../util/dict.h"
 #include "../util/simple_timer.h"
+#include "../util/circular_buffer.h"
 
 typedef enum QueryExecutionStatus QueryExecutionStatus;
 typedef enum QueryExecutionTypeFlag QueryExecutionTypeFlag;
@@ -54,8 +55,6 @@ typedef struct Info {
     FinishedQueryCounters counters;           // counters with states
     pthread_mutex_t mutex;                    // info lock
 } Info;
-
-extern const char *GRAPH_INFO_STREAM_NAME;
 
 // create a new info structure
 // returns true on successful creation
@@ -127,6 +126,12 @@ void Info_GetExecutingReportingQueriesCount
     uint64_t *reporting   // [OUTPUT] amount of reporting queries
 );
 
+// return the total number of queries currently queued or being executed
+uint64_t Info_GetTotalQueriesCount
+(
+	Info *info
+);
+
 // return the maximum registered time a query was spent waiting
 // taking into account all currently waiting, executing and reporting queries
 millis_t Info_GetMaxQueryWaitTime
@@ -143,16 +148,27 @@ void Info_IncrementNumberOfQueries
     const QueryExecutionStatus
 );
 
-// locks the info object for exclusive external reading
-bool Info_Lock
-(
-    Info *info  // info
-);
-
 // Unlocks the info object from exclusive external reading.
 bool Info_Unlock
 (
     Info *info
+);
+
+// stores clones of queries of a certain state among the waiting and the
+// executing stages in storage
+void Info_GetQueries
+(
+    Info *info,                 // info
+    QueryStage stage,           // wanted stage
+    QueryInfoStorage *storage  // result container
+);
+
+// views the circular buffer of finished queries
+void Info_ViewFinishedQueries
+(
+    CircularBuffer_ReadCallback callback,  // callback
+    void *user_data,                       // additional data for callback
+    uint n_items                           // number of items to view
 );
 
 // returns the total number of queries recorded

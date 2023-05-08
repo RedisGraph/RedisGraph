@@ -6,10 +6,9 @@
 
 #include <sys/types.h>
 
+#include "query_info.h"
 #include "../util/simple_timer.h"
 #include "../graph/graphcontext.h"
-#include "../commands/cmd_context.h"
-#include "../configuration/config.h"
 
 // resets the stage timer and returns the milliseconds it had recorded before
 // having been reset
@@ -135,90 +134,59 @@ void QueryInfo_UpdateReportingTime
 // clone a QueryInfo
 QueryInfo *QueryInfo_Clone
 (
-    const QueryInfo *qi
+    QueryInfo *qi
 ) {
-    ASSERT(qi != NULL);
-    QueryInfo *clone = rm_malloc(sizeof(QueryInfo));
-    *clone = *qi;
-
+    QueryInfo *clone = rm_calloc(1, sizeof(QueryInfo));
     if(qi->graph_name != NULL) {
         clone->graph_name = strdup(qi->graph_name);
     }
     if(qi->query_string != NULL) {
         clone->query_string = strdup(qi->query_string);
     }
+    clone->stage = qi->stage;
+    clone->received_ts = qi->received_ts;
+    clone->wait_duration = qi->wait_duration;
+    clone->utilized_cache = qi->utilized_cache;
+    clone->report_duration = qi->report_duration;
+    clone->execution_duration = qi->execution_duration;
+    // clone timer will isn't relevant, stays {0}
 
     return clone;
 }
 
-static void _write_query_info_to_stream
+// used as a callback for the circular buffer
+void QueryInfo_CloneTo
 (
-    RedisModuleCtx *ctx,
-    QueryInfo *qi
-){
-    ASSERT(qi != NULL);
+    const void *item_to_clone,
+    void *destination_item,
+    void *user_data
+) {
+    ASSERT(item_to_clone);
+    ASSERT(destination_item);
+    UNUSED(user_data);
 
-    // TODO: Write the info in pd->qi to the stream
-    // use the RedisModuleCall-- function to call "XADD MAXLEN = Config_CMD_INFO_MAX_QUERY_COUNT"
-    // so that the length of the stream does not exceed its max.
+    QueryInfo *source = (QueryInfo*)item_to_clone;
+    QueryInfo *destination = (QueryInfo*)destination_item;
 
-    // write to stream
-        // "Received at"
-        // value
-        // "Stage"
-        // value
-        // "Graph name"
-        // value
-        // "Query"
-        // value
-        // "Total duration"
-        // value
-        // "Wait duration"
-        // value
-        // "Execution duration"
-        // value
-        // "Report duration"
-        // value
-        // "Cache utilized"
-        // value
+    // copy the struct (shallow)
+    *destination = *source;
 
-    int limit;
-    Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &limit);
-
-    // Get the current stream ID for the "append" operation
-    RedisModuleCallReply *reply = RedisModule_Call(ctx,
-    "XADD",
-    "cclcccccclclclclclcl",
-    GRAPH_INFO_STREAM_NAME,
-    "MAXLEN", limit,
-    "*",
-    "graph_name", qi->graph_name,
-    "query_string", qi->query_string,
-    "received_ts", (long long)qi->received_ts,
-    "wait_duration", (long long)qi->wait_duration,
-    "execution_duration", (long long)qi->execution_duration,
-    "report_duration", (long long)qi->report_duration,
-    "stage", qi->stage,
-    "utilized_cache", qi->utilized_cache ? "true" : "false");
-
-    // Check for errors and clean up
-    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_ERROR) {
-        RedisModule_Log(ctx, "error", "failed to append to stream: %s", RedisModule_CallReplyStringPtr(reply, NULL));
+    if (source->query_string != NULL) {
+        destination->query_string = strdup(source->query_string);
     }
-    RedisModule_FreeCallReply(reply);
+
+    if (source->graph_name != NULL) {
+        destination->graph_name = strdup(source->graph_name);
+    }
 }
 
-// write the info stored in a Queryinfo to a stream and free it
-// executed by the main-thread when the client is unblocked
-void QueryInfo_ReportAndFree
+// QueryInfo deleter callback
+void QueryInfo_Deleter
 (
-    RedisModuleCtx *ctx,  // module context
-    void *privdata        // private data
+    void *info
 ) {
-    QueryInfo *qi = (QueryInfo *)privdata;
-    _write_query_info_to_stream(ctx, qi);
-
-    // free the QueryInfo
+    ASSERT(info != NULL);
+    QueryInfo *qi = (QueryInfo *)info;
     QueryInfo_Free(qi);
 }
 
