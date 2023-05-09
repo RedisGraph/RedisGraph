@@ -314,7 +314,6 @@ class testRelationPattern(FlowTestsBase):
 
     # Test patterns with length less than zero
     def test11_lt_zero_hop_traversals(self):
-        g = Graph(redis_con, "lt_zero_hop_traversals")
 
         queries = [
             "MATCH p=()-[*..0]->() RETURN nodes(p) AS nodes",
@@ -325,6 +324,28 @@ class testRelationPattern(FlowTestsBase):
             "MATCH p=()-[]->()-[*1..0]->() RETURN nodes(p) AS nodes",
         ]
         for query in queries:
-
             self.expect_error(query, 
                 "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.")
+
+    def test12_return_var_len_edge_array(self):
+        # Construct a simple graph:
+        # (A)-[R]->(b)
+        # (b)-[R]->(c)
+        g = Graph(redis_con, "return_var_len_edge_array")
+        q = "CREATE (a)-[:R]->(b)-[:R]->(c)"
+        g.query(q)
+
+        query_to_expected_result = {
+            "MATCH (a)-[r*2..2]->(b) RETURN size(nodes(r))" : [[3]],
+            "MATCH (a)-[r:R*2..2]->(b) RETURN size(nodes(r))" : [[3]],
+            "MATCH (a)-[r*1..2]->(b) RETURN size(nodes(r)) AS x ORDER BY x" : [[2], [2], [3]],
+            "MATCH (a)-[r*0..2]->(b) RETURN size(nodes(r)) AS x ORDER BY x" : [[1], [1], [1], [2], [2], [3]],
+            "MATCH (a)-[r*0..1]->(b) RETURN size(nodes(r)) AS x ORDER BY x" : [[1], [1], [1], [2], [2]],
+            "MATCH (a)-[r*0..0]->(b) RETURN size(nodes(r)) AS x ORDER BY x" : [[1], [1], [1]],
+            # TODO:
+            # "MATCH (a)-[r*1..1]->(b) RETURN size(nodes(r)) AS x ORDER BY x" : [[2], [2]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            actual_result = g.query(query)
+            self.env.assertEquals(actual_result.result_set, expected_result)
+

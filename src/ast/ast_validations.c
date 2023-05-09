@@ -212,11 +212,7 @@ static AST_Validation _ValidateMultiHopTraversal
 		return AST_VALID;
 	}
 	
-	const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
-	ErrorCtx_SetError("RedisGraph does not support alias of variable-length traversal edges '%s'. \
-Instead, use a query in the style of: 'MATCH p = (a)-[*]->(b) RETURN relationships(p)'.",
-						identifier);
-	return AST_INVALID;
+	return AST_VALID;
 }
 
 // Verify that MERGE doesn't redeclare bound relations, that one reltype is specified for unbound relations, 
@@ -816,9 +812,9 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 		void *alias_type = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
 		if(alias_type == raxNotFound) {
 			raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)T_EDGE, NULL);
-				return VISITOR_RECURSE;
+			return VISITOR_RECURSE;
 		}
-
+			
 		if(alias_type != (void *)T_EDGE && alias_type != NULL) {
 			ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
 			return VISITOR_BREAK;
@@ -828,6 +824,11 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 			ErrorCtx_SetError("Cannot use the same relationship variable '%s' for multiple patterns.", alias);
 			return VISITOR_BREAK;
 		}
+	// } else {
+	// 	// If this is a multi-hop traversal, validate it accordingly
+	// 	if(range && _ValidateMultiHopTraversal(n, range, NULL) == AST_INVALID) {
+	// 		return VISITOR_BREAK;
+	// 	}
 	}
 
 	return VISITOR_RECURSE;

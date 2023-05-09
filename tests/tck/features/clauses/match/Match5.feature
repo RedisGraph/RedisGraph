@@ -585,7 +585,6 @@ Feature: Match5 - Match variable length patterns over given graphs scenarios
       | 'n01111' |
     And no side effects
 
-  @skip
   Scenario: [28] Handling mixed relationship patterns 1
     And having executed:
       """
