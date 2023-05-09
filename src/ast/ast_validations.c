@@ -824,11 +824,6 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 			ErrorCtx_SetError("Cannot use the same relationship variable '%s' for multiple patterns.", alias);
 			return VISITOR_BREAK;
 		}
-	// } else {
-	// 	// If this is a multi-hop traversal, validate it accordingly
-	// 	if(range && _ValidateMultiHopTraversal(n, range, NULL) == AST_INVALID) {
-	// 		return VISITOR_BREAK;
-	// 	}
 	}
 
 	return VISITOR_RECURSE;
