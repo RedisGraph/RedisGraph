@@ -64,6 +64,8 @@ static ExecutionPlan *_ExecutionPlan_Clone(const ExecutionPlan *template) {
 	// The "master" execution plan is the one constructed with the root op.
 	ExecutionPlan *clone = (ExecutionPlan *)clone_root->plan;
 
+	HashTableRelease(old_to_new);
+
 	return clone;
 }
 
