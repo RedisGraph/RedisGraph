@@ -424,11 +424,14 @@ static QGNode *_SharedNode
 	const QGEdge *e0,
 	const QGEdge *e1
 ) {
-	ASSERT(e0 && e1);
-	if(e0->dest == e1->src) return e0->dest;   // (a)-[E0]->(b)-[E1]->(c)
-	if(e0->src == e1->dest) return e0->src;    // (a)<-[E0]-(b)<-[E1]-(c)
+	ASSERT(e0 != NULL);
+	ASSERT(e1 != NULL);
+
+	if(e0->dest == e1->src)  return e0->dest;  // (a)-[E0]->(b)-[E1]->(c)
 	if(e0->dest == e1->dest) return e0->dest;  // (a)-[E0]->(b)<-[E1]-(c)
-	if(e0->src == e1->src) return e0->src;     // (a)<-[E0]-(b)-[E1]->(c)
+	if(e0->src == e1->dest)  return e0->src;   // (a)<-[E0]-(b)<-[E1]-(c)
+	if(e0->src == e1->src)   return e0->src;   // (a)<-[E0]-(b)-[E1]->(c)
+
 	return NULL;
 }
 

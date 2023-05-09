@@ -300,3 +300,19 @@ class testRelationPattern(FlowTestsBase):
             res = g.query(q.format(L0=perm[0], L1=perm[1], L2=perm[2]))
             self.env.assertEquals(res.result_set, expected_result)
 
+    def test11_shared_node_detection(self):
+        # Construct a simple graph
+        # (s)<-[:A]-(x)
+        # (x)<-[:B]-(x)
+        # (x)-[:B]->(t)
+        # (t)<-[:B]-(x)
+        g = Graph(redis_con, "shared_node")
+        q = "MERGE (s)<-[:A]-(x)<-[:B]-(x)-[:B]->(t)<-[:B]-(x)"
+        result = g.query(q)
+
+        self.env.assertEquals(result.nodes_created, 3)
+        self.env.assertEquals(result.relationships_created, 4)
+
+        result = g.query(q)
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.relationships_created, 0)
