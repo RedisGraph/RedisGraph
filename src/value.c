@@ -415,13 +415,13 @@ size_t SIValue_StringJoinLen(SIValue *strings, unsigned int string_count, const 
 	/* Compute length. */
 	for(int i = 0; i < string_count; i ++) {
 		/* String elements representing bytes size strings,
-		 * for all other SIValue types 32 bytes should be enough. */
-		elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + delimiter_len : 32;
+		 * for all other SIValue types 64 bytes should be enough. */
+		elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + delimiter_len : 64;
 		length += elem_len;
 	}
 
 	/* Account for NULL terminating byte. */
-	length += string_count + 1;
+	length++;
 	return length;
 }
 
@@ -762,6 +762,69 @@ XXH64_hash_t SIValue_HashCode(SIValue v) {
 	return XXH64_digest(&state);
 }
 
+// reads SIValue off of binary stream
+SIValue SIValue_FromBinary
+(
+    FILE *stream  // stream to read value from
+) {
+	ASSERT(stream != NULL);
+
+	// read value type
+	SIType t;
+	SIValue v;
+	size_t len;  // string length
+
+	bool     b;
+	int64_t  i;
+	double   d;
+	Point    p;
+	char    *s;
+	struct SIValue *array;
+
+	fread_assert(&t, sizeof(SIType), stream);
+	switch(t) {
+		case T_POINT:
+			// read point from stream
+			fread_assert(&p, sizeof(v.point), stream);
+			v = SI_Point(p.latitude, p.longitude);
+			break;
+		case T_ARRAY:
+			// read array from stream
+			v = SIArray_FromBinary(stream);
+			break;
+		case T_STRING:
+			// read string length from stream
+			fread_assert(&len, sizeof(len), stream);
+			s = rm_malloc(sizeof(char) * len);
+			// read string from stream
+			fread_assert(s, sizeof(char) * len, stream);
+			v = SI_TransferStringVal(s);
+			break;
+		case T_BOOL:
+			// read bool from stream
+			fread_assert(&b, sizeof(b), stream);
+			v = SI_BoolVal(b);
+			break;
+		case T_INT64:
+			// read int from stream
+			fread_assert(&i, sizeof(i), stream);
+			v = SI_LongVal(i);
+			break;
+		case T_DOUBLE:
+			// read double from stream
+			fread_assert(&d, sizeof(d), stream);
+			v = SI_DoubleVal(d);
+			break;
+		case T_NULL:
+			v = SI_NullVal();
+			break;
+		default:
+			assert(false && "unknown SIValue type");
+	}
+
+	return v;
+}
+			
 void SIValue_Free(SIValue v) {
 	// The free routine only performs work if it owns a heap allocation.
 	if(v.allocation != M_SELF) return;

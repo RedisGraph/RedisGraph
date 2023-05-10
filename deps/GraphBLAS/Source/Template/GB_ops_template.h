@@ -11,13 +11,13 @@
 // binary functions.
 
 #define GB_UNOP_STRUCT(op,xtype) \
-    GB_PUBLIC struct GB_UnaryOp_opaque GB_OPAQUE (GB_EVAL3 (op, _, xtype))
+    GB_GLOBAL struct GB_UnaryOp_opaque GB_OPAQUE (GB_EVAL3 (op, _, xtype))
 
 #define GB_BINOP_STRUCT(op,xtype) \
-    GB_PUBLIC struct GB_BinaryOp_opaque GB_OPAQUE (GB_EVAL3 (op, _, xtype))
+    GB_GLOBAL struct GB_BinaryOp_opaque GB_OPAQUE (GB_EVAL3 (op, _, xtype))
 
 #define GB_IDXOP_STRUCT(op,xtype) \
-    GB_PUBLIC struct GB_IndexUnaryOp_opaque \
+    GB_GLOBAL struct GB_IndexUnaryOp_opaque \
         GB_OPAQUE (GB_EVAL3 (op, _, xtype))
 
 //------------------------------------------------------------------------------

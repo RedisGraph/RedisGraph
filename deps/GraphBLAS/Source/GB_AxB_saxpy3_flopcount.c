@@ -76,7 +76,6 @@
     GB_WERK_POP (B_ek_slicing, int64_t) ;   \
 }
 
-GB_PUBLIC
 GrB_Info GB_AxB_saxpy3_flopcount
 (
     int64_t *Mwork,             // amount of work to handle the mask M

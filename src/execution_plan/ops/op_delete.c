@@ -16,12 +16,11 @@
 
 // forward declarations
 static Record DeleteConsume(OpBase *opBase);
-static OpResult DeleteInit(OpBase *opBase);
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static OpResult DeleteReset(OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
-static int is_entity_cmp
+static int entity_cmp
 (
 	const GraphEntity *a,
 	const GraphEntity *b
@@ -33,16 +32,19 @@ static void _DeleteEntities
 (
 	OpDelete *op
 ) {
-	uint node_deleted          = 0;
-	uint edge_deleted          = 0;
-	uint node_count            = array_len(op->deleted_nodes);
-	uint edge_count            = array_len(op->deleted_edges);
+	uint node_count   = array_len(op->deleted_nodes);
+	uint edge_count   = array_len(op->deleted_edges);
+	uint node_deleted = 0;
+	uint edge_deleted = 0;
 
 	// nothing to delete, quickly return
 	if((node_count + edge_count) == 0) return;
 
+	Graph        *g  = op->gc->g;
+	GraphContext *gc = op->gc;
+
 	//--------------------------------------------------------------------------
-	// removing duplicates
+	// removing node duplicates
 	//--------------------------------------------------------------------------
 
 	// remove node duplicates
@@ -50,7 +52,7 @@ static void _DeleteEntities
 	Node *distinct_nodes = array_new(Node, 1);
 
 	qsort(nodes, node_count, sizeof(Node),
-			(int(*)(const void*, const void*))is_entity_cmp);
+			(int(*)(const void*, const void*))entity_cmp);
 
 	for(uint i = 0; i < node_count; i++) {
 		while(i < node_count - 1 &&
@@ -68,19 +70,22 @@ static void _DeleteEntities
 		array_append(distinct_nodes, *n);
 
 		// mark node's edges for deletion
-		Graph_GetNodeEdges(op->gc->g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION,
+		Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION,
 				&op->deleted_edges);
 	}
 
-	node_count =  array_len(distinct_nodes);
-	edge_count =  array_len(op->deleted_edges);
+	node_count = array_len(distinct_nodes);
+	edge_count = array_len(op->deleted_edges);
 
+	//--------------------------------------------------------------------------
 	// remove edge duplicates
+	//--------------------------------------------------------------------------
+
 	Edge *edges = op->deleted_edges;
 	Edge *distinct_edges = array_new(Edge, 1);
 
 	qsort(edges, edge_count, sizeof(Edge),
-			(int(*)(const void*, const void*))is_entity_cmp);
+			(int(*)(const void*, const void*))entity_cmp);
 
 	for(uint i = 0; i < edge_count; i++) {
 		while(i < edge_count - 1 &&
@@ -100,23 +105,24 @@ static void _DeleteEntities
 
 	edge_count = array_len(distinct_edges);
 
-	// lock everything
-	QueryCtx_LockForCommit(); {
-		// NOTE: delete edges before nodes
-		// required as a deleted node must be detached
+	if((node_count + edge_count) > 0) {
+		// lock everything
+		QueryCtx_LockForCommit();
+		{
+			// NOTE: delete edges before nodes
+			// required as a deleted node must be detached
 
-		// delete edges
-		edge_deleted += DeleteEdges(op->gc, distinct_edges);
+			// delete edges
+			if(edge_count > 0) {
+				DeleteEdges(gc, distinct_edges, edge_count, true);
+				edge_deleted = edge_count;
+			}
 
-		// delete nodes
-		for(uint i = 0; i < node_count; i++) {
-			node_deleted += DeleteNode(op->gc, distinct_nodes + i);
-		}
-
-		// stats must be updated under lock due to for replication
-		if(op->stats != NULL) {
-			op->stats->nodes_deleted         += node_deleted;
-			op->stats->relationships_deleted += edge_deleted;
+			// delete nodes
+			if(node_count > 0) {
+				DeleteNodes(gc, distinct_nodes, node_count, true);
+				node_deleted = node_count;
+			}
 		}
 	}
 
@@ -130,22 +136,15 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	op->gc = QueryCtx_GetGraphCtx();
 	op->exps = exps;
-	op->stats = NULL;
 	op->exp_count = array_len(exps);
 	op->deleted_nodes = array_new(Node, 32);
 	op->deleted_edges = array_new(Edge, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", DeleteInit, DeleteConsume,
+	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
 				DeleteReset, NULL, DeleteClone, DeleteFree, true, plan);
 
 	return (OpBase *)op;
-}
-
-static OpResult DeleteInit(OpBase *opBase) {
-	OpDelete *op = (OpDelete *)opBase;
-	op->stats = QueryCtx_GetResultSetStatistics();
-	return OP_OK;
 }
 
 static Record DeleteConsume(OpBase *opBase) {

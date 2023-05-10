@@ -283,9 +283,10 @@ void test_removeNodes() {
 	TEST_ASSERT(nnz == 3);
 
 	Edge *edges = (Edge *)array_new(Edge, 3);
-	//==============================================================================
-	//=== Delete node 0 ============================================================
-	//==============================================================================
+
+	//--------------------------------------------------------------------------
+	// Delete node 0
+	//--------------------------------------------------------------------------
 
 	// First node should have 2 edges.
 	Graph_GetNode(g, 0, &node);
@@ -293,9 +294,9 @@ void test_removeNodes() {
 	uint edge_count = array_len(edges);
 	TEST_ASSERT(edge_count == 2);
 
-	Graph_DeleteEdges(g, edges);
+	Graph_DeleteEdges(g, edges, edge_count);
 	Graph_GetNode(g, 0, &node);
-	Graph_DeleteNode(g, &node);
+	Graph_DeleteNodes(g, &node, 1);
 	
 	Graph_ReleaseLock(g);
 

@@ -9,8 +9,8 @@
 
 // for code development only:
 #ifdef GBCUDA
-// CUDA kernels enabled: turn on developer flag
-#define GB_DEVELOPER 1
+// when CUDA kernels enabled:
+#define GB_DEVELOPER 0
 #else
 // in production: turn off developer flag
 #define GB_DEVELOPER 0
@@ -20,7 +20,6 @@
 #include "GB.h"
 #include "GB_hash.h"
 
-GB_PUBLIC
 GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 (
     const GrB_Matrix A,     // GraphBLAS matrix to print and check
@@ -300,7 +299,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 
     int64_t nallocs ;
     size_t mem_deep, mem_shallow, memsize ;
-    GB_memoryUsage (&nallocs, &mem_deep, &mem_shallow, A) ;
+    GB_memoryUsage (&nallocs, &mem_deep, &mem_shallow, A, true) ;
     memsize = mem_deep + (pr_mem_shallow ? mem_shallow : 0) ;
 
     #if GB_DEVELOPER

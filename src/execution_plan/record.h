@@ -67,11 +67,13 @@ void Record_Merge
 	const Record b
 );
 
-// merge record b into a, transfer value ownership from b to a
+// merge entries from `from` into `to`, transfer ownership if transfer_ownership
+// is on
 void Record_TransferEntries
 (
-	Record *to,
-	Record from
+	Record *to,              // destination record
+	Record from,             // src record
+	bool transfer_ownership  // transfer ownership of the record to dest or not
 );
 
 // returns number of entries record can hold

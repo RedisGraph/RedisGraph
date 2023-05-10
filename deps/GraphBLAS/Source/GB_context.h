@@ -110,7 +110,6 @@ typedef GB_Context_struct *GB_Context ;
 //  GrB_error (&error, A) ;
 //  printf ("%s", error) ;
 
-GB_PUBLIC
 const char *GB_status_code (GrB_Info info) ;
 
 // maximum size of the error logger string

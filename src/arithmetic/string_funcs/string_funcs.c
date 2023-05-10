@@ -455,8 +455,7 @@ SIValue AR_TOSTRING(SIValue *argv, int argc, void *private_data) {
 		size_t bytesWritten = 0;
 		SIValue_ToString(argv[0], &str, &len, &bytesWritten);
 		return SI_TransferStringVal(str);
-	}
-	else {
+	} else {
 		return SI_NullVal();
 	}
 }
@@ -656,12 +655,13 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 	} else {
 		size_t rest_len   = str_len;
 		const char *start = str;
-		while(rest_len > delimiter_len) {
+		bool delimiter_found = false;
+		while(rest_len >= delimiter_len) {
 			// find bytes length from start to delimiter
 			int len = 0;
-			bool delimiter_found = false;
+			delimiter_found = false;
 			while(len <= rest_len - delimiter_len) {
-				if(strncmp(start+len, delimiter, delimiter_len) == 0) {
+				if(strncmp(start + len, delimiter, delimiter_len) == 0) {
 					delimiter_found = true;
 					break;
 				}
@@ -676,7 +676,7 @@ SIValue AR_SPLIT(SIValue *argv, int argc, void *private_data) {
 			start += len + delimiter_len;
 			rest_len -= len + delimiter_len;
 		}
-		if(rest_len > 0) {
+		if(rest_len > 0 || delimiter_found) {
 			SIValue si_token = SI_ConstStringVal(start);
 			SIArray_Append(&tokens, si_token);
 		}

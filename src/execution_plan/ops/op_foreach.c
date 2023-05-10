@@ -24,6 +24,7 @@ OpBase *NewForeachOp
 	op->first          = true;
 	op->records        = NULL;
 	op->supplier       = NULL;
+	op->body_records   = NULL;
 	op->argument_list  = NULL;
 
     OpBase_Init((OpBase *)op, OPType_FOREACH, "Foreach", ForeachInit,
@@ -58,20 +59,24 @@ static OpResult ForeachInit
 	// validate found operation type, expecting ArgumentList
 	ASSERT(OpBase_Type((const OpBase *)op->argument_list) == OPType_ARGUMENT_LIST);
 
+	// construct an array of records to hold all consumed records (eagerly)
+	// and an array holding clones of the input records with the mapping of the
+	// embedded plan (body)
+	op->records = array_new(Record, 1);
+	op->body_records = array_new(Record, 1);
+
+	// insert a NULL value to both arrays, so that execution terminates when it
+	// is consumed by the parent
+	array_append(op->records, NULL);
+
     return OP_OK;
 }
 
 // if there is a record to return, it is returned
-// otherwise, returns NULL
+// otherwise, returns NULL (last value in op->records)
 static Record _handoff(OpForeach *op) {
 	ASSERT(op->records != NULL);
-
-	Record r = NULL;
-	if(array_len(op->records)) {
-		r = array_pop(op->records);
-	}
-
-	return r;
+	return array_pop(op->records);
 }
 
 // the Foreach consume function aggregates all the records from the supplier if
@@ -98,24 +103,34 @@ static Record ForeachConsume
 	// mark that the aggregation has occurred, so it won't occur again
 	op->first = false;
 
-	// construct an array of records to hold all consumed records (eagerly)
-	op->records = array_new(Record, 1);
-
 	Record r = NULL;
 	if(op->supplier) {
 		// eagerly drain supplier
 		while((r = OpBase_Consume(op->supplier))) {
+			Record_PersistScalars(r);
 			array_append(op->records, r);
+
+			// create a record with the mapping of the embedded plan
+			// (as opposed to the record-mapping of the consumed record)
+			Record body_rec = OpBase_CreateRecord(op->body);
+			// copy the consumed record's entries to the record to be sent to
+			// the body
+			Record_Clone(r, body_rec);
+			array_append(op->body_records, body_rec);
 		}
+		// supplier depleted
+		// propagate reset to release RediSearch index lock if any exists
+		OpBase_PropagateReset(op->supplier);
 	} else {
 		// static list, create a dummy empty record just to kick start the
-		// argument-list operation
-		r = OpBase_CreateRecord((OpBase *)op);
-		array_append(op->records, r);
+		// argument-list operation, and a dummy to pass on
+		array_append(op->records, OpBase_CreateRecord(opBase));
+		array_append(op->body_records, OpBase_CreateRecord(op->body));
 	}
 
-	// plant a clone of the list of arguments in argument_list operation
-	ArgumentList_AddRecordList(op->argument_list, op->records);
+	// pass body_records onwards to argumentList
+	ArgumentList_AddRecordList(op->argument_list, op->body_records);
+	op->body_records = NULL;
 
 	// call consume on loop body first op
 	// the result is thrown away
@@ -133,14 +148,25 @@ static void _freeInternals
 ) {
 	// free records still held by this operation
 	if(op->records != NULL) {
-		// free record list components
+		// free record list components (except first element, which is NULL)
 		uint nrecords = array_len(op->records);
-		for(uint i = 0; i < nrecords; i++) {
+		for(uint i = 1; i < nrecords; i++) {
 			OpBase_DeleteRecord(op->records[i]);
 		}
 
 		array_free(op->records);
 		op->records = NULL;
+	}
+
+	if(op->body_records != NULL) {
+		// free body record list components
+		uint nrecords = array_len(op->body_records);
+		for(uint i = 0; i < nrecords; i++) {
+			OpBase_DeleteRecord(op->body_records[i]);
+		}
+
+		array_free(op->body_records);
+		op->body_records = NULL;
 	}
 }
 
@@ -153,6 +179,9 @@ static OpResult ForeachReset
 	op->first = true;
 
 	_freeInternals(op);
+
+	op->records = array_new(Record, 1);
+	array_append(op->records, NULL);
 
 	return OP_OK;
 }

@@ -18,7 +18,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 void GB_cumsum                      // cumulative sum of an array
 (
     int64_t *restrict count,     // size n+1, input/output

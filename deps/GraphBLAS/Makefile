@@ -26,33 +26,37 @@ JOBS ?= 8
 
 default: library
 
-# just build the dynamic library, but not the demos
+# default is to install only in /usr/local
 library:
-	( cd build && cmake $(CMAKE_OPTIONS) .. && $(MAKE) --jobs=$(JOBS) )
-
-# enable CUDA (NOTE: not ready for production use)
-cuda:
-	( cd build && cmake $(CMAKE_OPTIONS) -DENABLE_CUDA=1 .. && $(MAKE) --jobs=$(JOBS) )
+	( cd build && cmake $(CMAKE_OPTIONS) .. && cmake --build . -j${JOBS} )
 
 # install only in SuiteSparse/lib and SuiteSparse/include
 local:
-	( cd build && cmake $(CMAKE_OPTIONS) -DSUITESPARSE_LOCAL=1 .. && $(MAKE) --jobs=${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=1 .. && cmake --build . -j${JOBS} )
+
+# install only in /usr/local (default)
+global:
+	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=0 .. && cmake --build . -j${JOBS} )
+
+# enable CUDA (NOTE: not ready for production use)
+cuda:
+	( cd build && cmake $(CMAKE_OPTIONS) -DENABLE_CUDA=1 .. && cmake --build . -j$(JOBS) )
 
 # compile with -g 
 debug:
-	( cd build && cmake -DCMAKE_BUILD_TYPE=Debug $(CMAKE_OPTIONS) .. && $(MAKE) --jobs=$(JOBS) )
+	( cd build && cmake -DCMAKE_BUILD_TYPE=Debug $(CMAKE_OPTIONS) .. && cmake --build . -j$(JOBS) )
 
 # build the dynamic library and the demos
 all:
-	( cd build && cmake $(CMAKE_OPTIONS) -DDEMO=1 .. && $(MAKE) --jobs=$(JOBS) )
+	( cd build && cmake $(CMAKE_OPTIONS) -DDEMO=1 .. && cmake --build . -j$(JOBS) )
 
 # run the demos
-demo: all
+demos: all
 	( cd Demo && ./demo )
 
 # just do 'make' in build; do not rerun the cmake script
 remake:
-	( cd build && $(MAKE) --jobs=$(JOBS) )
+	( cd build && cmake --build . -j$(JOBS) )
 
 # just run cmake; do not compile
 setup:
@@ -60,15 +64,12 @@ setup:
 
 # build both the static and dynamic libraries; do not run the demo
 static:
-	( cd build && cmake $(CMAKE_OPTIONS) -DBUILD_GRB_STATIC_LIBRARY=1 .. && $(MAKE) --jobs=$(JOBS) )
-
-static_only:
-	( cd build && cmake $(CMAKE_OPTIONS) -DBUILD_GRB_STATIC_LIBRARY=1 .. && $(MAKE) --jobs=$(JOBS) graphblas_static )
+	( cd build && cmake $(CMAKE_OPTIONS) -DBUILD_GRB_STATIC_LIBRARY=1 .. && cmake --build . -j$(JOBS) )
 
 # installs GraphBLAS to the install location defined by cmake, usually
 # /usr/local/lib and /usr/local/include
 install:
-	( cd build && $(MAKE) install )
+	( cd build && cmake --install . )
 
 # create the Doc/GraphBLAS_UserGuide.pdf
 docs:
@@ -76,7 +77,7 @@ docs:
 
 # compile the CUDA kernels
 gpu:
-	( cd CUDA && $(MAKE) )
+	( cd CUDA && cmake --build . -j${JOBS} )
 
 # remove any installed libraries and #include files
 uninstall:

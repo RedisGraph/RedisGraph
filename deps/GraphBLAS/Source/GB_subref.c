@@ -88,7 +88,6 @@
 
 #include "GB_subref.h"
 
-GB_PUBLIC
 GrB_Info GB_subref              // C = A(I,J): either symbolic or numeric
 (
     // output

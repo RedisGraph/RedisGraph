@@ -107,7 +107,7 @@ GrB_Info GB_deserialize_from_blob
 ) ;
 
 #define GB_BLOB_HEADER_SIZE \
-    sizeof (size_t)             /* blob_size                            */ \
+    sizeof (uint64_t)           /* blob_size                            */ \
     + 11 * sizeof (int64_t)     /* vlen, vdim, nvec, nvec_nonempty,     */ \
                                 /* nvals, typesize, A[phbix]_len        */ \
     + 14 * sizeof (int32_t)     /* version, typecode, sparsity_control, */ \

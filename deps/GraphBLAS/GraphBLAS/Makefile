@@ -14,21 +14,25 @@ JOBS ?= 8
 
 default: library
 
-# just build the dynamic library; do not run the demo
+# default is to install only in /usr/local
 library:
-	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) )
+	( cd build && cmake $(CMAKE_OPTIONS) .. && cmake --build . -j${JOBS} )
 
 # install only in SuiteSparse/lib and SuiteSparse/include
 local:
-	( cd build && cmake $(CMAKE_OPTIONS) -DSUITESPARSE_LOCAL=1 .. && $(MAKE) --jobs=${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=1 .. && cmake --build . -j${JOBS} )
+
+# install only in /usr/local (default)
+global:
+	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=0 .. && cmake --build . -j${JOBS} )
 
 # compile with -g 
 debug:
-	( cd build ; cmake -DCMAKE_BUILD_TYPE=Debug $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) )
+	( cd build && cmake -DCMAKE_BUILD_TYPE=Debug $(CMAKE_OPTIONS) .. && cmake --build . -j$(JOBS) )
 
 # just do 'make' in build; do not rerun the cmake script
 remake:
-	( cd build ; $(MAKE) --jobs=$(JOBS) )
+	( cd build && cmake --build . -j$(JOBS) )
 
 # just run cmake; do not compile
 setup:
@@ -37,7 +41,7 @@ setup:
 # installs GraphBLAS to the install location defined by cmake, usually
 # /usr/local/lib and /usr/local/include
 install:
-	( cd build ; $(MAKE) install )
+	( cd build && cmake --install . )
 
 # remove any installed libraries and #include files
 uninstall:

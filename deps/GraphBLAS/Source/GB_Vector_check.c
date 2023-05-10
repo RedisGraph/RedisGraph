@@ -11,7 +11,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 GrB_Info GB_Vector_check    // check a GraphBLAS vector
 (
     const GrB_Vector v,     // GraphBLAS vector to print and check

@@ -62,7 +62,6 @@ static inline int GB_sparsity (GrB_Matrix A)
     }
 }
 
-GB_PUBLIC
 GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
 (
     GrB_Matrix A,           // matrix to convert from hypersparse to sparse
@@ -70,7 +69,6 @@ GrB_Info GB_convert_hyper_to_sparse // convert hypersparse to sparse
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 GrB_Info GB_convert_sparse_to_hyper // convert from sparse to hypersparse
 (
     GrB_Matrix A,           // matrix to convert to hypersparse
@@ -150,7 +148,6 @@ GrB_Info GB_convert_any_to_bitmap   // convert to bitmap
     GB_Context Context
 ) ;
 
-GB_PUBLIC
 void GB_convert_any_to_full     // convert any matrix to full
 (
     GrB_Matrix A                // matrix to convert to full

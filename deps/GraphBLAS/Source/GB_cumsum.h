@@ -10,7 +10,6 @@
 #ifndef GB_CUMSUM_H
 #define GB_CUMSUM_H
 
-GB_PUBLIC
 void GB_cumsum                      // cumulative sum of an array
 (
     int64_t *restrict count,     // size n+1, input/output

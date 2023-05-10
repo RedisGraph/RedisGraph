@@ -114,45 +114,61 @@ SIValue AttributeSet_GetIdx
 
 static AttributeSet AttributeSet_AddPrepare
 (
-	AttributeSet *set,     // set to update
-	Attribute_ID attr_id   // attribute identifier
+	AttributeSet *set,  // set to update
+	ushort n            // number of attributes to add
 ) {
 	ASSERT(set != NULL);
-	ASSERT(attr_id != ATTRIBUTE_ID_NONE);
 
 	AttributeSet _set = *set;
 
-	// make sure attribute isn't already in set
-	ASSERT(AttributeSet_Get(_set, attr_id) == ATTRIBUTE_NOTFOUND);
-
 	// allocate room for new attribute
 	if(_set == NULL) {
-		_set = rm_malloc(sizeof(_AttributeSet) + sizeof(Attribute));
-		_set->attr_count = 1;
+		_set = rm_malloc(sizeof(_AttributeSet) + n * sizeof(Attribute));
+		_set->attr_count = n;
 	} else {
-		++_set->attr_count;
-		size_t n = ATTRIBUTESET_BYTE_SIZE(_set);
-		_set = rm_realloc(_set, n);
+		_set->attr_count += n;
+		_set = rm_realloc(_set, ATTRIBUTESET_BYTE_SIZE(_set));
 	}
+
 	return _set;
 }
 
 // adds an attribute to the set without cloning the SIvalue
 void AttributeSet_AddNoClone
 (
-	AttributeSet *set,     // set to update
-	Attribute_ID attr_id,  // attribute identifier
-	SIValue value          // attribute value
+	AttributeSet *set,  // set to update
+	Attribute_ID *ids,  // identifiers
+	SIValue *values,    // values
+	ushort n,           // number of values to add
+	bool allowNull		// accept NULLs
 ) {
 	// validate value type
 	// value must be a valid property type
-	ASSERT(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE);
-	AttributeSet _set = AttributeSet_AddPrepare(set, attr_id);
+#ifdef RG_DEBUG
+	SIType t = SI_VALID_PROPERTY_VALUE;
+	if(allowNull == true) {
+		t |= T_NULL;
+	}
 
-	// set attribute
-	Attribute *attr = _set->attributes + _set->attr_count - 1;
-	attr->id = attr_id;
-	attr->value = value;
+	for(ushort i = 0; i < n; i++) {
+		ASSERT(SI_TYPE(values[i]) & t);
+		// make sure attribute isn't already in set
+		ASSERT(AttributeSet_Get(*set, ids[i]) == ATTRIBUTE_NOTFOUND);
+		// make sure value isn't volotile
+		ASSERT(SI_ALLOCATION(values + i) != M_VOLATILE);
+	}
+#endif
+
+	ushort prev_count = ATTRIBUTE_SET_COUNT(*set);
+	AttributeSet _set = AttributeSet_AddPrepare(set, n);
+	Attribute *attrs  = _set->attributes + prev_count;
+
+	// add attributes to set
+	for(ushort i = 0; i < n; i++) {
+		Attribute *attr = attrs + i;
+		attr->id    = ids[i];
+		attr->value = values[i];
+	}
 
 	// update pointer
 	*set = _set;
@@ -165,10 +181,14 @@ void AttributeSet_Add
 	Attribute_ID attr_id,  // attribute identifier
 	SIValue value          // attribute value
 ) {
-	// validate value type
+#ifdef RG_DEBUG
 	// value must be a valid property type
 	ASSERT(SI_TYPE(value) & SI_VALID_PROPERTY_VALUE);
-	AttributeSet _set = AttributeSet_AddPrepare(set, attr_id);
+	// make sure attribute isn't already in set
+	ASSERT(AttributeSet_Get(*set, attr_id) == ATTRIBUTE_NOTFOUND);
+#endif
+
+	AttributeSet _set = AttributeSet_AddPrepare(set, 1);
 
 	// set attribute
 	Attribute *attr = _set->attributes + _set->attr_count - 1;
@@ -179,8 +199,10 @@ void AttributeSet_Add
 	*set = _set;
 }
 
-// adds or updates an attribute to the set null value allowed
-void AttributeSet_Set_Allow_Null
+// add, remove or update an attribute
+// this function allows NULL value to be added to the set
+// returns the type of change performed
+AttributeSetChangeType AttributeSet_Set_Allow_Null
 (
 	AttributeSet *set,     // set to update
 	Attribute_ID attr_id,  // attribute identifier
@@ -192,19 +214,27 @@ void AttributeSet_Set_Allow_Null
 	AttributeSet _set = *set;
 
 	// validate value type
-	// value must be a valid property type
 	ASSERT(SI_TYPE(value) & (SI_VALID_PROPERTY_VALUE | T_NULL));
 
 	// update the attribute if it is already presented in the set
 	if(AttributeSet_Get(_set, attr_id) != ATTRIBUTE_NOTFOUND) {
-		AttributeSet_Update(&_set, attr_id, value);
-		// update pointer
-		*set = _set;
-		return;
+		if(AttributeSet_Update(&_set, attr_id, value)) {
+			// update pointer
+			*set = _set;
+			// if value is NULL, indicate attribute removal
+			// otherwise indicate attribute update
+			return SIValue_IsNull(value) ? CT_DEL : CT_UPDATE;
+		}
+
+		// value did not change, indicate no modification
+		return CT_NONE;
 	}
 
+	// can't remove a none existing attribute, indicate no modification
+	if(SIValue_IsNull(value)) return CT_NONE;
+
 	// allocate room for new attribute
-	_set = AttributeSet_AddPrepare(set, attr_id);
+	_set = AttributeSet_AddPrepare(set, 1);
 
 	// set attribute
 	Attribute *attr = _set->attributes + _set->attr_count - 1;
@@ -213,6 +243,9 @@ void AttributeSet_Set_Allow_Null
 
 	// update pointer
 	*set = _set;
+
+	// new attribute added, indicate attribute addition
+	return CT_ADD;
 }
 
 // updates existing attribute, return true if attribute been updated
@@ -291,6 +324,42 @@ AttributeSet AttributeSet_Clone
 	}
 
     return clone;
+}
+
+// clones attribute set without si values
+AttributeSet AttributeSet_ShallowClone
+(
+	const AttributeSet set  // set to clone
+) {
+	if(set == NULL) return NULL;
+
+	size_t n = ATTRIBUTESET_BYTE_SIZE(set);
+	AttributeSet clone  = rm_malloc(n);
+	clone->attr_count   = set->attr_count;
+
+	for (uint16_t i = 0; i < set->attr_count; ++i) {
+		Attribute *attr       = set->attributes   + i;
+		Attribute *clone_attr = clone->attributes + i;
+
+		clone_attr->id = attr->id;
+		clone_attr->value = SI_ShareValue(attr->value);
+	}
+
+    return clone;
+}
+
+// persists all attributes within given set
+void AttributeSet_PersistValues
+(
+	const AttributeSet set  // set to persist
+) {
+	if(set == NULL) return;
+
+	for (uint16_t i = 0; i < set->attr_count; ++i) {
+		Attribute *attr = set->attributes + i;
+
+		SIValue_Persist(&attr->value);
+	}
 }
 
 // free attribute set

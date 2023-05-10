@@ -282,7 +282,6 @@ static void GB_msort_1_merge
 // GB_msort_1: parallel mergesort
 //------------------------------------------------------------------------------
 
-GB_PUBLIC
 GrB_Info GB_msort_1     // sort array A of size 1-by-n
 (
     int64_t *restrict A_0,   // size n array

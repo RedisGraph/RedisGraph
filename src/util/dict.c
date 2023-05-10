@@ -77,9 +77,21 @@ struct dictEntry {
 static int _HashTableExpandIfNeeded(dict *d);
 static signed char _dictNextExp(unsigned long size);
 static long _dictKeyIndex(dict *d, const void *key, uint64_t hash, dictEntry **existing);
-static int _dictInit(dict *d, dictType *type);
+static int _dictInit(dict *d, const dictType *type);
 
 /* -------------------------- hash functions -------------------------------- */
+
+// identity hash function
+static uint64_t _id_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+// hashtable callbacks
+dictType def_dt = {_id_hash, NULL, NULL, NULL, NULL, NULL, NULL,
+	NULL, NULL, NULL};
 
 static uint8_t dict_hash_function_seed[16];
 
@@ -122,16 +134,17 @@ static void _dictReset
 /* Create a new hash table */
 dict *HashTableCreate
 (
-	dictType *type
-)
-{
+	const dictType *type
+) {
+    assert(type != NULL);
+
     size_t metasize = type->dictMetadataBytes ? type->dictMetadataBytes() : 0;
     dict *d = malloc(sizeof(*d) + metasize);
     if (metasize) {
         memset(HashTableMetadata(d), 0, metasize);
     }
 
-    _dictInit(d,type);
+    _dictInit(d, type);
     return d;
 }
 
@@ -147,7 +160,7 @@ unsigned long HashTableElemCount
 int _dictInit
 (
 	dict *d,
-	dictType *type
+	const dictType *type
 ) {
     _dictReset(d, 0);
     _dictReset(d, 1);

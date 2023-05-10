@@ -11,7 +11,6 @@
 
 #include "GB.h"
 
-GB_PUBLIC
 bool GB_size_t_multiply     // true if ok, false if overflow
 (
     size_t *c,              // c = a*b, or zero if overflow occurs

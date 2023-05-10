@@ -82,6 +82,11 @@ typedef enum {
 
 struct Pair;
 
+typedef struct Point {
+	float latitude;   // 32 bit
+	float longitude;  // 32 bit
+} Point;
+
 typedef struct SIValue {
 	union {
 		int64_t longval;
@@ -90,10 +95,7 @@ typedef struct SIValue {
 		void *ptrval;
 		struct Pair *map;
 		struct SIValue *array;
-		struct {
-			float latitude;   // 32 bit
-			float longitude;  // 32 bit
-		} point;
+		Point point;
 	};
 	SIType type;
 	SIAllocation allocation;
@@ -204,6 +206,12 @@ void SIValue_HashUpdate(SIValue v, XXH64_state_t *state);
 
 /* Returns a hash code for a given SIValue. */
 XXH64_hash_t SIValue_HashCode(SIValue v);
+
+// reads SIValue off of binary stream
+SIValue SIValue_FromBinary
+(
+	FILE *stream  // stream to read value from
+);
 
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */
