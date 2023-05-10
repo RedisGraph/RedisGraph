@@ -753,54 +753,59 @@ updating clause.")
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(res.result_set[0][0], Node(label='N'))
 
-    # def test19_unwind_optional_match_with(self):
-    #     res = graph.query (
-    #         """
-    #         CALL { 
-    #             UNWIND ['S','T'] AS l1 
-    #             OPTIONAL MATCH (n:XX) 
-    #             WITH n 
-    #             RETURN n
-    #         } 
-    #         RETURN n
-    #         """
-    #     )
+    def test19_optional_match(self):
+        """Tests that we deal properly with `OPTIONAL MATCH` clauses in a
+        subquery"""
 
-    #     # validate the results
-    #     self.env.assertEquals(len(res.result_set), 2)
-    #     self.env.assertEquals(res.result_set[0][0], None)
-    #     self.env.assertEquals(res.result_set[1][0], None)
+        res = graph.query (
+            """
+            CALL { 
+                UNWIND ['S','T'] AS l1 
+                OPTIONAL MATCH (n:XX) 
+                WITH n 
+                RETURN n
+            } 
+            RETURN n
+            """
+        )
 
-    # def test20_aggregation_in_subquery(self):
-    #     # Create 3 nodes for this test
-    #     graph.query("UNWIND range(1, 3) AS i CREATE (n:A {v:i})")
+        # validate the results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0], None)
+        self.env.assertEquals(res.result_set[1][0], None)
+
+    def test20_aggregation_in_subquery(self):
+        """Tests that we deal properly with aggregations in a subquery"""
+
+        # Create 3 nodes for this test
+        graph.query("UNWIND range(1, 3) AS i CREATE (n:A {v:i})")
         
-    #     query_to_expected_result = {
-    #         """
-    #         CALL {
-    #             MATCH (n:A) 
-    #                 WHERE n.v % 2 = 0 
-    #             WITH max(n.v) AS cn
-    #             RETURN cn
-    #         } 
-    #         RETURN cn
-    #         """ 
-    #         : [[2]],
-    #         """
-    #         CALL {
-    #             OPTIONAL MATCH (n:A) 
-    #                 WHERE n.v%2=0 
-    #             WITH collect(n.v) AS cn 
-    #             OPTIONAL MATCH (m:A) 
-    #                 WHERE m.v%2=1 
-    #             WITH sum(m.v) AS cm, cn  
-    #             RETURN cn, cm
-    #         } 
-    #         RETURN cn, cm""" 
-    #         : [[[2], 4]]
-    #     }
-    #     for query, expected_result in query_to_expected_result.items():
-    #         self.get_res_and_assertEquals(query, expected_result)
+        query_to_expected_result = {
+            """
+            CALL {
+                MATCH (n:A) 
+                    WHERE n.v % 2 = 0 
+                WITH max(n.v) AS cn
+                RETURN cn
+            } 
+            RETURN cn
+            """ 
+            : [[2]],
+            """
+            CALL {
+                OPTIONAL MATCH (n:A) 
+                    WHERE n.v%2=0 
+                WITH collect(n.v) AS cn 
+                OPTIONAL MATCH (m:A) 
+                    WHERE m.v%2=1 
+                WITH sum(m.v) AS cm, cn  
+                RETURN cn, cm
+            } 
+            RETURN cn, cm""" 
+            : [[[2], 4]]
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
 
     # def test21_union(self):
     #     """Test that UNION works properly within a subquery"""
