@@ -177,7 +177,7 @@ static void _AST_GetProcCallAliases
 	}
 }
 
-// make sure multi-hop traversals are not aliased
+// make sure multi-hop traversals has length greater than or equal to zero
 static AST_Validation _ValidateMultiHopTraversal
 (
 	const cypher_astnode_t *edge,  // ast-node to validate
@@ -200,16 +200,6 @@ static AST_Validation _ValidateMultiHopTraversal
 	if(start > end) {
 		ErrorCtx_SetError("Variable length path, maximum number of hops must be greater or equal to minimum number of hops.");
 		return AST_INVALID;
-	}
-
-	if(start <= 1 && start == end) {
-		return AST_VALID;
-	}
-
-	// Check if the relation has an alias
-	const cypher_astnode_t *ast_identifier = cypher_ast_rel_pattern_get_identifier(edge);
-	if(!ast_identifier) {
-		return AST_VALID;
 	}
 	
 	return AST_VALID;

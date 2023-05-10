@@ -324,7 +324,7 @@ class testRelationPattern(FlowTestsBase):
             "MATCH p=()-[]->()-[*1..0]->() RETURN nodes(p) AS nodes",
         ]
         for query in queries:
-            self.expect_error(query, 
+            self.expect_error(query,
                 "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.")
 
     def test12_return_var_len_edge_array(self):
@@ -342,10 +342,21 @@ class testRelationPattern(FlowTestsBase):
             "MATCH (a)-[r*0..2]->(b) RETURN size(nodes(r)) AS x ORDER BY x" : [[1], [1], [1], [2], [2], [3]],
             "MATCH (a)-[r*0..1]->(b) RETURN size(nodes(r)) AS x ORDER BY x" : [[1], [1], [1], [2], [2]],
             "MATCH (a)-[r*0..0]->(b) RETURN size(nodes(r)) AS x ORDER BY x" : [[1], [1], [1]],
-            # TODO:
-            # "MATCH (a)-[r*1..1]->(b) RETURN size(nodes(r)) AS x ORDER BY x" : [[2], [2]],
         }
         for query, expected_result in query_to_expected_result.items():
             actual_result = g.query(query)
             self.env.assertEquals(actual_result.result_set, expected_result)
 
+        # for patterns of length equals to one, the expected result is of type edge
+        q = "MATCH (a)-[r*1..1]->(b) RETURN r"
+        actual_result = g.query(q)
+
+        e01 = actual_result.result_set[0][0]      
+        self.env.assertEquals(e01.src_node, 0)
+        self.env.assertEquals(e01.dest_node, 1)
+        self.env.assertEquals(e01.relation, 'R')
+
+        e12 = actual_result.result_set[1][0]
+        self.env.assertEquals(e12.src_node, 1)
+        self.env.assertEquals(e12.dest_node, 2)
+        self.env.assertEquals(e12.relation, 'R')
