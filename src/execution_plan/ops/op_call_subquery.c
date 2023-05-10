@@ -94,10 +94,7 @@ static Record _handoff_eager(OpCallSubquery *op) {
     }
 
     // returning subquery
-    else {
-        // get a record from the body, and pass it on (start from a clone of it, optimize later)
-        return OpBase_Consume(op->body);
-    }
+    return OpBase_Consume(op->body);
 }
 
 // eagerly consume and aggregate all the records from the lhs (if exists). pass

@@ -416,13 +416,15 @@ static void _buildCallSubqueryPlan
 			goto skip_projections_modification;
 		}
 
-		// Project all existing entries according to the following transformation: 'alias' --> '@alias'.
-		// If an alias is imported, it needs to stay in the record mapping as well.
-
+		// Project all existing entries according to the following
+		// transformation: 'alias' --> '@alias'.
+		// If an alias is imported, it needs to stay in the record mapping as
+		// well.
 		rax *outer_mapping = ExecutionPlan_GetMappings(plan);
 		uint mapping_size = raxSize(outer_mapping);
-		// create an array containing coupled names ("a1", "@a1", "a2", "@a2", ...)
-		// of the original names and the internal (temporary) representation of them.
+		// create an array containing coupled names
+		// ("a1", "@a1", "a2", "@a2", ...) of the original names and the
+		// internal (temporary) representation of them.
 		char **names = array_new(char *, mapping_size);
 		char **inter_names = array_new(char *, mapping_size);
 		raxIterator it;
@@ -497,8 +499,8 @@ static void _buildCallSubqueryPlan
 				ProjectBindToPlan(returning_ops[i], plan) :
 				AggregateBindToPlan(returning_ops[i], plan);
 		}
-		array_free(returning_ops);
 
+		array_free(returning_ops);
 		array_free(names);
 		array_free(inter_names);
 		array_free(intermediate_projections);

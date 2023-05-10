@@ -299,12 +299,60 @@ static void _annotate_foreach_clause_projected_named_path
 	// annotate named paths referring the outer scope
 	_annotate_relevant_projected_named_path_identifier(ast, identifier_map,
 													   scope_start, scope_end);
+	raxFreeWithCallback(identifier_map, array_free);
 
 	// annotate named paths defined inside the body
 	_annotate_projected_named_path(&subquery_clauses_ast);
 	array_free(clauses);
 	cypher_astnode_free(query_node);
+}
+
+static void _annotate_callsubquery_clause_projected_named_path
+(
+	AST *ast,
+	const cypher_astnode_t *callsubquery_clause,
+	uint scope_start,
+	uint scope_end
+) {
+	rax *identifier_map = raxNew();
+
+	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, 1);
+	uint nclauses = cypher_ast_call_subquery_nclauses(callsubquery_clause);
+
+	for(uint i = 0; i < nclauses; i++) {
+		array_append(clauses,
+			(cypher_astnode_t *)cypher_ast_call_subquery_get_clause(
+				callsubquery_clause, i));
+	}
+	struct cypher_input_range range = {0};
+	cypher_astnode_t *query_node =
+		cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, nclauses,
+		clauses, nclauses, range);
+
+	AST subquery_clauses_ast = {
+		.root = query_node,
+		.anot_ctx_collection = ast->anot_ctx_collection,
+		.referenced_entities = ast->referenced_entities
+	};
+
+	// collect identifiers from importing WITH clause (if exists)
+	// annotate them only. the later references of imported paths with already
+	// have the value in the record
+	const cypher_astnode_t *exp = cypher_ast_call_subquery_get_clause(
+		callsubquery_clause, 0);
+	if(cypher_astnode_type(exp) == CYPHER_AST_WITH) {
+		_collect_projected_identifier(exp, identifier_map);
+	}
+
+	// annotate named paths referring the outer scope
+	_annotate_relevant_projected_named_path_identifier(ast, identifier_map,
+													   scope_start, scope_end);
+
+	// annotate named paths defined inside the body
+	_annotate_projected_named_path(&subquery_clauses_ast);
 	raxFreeWithCallback(identifier_map, array_free);
+	cypher_astnode_free(query_node);
+	array_free(clauses);
 }
 
 static void _annotate_projected_named_path(AST *ast) {
@@ -318,27 +366,28 @@ static void _annotate_projected_named_path(AST *ast) {
 		if(cypher_astnode_type(child) == CYPHER_AST_WITH) {
 			_annotate_with_clause_projected_named_path(ast, child, scope_start,
 													   scope_end);
+			// update scope
 			scope_start = scope_end;
 		} else if(cypher_astnode_type(child) == CYPHER_AST_RETURN) {
 			_annotate_return_clause_projected_named_path(ast, child,
 														scope_start, scope_end);
+			// update scope
 			scope_start = scope_end;
 		} else if(cypher_astnode_type(child) == CYPHER_AST_DELETE) {
 			_annotate_delete_clause_projected_named_path(ast, child,
 														scope_start, scope_end);
-			// Do not update scope start!
 		} else if(cypher_astnode_type(child) == CYPHER_AST_UNWIND) {
 			_annotate_unwind_clause_projected_named_path(ast, child,
 														scope_start, scope_end);
-			// Do not update scope start!
 		} else if(cypher_astnode_type(child) == CYPHER_AST_MATCH) {
 			_annotate_match_clause_projected_named_path(ast, child,
 														scope_start, scope_end);
-			// Do not update scope start!
 		} else if(cypher_astnode_type(child) == CYPHER_AST_FOREACH) {
 			_annotate_foreach_clause_projected_named_path(ast,
 				child, scope_start, scope_end);
-			// Do not update scope start!
+		} else if(cypher_astnode_type(child) == CYPHER_AST_CALL_SUBQUERY) {
+			_annotate_callsubquery_clause_projected_named_path(ast, child,
+				scope_start, scope_end);
 		}
 	}
 }

@@ -180,7 +180,7 @@ updating clause.")
                 WITH n
                 RETURN n.v as INNERETURN
             }
-            RETURN x + INNERETURN
+            RETURN x + INNERETURN AS ret ORDER BY ret ASC
             """
         )
         self.env.assertEquals(res.result_set, [[5], [6], [7], [8]])
@@ -898,3 +898,82 @@ updating clause.")
         # assert results
         self.env.assertEquals(res.nodes_deleted, 1)
         self.env.assertEquals(len(res.result_set), 0)
+
+    def test25_named_paths(self):
+        """Tests that named paths are handled correctly, when defined/referred
+        inside or outside of a subquery"""
+
+        # clear the db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create a node with label N
+        graph.query("CREATE (:N {v: 1})")
+        node = Node(label='N', properties={'v': 1})
+
+        # refer to a named path defined outside of a subquery, from within the
+        # subquery
+        query = """
+        MATCH p = (n:N)
+        CALL {
+            WITH p
+            RETURN nodes(p)[0] AS s
+        }
+        RETURN s
+        """
+
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(len(graph.query(query).result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], node)
+
+        # refer a named path defined inside of a subquery, from within the
+        # subquery
+        query = """
+        CALL {
+            MATCH p = (n:N)
+            RETURN nodes(p)[0] AS s
+        }
+        RETURN s
+        """
+
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(len(graph.query(query).result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], node)
+
+        # return a path from a subquery and refer to it outside of the subquery
+        query = """
+        CALL {
+            MATCH p = (n:N)
+            RETURN p
+        }
+        RETURN nodes(p)[0]
+        """
+
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(len(graph.query(query).result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], node)
+
+        # refer to a named path defined in a subquery, from a nested subquery
+        query = """
+        CALL {
+            MATCH p = (n:N)
+            CALL {
+                WITH p
+                RETURN nodes(p)[0] AS s
+            }
+            RETURN s
+        }
+        RETURN s
+        """
+
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(len(graph.query(query).result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], node)
