@@ -240,7 +240,10 @@ inline const AttributeSet GraphEntity_GetAttributes
 ) {
 	ASSERT(e != NULL);
 
-	return *e->attributes;
+	if(e->attributes != NULL) {
+		return *e->attributes;
+	}
+	return NULL;
 }
 
 inline int GraphEntity_ClearAttributes

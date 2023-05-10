@@ -101,7 +101,9 @@ class testGraphCreationFlow(FlowTestsBase):
         queries = ["CREATE (a), (b) SET a.v = [b]",
                    "CREATE (a {v: ['str', [1, NULL]]})",
                    "CREATE (a {v: [[{k: 'v'}]]})",
-                   "CREATE (a:L)-[e:R]->(:L {v: [e]})"]
+                   "CREATE (a:L)-[e:R]->(:L {v: [e]})",
+                   "CREATE (a), (b)-[:R {k:properties(a)}]->(c)",
+                   "CREATE (a), (b)-[:R]->(c {k:properties(a)})"]
         for query in queries:
             try:
                 redis_graph.query(query)
@@ -194,3 +196,17 @@ class testGraphCreationFlow(FlowTestsBase):
             result = redis_graph.query(query)
             expected_result = [[0]]
             self.env.assertEquals(result.result_set, expected_result)
+
+    def test11_argument_type_mismatch(self):
+        # Test using wrong types arguments to predicate functions
+        queries = [
+            "CREATE  (a), (b)-[:R]->(c {k:any(x IN properties(a) WHERE x = 0)})",
+            "CREATE  (a), (b)-[:R]->(c {k:none(x IN properties(a) WHERE x = 0)})",
+            "CREATE  (a), (b)-[:R {k:single(x IN properties(a) WHERE x = 0)}]->()",
+        ]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("Type mismatch: expected List or Null but was Map", str(e))
