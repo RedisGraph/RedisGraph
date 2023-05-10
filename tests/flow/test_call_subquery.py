@@ -40,6 +40,9 @@ class testCallSubqueryFlow():
         match_after_updating = "A WITH clause is required to introduce MATCH after an updating clause"
         queries_errors = {
             "WITH 1 AS a CALL {WITH a+1 AS b RETURN b} RETURN b" : import_error,
+            "WITH {a: 1} AS map CALL {with map.a AS b RETURN b} RETURN b" : import_error,
+            "WITH [1, 2, 3] AS list CALL {WITH list[0] AS b RETURN b} RETURN b" : import_error,
+            "WITH 'RAZ' AS str CALL {WITH toUpper(str) AS b RETURN b} RETURN b" : import_error,
             "WITH 1 AS a CALL {WITH a AS b RETURN b} RETURN b" : import_error,
             "WITH 1 AS a CALL {WITH a LIMIT 5 RETURN a} RETURN a" : import_error,
             "WITH 1 AS a CALL {WITH a ORDER BY a.v RETURN a} RETURN a" : import_error,

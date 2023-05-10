@@ -1167,19 +1167,24 @@ cleanup:
 
 static bool _ValidateSubqueryFirstWithClause
 (
-	const cypher_astnode_t *root // root to validate
+	const cypher_astnode_t *root,  // root to validate
+	rax *defined_identifiers       // bound vars
 ) {
 	ASSERT(root != NULL);
 
 	if(cypher_astnode_type(root) == CYPHER_AST_IDENTIFIER) {
-		return false;
+		const char *ident = cypher_ast_identifier_get_name(root);
+		// if the identifier is already bound, return false
+		if(raxFind(defined_identifiers, (unsigned char *)ident, strlen(ident)) != raxNotFound) {
+			return false;
+		}
 	}
 
 	// recursively traverse all children
 	uint nchildren = cypher_astnode_nchildren(root);
 	for(uint i = 0; i < nchildren; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-		if(!_ValidateSubqueryFirstWithClause(child)) {
+		if(!_ValidateSubqueryFirstWithClause(child, defined_identifiers)) {
 			return false;
 		}
 	}
@@ -1264,10 +1269,11 @@ static VISITOR_STRATEGY _Validate_call_subquery
 			} else {
 				// check that the import does not make reference to an outer scope identifier.
 				// This is invalid: 'WITH 1 AS a CALL {WITH a + 1 AS b RETURN b} RETURN b'
-				if(!_ValidateSubqueryFirstWithClause(exp)) {
-					ErrorCtx_SetError(
-						"WITH imports in CALL {} must be simple ('WITH a')");
-					return VISITOR_BREAK;
+				if(!_ValidateSubqueryFirstWithClause(exp,
+					vctx->defined_identifiers)) {
+						ErrorCtx_SetError(
+							"WITH imports in CALL {} must be simple ('WITH a')");
+						return VISITOR_BREAK;
 				}
 			}
 
