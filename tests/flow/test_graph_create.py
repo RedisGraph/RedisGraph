@@ -197,8 +197,20 @@ class testGraphCreationFlow(FlowTestsBase):
             expected_result = [[0]]
             self.env.assertEquals(result.result_set, expected_result)
 
-    def test11_argument_type_mismatch(self):
-        # Test using wrong types arguments to predicate functions
+    # test creating properties using node created previously in the same query
+    def test11_create_property_from_node(self):
+        # test using function with valid arguments
+        queries = [
+            "CREATE (a:A), (b)-[:R {k:toJSON(a)}]->(c)",
+            "CREATE (a:A), (b)-[:R]->(c {k:toJSON(a)})",
+        ]
+        for query in queries:
+            result = redis_graph.query(query)
+            self.env.assertEquals(result.nodes_created, 3, depth=1)
+            self.env.assertEquals(result.properties_set, 1, depth=1)
+            self.env.assertEquals(result.relationships_created, 1, depth=1)
+
+        # test using wrong types arguments to predicate functions
         queries = [
             "CREATE  (a), (b)-[:R]->(c {k:any(x IN properties(a) WHERE x = 0)})",
             "CREATE  (a), (b)-[:R]->(c {k:none(x IN properties(a) WHERE x = 0)})",
@@ -209,4 +221,4 @@ class testGraphCreationFlow(FlowTestsBase):
                 redis_graph.query(query)
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError as e:
-                self.env.assertContains("Type mismatch: expected List or Null but was Map", str(e))
+                self.env.assertContains("Type mismatch: expected List or Null but was Map", str(e), depth=1)
