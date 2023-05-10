@@ -415,20 +415,23 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	return root;
 }
 
-/* In case edges `a` and `b` share a node:
+/* In case edges `e0` and `e1` share a node:
  * (a)-[E0]->(b)<-[E1]-(c)
  * than the shared entity is returned
  * if edges are disjoint, NULL is returned. */
 static QGNode *_SharedNode
 (
-	const QGEdge *a,
-	const QGEdge *b
+	const QGEdge *e0,
+	const QGEdge *e1
 ) {
-	ASSERT(a && b);
-	if(a->dest == b->src) return a->dest;   // (a)-[E0]->(b)-[E1]->(c)
-	if(a->src == b->dest) return a->src;    // (a)<-[E0]-(b)<-[E1]-(c)
-	if(a->src == b->src) return a->src;     // (a)<-[E0]-(b)-[E1]->(c)
-	if(a->dest == b->dest) return a->dest;  // (a)-[E0]->(b)<-[E1]-(c)
+	ASSERT(e0 != NULL);
+	ASSERT(e1 != NULL);
+
+	if(e0->dest == e1->src)  return e0->dest;  // (a)-[E0]->(b)-[E1]->(c)
+	if(e0->dest == e1->dest) return e0->dest;  // (a)-[E0]->(b)<-[E1]-(c)
+	if(e0->src == e1->dest)  return e0->src;   // (a)<-[E0]-(b)<-[E1]-(c)
+	if(e0->src == e1->src)   return e0->src;   // (a)<-[E0]-(b)-[E1]->(c)
+
 	return NULL;
 }
 
