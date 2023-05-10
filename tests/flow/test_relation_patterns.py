@@ -312,8 +312,25 @@ class testRelationPattern(FlowTestsBase):
             res = g.query(q.format(L0=perm[0], L1=perm[1], L2=perm[2]))
             self.env.assertEquals(res.result_set, expected_result)
 
+    def test11_shared_node_detection(self):
+        # Construct a simple graph
+        # (s)<-[:A]-(x)
+        # (x)<-[:B]-(x)
+        # (x)-[:B]->(t)
+        # (t)<-[:B]-(x)
+        g = Graph(redis_con, "shared_node")
+        q = "MERGE (s)<-[:A]-(x)<-[:B]-(x)-[:B]->(t)<-[:B]-(x)"
+        result = g.query(q)
+
+        self.env.assertEquals(result.nodes_created, 3)
+        self.env.assertEquals(result.relationships_created, 4)
+
+        result = g.query(q)
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.relationships_created, 0)
+
     # Test patterns with length less than zero
-    def test11_lt_zero_hop_traversals(self):
+    def test12_lt_zero_hop_traversals(self):
 
         queries = [
             "MATCH p=()-[*..0]->() RETURN nodes(p) AS nodes",
@@ -327,7 +344,7 @@ class testRelationPattern(FlowTestsBase):
             self.expect_error(query,
                 "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.")
 
-    def test12_return_var_len_edge_array(self):
+    def test13_return_var_len_edge_array(self):
         # Construct a simple graph:
         # (A)-[R]->(b)
         # (b)-[R]->(c)
