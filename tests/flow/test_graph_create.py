@@ -210,15 +210,16 @@ class testGraphCreationFlow(FlowTestsBase):
             self.env.assertEquals(result.properties_set, 1, depth=1)
             self.env.assertEquals(result.relationships_created, 1, depth=1)
 
-        # test using wrong types arguments to predicate functions
+        # test using functions with invalid arguments
         queries = [
-            "CREATE  (a), (b)-[:R]->(c {k:any(x IN properties(a) WHERE x = 0)})",
-            "CREATE  (a), (b)-[:R]->(c {k:none(x IN properties(a) WHERE x = 0)})",
-            "CREATE  (a), (b)-[:R {k:single(x IN properties(a) WHERE x = 0)}]->()",
+            "CREATE (a), (b)-[:R]->(c {k:any(x IN properties(a) WHERE x = 0)})",
+            "CREATE (a), (b)-[:R]->(c {k:none(x IN properties(a) WHERE x = 0)})",
+            "CREATE (a), (b)-[:R {k:single(x IN properties(a) WHERE x = 0)}]->()",
+            "CREATE (a:A {n:'A'}), (b:B {v:floor(any(v4 IN [2] WHERE b = [a IN keys(a) ]))})"
         ]
         for query in queries:
             try:
                 redis_graph.query(query)
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError as e:
-                self.env.assertContains("Type mismatch: expected List or Null but was Map", str(e), depth=1)
+                self.env.assertContains("Type mismatch", str(e), depth=1)
