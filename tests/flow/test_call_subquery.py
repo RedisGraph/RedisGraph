@@ -547,35 +547,34 @@ updating clause.")
             : [[0],[0],[0]],
             # TODO: Crash reusing variable names in nested CALL{}
             # """
-            # UNWIND [0, 1, 2] AS x 
-            # CALL { 
+            # UNWIND [0, 1, 2] AS x
+            # CALL {
             #     CALL {
             #         RETURN 1 AS x
-            #     } 
-            #     RETURN max(x) AS y
-            # } 
-            # RETURN x
-            # """ 
-            # : [[0], [1], [2]],
-            # TODO: Wrong results using aggregation functions in inner CALL{}
-            # """
-            # UNWIND [0, 1, 2] AS x 
-            # CALL { 
-            #     WITH x 
-            #     RETURN max(x) AS y
-            # } 
-            # RETURN x
-            # """
-            # : [[0], [1], [2]],
-            # """
-            # UNWIND [0, 1, 2] AS x 
-            # CALL { 
-            #     WITH x 
+            #     }
             #     RETURN max(x) AS y
             # }
-            # RETURN y
+            # RETURN x
             # """
             # : [[0], [1], [2]],
+            """
+            UNWIND [0, 1, 2] AS x
+            CALL {
+                WITH x
+                RETURN max(x) AS y
+            }
+            RETURN x ORDER BY x ASC
+            """
+            : [[0], [1], [2]],
+            """
+            UNWIND [0, 1, 2] AS x
+            CALL {
+                WITH x
+                RETURN max(x) AS y
+            }
+            RETURN y ORDER BY y ASC
+            """
+            : [[0], [1], [2]],
         }
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
