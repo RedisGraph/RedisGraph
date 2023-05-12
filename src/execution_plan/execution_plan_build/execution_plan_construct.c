@@ -908,7 +908,6 @@ static void _buildCallSubqueryPlan
 	// if no variables are imported, add an 'empty' projection so that the
 	// records within the subquery will not carry unnecessary entries
 	// TODO: This needs to be done for every branch of the Join op, if exists
-	// TODO: In the new scheme, this is problematic for returning & eager subqueries, as we need the previous context
 	const cypher_astnode_t *first_clause =
 		cypher_ast_call_subquery_get_clause(clause, 0);
 	if(cypher_astnode_type(first_clause) != CYPHER_AST_WITH) {
@@ -940,11 +939,11 @@ static void _buildCallSubqueryPlan
 		uint n_returning_ops = array_len(returning_ops);
 
 		// if the embedded plan is not eager, do not propagate input records
-		if(is_eager) {
+		// if(is_eager) {
 			// TODO: Modify to support UNION.
 			// add internal projections to the appropriate Project/Aggregate ops
-			_CallSubquery_AddProjections(embedded_plan, plan, returning_ops);
-		}
+			// _CallSubquery_AddProjections(embedded_plan, plan, returning_ops);
+		// }
 		// bind the RETURN projections/aggregations to the outer plan ('plan')
 		_BindReturningOpsToPlan(returning_ops, plan);
 		array_free(returning_ops);
