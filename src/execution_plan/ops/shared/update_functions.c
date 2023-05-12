@@ -174,7 +174,7 @@ void EvalEntityUpdates
 		// create a new update context
 		update = rm_malloc(sizeof(PendingUpdateCtx));
 		update->ge            = entity;
-		update->attributes    = AttributeSet_ShallowClone(*entity->attributes);
+		update->attributes    = AttributeSet_ShallowClone(GraphEntity_GetAttributes(entity));
 		update->add_labels    = NULL;
 		update->remove_labels = NULL;
 		// add update context to updates dictionary
@@ -375,7 +375,7 @@ void EvalEntityUpdates
 
 	// restore original attribute-set
 	// changes should not be visible prior to the commit phase
-	update->attributes = *entity->attributes;
+	update->attributes = GraphEntity_GetAttributes(entity);
 	entity->attributes = old_attrs;
 	if(t == REC_TYPE_NODE) {
 		Record_AddNode(r, ctx->record_idx, *(Node *)entity);
