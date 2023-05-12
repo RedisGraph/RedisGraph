@@ -19,8 +19,10 @@ void Cron_AddRecurringTasks(void) {
 	bool info_enabled = false;
 	if(Config_Option_get(Config_CMD_INFO, &info_enabled) && info_enabled) {
 		// create task context
-		StreamFinishedQueryCtx *ctx = rm_calloc(1,
-				sizeof(StreamFinishedQueryCtx));
+		StreamFinishedQueryCtx *ctx = rm_malloc(sizeof(StreamFinishedQueryCtx));
+
+		ctx->when      = 10;  // 10ms from now
+		ctx->graph_idx = 0;
 
 		// add recurring task
 		Cron_AddTask(0, CronTask_streamFinishedQueries, (void*)ctx);

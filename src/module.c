@@ -63,12 +63,14 @@ static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv,
 }
 
 // starts cron and register recurring tasks
-static void _Cron_Start(void) {
+static bool _Cron_Start(void) {
 	// start CRON
-	Cron_Start();
+	bool res = Cron_Start();
 
 	// register recurring tasks
 	Cron_AddRecurringTasks();
+
+	return res;
 }
 
 // print RedisGraph configuration
@@ -132,7 +134,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	Proc_Register();     // register procedures
 	AR_RegisterFuncs();  // register arithmetic functions
-	_Cron_Start();       // start CRON
 
 	// set up global lock and variables scoped to the entire module
 	_PrepareModuleGlobals(ctx, argv, argc);
@@ -146,6 +147,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RegisterEventHandlers(ctx);
 
 	// create thread local storage keys for query and error contexts
+	if(!_Cron_Start())                return REDISMODULE_ERR;
 	if(!QueryCtx_Init())              return REDISMODULE_ERR;
 	if(!ErrorCtx_Init())              return REDISMODULE_ERR;
 	if(!ThreadPools_Init())           return REDISMODULE_ERR;

@@ -191,7 +191,7 @@ static void *Cron_Run
 // User facing API
 //------------------------------------------------------------------------------
 
-void Cron_Start(void) {
+bool Cron_Start(void) {
 	ASSERT(cron == NULL);
 
 	cron = rm_malloc(sizeof(CRON));
@@ -199,10 +199,13 @@ void Cron_Start(void) {
 	cron->alive = true;
 	cron->tasks = Heap_new(CRON_JobCmp, NULL);
 
-	pthread_cond_init(&cron->condv, NULL);
-	pthread_mutex_init(&cron->mutex, NULL);
-	pthread_mutex_init(&cron->condv_mutex, NULL);
-	pthread_create(&cron->thread, NULL, Cron_Run, NULL);
+	bool res = true;
+	res &= pthread_cond_init(&cron->condv, NULL)               == 0;
+	res &= pthread_mutex_init(&cron->mutex, NULL)              == 0;
+	res &= pthread_mutex_init(&cron->condv_mutex, NULL)        == 0;
+	res &= pthread_create(&cron->thread, NULL, Cron_Run, NULL) == 0;
+
+	return res;
 }
 
 void Cron_Stop(void) {

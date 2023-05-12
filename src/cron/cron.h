@@ -21,7 +21,7 @@ typedef void (*CronTaskCB)(void *pdata);
 typedef uintptr_t CronTaskHandle;
 
 // start CRON, should be called once
-void Cron_Start(void);
+bool Cron_Start(void);
 
 // stop CRON
 void Cron_Stop(void);

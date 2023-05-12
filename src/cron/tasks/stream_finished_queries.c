@@ -173,7 +173,9 @@ static void _clearEvent
 (
 	RedisModuleCtx *ctx  // redis module context
 ) {
-	for(int i = 0; i < FLD_COUNT * 2; i += 2) {
+	if(unlikely(_event[1] == NULL)) return;
+
+	for(int i = 1; i < FLD_COUNT * 2; i += 2) {
 		RedisModule_FreeString(ctx, _event[i]);
 	}
 }
@@ -243,7 +245,6 @@ void CronTask_streamFinishedQueries
 		//----------------------------------------------------------------------
 
 		Info_GetQueries(info, QueryStage_FINISHED, &queries, max_query_count);
-		n = array_len(queries);
 
 		//----------------------------------------------------------------------
 		// open stream
@@ -291,7 +292,7 @@ void CronTask_streamFinishedQueries
 	
 	// cleanup
 	// release GIL
-	RedisModule_ThreadSafeContextUnlock(rm_ctx);
+	if(gil_acquired == true) RedisModule_ThreadSafeContextUnlock(rm_ctx);
 	RedisModule_FreeThreadSafeContext(rm_ctx);
 	array_free(queries);
 
@@ -304,10 +305,10 @@ void CronTask_streamFinishedQueries
 
 	if(speedup) {
 		// reduce delay, hard limit 10ms
-		ctx->when = MAX(10, ctx->when * 0.95);
+		ctx->when = MAX(10, ctx->when - 1);
 	} else {
 		// increase delay, hard limit 100ms
-		ctx->when = MIN(100, ctx->when * 1.05);
+		ctx->when = MIN(100, ctx->when + 1);
 	}
 
 	// wrap around
