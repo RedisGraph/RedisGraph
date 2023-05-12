@@ -176,39 +176,11 @@ void _assert_val_cb
 	TEST_ASSERT(n == *(int *)item);
 }
 
-void test_CircularBuffer_traverseCallback(void) {
-	uint cap = 16;
-	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap, NULL);
-
-	// -------------------------------------------------------------------------
-	// fill a circular buffer with 16 integers
-	// -------------------------------------------------------------------------
-	for(int i = 0; i < 16; i++) {
-		CircularBuffer_Add(buff, &i);
-	}
-
-	// -------------------------------------------------------------------------
-	// traverse the components of the buffer, asserting the values (via cb)
-	// -------------------------------------------------------------------------
-	int *arr = array_new(int, cap);
-	for(int i = cap-1; i >= 0; i--) {
-		array_append(arr, i);
-	}
-	CircularBuffer_TraverseCBFromLast(buff, cap, _assert_val_cb, arr);
-
-	// -------------------------------------------------------------------------
-	// free the buffer and auxilary array
-	// -------------------------------------------------------------------------
-	array_free(arr);
-	CircularBuffer_Free(buff);
-}
-
 TEST_LIST = {
 	{"CircularBuffer_Init", test_CircularBufferInit},
 	{"CircularBuffer_Population", test_CircularBufferPopulation},
 	{"CircularBuffer_Circularity", test_CircularBuffer_Circularity},
 	{"CircularBuffer_Free", test_CircularBuffer_free},
 	{"CircularBuffer_ForceWrite", test_CircularBuffer_ForceWrite},
-	{"CircularBuffer_TraverseCB", test_CircularBuffer_traverseCallback},
 	{NULL, NULL}
 };

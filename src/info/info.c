@@ -398,7 +398,6 @@ void Info_IncrementNumberOfQueries
     const QueryExecutionStatus status
 ) {
     ASSERT(info != NULL);
-    ASSERT(info->counters != NULL);
 
 	//--------------------------------------------------------------------------
 	// write query

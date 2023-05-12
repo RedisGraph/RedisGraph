@@ -360,7 +360,7 @@ static void _handle_subcommand
     const char *subcmd               // sub command
 ) {
     ASSERT(ctx    != NULL);
-    ASSERT(result != NULL);
+    ASSERT(argv   != NULL);
     ASSERT(subcmd != NULL);
 
     if (!strcasecmp(subcmd, SUBCOMMAND_NAME_QUERIES)) {

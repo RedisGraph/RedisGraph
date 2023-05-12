@@ -4,7 +4,7 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "src/util/cron.h"
+#include "src/cron/cron.h"
 #include "src/util/rmalloc.h"
 
 #include <assert.h>
