@@ -41,12 +41,13 @@ typedef struct FinishedQueryCounters {
 
 // information about a graph
 typedef struct Info {
-    dict *waiting_queries;                // waiting queries
-    QueryInfo **working_queries;          // executing and reporting queries
-	CircularBuffer finished_queries;      // finished queries
-    atomic_uint_fast64_t max_query_time;  // slowest query time
-    FinishedQueryCounters counters;       // counters with states
-    pthread_mutex_t mutex;                // info lock
+	dict *waiting_queries;                     // waiting queries
+	QueryInfo **working_queries;               // executing & reporting queries
+	CircularBuffer finished_queries;           // finished queries
+	atomic_uint_fast64_t max_query_time;       // slowest query time
+	FinishedQueryCounters counters;            // counters with states
+	pthread_mutex_t mutex;                     // info lock
+	pthread_rwlock_t finished_queries_rwlock;  // finished queries RWLock
 } Info;
 
 // create a new info structure
@@ -112,6 +113,11 @@ void Info_GetExecutingCount
     uint64_t *reporting   // [OUTPUT] amount of reporting queries
 );
 
+uint64_t Info_GetFinishedCount
+(
+	Info *info
+);
+
 // return the total number of queries currently queued or being executed
 uint64_t Info_GetTotalQueriesCount
 (
@@ -141,6 +147,13 @@ void Info_GetQueries
 	QueryStage stage,      // wanted stage
 	QueryInfo ***queries,  // queries array
 	int cap                // size of array
+);
+
+// reset finished queries
+// returns old finished queries buffer
+CircularBuffer Info_ResetFinishedQueries
+(
+	Info *info  // info
 );
 
 // returns the total number of queries recorded

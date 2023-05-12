@@ -19,8 +19,6 @@
 #include <string.h>
 #include <sys/types.h>
 
-static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
-
 // forward declaration
 QueryInfo *QueryInfo_Clone(QueryInfo *qi);
 
@@ -54,22 +52,26 @@ static void _FinishedQueryCounters_Reset
 
 static void _Info_LockFinished
 (
-    bool write
+	Info *info,
+	bool write
 ) {
 	int res;
 	UNUSED(res);
 
     if(write) {
-        res = pthread_rwlock_wrlock(&finished_queries_rwlock);
+        res = pthread_rwlock_wrlock(&info->finished_queries_rwlock);
 		ASSERT(res == 0);
     } else {
-        res = pthread_rwlock_rdlock(&finished_queries_rwlock);
+        res = pthread_rwlock_rdlock(&info->finished_queries_rwlock);
 		ASSERT(res == 0);
     }
 }
 
-static bool _Info_UnlockFinished(void) {
-    return !pthread_rwlock_unlock(&finished_queries_rwlock);
+static bool _Info_UnlockFinished
+(
+	Info *info
+) {
+    return !pthread_rwlock_unlock(&info->finished_queries_rwlock);
 }
 
 static void _Info_LockEverything
@@ -105,15 +107,19 @@ Info *Info_New(void) {
     // initialize working_queries array
     info->working_queries = rm_calloc(nthreads, sizeof(QueryInfo*));
 
+	// initialize finished queries read/write lock
+	int res = pthread_rwlock_init(&info->finished_queries_rwlock, NULL);
+    ASSERT(res == 0);
+
+	// initialize mutex
+    res = pthread_mutex_init(&info->mutex, NULL);
+    ASSERT(res == 0);
+
     // initialize finished_queries
 	uint32_t n = 0;
 	Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &n);
     info->finished_queries = CircularBuffer_New(sizeof(QueryInfo *), n,
         (void(*)(void*))QueryInfo_Free);
-
-	// initialize mutex
-    int res = pthread_mutex_init(&info->mutex, NULL);
-    ASSERT(res == 0);
 
     return info;
 }
@@ -223,12 +229,12 @@ void Info_AddToFinished
 
     QueryInfo_UpdateReportingTime(qi);
 
-    _Info_LockFinished(true);
+    _Info_LockFinished(info, true);
 
 	// TODO: improve locking!
     CircularBuffer_AddForce(info->finished_queries, (void *)&qi);
 
-    _Info_UnlockFinished();
+    _Info_UnlockFinished(info);
 }
 
 // transitions a query from executing to waiting
@@ -309,6 +315,22 @@ void Info_GetExecutingCount
             }
         }
 	}
+}
+
+// returns number of finished queries within circular buffer
+uint64_t Info_GetFinishedCount
+(
+	Info *info
+) {
+	ASSERT(info != NULL);
+
+	_Info_LockFinished(info, false);
+
+	uint64_t n = CircularBuffer_ItemCount(info->finished_queries);
+
+	_Info_UnlockFinished(info);
+
+	return n;
 }
 
 // return the total number of queries currently queued or being executed
@@ -424,7 +446,6 @@ void Info_GetQueries
 	QueryInfo *qi;
     bool waiting   = (stage & QueryStage_WAITING);
 	bool executing = (stage & (QueryStage_EXECUTING | QueryStage_REPORTING));
-	bool finished  = (stage & QueryStage_FINISHED);
 
 	//--------------------------------------------------------------------------
 	// waiting queries
@@ -465,26 +486,24 @@ void Info_GetQueries
 
 		_Info_UnlockEverything(info);
     }
+}
 
-	//--------------------------------------------------------------------------
-	// finished queries
-	//--------------------------------------------------------------------------
+CircularBuffer Info_ResetFinishedQueries
+(
+	Info *info
+) {
+	CircularBuffer prev = info->finished_queries;
+	int cap = CircularBuffer_Cap(prev);
+	CircularBuffer cb = CircularBuffer_New(sizeof(QueryInfo *), cap,
+			(void(*)(void*))QueryInfo_Free);
 
-	if(finished) {
-		_Info_LockFinished(false);
+	_Info_LockFinished(info, true);
 
-		// reset circular buffer read position to be 'n' entries
-		// behind the latest entry
-		cap = MIN(cap, CircularBuffer_ItemCount(info->finished_queries));
-		CircularBuffer_ResetReader(info->finished_queries, cap);
+	info->finished_queries = cb;
 
-		for(int i = 0; i < cap; i++) {
-			CircularBuffer_Read(info->finished_queries, &qi);
-			array_append(*queries, QueryInfo_Clone(qi));
-		}
+	_Info_UnlockFinished(info);
 
-		_Info_UnlockFinished();
-	}
+	return prev;
 }
 
 // free the info structure's content
@@ -513,6 +532,9 @@ void Info_Free
 
     int res = pthread_mutex_destroy(&info->mutex);
     ASSERT(res == 0);
+
+	res = pthread_rwlock_destroy(&info->finished_queries_rwlock);
+	ASSERT(res == 0);
 
 	rm_free(info);
 }

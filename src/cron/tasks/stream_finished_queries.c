@@ -8,6 +8,7 @@
 #include "redismodule.h"
 #include "graph/graphcontext.h"
 #include "configuration/config.h"
+#include "util/circular_buffer.h"
 #include "stream_finished_queries.h"
 
 // TODO: thread-safe access to 'graphs_in_keyspace'
@@ -183,16 +184,15 @@ static void _clearEvent
 // add queries to stream
 static void _stream_queries
 (
-	RedisModuleCtx *ctx,     // redis module context
-	RedisModuleKey *key,     // stream key
-	const char *graph_name,  // graph name
-	QueryInfo **queries      // queries to stream
+	RedisModuleCtx *ctx,      // redis module context
+	RedisModuleKey *key,      // stream key
+	const char *graph_name,   // graph name
+	CircularBuffer queries    // queries to stream
 ) {
-	uint   n              = array_len(queries);
 	size_t graph_name_len = strlen(graph_name);
 
-	for(uint32_t i = 0; i < n; i++) {
-		QueryInfo *q = queries[i];
+	QueryInfo *q;
+	while(CircularBuffer_Remove(queries, &q) == true) {
 		_populateEvent(ctx, q, graph_name, graph_name_len);
 
 		RedisModule_StreamAdd(key, REDISMODULE_STREAM_ADD_AUTOID, NULL,
@@ -226,12 +226,8 @@ void CronTask_streamFinishedQueries
 	uint32_t max_query_count = 0;
 	Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_query_count);
 
-	// finished queries
-	QueryInfo** queries = array_new(QueryInfo*, max_query_count);  
-
 	uint32_t n            = array_len(graphs_in_keyspace);  // #graphs
 	double   window       = 1;                              // work window 1ms
-	bool     gil_acquired = false;                          // was GIL acquired
 
 	// pick up from where we've left
 	// for each graph in the keyspace
@@ -240,11 +236,17 @@ void CronTask_streamFinishedQueries
 		GraphContext *gc = graphs_in_keyspace[ctx->graph_idx];
 		Info *info = gc->info;
 
+		// skip graph if there are no new finished queries
+		if(Info_GetFinishedCount(info) == 0) {
+			continue;
+		}
+
 		//----------------------------------------------------------------------
 		// collect queries
 		//----------------------------------------------------------------------
 
-		Info_GetQueries(info, QueryStage_FINISHED, &queries, max_query_count);
+		CircularBuffer queries = Info_ResetFinishedQueries(info);
+		CircularBuffer_ResetReader(queries, CircularBuffer_ItemCount(queries));
 
 		//----------------------------------------------------------------------
 		// open stream
@@ -256,10 +258,7 @@ void CronTask_streamFinishedQueries
 				"telematics{%s}", graph_name);
 
 		// acquire GIL
-		if(gil_acquired == false) {
-			RedisModule_ThreadSafeContextLock(rm_ctx);
-			gil_acquired = true;
-		}
+		RedisModule_ThreadSafeContextLock(rm_ctx);
 
 		RedisModuleKey *key = RedisModule_OpenKey(rm_ctx, keyname,
 				REDISMODULE_WRITE);
@@ -277,8 +276,12 @@ void CronTask_streamFinishedQueries
 				max_query_count);
 
 		// clean up
-		array_clear(queries);
 		RedisModule_CloseKey(key);
+
+		// release GIL
+		RedisModule_ThreadSafeContextUnlock(rm_ctx);
+
+		CircularBuffer_Free(queries);
 		RedisModule_FreeString(rm_ctx, keyname);
 
 		// determine how much time we've spent
@@ -289,12 +292,8 @@ void CronTask_streamFinishedQueries
 			break;
 		}
 	}
-	
-	// cleanup
-	// release GIL
-	if(gil_acquired == true) RedisModule_ThreadSafeContextUnlock(rm_ctx);
+
 	RedisModule_FreeThreadSafeContext(rm_ctx);
-	array_free(queries);
 
 	//--------------------------------------------------------------------------
 	// determine next invocation

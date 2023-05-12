@@ -17,8 +17,8 @@ struct _CircularBuffer {
 	char *read;                      // read data from here
 	char *write;                     // write data to here
 	size_t item_size;                // item size in bytes
-	_Atomic int item_count;          // current number of items in buffer
-	int item_cap;                    // max number of items held by buffer
+	_Atomic uint64_t item_count;     // current number of items in buffer
+	uint64_t item_cap;               // max number of items held by buffer
 	char *end_marker;                // marks the end of the buffer
 	CircularBufferItemFree free_cb;  // free callback
 	char data[];                     // data
@@ -34,8 +34,8 @@ CircularBuffer CircularBuffer_New
 
 	cb->read       = cb->data;   // read from beginning of data
 	cb->write      = cb->data;   // write to beginning of data
-	cb->item_cap   = cap;        // save cap
-	cb->item_size  = item_size;  // save item size
+	cb->item_cap   = cap;        // buffer capacity
+	cb->item_size  = item_size;  // item size
 	cb->item_count = 0;          // no items in buffer
 	cb->end_marker = cb->data + (item_size * cap);
 	cb->free_cb    = free_cb;
@@ -44,13 +44,23 @@ CircularBuffer CircularBuffer_New
 }
 
 // returns number of items in buffer
-int CircularBuffer_ItemCount
+uint64_t CircularBuffer_ItemCount
 (
 	CircularBuffer cb  // buffer to inspect
 ) {
 	ASSERT(cb != NULL);
 
 	return cb->item_count;
+}
+
+// returns buffer capacity
+uint64_t CircularBuffer_Cap
+(
+	CircularBuffer cb // buffer
+) {
+	ASSERT(cb != NULL);
+
+	return cb->item_cap;
 }
 
 uint CircularBuffer_ItemSize
@@ -162,8 +172,7 @@ void CircularBuffer_AddForce
 }
 
 // removes oldest item from buffer
-// returns 1 on success, 0 otherwise
-int CircularBuffer_Remove
+bool CircularBuffer_Remove
 (
 	CircularBuffer cb,  // buffer to remove item from
 	void *item          // [output] pointer populated with removed item
@@ -173,7 +182,7 @@ int CircularBuffer_Remove
 
 	// make sure there's data to return
 	if(unlikely(CircularBuffer_Empty(cb))) {
-		return 0;
+		return false;
 	}
 
 	// update buffer item count
@@ -190,12 +199,11 @@ int CircularBuffer_Remove
 	}
 
 	// report success
-	return 1;
+	return true;
 }
 
 // read oldest item from buffer
-// returns 1 on success, 0 otherwise
-int CircularBuffer_Read
+bool CircularBuffer_Read
 (
 	CircularBuffer cb,  // buffer to read item from
 	void *item          // [output] pointer populated with removed item
@@ -203,7 +211,7 @@ int CircularBuffer_Read
 	ASSERT(cb != NULL);
 	ASSERT(item != NULL);
 
-	int res = CircularBuffer_Remove(cb, item);
+	bool res = CircularBuffer_Remove(cb, item);
 
 	// compensate CircularBuffer_Remove reduction of item_count
 	if(res != 0) {

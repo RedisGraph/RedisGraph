@@ -22,9 +22,15 @@ CircularBuffer CircularBuffer_New
 );
 
 // returns number of items in buffer
-int CircularBuffer_ItemCount
+uint64_t CircularBuffer_ItemCount
 (
-	CircularBuffer cb  // buffer to inspect
+	CircularBuffer cb  // buffer
+);
+
+// returns buffer capacity
+uint64_t CircularBuffer_Cap
+(
+	CircularBuffer cb // buffer
 );
 
 uint CircularBuffer_ItemSize
@@ -61,16 +67,14 @@ void CircularBuffer_AddForce
 );
 
 // removes oldest item from buffer
-// returns 1 on success, 0 otherwise
-int CircularBuffer_Remove
+bool CircularBuffer_Remove
 (
 	CircularBuffer cb,  // buffer to remove item from
 	void *item          // [output] pointer populated with removed item
 );
 
 // read oldest item from buffer
-// returns 1 on success, 0 otherwise
-int CircularBuffer_Read
+bool CircularBuffer_Read
 (
 	CircularBuffer cb,  // buffer to read item from
 	void *item          // [output] pointer populated with removed item
@@ -88,3 +92,4 @@ void CircularBuffer_Free
 (
 	CircularBuffer cb  // buffer to free
 );
+
