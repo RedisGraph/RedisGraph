@@ -330,7 +330,6 @@ static void _get_vars_inner_rep
 		if(it.key[0] == '@') {
 			continue;
 		}
-		// const char *curr = (const char *)it.key;
 		char *curr = rm_strndup((const char *)it.key, it.key_len);
 		// think about working with sds
 		char *internal_rep = rm_malloc(it.key_len + 2);
@@ -342,12 +341,155 @@ static void _get_vars_inner_rep
 	}
 }
 
+// returns true if the given node will result in an eager operation
+static bool _NodeIsEager
+(
+	cypher_astnode_t *clause  // node
+) {
+	// TBD
+	return true;
+}
+
+static void _replace_first_clause
+(
+	cypher_astnode_t *query,   // query ast-node
+	cypher_astnode_t *clause,  // clause to replace
+	char **names,              // original bound vars
+	char **inter_names         // internal representation of bound vars
+) {
+	uint existing_projections_count = cypher_ast_with_nprojections(clause);
+	uint n_projections = array_len(names) + existing_projections_count;
+	uint proj_idx = 0;
+	cypher_astnode_t *projections[n_projections + 1];
+
+	// -------------------------------------------------------------------------
+	// create projections for bound vars
+	// -------------------------------------------------------------------------
+	for(uint i = 0; i < array_len(names); i++) {
+		// create a projection for the bound var
+		struct cypher_input_range range = {0};
+		cypher_astnode_t *exp = cypher_ast_identifier(names[i],
+			strlen(names[i]), range);
+		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
+			strlen(inter_names[i]), range);
+		cypher_astnode_t *_children[2];
+		_children[0] = exp;
+		_children[0] = alias;
+		cypher_astnode_t **children = _children;
+		unsigned int nchildren  = 2;
+		// struct cypher_input_range range      = cypher_astnode_range(it.data);
+
+		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
+				nchildren, range);
+	}
+
+	// TODO: Handle no projections (empty previous context)
+
+	// -------------------------------------------------------------------------
+	// introduce explicit projections
+	//--------------------------------------------------------------------------
+
+	// clone explicit projections into projections array
+	for(uint i = 0; i < existing_projections_count; i++) {
+		const cypher_astnode_t *projection =
+			cypher_ast_with_get_projection(clause, i);
+		projections[proj_idx++] = cypher_ast_clone(projection);
+	}
+
+	// copy projections to the children array
+	cypher_astnode_t *children[n_projections + 4];
+	for(uint i = 0; i < n_projections; i++) {
+		children[i] = projections[i];
+	}
+
+	// -------------------------------------------------------------------------
+	// prepare additional arguments
+	//--------------------------------------------------------------------------
+	bool                    distinct   =  false ;
+	const cypher_astnode_t  *skip      =  NULL  ;
+	const cypher_astnode_t  *limit     =  NULL  ;
+	const cypher_astnode_t  *order_by  =  NULL  ;
+	const cypher_astnode_t  *predicate =  NULL  ;
+
+	distinct      =  cypher_ast_with_is_distinct(clause);
+	skip          =  cypher_ast_with_get_skip(clause);
+	limit         =  cypher_ast_with_get_limit(clause);
+	order_by      =  cypher_ast_with_get_order_by(clause);
+	predicate     =  cypher_ast_with_get_predicate(clause);
+
+	// clone any ORDER BY, SKIP, LIMIT, and WHERE modifiers to
+	// add to the children array and populate the new clause
+	uint nchildren = n_projections;
+	if(order_by)  order_by   = children[nchildren++] = cypher_ast_clone(order_by);
+	if(skip)      skip       = children[nchildren++] = cypher_ast_clone(skip);
+	if(limit)     limit      = children[nchildren++] = cypher_ast_clone(limit);
+	if(predicate) predicate  = children[nchildren++] = cypher_ast_clone(predicate);
+
+	struct cypher_input_range range = cypher_astnode_range(clause);
+
+	// build the replacement clause
+	cypher_astnode_t *new_clause;
+	new_clause = cypher_ast_with(distinct,
+								false,
+								projections,
+								n_projections,
+								order_by,
+								skip,
+								limit,
+								predicate,
+								children,
+								nchildren,
+								range);
+
+	// TODO: Free original clause once things are working
+	// cypher_ast_free(clause);
+
+	// replace original clause with fully populated one
+	cypher_ast_query_set_clause(query, new_clause, 0);
+}
+
+// adds a first WITH clause to the query, projecting all bound vars (names) to
+// their internal representation (inter_names)
+static void _add_first_clause
+(
+	query,
+	names,
+	inter_names
+) {
+	// TBD
+	return;
+}
+
+// replaces a WITH clause with a new one, with additional projections of
+// inter_names to themselves
+static void _replace_intermediate_with_clauses
+(
+	query,
+	inter_names
+) {
+	// TBD
+	return;
+}
+
+// replaces the RETURN clause in query to a new one, containing projections of
+// inter_names to names
+static void _replace_return_clause
+(
+	query,
+	names,
+	inter_names
+) {
+	// TBD
+	return;
+}
+
 // returns an AST containing the body of a subquery as its body (stripped from
 // the CALL {} clause)
 static AST *_CreateASTFromCallSubquery
 (
 	const cypher_astnode_t *clause,  // CALL {} ast-node
-	const AST *orig_ast              // original AST with which to build new one
+	const AST *orig_ast,             // original AST with which to build new one
+	rax *outer_mapping               // mapping of outer-scope bound vars
 ) {
 	// create an AST from the body of the subquery
 	uint *ref_count = rm_malloc(sizeof(uint));
@@ -366,19 +508,82 @@ static AST *_CreateASTFromCallSubquery
 	cypher_astnode_t *clauses[clause_count];
 
 	// Explicitly collect all child nodes from the clause.
+	bool is_eager = false;
 	for(uint i = 0; i < clause_count; i ++) {
 		clauses[i] = (cypher_astnode_t *)cypher_astnode_get_child(clause, i);
+		is_eager |= _NodeIsEager(clauses[i]);
 	}
 	struct cypher_input_range range = {0};
 
-	subquery_ast->root = cypher_ast_query(NULL,
-							0,
-							clauses,
-							clause_count,
-							clauses,
-							clause_count,
-							range);
+	cypher_astnode_t *query = cypher_ast_query(NULL,
+								0,
+								clauses,
+								clause_count,
+								clauses,
+								clause_count,
+								range);
+	subquery_ast->root = query;
 
+	// check if the subquery is returning
+	const cypher_astnode_t *last_clause =
+		cypher_ast_call_subquery_get_clause(clause, clause_count-1);
+	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
+
+	if(is_eager && is_returning) {
+
+		uint mapping_size = raxSize(outer_mapping);
+		// create an array containing coupled names
+		// ("a1", "@a1", "a2", "@a2", ...) of the original names and the
+		// internal (temporary) representation of them.
+		char **names = array_new(char *, mapping_size);
+		char **inter_names = array_new(char *, mapping_size);
+
+		_get_vars_inner_rep(outer_mapping, &names, &inter_names);
+
+		// Algorithm:
+			// 1. Check if first clause is a WITH clause.
+				// 1.1: Yes - Replace with clause containing "n->@n" projections
+					// for all bound vars (in outer-scope context)
+				// 1.2: No - Add a WITH clause containing "n->@n" projections
+					// for all bound vars (in outer-scope context)
+
+			// 2. For every WITH clause (except the first one), replace it with
+				// a clause that contains "@n->@n" projections for all bound
+				// vars (in outer-scope context)
+
+			// 3. Replace the RETURN clause (last) with a clause containing the
+				// projections "@n->n" for all bound vars (in outer-scope context)
+
+
+			// 1. Check if first clause is a WITH clause.
+			bool first_is_with =
+				cypher_astnode_type(clauses[0]) == CYPHER_AST_WITH;
+			if(first_is_with) {
+				// 1.1: Yes - Replace first clause (WITH) with clause containing
+					// "n->@n" projections for all bound vars in outer-scope
+					// context
+				_replace_first_clause(query, (cypher_astnode_t *)clause, names,
+					inter_names);
+			} else {
+				// 1.2: No - Add a WITH clause containing "n->@n" projections
+					// for all bound vars (in outer-scope context), to be the
+					// first clause in the subquery
+				_add_first_clause(query, names, inter_names);
+			}
+
+			// 2. For every WITH clause (except the first one), replace it with
+				// a clause that contains "@n->@n" projections for all bound
+				// vars in outer-scope context
+			_replace_intermediate_with_clauses(query, names, inter_names);
+
+			// 3. Replace the RETURN clause (last) with a clause containing the
+				// projections "@n->n" for all bound vars in outer-scope context
+			_replace_return_clause(query, names, inter_names);
+
+			// Free the names and inter_names, and their corresponding arrays.
+	}
+
+	// TODO: Add support for UNION.
 	return subquery_ast;
 }
 
@@ -509,7 +714,8 @@ static void _buildCallSubqueryPlan
 	AST *orig_ast = QueryCtx_GetAST();
 
 	// create an AST from the body of the subquery
-	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast);
+	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast,
+		plan->record_map);
 
 	// -------------------------------------------------------------------------
 	// build the embedded execution plan corresponding to the subquery
@@ -526,6 +732,7 @@ static void _buildCallSubqueryPlan
 	// if no variables are imported, add an 'empty' projection so that the
 	// records within the subquery will not carry unnecessary entries
 	// TODO: This needs to be done for every branch of the Join op, if exists
+	// TODO: In the new scheme, this is problematic for returning & eager subqueries, as we need the previous context
 	const cypher_astnode_t *first_clause =
 		cypher_ast_call_subquery_get_clause(clause, 0);
 	if(cypher_astnode_type(first_clause) != CYPHER_AST_WITH) {
