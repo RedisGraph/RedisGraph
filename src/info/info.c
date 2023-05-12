@@ -4,36 +4,25 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-/*
- * This file contains the useful statistics and generic information about a
- * a graph. This information is used by the "GRAPH.INFO" command.
-*/
-
+// this file contains the useful statistics and generic information about a
+// a graph, this information is used by the "GRAPH.INFO" command
 
 #include "RG.h"
 #include "info.h"
 #include "util/arr.h"
-#include "util/num.h"
 #include "../util/dict.h"
 #include "../query_ctx.h"
 #include "util/thpool/pools.h"
+#include "configuration/config.h"
 #include "util/circular_buffer.h"
-// #include "hdr/hdr_histogram.h"
 
 #include <string.h>
 #include <sys/types.h>
 
-#define INITIAL_QUERY_INFO_CAPACITY 100
-
-static CircularBuffer finished_queries;
 static pthread_rwlock_t finished_queries_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 // forward declaration
 QueryInfo *QueryInfo_Clone(QueryInfo *qi);
-void QueryInfo_CloneTo(const void *item_to_clone, void *destination_item,
-    void *user_data);
-void QueryInfo_Deleter(void *info);
-typedef struct ViewFinishedQueriesCallbackData ViewFinishedQueriesCallbackData;
 
 // returns the total number of queries recorded
 uint64_t FinishedQueryCounters_GetTotalCount
@@ -47,21 +36,6 @@ uint64_t FinishedQueryCounters_GetTotalCount
         counters->write_succeeded_n  +
         counters->ro_timedout_n      +
         counters->ro_succeeded_n ;
-}
-
-void FinishedQueryCounters_Add
-(
-    FinishedQueryCounters *lhs,
-    const FinishedQueryCounters rhs
-) {
-    ASSERT(lhs != NULL);
-
-    lhs->ro_failed_n += rhs.ro_failed_n;
-    lhs->ro_failed_n += rhs.ro_failed_n;
-    lhs->ro_timedout_n += rhs.ro_timedout_n;
-    lhs->write_failed_n += rhs.write_failed_n;
-    lhs->write_succeeded_n += rhs.write_succeeded_n;
-    lhs->write_timedout_n += rhs.write_timedout_n;
 }
 
 static void _FinishedQueryCounters_Reset
@@ -78,55 +52,19 @@ static void _FinishedQueryCounters_Reset
 	counters->ro_succeeded_n     = 0;
 }
 
-// increments the corresponding query type counter
-// the passed parameters define the kind of query and its finish status
-static void _FinishedQueryCounters_Increment
-(
-    FinishedQueryCounters *counters,
-    const QueryExecutionTypeFlag flags,
-    const QueryExecutionStatus status
-) {
-    ASSERT(counters != NULL);
-
-	// write query
-    if (CHECK_FLAG(flags, QueryExecutionTypeFlag_WRITE)) {
-		// write query encountered error
-        if (status == QueryExecutionStatus_FAILURE) {
-            ++counters->write_failed_n;
-		// write query timedout
-        } else if (status == QueryExecutionStatus_TIMEDOUT) {
-            ++counters->write_timedout_n;
-        } else {
-		// write query succeeded
-            ++counters->write_succeeded_n;
-        }
-		return;
-    } else {
-		// read query
-		// read query encountered error
-        if (status == QueryExecutionStatus_FAILURE) {
-            ++counters->ro_failed_n;
-		// read query timedout
-        } else if (status == QueryExecutionStatus_TIMEDOUT) {
-            ++counters->ro_timedout_n;
-        } else {
-			// read query succeeded
-            ++counters->ro_succeeded_n;
-        }
-		return;
-    }
-
-    ASSERT(false && "Handle unknown flag.");
-}
-
-static bool _Info_LockFinished
+static void _Info_LockFinished
 (
     bool write
 ) {
+	int res;
+	UNUSED(res);
+
     if(write) {
-        return !pthread_rwlock_wrlock(&finished_queries_rwlock);
+        res = pthread_rwlock_wrlock(&finished_queries_rwlock);
+		ASSERT(res == 0);
     } else {
-        return !pthread_rwlock_rdlock(&finished_queries_rwlock);
+        res = pthread_rwlock_rdlock(&finished_queries_rwlock);
+		ASSERT(res == 0);
     }
 }
 
@@ -134,14 +72,15 @@ static bool _Info_UnlockFinished(void) {
     return !pthread_rwlock_unlock(&finished_queries_rwlock);
 }
 
-// TODO: Update to lock waiting and executing (if this is still needed.. I think not)
-static bool _Info_LockEverything
+static void _Info_LockEverything
 (
 	Info *info
 ) {
 	ASSERT(info != NULL);
 
-    return !pthread_mutex_lock(&info->mutex);
+    int res = pthread_mutex_lock(&info->mutex);
+	UNUSED(res);
+	ASSERT(res == 0);
 }
 
 static bool _Info_UnlockEverything
@@ -153,46 +92,30 @@ static bool _Info_UnlockEverything
     return !pthread_mutex_unlock(&info->mutex);
 }
 
-static void _add_finished_query
-(
-	QueryInfo *qi
-) {
-    int res = _Info_LockFinished(true);
-	ASSERT(res == 1);
-
-    CircularBuffer_AddForce(finished_queries, (void *)&qi);
-
-    res = _Info_UnlockFinished();
-	ASSERT(res == 1);
-}
-
+// create a new info structure
 Info *Info_New(void) {
     // HACK: compensate for the main thread
-    const uint64_t thread_count = ThreadPools_ThreadCount() + 1;
+    uint nthreads = ThreadPools_ThreadCount() + 1;
 
-	Info *info = rm_malloc(sizeof(Info));
+	Info *info = rm_calloc(1, sizeof(Info));
 
     // initialize hashmap for the waiting queries (keys are QueryInfo *)
     info->waiting_queries = HashTableCreate(&def_dt);
 
     // initialize working_queries array
-    info->working_queries = rm_calloc(thread_count, sizeof(QueryInfo*));
+    info->working_queries = rm_calloc(nthreads, sizeof(QueryInfo*));
 
-    _FinishedQueryCounters_Reset(&info->counters);
+    // initialize finished_queries
+	uint32_t n = 0;
+	Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &n);
+    info->finished_queries = CircularBuffer_New(sizeof(QueryInfo *), n,
+        (void(*)(void*))QueryInfo_Free);
 
+	// initialize mutex
     int res = pthread_mutex_init(&info->mutex, NULL);
     ASSERT(res == 0);
 
     return info;
-}
-
-// create the finished queries storage (circular buffer)
-void Info_SetFinishedQueriesStorage
-(
-    const uint n  // size of circular buffer
-) {
-    finished_queries = CircularBuffer_New(sizeof(QueryInfo *), n,
-        QueryInfo_Deleter);
 }
 
 // add a query to the waiting list for the first time (from dispatcher)
@@ -202,41 +125,42 @@ void Info_AddToWaiting
     Info *info,    // info
     QueryInfo *qi  // query info of the query starting to wait
 ) {
+	ASSERT(qi   != NULL);
+	ASSERT(info != NULL);
+
     // start the stage-timer
-    TIMER_RESTART(qi->stage_timer);
+    TIMER_RESTART(qi->timer);
 
     // set the stage to waiting
     qi->stage = QueryStage_WAITING;
 
     // acquire mutex
-    bool res = _Info_LockEverything(info);
-    ASSERT((void *)res != NULL);
+    _Info_LockEverything(info);
 
     // add the query to the waiting dict
     HashTableAdd(info->waiting_queries, qi, qi);
 
     // release mutex
-    res = _Info_UnlockEverything(info);
-    ASSERT((void *)res != NULL);
+    _Info_UnlockEverything(info);
 }
 
-// remove a query from the waiting_queries, insert it to the executing queue,
-// and set its stage
-void Info_IndicateQueryStartedExecution
+// remove 'qi' from the waiting-list and insert it to the executing-queue
+void Info_AddToExecuting
 (
     Info *info,    // info
-    QueryInfo *qi  // query info that is starting the execution stage
+    QueryInfo *qi  // query info
 ) {
-    ASSERT(qi != NULL);
+    ASSERT(qi   != NULL);
     ASSERT(info != NULL);
+	ASSERT(qi->stage == QueryStage_WAITING);
 
     const int tid = ThreadPools_GetThreadID();
 
     // update waiting time
     QueryInfo_UpdateWaitingTime(qi);
 
-    bool res = _Info_LockEverything(info);
-	ASSERT(res == true);
+	// acquire mutex
+    _Info_LockEverything(info);
 
 	//--------------------------------------------------------------------------
 	// remove query info from waiting-list
@@ -247,58 +171,22 @@ void Info_IndicateQueryStartedExecution
 	ASSERT(dict_res == DICT_OK);
 
 	// release mutex
-    res = _Info_UnlockEverything(info);
-	ASSERT(res == true);
+    _Info_UnlockEverything(info);
 
-    // set the stage
-    qi->stage = QueryStage_EXECUTING;
+    // advance stage from waiting to executing
+	QueryInfo_AdvanceStage(qi);
 
 	//--------------------------------------------------------------------------
 	// add query info to executing list
 	//--------------------------------------------------------------------------
 
-    // add to working queries array
+	ASSERT(info->working_queries[tid] == NULL);
 	info->working_queries[tid] = qi;
-}
-
-// transitions a query from executing to waiting
-// the queryInfo in the index corresponding to the thread_id will be removed
-// from the `working_queries` array of the Info struct.
-void Info_executing_to_waiting
-(
-    Info *info,     // info
-    QueryInfo *qi   // query info
-) {
-    // update the elapsed time in executing state, and restart timer
-    qi->execution_duration += simple_toc(qi->stage_timer);
-
-    // remove from working queries array
-    const int tid = ThreadPools_GetThreadID();
-
-	// clear entry
-    info->working_queries[tid] = NULL;
-
-    // start the stage-timer
-    TIMER_RESTART(qi->stage_timer);
-
-    // set the stage to waiting
-    qi->stage = QueryStage_WAITING;
-
-    // acquire mutex
-    bool res = _Info_LockEverything(info);
-    ASSERT(res == true);
-
-    // add the query to the waiting dict
-    HashTableAdd(info->waiting_queries, qi, qi);
-
-    // release mutex
-    res = _Info_UnlockEverything(info);
-    ASSERT(res == true);
 }
 
 // indicates that the query has finished the execution and has started
 // reporting the results back to the client
-void Info_IndicateQueryStartedReporting
+void Info_AddToReporting
 (
     Info *info  // info
 ) {
@@ -307,16 +195,16 @@ void Info_IndicateQueryStartedReporting
     const int tid = ThreadPools_GetThreadID();
     QueryInfo *qi = info->working_queries[tid];
 	ASSERT(qi != NULL);
+	ASSERT(qi->stage == QueryStage_EXECUTING);
 
-    qi->stage = QueryStage_REPORTING;
+	QueryInfo_AdvanceStage(qi);
     QueryInfo_UpdateExecutionTime(qi);
 }
 
-// indicates that the query has finished reporting the results and is no longer
-// required to be stored and kept track of
-void Info_IndicateQueryFinishedReporting
+// indicates that the query has ran to completion
+void Info_AddToFinished
 (
-    Info *info
+	Info *info  // info
 ) {
     ASSERT(info != NULL);
 
@@ -329,60 +217,78 @@ void Info_IndicateQueryFinishedReporting
 	ASSERT(qi != NULL);
 
     info->working_queries[tid] = NULL;
-	ASSERT(qi->stage == QueryStage_REPORTING);
 
 	// update stage to finished and add to finished buffer
     qi->stage = QueryStage_FINISHED;
+
     QueryInfo_UpdateReportingTime(qi);
 
-    _add_finished_query(qi);
+    _Info_LockFinished(true);
+
+	// TODO: improve locking!
+    CircularBuffer_AddForce(info->finished_queries, (void *)&qi);
+
+    _Info_UnlockFinished();
 }
 
-// indicates that the query has finished due to an error
-void Info_IndicateQueryFinishedAfterError
+// transitions a query from executing to waiting
+// the queryInfo in the index corresponding to the thread_id will be removed
+// from the `working_queries` array of the Info struct.
+void Info_ExecutingToWaiting
 (
-    Info *info
+    Info *info  // info
 ) {
-    ASSERT(info != NULL);
+	ASSERT(info != NULL);
 
-	//--------------------------------------------------------------------------
-	// remove query info from working queries
-	//--------------------------------------------------------------------------
-
+    // remove from working queries array
     const int tid = ThreadPools_GetThreadID();
     QueryInfo *qi = info->working_queries[tid];
-	ASSERT(qi != NULL);
 
+	ASSERT(qi != NULL);
+	ASSERT(qi->stage == QueryStage_EXECUTING);
+
+    // update the elapsed time in executing state, and restart timer
+	QueryInfo_UpdateExecutionTime(qi);
+
+	// clear entry
     info->working_queries[tid] = NULL;
 
-	// update stage to finished and add to finished buffer
-    qi->stage = QueryStage_FINISHED;
+    // set the stage to waiting
+    qi->stage = QueryStage_WAITING;
 
-    _add_finished_query(qi);
+    // acquire mutex
+    _Info_LockEverything(info);
+
+    // add the query to the waiting dict
+    HashTableAdd(info->waiting_queries, qi, qi);
+
+    // release mutex
+    _Info_UnlockEverything(info);
 }
 
-// return the number of queries currently waiting to be executed
-// requires a pointer to mutable, for it changes the state of the locks
-uint64_t Info_GetWaitingQueriesCount
+//------------------------------------------------------------------------------
+// Statistics
+//------------------------------------------------------------------------------
+
+// return the number of queries currently waiting for execution
+uint64_t Info_GetWaitingCount
 (
-	Info *info
+	Info *info  // info
 ) {
-    ASSERT(info != NULL);
+	ASSERT(info != NULL);
 
-    // TODO: Lock only the waiting_queries mutex
-    bool res = _Info_LockEverything(info);
-	ASSERT(res == true);
+	// TODO: Lock only the waiting_queries mutex
+	_Info_LockEverything(info);
 
-    const uint64_t count = HashTableElemCount(info->waiting_queries);
+	const uint64_t count = HashTableElemCount(info->waiting_queries);
 
-    res = _Info_UnlockEverything(info);
-	ASSERT(res == true);
+	_Info_UnlockEverything(info);
 
-    return count;
+	return count;
 }
 
 // count the amount of executing and reporting queries
-void Info_GetExecutingReportingQueriesCount
+void Info_GetExecutingCount
 (
     Info *info,           // info
     uint64_t *executing,  // [OUTPUT] amount of executing queries
@@ -395,10 +301,11 @@ void Info_GetExecutingReportingQueriesCount
 	for(uint i = 0; i < n; i++) {
 		QueryInfo *qi = info->working_queries[i];
         if(qi != NULL) {
-            if(qi->stage == QueryStage_REPORTING) {
-                (*reporting)++;
-            } else if(qi->stage == QueryStage_EXECUTING) {
+			ASSERT(qi->stage & (QueryStage_EXECUTING | QueryStage_REPORTING));
+            if(qi->stage == QueryStage_EXECUTING) {
                 (*executing)++;
+            } else {
+                (*reporting)++;
             }
         }
 	}
@@ -407,24 +314,22 @@ void Info_GetExecutingReportingQueriesCount
 // return the total number of queries currently queued or being executed
 uint64_t Info_GetTotalQueriesCount
 (
-	Info *info
+	Info *info  // info
 ) {
     ASSERT(info != NULL);
 
-    GraphContext *gc = QueryCtx_GetGraphCtx();
-
     uint64_t executing = 0;
     uint64_t reporting = 0;
-    uint64_t waiting = Info_GetWaitingQueriesCount(gc->info);
-    Info_GetExecutingReportingQueriesCount(gc->info, &executing, &reporting);
+    uint64_t waiting = Info_GetWaitingCount(info);
+    Info_GetExecutingCount(info, &executing, &reporting);
 
     return waiting + executing + reporting;
 }
 
 // return the maximum registered time a query spent waiting
-millis_t Info_GetMaxQueryWaitTime
+millis_t Info_GetMaxWaitTime
 (
-    Info *info
+    Info *info  // info
 ) {
     ASSERT(info != NULL);
 
@@ -432,24 +337,34 @@ millis_t Info_GetMaxQueryWaitTime
 	millis_t max_time = 0;
 
 	// TODO: lock waiting only
-    bool res = _Info_LockEverything(info);
-    ASSERT(res == true);
+    _Info_LockEverything(info);
 
+	// scan waiting queries
     dictIterator *it = HashTableGetIterator(info->waiting_queries);
     while((qi = (QueryInfo*)HashTableNext(it)) != NULL) {
-		QueryInfo_UpdateWaitingTime(qi);
-        millis_t waiting_time = QueryInfo_GetWaitingTime(qi);
+		millis_t waiting_time = QueryInfo_UpdateWaitingTime(qi);
         if(waiting_time > max_time) {
             max_time = waiting_time;
         }
     }
 
-    HashTableReleaseIterator(it);
+	// scan executing queries
+	uint n = ThreadPools_ThreadCount() + 1;
+	for(uint i = 0; i < n; i++) {
+		QueryInfo *qi = info->working_queries[i];
+        if(qi != NULL) {
+			millis_t waiting_time = QueryInfo_GetWaitingTime(qi);
+			if(waiting_time > max_time) {
+				max_time = waiting_time;
+			}
+        }
+	}
 
-    res = _Info_UnlockEverything(info);
-    ASSERT(res == true);
+	_Info_UnlockEverything(info);
 
-    return max_time;
+	HashTableReleaseIterator(it);
+
+	return max_time;
 }
 
 // increments the corresponding query type counter
@@ -461,92 +376,139 @@ void Info_IncrementNumberOfQueries
     const QueryExecutionStatus status
 ) {
     ASSERT(info != NULL);
+    ASSERT(info->counters != NULL);
 
-    _FinishedQueryCounters_Increment(&info->counters, flags, status);
-}
+	//--------------------------------------------------------------------------
+	// write query
+	//--------------------------------------------------------------------------
 
-// unlocks the info object from exclusive external reading
-bool Info_Unlock(Info *info) {
-    return _Info_UnlockEverything(info);
-}
-
-dict* Info_GetWaitingQueries(Info *info) {
-    ASSERT(info != NULL);
-    return info->waiting_queries;
-}
-
-// stores clones of queries of a certain state among the waiting and the
-// executing stages in storage
-void Info_GetQueries
-(
-    Info *info,                 // info
-    QueryStage stage,           // wanted stage
-    QueryInfoStorage *storage   // result container
-) {
-    // QueryInfoStorage st = *storage;
-    bool waiting = (stage == QueryStage_WAITING);
-
-    // TODO: Lock waiting and executing separately.
-    bool res = _Info_LockEverything(info);
-    ASSERT(res == true);
-
-    // get the number of queries to traverse and copy (waiting or executing)
-    uint n_queries = (waiting ? HashTableElemCount(info->waiting_queries) :
-                                ThreadPools_ThreadCount() + 1);
-
-    if(waiting) {
-        //--------------------------------------------------------------------------
-        // waiting queries
-        //--------------------------------------------------------------------------
-        QueryInfo *qi;
-        dictIterator *it = HashTableGetIterator(info->waiting_queries);
-        while((qi = (QueryInfo*)HashTableNext(it)) != NULL) {
-            array_append(*storage, QueryInfo_Clone(qi));
-        }
-    } else {
-        //--------------------------------------------------------------------------
-        // executing queries
-        //--------------------------------------------------------------------------
-        for(uint i = 0; i < n_queries; i++) {
-            // append a clone of the current query to st
-            if(info->working_queries[i] != NULL) {
-                array_append(*storage, QueryInfo_Clone(info->working_queries[i]));
-            }
+    if(flags & QueryExecutionTypeFlag_WRITE) {
+		// encountered error
+        if(status == QueryExecutionStatus_FAILURE) {
+            info->counters.write_failed_n++;
+		// timedout
+        } else if(status == QueryExecutionStatus_TIMEDOUT) {
+            info->counters.write_timedout_n++;
+        } else {
+		// succeeded
+            info->counters.write_succeeded_n++;
         }
     }
 
-    res = _Info_UnlockEverything(info);
-    ASSERT(res == true);
+	//--------------------------------------------------------------------------
+	// read query
+	//--------------------------------------------------------------------------
+
+	// encountered error
+	else if(flags & QueryExecutionTypeFlag_READ) {
+		if(status == QueryExecutionStatus_FAILURE) {
+			info->counters.ro_failed_n++;
+			// timedout
+		} else if(status == QueryExecutionStatus_TIMEDOUT) {
+			info->counters.ro_timedout_n++;
+		} else {
+			// succeeded
+			info->counters.ro_succeeded_n++;
+		}
+	}
 }
 
-// views the circular buffer of finished queries
-void Info_ViewFinishedQueries
+// populates 'queries' with clones of queries of given 'stage'
+void Info_GetQueries
 (
-    CircularBuffer_ReadCallback callback,  // callback
-    void *user_data,                       // additional data for callback
-    uint n_items                           // number of items to view
+	Info *info,            // info
+	QueryStage stage,      // wanted stage
+	QueryInfo ***queries,  // queries array
+	int cap                // size of array
 ) {
-    ASSERT(finished_queries != NULL);
+	QueryInfo *qi;
+    bool waiting   = (stage & QueryStage_WAITING);
+	bool executing = (stage & (QueryStage_EXECUTING | QueryStage_REPORTING));
+	bool finished  = (stage & QueryStage_FINISHED);
 
-    int res = _Info_LockFinished(false);
-    ASSERT(res == 1);
+	//--------------------------------------------------------------------------
+	// waiting queries
+	//--------------------------------------------------------------------------
 
-	// read items from the circular buffer, calling callback on each one
-    CircularBuffer_TraverseCBFromLast(finished_queries, n_items, callback,
-        user_data);
+    if(waiting) {
+		ASSERT(info != NULL);
+		_Info_LockEverything(info);
 
-    res = _Info_UnlockFinished();
-    ASSERT(res == 1);
+        dictIterator *it = HashTableGetIterator(info->waiting_queries);
+        while((qi = (QueryInfo*)HashTableNext(it)) != NULL && cap-- > 0) {
+            array_append(*queries, QueryInfo_Clone(qi));
+        }
+
+		_Info_UnlockEverything(info);
+	}
+
+	//--------------------------------------------------------------------------
+	// executing queries
+	//--------------------------------------------------------------------------
+
+    if(executing) {
+		ASSERT(info != NULL);
+		uint nthreads = ThreadPools_ThreadCount();
+
+		_Info_LockEverything(info);
+
+        for(uint i = 0; i < nthreads && cap > 0; i++) {
+            // append a clone of the current query to st
+            if(info->working_queries[i] != NULL) {
+				qi = info->working_queries[i];
+				if(qi->stage & stage) {
+					array_append(*queries, QueryInfo_Clone(qi));
+					cap--;
+				}
+            }
+        }
+
+		_Info_UnlockEverything(info);
+    }
+
+	//--------------------------------------------------------------------------
+	// finished queries
+	//--------------------------------------------------------------------------
+
+	if(finished) {
+		_Info_LockFinished(false);
+
+		// reset circular buffer read position to be 'n' entries
+		// behind the latest entry
+		cap = MIN(cap, CircularBuffer_ItemCount(info->finished_queries));
+		CircularBuffer_ResetReader(info->finished_queries, cap);
+
+		for(int i = 0; i < cap; i++) {
+			CircularBuffer_Read(info->finished_queries, &qi);
+			array_append(*queries, QueryInfo_Clone(qi));
+		}
+
+		_Info_UnlockFinished();
+	}
 }
 
+// free the info structure's content
 void Info_Free
 (
-	Info *info
+	Info *info  // information object to free
 ) {
     ASSERT(info != NULL);
 
+	// make sure every entry in working_queries is NULL
+#ifdef RG_DEBUG
+	uint nthreads = ThreadPools_ThreadCount() + 1;
+	for(int i = 0; i < nthreads; i++) {
+		ASSERT(info->working_queries[i] == NULL);
+	}
+#endif
+
+	// free working query array
     rm_free(info->working_queries);
 
+	// expecting no waiting queries
+	ASSERT(HashTableElemCount(info->waiting_queries) == 0);
+
+	// free waiting queries container
     HashTableRelease(info->waiting_queries);
 
     int res = pthread_mutex_destroy(&info->mutex);

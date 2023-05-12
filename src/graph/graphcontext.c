@@ -45,7 +45,7 @@ static uint64_t _count_indices_from_schemas(const Schema** schemas) {
 // delete a GraphContext reference from the `graphs_in_keyspace` global array
 void _GraphContext_RemoveFromRegistry(GraphContext *gc) {
 	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i ++) {
+	for(uint i = 0; i < graph_count; i++) {
 		if(graphs_in_keyspace[i] == gc) {
 			graphs_in_keyspace = array_del_fast(graphs_in_keyspace, i);
 			break;
@@ -816,10 +816,15 @@ static void _GraphContext_Free(void *arg) {
 	GraphContext *gc = (GraphContext *)arg;
 	uint len;
 
-	// Disable matrix synchronization for graph deletion.
+	// disable matrix synchronization for graph deletion
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-	if(gc->decoding_context == NULL || GraphDecodeContext_Finished(gc->decoding_context)) Graph_Free(gc->g);
-	else Graph_PartialFree(gc->g);
+
+	if(gc->decoding_context == NULL ||
+			GraphDecodeContext_Finished(gc->decoding_context)) {
+		Graph_Free(gc->g);
+	} else {
+		Graph_PartialFree(gc->g);
+	}
 
 	bool async_delete;
 	Config_Option_get(Config_ASYNC_DELETE, &async_delete);
@@ -827,17 +832,18 @@ static void _GraphContext_Free(void *arg) {
 	RedisModuleCtx *ctx = NULL;
 	if(async_delete) {
 		ctx = RedisModule_GetThreadSafeContext(NULL);
-		// GIL need to be acquire because RediSearch change Redis global data structure
+		// GIL need to be acquire because RediSearch change Redis data structure
 		RedisModule_ThreadSafeContextLock(ctx);
 	}
 
 	//--------------------------------------------------------------------------
-	// Free the info structure
+	// free the info structure
 	//--------------------------------------------------------------------------
+
 	Info_Free(gc->info);
 
 	//--------------------------------------------------------------------------
-	// Free node schemas
+	// free node schemas
 	//--------------------------------------------------------------------------
 
 	if(gc->node_schemas) {
@@ -849,7 +855,7 @@ static void _GraphContext_Free(void *arg) {
 	}
 
 	//--------------------------------------------------------------------------
-	// Free relation schemas
+	// free relation schemas
 	//--------------------------------------------------------------------------
 
 	if(gc->relation_schemas) {
@@ -866,7 +872,7 @@ static void _GraphContext_Free(void *arg) {
 	}
 
 	//--------------------------------------------------------------------------
-	// Free attribute mappings
+	// free attribute mappings
 	//--------------------------------------------------------------------------
 
 	if(gc->attributes) raxFree(gc->attributes);
@@ -885,7 +891,7 @@ static void _GraphContext_Free(void *arg) {
 	if(gc->slowlog) SlowLog_Free(gc->slowlog);
 
 	//--------------------------------------------------------------------------
-	// Clear cache
+	// clear cache
 	//--------------------------------------------------------------------------
 
 	if(gc->cache) Cache_Free(gc->cache);

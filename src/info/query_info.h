@@ -16,10 +16,10 @@ typedef uint32_t millis_t;
 
 // a stage a query may be in
 typedef enum QueryStage {
-    QueryStage_WAITING = 0,
-    QueryStage_EXECUTING,
-    QueryStage_REPORTING,
-    QueryStage_FINISHED,
+    QueryStage_WAITING   = 1 << 0,
+    QueryStage_EXECUTING = 1 << 1,
+    QueryStage_REPORTING = 1 << 2,
+    QueryStage_FINISHED  = 1 << 3
 } QueryStage;
 
 // holds necessary per-query info
@@ -31,12 +31,21 @@ typedef struct QueryInfo {
     millis_t execution_duration; // executing time
     millis_t report_duration;    // reporting time
     QueryStage stage;            // query stage
-    simple_timer_t stage_timer;  // timer
+    simple_timer_t timer;        // timer
     bool utilized_cache;         // utilized cache
 } QueryInfo;
 
 // creates a new, empty query info object
 QueryInfo *QueryInfo_New(void);
+
+// advance query's stage
+// waiting   -> executing
+// executing -> reporting
+// reporting -> finished
+void QueryInfo_AdvanceStage
+(
+	QueryInfo *qi  // query info
+);
 
 // returns the date/time when the query was received by the module
 // in milliseconds from UNIX epoch
@@ -78,19 +87,19 @@ void QueryInfo_SetUtilizedCache
 );
 
 // reads the stage timer and updates the waiting time with it
-void QueryInfo_UpdateWaitingTime
+millis_t QueryInfo_UpdateWaitingTime
 (
 	QueryInfo *qi
 );
 
 // reads the stage timer and updates the execution time with it
-void QueryInfo_UpdateExecutionTime
+millis_t QueryInfo_UpdateExecutionTime
 (
 	QueryInfo *qi
 );
 
 // reads the stage timer and updates the reporting time with it
-void QueryInfo_UpdateReportingTime
+millis_t QueryInfo_UpdateReportingTime
 (
 	QueryInfo *qi
 );
@@ -101,22 +110,9 @@ QueryInfo *QueryInfo_Clone
     QueryInfo *qi
 );
 
-// used as a callback for the circular buffer
-void QueryInfo_CloneTo
-(
-    const void *item_to_clone,
-    void *destination_item,
-    void *user_data
-);
-
-// QueryInfo deleter callback
-void QueryInfo_Deleter
-(
-    void *info
-);
-
 // free a QueryInfo
 void QueryInfo_Free
 (
     QueryInfo *qi
 );
+

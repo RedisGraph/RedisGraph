@@ -73,10 +73,13 @@ typedef double simple_timer_t[2];
 
 // An alias to assign for the timer.
 #define TIMER_ASSIGN(lhs, rhs) lhs[0] = rhs[0]; lhs[1] = rhs[1]
+
 // (Re)starts the timer.
 #define TIMER_RESTART(timer) simple_tic(timer)
+
 // Returns the nanoseconds (double) counted by the timer.
 #define TIMER_GET_NANOSECONDS(timer) timer[1]
+
 // An alias to return the time in milliseconds passed since the previous call.
 #define TIMER_GET_ELAPSED_MILLISECONDS(timer) \
     (uint64_t)(simple_toc(timer) * MILLISECONDS_IN_SECOND)

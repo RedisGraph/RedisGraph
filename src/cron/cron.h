@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "heap.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -27,6 +26,9 @@ void Cron_Start(void);
 // stop CRON
 void Cron_Stop(void);
 
+// add recurring tasks
+void Cron_AddRecurringTasks(void);
+
 // create a new CRON task
 CronTaskHandle Cron_AddTask
 (
@@ -42,3 +44,4 @@ void Cron_AbortTask
 (
 	CronTaskHandle t
 );
+

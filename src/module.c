@@ -11,7 +11,7 @@
 #include "errors.h"
 #include "version.h"
 #include "util/arr.h"
-#include "util/cron.h"
+#include "cron/cron.h"
 #include "query_ctx.h"
 #include "index/indexer.h"
 #include "redisearch_api.h"
@@ -62,6 +62,34 @@ static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv,
 	process_is_child = false;
 }
 
+// starts cron and register recurring tasks
+static void _Cron_Start(void) {
+	// start CRON
+	Cron_Start();
+
+	// register recurring tasks
+	Cron_AddRecurringTasks();
+}
+
+// print RedisGraph configuration
+static void _Print_Config
+(
+	RedisModuleCtx *ctx
+) {
+	// TODO: consider adding Config_Print
+
+	int ompThreadCount;
+	Config_Option_get(Config_OPENMP_NTHREAD, &ompThreadCount);
+	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
+
+	bool cmd_info_enabled = false;
+	if(Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled) {
+		uint32_t info_max_query_count = 0;
+		Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &info_max_query_count);
+		RedisModule_Log(ctx, "notice", "Query backlog size: %u", info_max_query_count);
+	}
+}
+
 static int GraphBLAS_Init(RedisModuleCtx *ctx) {
 	// GraphBLAS should use Redis allocator
 	GrB_Info res = GxB_init(GrB_NONBLOCKING, RedisModule_Alloc,
@@ -102,10 +130,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RedisModule_Log(ctx, "notice", "Starting up RedisGraph version %d.%d.%d.",
 					REDISGRAPH_VERSION_MAJOR, REDISGRAPH_VERSION_MINOR, REDISGRAPH_VERSION_PATCH);
 
-	Proc_Register();         // Register procedures.
-	AR_RegisterFuncs();      // Register arithmetic functions.
-	Cron_Start();            // Start CRON
-	// Set up global lock and variables scoped to the entire module.
+	Proc_Register();     // register procedures
+	AR_RegisterFuncs();  // register arithmetic functions
+	_Cron_Start();       // start CRON
+
+	// set up global lock and variables scoped to the entire module
 	_PrepareModuleGlobals(ctx, argv, argc);
 
 	// set up the module's configurable variables,
@@ -133,16 +162,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		RedisModule_Log(ctx, "warning", "Failed to set OpenMP thread count to %d", ompThreadCount);
 		return REDISMODULE_ERR;
 	}
-	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 
-	bool cmd_info_enabled = false;
-	if (Config_Option_get(Config_CMD_INFO, &cmd_info_enabled) && cmd_info_enabled) {
-		uint32_t info_max_query_count = 0;
-		if (Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &info_max_query_count)) {
-			Info_SetFinishedQueriesStorage(info_max_query_count);
-		}
-		RedisModule_Log(ctx, "notice", "Maximum number of info queries for history is %u", info_max_query_count);
-	}
+	// log configuration
+	_Print_Config(ctx);
 
 	// initialize array of command contexts
 	command_ctxs = calloc(ThreadPools_ThreadCount() + 1, sizeof(CommandCtx *));

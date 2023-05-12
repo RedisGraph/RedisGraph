@@ -12,25 +12,25 @@
 
 // resets the stage timer and returns the milliseconds it had recorded before
 // having been reset
-static void QueryInfo_ResetStageTimer
+static void QueryInfo_ResetTimer
 (
 	QueryInfo *qi
 ) {
     ASSERT(qi != NULL);
 
-    TIMER_RESTART(qi->stage_timer);
+    TIMER_RESTART(qi->timer);
 }
 
 // returns the number of milliseconds the timer has counted
-// this function does not reset the timer
+// this function reset the timer
 static millis_t QueryInfo_GetCountedMilliseconds
 (
 	QueryInfo *qi
 ) {
     ASSERT(qi != NULL);
 
-    millis_t ms = TIMER_GET_ELAPSED_MILLISECONDS(qi->stage_timer);
-    QueryInfo_ResetStageTimer(qi);
+    millis_t ms = TIMER_GET_ELAPSED_MILLISECONDS(qi->timer);
+    QueryInfo_ResetTimer(qi);
 	return ms;
 }
 
@@ -38,6 +38,18 @@ static millis_t QueryInfo_GetCountedMilliseconds
 QueryInfo *QueryInfo_New(void) {
     QueryInfo *qi = rm_calloc(1, sizeof(QueryInfo));
     return qi;
+}
+
+// advance query's stage
+// waiting   -> executing
+// executing -> reporting
+// reporting -> finished
+void QueryInfo_AdvanceStage
+(
+	QueryInfo *qi  // query info
+) {
+	ASSERT(qi != NULL);
+	qi->stage = qi->stage << 1;
 }
 
 // returns the date/time when the query was received by the module
@@ -93,13 +105,36 @@ millis_t QueryInfo_GetReportingTime
 }
 
 // reads the stage timer and updates the waiting time with it
-void QueryInfo_UpdateWaitingTime
+millis_t QueryInfo_UpdateWaitingTime
 (
 	QueryInfo *qi
 ) {
     ASSERT(qi != NULL);
 
     qi->wait_duration += QueryInfo_GetCountedMilliseconds(qi);
+	return qi->wait_duration;
+}
+
+// reads the stage timer and updates the execution time with it.
+millis_t QueryInfo_UpdateExecutionTime
+(
+	QueryInfo *qi
+) {
+    ASSERT(qi);
+
+    qi->execution_duration += QueryInfo_GetCountedMilliseconds(qi);
+	return qi->execution_duration;
+}
+
+// reads the stage timer and updates the reporting time with it
+millis_t QueryInfo_UpdateReportingTime
+(
+	QueryInfo *qi
+) {
+    ASSERT(qi != NULL);
+
+    qi->report_duration += QueryInfo_GetCountedMilliseconds(qi);
+	return qi->report_duration;
 }
 
 // sets the "utilized_cache" flag of a QueryInfo
@@ -109,26 +144,6 @@ void QueryInfo_SetUtilizedCache
     bool utilized   // cache utilized
 ) {
     qi->utilized_cache = utilized;
-}
-
-// reads the stage timer and updates the execution time with it.
-void QueryInfo_UpdateExecutionTime
-(
-	QueryInfo *qi
-) {
-    ASSERT(qi);
-
-    qi->execution_duration += QueryInfo_GetCountedMilliseconds(qi);
-}
-
-// reads the stage timer and updates the reporting time with it
-void QueryInfo_UpdateReportingTime
-(
-	QueryInfo *qi
-) {
-    ASSERT(qi != NULL);
-
-    qi->report_duration += QueryInfo_GetCountedMilliseconds(qi);
 }
 
 // clone a QueryInfo
@@ -154,47 +169,13 @@ QueryInfo *QueryInfo_Clone
     return clone;
 }
 
-// used as a callback for the circular buffer
-void QueryInfo_CloneTo
-(
-    const void *item_to_clone,
-    void *destination_item,
-    void *user_data
-) {
-    ASSERT(item_to_clone);
-    ASSERT(destination_item);
-    UNUSED(user_data);
-
-    QueryInfo *source = (QueryInfo*)item_to_clone;
-    QueryInfo *destination = (QueryInfo*)destination_item;
-
-    // copy the struct (shallow)
-    *destination = *source;
-
-    if (source->query_string != NULL) {
-        destination->query_string = strdup(source->query_string);
-    }
-
-    if (source->graph_name != NULL) {
-        destination->graph_name = strdup(source->graph_name);
-    }
-}
-
-// QueryInfo deleter callback
-void QueryInfo_Deleter
-(
-    void *info
-) {
-    ASSERT(info != NULL);
-    QueryInfo *qi = (QueryInfo *)info;
-    QueryInfo_Free(qi);
-}
-
 // free a QueryInfo
 void QueryInfo_Free
 (
     QueryInfo *qi
 ) {
+	ASSERT(qi != NULL);
+
     if (qi->query_string != NULL) {
         free(qi->query_string);
     }

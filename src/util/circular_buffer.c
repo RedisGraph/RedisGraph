@@ -80,52 +80,22 @@ inline bool CircularBuffer_Full
 	return cb->item_count == cb->item_cap;
 }
 
-void *CircularBuffer_Current
+// sets the read pointer to be 'n' entries behind the write pointer
+void CircularBuffer_ResetReader
 (
-	const CircularBuffer cb
+	CircularBuffer cb,  // circular buffer
+	int n               // set read 'n' entries behind write
 ) {
-	ASSERT(cb != NULL);
-	ASSERT(!CircularBuffer_Empty(cb));
-
-	return cb->read;
-}
-
-// traverse circular buffer cb, from n items before the last written item.
-// if n > # items in cb --> all items will be visited once
-// note: this function sets the read pointer
-void CircularBuffer_TraverseCBFromLast
-(
-	const CircularBuffer cb,               // buffer
-	uint n,                                // # of items to traverse
-	CircularBuffer_ReadCallback callback,  // callback called on elements
-	void *user_data                        // additional data for the callback
-) {
-	char *reader;
-
 	// set the read pointer to min(#items, n) items behind the write pointer
 	n = MIN(n, CircularBuffer_ItemCount(cb));
 
 	// compensate for circularity
-	uint write_ind = (cb->write - cb->data) / cb->item_size;
-	int sub = write_ind - n;
+	uint write_idx = (cb->write - cb->data) / cb->item_size;
+	int sub = write_idx - n;
 	if(sub >= 0) {
-		reader = cb->write - n * cb->item_size;
+		cb->read = cb->write - (n * cb->item_size);
 	} else {
-		reader = cb->end_marker + (sub * cb->item_size);
-	}
-
-	// visit items
-	while(n > 0) {
-		// apply callback
-		callback(reader, user_data);
-
-		reader += cb->item_size;
-
-		if(unlikely(reader >= cb->end_marker)) {
-			reader = cb->data;
-		}
-
-		n--;
+		cb->read = cb->end_marker + (sub * cb->item_size);
 	}
 }
 
@@ -221,6 +191,27 @@ int CircularBuffer_Remove
 
 	// report success
 	return 1;
+}
+
+// read oldest item from buffer
+// returns 1 on success, 0 otherwise
+int CircularBuffer_Read
+(
+	CircularBuffer cb,  // buffer to read item from
+	void *item          // [output] pointer populated with removed item
+) {
+	ASSERT(cb != NULL);
+	ASSERT(item != NULL);
+
+	int res = CircularBuffer_Remove(cb, item);
+
+	// compensate CircularBuffer_Remove reduction of item_count
+	if(res != 0) {
+		// restore item_count
+		cb->item_count++;
+	}
+
+	return res;
 }
 
 // free buffer (does not free its elements if its free callback is NULL)

@@ -9,7 +9,7 @@
 #include "../ast/ast.h"
 #include "cmd_context.h"
 #include "../util/arr.h"
-#include "../util/cron.h"
+#include "cron/cron.h"
 #include "../query_ctx.h"
 #include "execution_ctx.h"
 #include "../graph/graph.h"
@@ -127,13 +127,14 @@ static void _info_indicate_query_finished
 (
 	GraphQueryCtx *gq_ctx
 ) {
-	if (!gq_ctx || !gq_ctx->query_ctx || !gq_ctx->graph_ctx) {
+	if(!gq_ctx || !gq_ctx->query_ctx || !gq_ctx->graph_ctx) {
 		return;
 	}
 
 	Info *info = gq_ctx->graph_ctx->info;
 
-	Info_IncrementNumberOfQueries(info, gq_ctx->query_ctx->flags, gq_ctx->query_ctx->status);
+	Info_IncrementNumberOfQueries(info, gq_ctx->query_ctx->flags,
+			gq_ctx->query_ctx->status);
 }
 
 static bool _index_operation_delete
@@ -298,17 +299,17 @@ inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
 static void _ExecuteQuery(void *args) {
 	ASSERT(args != NULL);
 
-	GraphQueryCtx   *gq_ctx       =  args;
-	QueryCtx        *query_ctx    =  gq_ctx->query_ctx;
-	GraphContext    *gc           =  gq_ctx->graph_ctx;
-	RedisModuleCtx  *rm_ctx       =  gq_ctx->rm_ctx;
-	ExecutionCtx    *exec_ctx     =  gq_ctx->exec_ctx;
-	CommandCtx      *command_ctx  =  gq_ctx->command_ctx;
-	AST             *ast          =  exec_ctx->ast;
-	ExecutionPlan   *plan         =  exec_ctx->plan;
-	ExecutionType   exec_type     =  exec_ctx->exec_type;
-	const bool profile            = CHECK_FLAG(query_ctx->flags, QueryExecutionTypeFlag_PROFILE);
-	const bool readonly           = !CHECK_FLAG(query_ctx->flags, QueryExecutionTypeFlag_WRITE);
+	GraphQueryCtx  *gq_ctx      = args;
+	QueryCtx       *query_ctx   = gq_ctx->query_ctx;
+	GraphContext   *gc          = gq_ctx->graph_ctx;
+	RedisModuleCtx *rm_ctx      = gq_ctx->rm_ctx;
+	ExecutionCtx   *exec_ctx    = gq_ctx->exec_ctx;
+	CommandCtx     *command_ctx = gq_ctx->command_ctx;
+	AST            *ast         = exec_ctx->ast;
+	ExecutionPlan  *plan        = exec_ctx->plan;
+	ExecutionType  exec_type    = exec_ctx->exec_type;
+	const bool     profile      = (query_ctx->flags & QueryExecutionTypeFlag_PROFILE);
+	const bool     readonly     = !(query_ctx->flags & QueryExecutionTypeFlag_WRITE);
 
 	// if we have migrated to a writer thread,
 	// update thread-local storage and track the CommandCtx
@@ -319,7 +320,7 @@ static void _ExecuteQuery(void *args) {
 		// set the stage of the query
 		Info *info = gc->info;
 		QueryInfo *qi = query_ctx->qi;
-		Info_IndicateQueryStartedExecution(info, qi);
+		Info_AddToExecuting(info, qi);
 	}
 
 	// instantiate the query ResultSet
@@ -365,9 +366,9 @@ static void _ExecuteQuery(void *args) {
 			}
 
 			if(!ErrorCtx_EncounteredError()) {
-				Info_IndicateQueryStartedReporting(gq_ctx->graph_ctx->info);
+				Info_AddToReporting(gq_ctx->graph_ctx->info);
 				ExecutionPlan_Print(plan, rm_ctx);
-				Info_IndicateQueryFinishedReporting(gq_ctx->graph_ctx->info);
+				Info_AddToFinished(gq_ctx->graph_ctx->info);
 			}
 		}
 		else {
@@ -422,9 +423,9 @@ static void _ExecuteQuery(void *args) {
 	if(!profile || ErrorCtx_EncounteredError()) {
 		// if we encountered an error, ResultSet_Reply will emit the error
 		// send result-set back to client
-		Info_IndicateQueryStartedReporting(gq_ctx->graph_ctx->info);
+		Info_AddToReporting(gq_ctx->graph_ctx->info);
 		ResultSet_Reply(result_set);
-		Info_IndicateQueryFinishedReporting(gq_ctx->graph_ctx->info);
+		Info_AddToFinished(gq_ctx->graph_ctx->info);
 	}
 
 	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
@@ -484,7 +485,7 @@ void _query(bool profile, void *args) {
 
 	// transition the query from waiting to executing
 	QueryInfo *qi = command_ctx->query_ctx->qi;
-	Info_IndicateQueryStartedExecution(gc->info, qi);
+	Info_AddToExecuting(gc->info, qi);
 
 	// parse query parameters and build an execution plan or retrieve it from the cache
 	exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
@@ -537,7 +538,7 @@ void _query(bool profile, void *args) {
 	if(readonly || command_ctx->thread == EXEC_THREAD_MAIN) {
 		_ExecuteQuery(gq_ctx);
 	} else {
-		Info_executing_to_waiting(gc->info, qi);
+		Info_ExecutingToWaiting(gc->info);
 		_DelegateWriter(gq_ctx);
 	}
 
@@ -547,7 +548,7 @@ cleanup:
 	// if there were any query compile time errors, report them
 	if(ErrorCtx_EncounteredError()) {
 		ErrorCtx_EmitException();
-		Info_IndicateQueryFinishedAfterError(gc->info);
+		Info_AddToFinished(gc->info);
 	}
 
 	// Cleanup routine invoked after encountering errors in this function.

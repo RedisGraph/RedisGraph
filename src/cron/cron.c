@@ -1,7 +1,14 @@
+/*
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
+#include "RG.h"
 #include "cron.h"
-#include "heap.h"
-#include "rmalloc.h"
-#include "../RG.h"
+#include "util/heap.h"
+#include "util/rmalloc.h"
+
 #include <time.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -188,8 +195,10 @@ void Cron_Start(void) {
 	ASSERT(cron == NULL);
 
 	cron = rm_malloc(sizeof(CRON));
+
 	cron->alive = true;
 	cron->tasks = Heap_new(CRON_JobCmp, NULL);
+
 	pthread_cond_init(&cron->condv, NULL);
 	pthread_mutex_init(&cron->mutex, NULL);
 	pthread_mutex_init(&cron->condv_mutex, NULL);
@@ -253,3 +262,4 @@ void Cron_AbortTask
 	// free task
 	CRON_FreeTask(task);
 }
+
