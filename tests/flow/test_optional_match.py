@@ -290,3 +290,10 @@ class testOptionalFlow(FlowTestsBase):
                            ['v3'],
                            ['v4']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test23_optional_after_apply(self):
+        global redis_graph
+        self.env.flush()
+        query = """WITH [0, 0] AS n0 OPTIONAL MATCH () MERGE ()"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.nodes_created, 1)
