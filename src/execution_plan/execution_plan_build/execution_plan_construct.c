@@ -344,21 +344,23 @@ static void _get_vars_inner_rep
 // returns true if the given node will result in an eager operation
 static bool _NodeIsEager
 (
-	cypher_astnode_t *clause  // node
+	cypher_astnode_t *clause  // ast-node
 ) {
 	// TBD
 	return true;
 }
 
-static void _replace_first_clause
+static void _replace_with_clause
 (
 	cypher_astnode_t *query,   // query ast-node
 	cypher_astnode_t *clause,  // clause to replace
+	uint clause_idx,           // index of clause to replace
 	char **names,              // original bound vars
 	char **inter_names         // internal representation of bound vars
 ) {
 	uint existing_projections_count = cypher_ast_with_nprojections(clause);
 	uint n_projections = array_len(names) + existing_projections_count;
+	// TODO: Do we need proj_idx? Seems like we don't.
 	uint proj_idx = 0;
 	cypher_astnode_t *projections[n_projections + 1];
 
@@ -445,42 +447,217 @@ static void _replace_first_clause
 	// cypher_ast_free(clause);
 
 	// replace original clause with fully populated one
-	cypher_ast_query_set_clause(query, new_clause, 0);
+	cypher_ast_query_set_clause(query, new_clause, clause_idx);
+}
+
+static void _replace_first_clause
+(
+	cypher_astnode_t *query,   // query ast-node
+	char **names,              // original bound vars
+	char **inter_names         // internal representation of bound vars
+) {
+	// we know the first clause is a WITH clause, which we want to replace
+	cypher_astnode_t *clause =
+		(cypher_astnode_t *)cypher_ast_query_get_clause(query, 0);
+	_replace_with_clause(query, clause, 0, names, inter_names);
 }
 
 // adds a first WITH clause to the query, projecting all bound vars (names) to
 // their internal representation (inter_names)
 static void _add_first_clause
 (
-	query,
-	names,
-	inter_names
+	cypher_astnode_t *query,  // query ast-node
+	char **names,             // original bound vars
+	char **inter_names        // internal representation of bound vars
 ) {
-	// TBD
-	return;
+	uint n_projections = array_len(names);
+	uint proj_idx = 0;
+	cypher_astnode_t *projections[n_projections + 1];
+
+	// -------------------------------------------------------------------------
+	// create projections for bound vars
+	// -------------------------------------------------------------------------
+	for(uint i = 0; i < array_len(names); i++) {
+		// create a projection for the bound var
+		struct cypher_input_range range = {0};
+		cypher_astnode_t *exp = cypher_ast_identifier(names[i],
+			strlen(names[i]), range);
+		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
+			strlen(inter_names[i]), range);
+		cypher_astnode_t *_children[2];
+		_children[0] = exp;
+		_children[0] = alias;
+		cypher_astnode_t **children = _children;
+		unsigned int nchildren  = 2;
+		// struct cypher_input_range range      = cypher_astnode_range(it.data);
+
+		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
+				nchildren, range);
+	}
+
+	// TODO: Handle no projections (empty previous context)
+
+	// -------------------------------------------------------------------------
+	// prepare additional arguments
+	//--------------------------------------------------------------------------
+	bool                    distinct   =  false ;
+	const cypher_astnode_t  *skip      =  NULL  ;
+	const cypher_astnode_t  *limit     =  NULL  ;
+	const cypher_astnode_t  *order_by  =  NULL  ;
+	const cypher_astnode_t  *predicate =  NULL  ;
+
+	// copy projections to the children array
+	cypher_astnode_t *children[n_projections + 4];
+	for(uint i = 0; i < n_projections; i++) {
+		children[i] = projections[i];
+	}
+
+	struct cypher_input_range range = {0};
+	uint nchildren = n_projections;
+
+	// build the replacement clause
+	cypher_astnode_t *new_clause;
+	new_clause = cypher_ast_with(distinct,
+								false,
+								projections,
+								n_projections,
+								order_by,
+								skip,
+								limit,
+								predicate,
+								children,
+								nchildren,
+								range);
+
+	// TODO: Free original clause once things are working
+	// cypher_ast_free(clause);
+
+	// replace original clause with fully populated one
+	cypher_ast_query_set_clause(query, new_clause, 0);
 }
 
-// replaces a WITH clause with a new one, with additional projections of
-// inter_names to themselves
+// replace all intermediate WITH clauses in the query with new WITH clauses,
+// containing projections from the internal representation of bound vars to
+// themselves (inter_names)
 static void _replace_intermediate_with_clauses
 (
-	query,
-	inter_names
+	cypher_astnode_t *query,
+	char **inter_names
 ) {
-	// TBD
-	return;
+	// -------------------------------------------------------------------------
+	// traverse the query clauses, collecting all WITH clauses, except the first
+	// one
+	// -------------------------------------------------------------------------
+	uint n_clauses = cypher_ast_query_nclauses(query);
+	for(uint i = 1; i < n_clauses; i++) {
+		cypher_astnode_t *clause =
+			(cypher_astnode_t *)cypher_ast_query_get_clause(query, i);
+		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
+			_replace_with_clause(query, clause, i, inter_names, inter_names);
+		}
+	}
 }
 
 // replaces the RETURN clause in query to a new one, containing projections of
 // inter_names to names
 static void _replace_return_clause
 (
-	query,
-	names,
-	inter_names
+	cypher_astnode_t *query,  // query ast-node
+	char **names,             // original bound vars
+	char **inter_names        // internal representation of bound vars
 ) {
-	// TBD
-	return;
+	// we know that the last clause in query is a RETURN clause, which we want
+	// to replace
+	uint n_clauses = cypher_ast_query_nclauses(query);
+	cypher_astnode_t *clause =
+		(cypher_astnode_t *)cypher_ast_query_get_clause(query, n_clauses-1);
+
+	uint existing_projections_count = cypher_ast_return_nprojections(clause);
+	uint n_projections = array_len(names) + existing_projections_count;
+	// TODO: Do we need proj_idx? Seems like we don't.
+	uint proj_idx = 0;
+	cypher_astnode_t *projections[n_projections + 1];
+
+	// -------------------------------------------------------------------------
+	// create projections for bound vars
+	// -------------------------------------------------------------------------
+	for(uint i = 0; i < array_len(names); i++) {
+		// create a projection for the bound var
+		struct cypher_input_range range = {0};
+		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[i],
+			strlen(inter_names[i]), range);
+		cypher_astnode_t *alias = cypher_ast_identifier(names[i],
+			strlen(names[i]), range);
+		cypher_astnode_t *_children[2];
+		_children[0] = exp;
+		_children[0] = alias;
+		cypher_astnode_t **children = _children;
+		unsigned int nchildren  = 2;
+		// struct cypher_input_range range      = cypher_astnode_range(it.data);
+
+		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
+				nchildren, range);
+	}
+
+	// TODO: Handle no projections (empty previous context)
+
+	// -------------------------------------------------------------------------
+	// introduce explicit projections
+	//--------------------------------------------------------------------------
+
+	// clone explicit projections into projections array
+	for(uint i = 0; i < existing_projections_count; i++) {
+		const cypher_astnode_t *projection =
+			cypher_ast_return_get_projection(clause, i);
+		projections[proj_idx++] = cypher_ast_clone(projection);
+	}
+
+	// copy projections to the children array
+	cypher_astnode_t *children[n_projections + 4];
+	for(uint i = 0; i < n_projections; i++) {
+		children[i] = projections[i];
+	}
+
+	// -------------------------------------------------------------------------
+	// prepare additional arguments
+	//--------------------------------------------------------------------------
+	bool                    distinct   =  false;
+	const cypher_astnode_t  *skip      =  NULL ;
+	const cypher_astnode_t  *limit     =  NULL ;
+	const cypher_astnode_t  *order_by  =  NULL ;
+
+	distinct      =  cypher_ast_return_is_distinct(clause);
+	skip          =  cypher_ast_return_get_skip(clause);
+	limit         =  cypher_ast_return_get_limit(clause);
+	order_by      =  cypher_ast_return_get_order_by(clause);
+
+	// clone any ORDER BY, SKIP, LIMIT, and WHERE modifiers to
+	// add to the children array and populate the new clause
+	uint nchildren = n_projections;
+	if(order_by)  order_by   = children[nchildren++] = cypher_ast_clone(order_by);
+	if(skip)      skip       = children[nchildren++] = cypher_ast_clone(skip);
+	if(limit)     limit      = children[nchildren++] = cypher_ast_clone(limit);
+
+	struct cypher_input_range range = cypher_astnode_range(clause);
+
+	// build the replacement clause
+	cypher_astnode_t *new_clause;
+	new_clause = cypher_ast_return(distinct,
+								false,
+								projections,
+								n_projections,
+								order_by,
+								skip,
+								limit,
+								children,
+								nchildren,
+								range);
+
+	// TODO: Free original clause once things are working
+	// cypher_ast_free(clause);
+
+	// replace original clause with fully populated one
+	cypher_ast_query_set_clause(query, new_clause, n_clauses-1);
 }
 
 // returns an AST containing the body of a subquery as its body (stripped from
@@ -562,8 +739,7 @@ static AST *_CreateASTFromCallSubquery
 				// 1.1: Yes - Replace first clause (WITH) with clause containing
 					// "n->@n" projections for all bound vars in outer-scope
 					// context
-				_replace_first_clause(query, (cypher_astnode_t *)clause, names,
-					inter_names);
+				_replace_first_clause(query, names, inter_names);
 			} else {
 				// 1.2: No - Add a WITH clause containing "n->@n" projections
 					// for all bound vars (in outer-scope context), to be the
@@ -574,7 +750,7 @@ static AST *_CreateASTFromCallSubquery
 			// 2. For every WITH clause (except the first one), replace it with
 				// a clause that contains "@n->@n" projections for all bound
 				// vars in outer-scope context
-			_replace_intermediate_with_clauses(query, names, inter_names);
+			_replace_intermediate_with_clauses(query, inter_names);
 
 			// 3. Replace the RETURN clause (last) with a clause containing the
 				// projections "@n->n" for all bound vars in outer-scope context
