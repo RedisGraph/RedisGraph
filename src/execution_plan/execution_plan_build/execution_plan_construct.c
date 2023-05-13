@@ -778,7 +778,9 @@ static AST *_CreateASTFromCallSubquery
 				_replace_return_clause(query, names, inter_names);
 			}
 
-			// Free the names and inter_names, and their corresponding arrays.
+			// free the names and inter_names arrays
+			array_free(names);
+			array_free(inter_names);
 	}
 
 	// TODO: Add support for UNION.
