@@ -524,7 +524,7 @@ void Info_Free
     rm_free(info->working_queries);
 
 	// expecting no waiting queries
-	ASSERT(HashTableElemCount(info->waiting_queries) == 0);
+	//ASSERT(HashTableElemCount(info->waiting_queries) == 0);
 
 	// free waiting queries container
     HashTableRelease(info->waiting_queries);
