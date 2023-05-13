@@ -359,18 +359,17 @@ static bool _NodeIsEager
 	   type == CYPHER_AST_MERGE                       ||
 	   type == CYPHER_AST_SET                         ||
 	   type == CYPHER_AST_REMOVE) {
-		is_eager = true;
+		return true;
 	}
 
 	// -------------------------------------------------------------------------
 	// check if clause is a WITH or RETURN clause with an aggregation
 	// -------------------------------------------------------------------------
 	if(type == CYPHER_AST_RETURN || type == CYPHER_AST_WITH) {
-		bool is_with = (type == CYPHER_AST_WITH);
 		is_eager = AST_ClauseContainsAggregation(clause);
 	}
 
-	return false;
+	return is_eager;
 }
 
 static void _replace_with_clause
@@ -390,18 +389,18 @@ static void _replace_with_clause
 	// -------------------------------------------------------------------------
 	// create projections for bound vars
 	// -------------------------------------------------------------------------
-	for(uint i = 0; i < array_len(names); i++) {
+	uint n_orig_names = n_projections - existing_projections_count;
+	for(uint i = 0; i < n_orig_names; i++) {
 		// create a projection for the bound var
 		struct cypher_input_range range = {0};
 		cypher_astnode_t *exp = cypher_ast_identifier(names[i],
 			strlen(names[i]), range);
 		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
 			strlen(inter_names[i]), range);
-		cypher_astnode_t *_children[2];
-		_children[0] = exp;
-		_children[0] = alias;
-		cypher_astnode_t **children = _children;
-		unsigned int nchildren  = 2;
+		cypher_astnode_t *children[2];
+		children[0] = exp;
+		children[1] = alias;
+		uint nchildren = 2;
 		// struct cypher_input_range range      = cypher_astnode_range(it.data);
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
@@ -507,10 +506,9 @@ static void _add_first_clause
 			strlen(names[i]), range);
 		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
 			strlen(inter_names[i]), range);
-		cypher_astnode_t *_children[2];
-		_children[0] = exp;
-		_children[0] = alias;
-		cypher_astnode_t **children = _children;
+		cypher_astnode_t *children[2];
+		children[0] = exp;
+		children[0] = alias;
 		unsigned int nchildren  = 2;
 		// struct cypher_input_range range      = cypher_astnode_range(it.data);
 
@@ -611,10 +609,9 @@ static void _replace_return_clause
 			strlen(inter_names[i]), range);
 		cypher_astnode_t *alias = cypher_ast_identifier(names[i],
 			strlen(names[i]), range);
-		cypher_astnode_t *_children[2];
-		_children[0] = exp;
-		_children[0] = alias;
-		cypher_astnode_t **children = _children;
+		cypher_astnode_t *children[2];
+		children[0] = exp;
+		children[1] = alias;
 		unsigned int nchildren  = 2;
 		// struct cypher_input_range range      = cypher_astnode_range(it.data);
 
@@ -763,7 +760,7 @@ static AST *_CreateASTFromCallSubquery
 					// "n->@n" projections for all bound vars in outer-scope
 					// context
 				_replace_first_clause(query, names, inter_names);
-			} else {
+			} else if(mapping_size > 0){
 				// 1.2: No - Add a WITH clause containing "n->@n" projections
 					// for all bound vars (in outer-scope context), to be the
 					// first clause in the subquery
@@ -777,7 +774,9 @@ static AST *_CreateASTFromCallSubquery
 
 			// 3. Replace the RETURN clause (last) with a clause containing the
 				// projections "@n->n" for all bound vars in outer-scope context
-			_replace_return_clause(query, names, inter_names);
+			if(mapping_size > 0) {
+				_replace_return_clause(query, names, inter_names);
+			}
 
 			// Free the names and inter_names, and their corresponding arrays.
 	}
@@ -915,6 +914,9 @@ static void _buildCallSubqueryPlan
 	// create an AST from the body of the subquery
 	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast,
 		plan->record_map);
+
+	// FOR DEBUGGING (to be removed): print the AST of the subquery
+	// cypher_ast_fprint(subquery_ast->root, stdout, 0, NULL, 0);
 
 	// -------------------------------------------------------------------------
 	// build the embedded execution plan corresponding to the subquery
