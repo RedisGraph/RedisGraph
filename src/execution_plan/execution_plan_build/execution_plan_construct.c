@@ -346,8 +346,31 @@ static bool _NodeIsEager
 (
 	cypher_astnode_t *clause  // ast-node
 ) {
-	// TBD
-	return true;
+	bool is_eager = false;
+
+	// -------------------------------------------------------------------------
+	// check if clause type is one of: CREATE, MERGE, SET or REMOVE
+	// -------------------------------------------------------------------------
+	cypher_astnode_type_t type = cypher_astnode_type(clause);
+	if(type == CYPHER_AST_CREATE_NODE_PROPS_INDEX     ||
+	   type == CYPHER_AST_CREATE_NODE_PROP_CONSTRAINT ||
+	   type == CYPHER_AST_CREATE_REL_PROP_CONSTRAINT  ||
+	   type == CYPHER_AST_CREATE                      ||
+	   type == CYPHER_AST_MERGE                       ||
+	   type == CYPHER_AST_SET                         ||
+	   type == CYPHER_AST_REMOVE) {
+		is_eager = true;
+	}
+
+	// -------------------------------------------------------------------------
+	// check if clause is a WITH or RETURN clause with an aggregation
+	// -------------------------------------------------------------------------
+	if(type == CYPHER_AST_RETURN || type == CYPHER_AST_WITH) {
+		bool is_with = (type == CYPHER_AST_WITH);
+		is_eager = AST_ClauseContainsAggregation(clause);
+	}
+
+	return false;
 }
 
 static void _replace_with_clause
