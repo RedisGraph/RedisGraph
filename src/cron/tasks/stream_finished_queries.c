@@ -234,10 +234,15 @@ void CronTask_streamFinishedQueries
 	for(; ctx->graph_idx < n; ctx->graph_idx++) {
 		// TODO: access to graphs_in_keyspace must be protected!
 		GraphContext *gc = graphs_in_keyspace[ctx->graph_idx];
+
+		// increase graph context reference count
+		GraphContext_IncreaseRefCount(gc);
+
 		Info *info = gc->info;
 
 		// skip graph if there are no new finished queries
 		if(Info_GetFinishedCount(info) == 0) {
+			GraphContext_DecreaseRefCount(gc);
 			continue;
 		}
 
@@ -283,6 +288,9 @@ void CronTask_streamFinishedQueries
 
 		CircularBuffer_Free(queries);
 		RedisModule_FreeString(rm_ctx, keyname);
+
+		// decrease graph context reference count
+		GraphContext_DecreaseRefCount(gc);
 
 		// determine how much time we've spent
 		// exit if we're out of time

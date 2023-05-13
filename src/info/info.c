@@ -520,14 +520,47 @@ void Info_Free
 	}
 #endif
 
-	// free working query array
-    rm_free(info->working_queries);
-
 	// expecting no waiting queries
 	//ASSERT(HashTableElemCount(info->waiting_queries) == 0);
 
-	// free waiting queries container
+	// free query info from:
+	// 1. waiting list
+	// 2. executing list
+	// 3. finished list
+
+	QueryInfo *qi;
+
+	//--------------------------------------------------------------------------
+	// free waiting queries
+	//--------------------------------------------------------------------------
+
+	dictIterator *it = HashTableGetIterator(info->waiting_queries);
+	while((qi = (QueryInfo*)HashTableNext(it)) != NULL) {
+		QueryInfo_Free(qi);
+	}
+	HashTableReleaseIterator(it);
     HashTableRelease(info->waiting_queries);
+
+	//--------------------------------------------------------------------------
+	// free executing queries
+	//--------------------------------------------------------------------------
+
+	uint64_t n = ThreadPools_ThreadCount() + 1;
+	for(uint i = 0; i < n; i++) {
+		qi = info->working_queries[i];
+		if(qi != NULL) QueryInfo_Free(qi);
+	}
+    rm_free(info->working_queries);
+
+	//--------------------------------------------------------------------------
+	// free finished queries
+	//--------------------------------------------------------------------------
+
+	n = CircularBuffer_ItemCount(info->finished_queries);
+	CircularBuffer_ResetReader(info->finished_queries, n);
+	while(CircularBuffer_Remove(info->finished_queries, &qi)) {
+		QueryInfo_Free(qi);
+	}
 
     int res = pthread_mutex_destroy(&info->mutex);
     ASSERT(res == 0);
