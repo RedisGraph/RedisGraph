@@ -314,6 +314,8 @@ static bool _ExecutionPlan_HasLocateTaps
 			return true;
 		}
 	}
+
+	return false;
 }
 
 bool ExecutionPlan_HasLocateTaps(ExecutionPlan *plan) {

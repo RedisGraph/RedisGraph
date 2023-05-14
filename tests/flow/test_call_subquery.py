@@ -985,24 +985,24 @@ updating clause.")
         self.env.assertEquals(len(graph.query(query).result_set), 1)
         self.env.assertEquals(res.result_set[0][0], node)
 
-    # def test26_eager_returning(self):
-    #     """Tests the eager and returning case of Call {}"""
+    def test26_eager_returning(self):
+        """Tests the eager and returning case of Call {}"""
 
-    #     # clean the db
-    #     self.env.flush()
-    #     graph = Graph(self.env.getConnection(), GRAPH_ID)
+        # clean the db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
 
-    #     query = """
-    #     OPTIONAL MATCH (m)
-    #     CALL {
-    #         CREATE (n:N)
-    #         RETURN n
-    #     }
-    #     RETURN n
-    #     """
+        query = """
+        OPTIONAL MATCH (m)
+        CALL {
+            CREATE (n:N)
+            RETURN n
+        }
+        RETURN n
+        """
 
-    #     res = graph.query(query)
+        res = graph.query(query)
 
-    #     # assert results
-    #     self.env.assertEquals(len(res.result_set), 1)
-    #     self.env.assertEquals(res.result_set[0][0], Node(label='N'))
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N'))

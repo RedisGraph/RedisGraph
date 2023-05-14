@@ -401,7 +401,6 @@ static void _replace_with_clause
 		children[0] = exp;
 		children[1] = alias;
 		uint nchildren = 2;
-		// struct cypher_input_range range      = cypher_astnode_range(it.data);
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
 				nchildren, range);
@@ -487,7 +486,7 @@ static void _replace_first_clause
 
 // adds a first WITH clause to the query, projecting all bound vars (names) to
 // their internal representation (inter_names)
-static void _add_first_clause
+static cypher_astnode_t *_add_first_clause
 (
 	cypher_astnode_t *query,         // query ast-node
 	cypher_astnode_t *callsubquery,  // call subquery ast-node
@@ -510,9 +509,8 @@ static void _add_first_clause
 			strlen(inter_names[i]), range);
 		cypher_astnode_t *children[2];
 		children[0] = exp;
-		children[0] = alias;
+		children[1] = alias;
 		unsigned int nchildren  = 2;
-		// struct cypher_input_range range      = cypher_astnode_range(it.data);
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
 				nchildren, range);
@@ -553,12 +551,33 @@ static void _add_first_clause
 	// TODO: Free original clause once things are working
 	// cypher_ast_free(clause);
 
+	// -------------------------------------------------------------------------
 	// replace original clause with fully populated one
+	// -------------------------------------------------------------------------
 
-	// TODO: Replace with below commented out line first
-	// cypher_ast_call_subquery_replace_clauses(callsubquery, new_clause,
-	// 	clause_idx, clause_idx);
-	cypher_ast_query_set_clause(query, new_clause, 0);
+	uint n_clauses = cypher_ast_call_subquery_nclauses(callsubquery);
+	cypher_astnode_t *clauses[n_clauses + 1];
+	clauses[0] = new_clause;
+	for(uint i = 1; i < n_clauses + 1; i++) {
+		clauses[i] = (cypher_astnode_t *)cypher_ast_call_subquery_get_clause(callsubquery, i-1);
+	}
+	cypher_astnode_t *new_callsubquery = cypher_ast_call_subquery(clauses, n_clauses + 1, clauses, n_clauses + 1, range);
+
+	// find the index of the Call {} clause in the query
+	uint callsubquery_ind = -1;
+	AST *outer_ast = QueryCtx_GetAST();
+	AST_GetClause(outer_ast, CYPHER_AST_CALL_SUBQUERY, &callsubquery_ind);
+	ASSERT(callsubquery_ind != -1);
+
+	// get the query node of the outer context
+	cypher_astnode_t *outer_query = (cypher_astnode_t *)outer_ast->root;
+	cypher_ast_query_set_clause(outer_query, new_callsubquery, callsubquery_ind);
+	// free the old Call {} ast-node (TODO)
+
+	// cypher_ast_query_set_clause(query, new_clause, 0);
+	cypher_astnode_t *new_query = cypher_ast_query(NULL, 0, clauses,
+		n_clauses + 1, clauses, n_clauses + 1, range);
+	return new_query;
 }
 
 // replace all intermediate WITH clauses in the query with new WITH clauses,
@@ -620,7 +639,6 @@ static void _replace_return_clause
 		children[0] = exp;
 		children[1] = alias;
 		unsigned int nchildren  = 2;
-		// struct cypher_input_range range      = cypher_astnode_range(it.data);
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
 				nchildren, range);
@@ -750,9 +768,9 @@ static AST *_CreateASTFromCallSubquery
 				// 1.2: No - Add a WITH clause containing "n->@n" projections
 					// for all bound vars (in outer-scope context)
 
-			// 2. For every WITH clause (except the first one), replace it with
-				// a clause that contains "@n->@n" projections for all bound
-				// vars (in outer-scope context)
+			// 2. For every intermediate WITH clause (all except the first one),
+				// replace it with a clause that contains "@n->@n" projections
+				// for all bound vars (in outer-scope context)
 
 			// 3. Replace the RETURN clause (last) with a clause containing the
 				// projections "@n->n" for all bound vars (in outer-scope context)
@@ -771,7 +789,10 @@ static AST *_CreateASTFromCallSubquery
 					// for all bound vars (in outer-scope context), to be the
 					// first clause in the subquery
 				// TODO: FIX! This REPLACES instead of ADDS!
-				_add_first_clause(query, clause, names, inter_names);
+				query = _add_first_clause(query, clause, names, inter_names);
+				subquery_ast->root = query;
+				// update the call {} clause, in case it was changed
+				clause = (cypher_astnode_t *)AST_GetClause(orig_ast, CYPHER_AST_CALL_SUBQUERY, NULL);
 			}
 
 			// 2. For every WITH clause (except the first one), replace it with
@@ -839,80 +860,6 @@ static void _BindReturningOpsToPlan
 	}
 }
 
-// adds the internal projections necessary for the eager & returning case of
-// CALL {}
-static void _CallSubquery_AddProjections
-(
-	ExecutionPlan *embedded_plan,
-	ExecutionPlan *plan,
-	OpBase **returning_ops
-) {
-	// Project all existing entries according to the following
-	// transformation: 'alias' --> '@alias'.
-	// If an alias is imported, it needs to stay in the record mapping as
-	// well.
-	rax *outer_mapping = ExecutionPlan_GetMappings(plan);
-	uint mapping_size = raxSize(outer_mapping);
-	// create an array containing coupled names
-	// ("a1", "@a1", "a2", "@a2", ...) of the original names and the
-	// internal (temporary) representation of them.
-	char **names = array_new(char *, mapping_size);
-	char **inter_names = array_new(char *, mapping_size);
-
-	_get_vars_inner_rep(outer_mapping, &names, &inter_names);
-
-	// add the internal names of the outer-scope aliases to the outer-scope record-mapping
-	for(uint i = 0; i < mapping_size; i++) {
-		OpBase_AliasModifier(plan->root, names[i], inter_names[i], false);
-	}
-
-	// Add to the RETURN projection (the 'first' projection in the embedded plan)
-	// the mapping of the internal representation of the outer-scope
-	// variables to their original names ('@alias' --> 'alias')
-	const uint n_returning_ops = array_len(returning_ops);
-	for(uint i = 0; i < n_returning_ops; i++) {
-		OPType returning_op_type = OpBase_Type(returning_ops[0]);
-		returning_op_type == OPType_PROJECT ?
-			ProjectAddProjections(returning_ops[i], inter_names, names) :
-			AggregateAddProjections(returning_ops[i], inter_names, names);
-	}
-
-	// modify import and intermediate projections in the body of the
-	// subquery (all but return projection) to contain projections of the
-	// outer scope variables to themselves ('_alias' --> '_alias')
-	OpBase **intermediate_projections = array_new(OpBase *, 1);
-
-	// collect all the intermediate Project ops (from the child of the
-	// return projection)
-	for(uint i = 0; i < n_returning_ops; i++) {
-		OpBase *returning_op = returning_ops[i];
-		if(returning_op->childCount > 0) {
-			ExecutionPlan_LocateOps(&intermediate_projections,
-				returning_op->children[0], OPType_PROJECT);
-
-			// modify projected expressions of the intermediate projections if exist
-			for(uint i = 0; i < array_len(intermediate_projections); i++) {
-				ProjectAddProjections(intermediate_projections[i],
-					inter_names, inter_names);
-			}
-			array_clear(intermediate_projections);
-
-			ExecutionPlan_LocateOps(&intermediate_projections,
-				returning_op->children[0], OPType_AGGREGATE);
-
-			for(uint i = 0; i < array_len(intermediate_projections); i++) {
-				AggregateAddProjections(intermediate_projections[i],
-					inter_names, inter_names);
-			}
-			array_clear(intermediate_projections);
-		}
-	}
-
-	array_free(names);
-	array_free(inter_names);
-	array_free(intermediate_projections);
-}
-
 static void _buildCallSubqueryPlan
 (
 	ExecutionPlan *plan,      // execution plan to add plan to
@@ -924,12 +871,16 @@ static void _buildCallSubqueryPlan
 	// save the original AST
 	AST *orig_ast = QueryCtx_GetAST();
 
+	// FOR DEBUGGING (to be removed): print the AST of the subquery
+	// cypher_ast_fprint(clause, stdout, 0, NULL, 0);
+
 	// create an AST from the body of the subquery
 	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast,
 		plan->record_map);
 
 	// FOR DEBUGGING (to be removed): print the AST of the subquery
-	// cypher_ast_fprint(subquery_ast->root, stdout, 0, NULL, 0);
+	// printf("\n");
+	cypher_ast_fprint(subquery_ast->root, stdout, 0, NULL, 0);
 
 	// -------------------------------------------------------------------------
 	// build the embedded execution plan corresponding to the subquery
