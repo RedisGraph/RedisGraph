@@ -2,9 +2,7 @@
 # RLTest~=0.6.0
 # ramp-packer~=2.5.3
 
-# git+https://github.com/redis/redis-py.git@a246f40#egg=redis
-# redisgraph-bulk-loader~=0.12.0
-git+https://github.com/RedisGraph/redisgraph-bulk-loader.git@rafi-redispy4.5-1
+redisgraph-bulk-loader~=0.12.3
 
 click
 behave~=1.2
