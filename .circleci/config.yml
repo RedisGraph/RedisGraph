@@ -80,7 +80,7 @@ commands:
     parameters:
       redis_version:
         type: string
-        default: "6"
+        default: "7"
       getredis_params:
         type: string
         default: ""
@@ -148,7 +148,7 @@ commands:
     parameters:
       redis_version:
         type: string
-        default: "6"
+        default: "7"
       build_params:
         type: string
         default: ""
@@ -363,7 +363,7 @@ jobs:
     parameters:
       redis_version:
         type: string
-        default: "6"
+        default: "7"
       build_params:
         type: string
         default: ""
@@ -496,7 +496,7 @@ jobs:
 
   build-macos-x64:
     macos:
-      xcode: 12.5.1
+      xcode: 13.2.1
     resource_class: macos.x86.medium.gen2
     parameters:
       upload:
@@ -651,6 +651,7 @@ jobs:
           module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
           benchmark_runner_group_member_id: "3"
           benchmark_runner_group_total: "6"
+
   benchmark-group-4-of-6:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
@@ -670,6 +671,7 @@ jobs:
           module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
           benchmark_runner_group_member_id: "4"
           benchmark_runner_group_total: "6"
+
   benchmark-group-5-of-6:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
@@ -689,6 +691,7 @@ jobs:
           module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
           benchmark_runner_group_member_id: "5"
           benchmark_runner_group_total: "6"
+
   benchmark-group-6-of-6:
     docker:
       - image: redisfab/rmbuilder:6.2.7-x64-bullseye
@@ -824,7 +827,7 @@ workflows:
           context: common
           matrix:
             parameters:
-              platform: [jammy, focal, bionic, amzn2, xenial, centos7, rocky8, bullseye]
+              platform: [jammy, focal, bionic, amzn2, centos7, rocky8, bullseye]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
@@ -922,7 +925,7 @@ workflows:
           name: build-with-redis-<<matrix.redis_version>>
           matrix:
             parameters:
-              redis_version: ["6.0", "6.2", "7", "unstable"]
+              redis_version: ["6.0", "6.2", "7.0", "7.2-rc1", "unstable"]
       - valgrind-test:
           name: nightly-valgrind
       - fuzzer:
