@@ -30,16 +30,16 @@ OS = paella.Platform().os
 ARCH = paella.Platform().arch
 
 
-def skip(always=False, on_cluster=False, on_macos=False):
+def skip(cluster=False, macos=False):
     def decorate(f):
         @wraps(f)
         def wrapper(x, *args, **kwargs):
             env = x if isinstance(x, Env) else x.env
-            if always:
+            if not(cluster or macos):
                 env.skip()
-            if on_cluster and env.isCluster():
+            if cluster and env.isCluster():
                 env.skip()
-            if on_macos and OS == 'macos':
+            if macos and OS == 'macos':
                 env.skip()
             return f(x, *args, **kwargs)
         return wrapper

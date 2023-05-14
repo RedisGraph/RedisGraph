@@ -47,8 +47,8 @@ jobs:
       with:
         submodules: true
     - run: |
-        git submodule update --init --recursive
         git config --global --add safe.directory '*'
+        git submodule update --init --recursive
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
