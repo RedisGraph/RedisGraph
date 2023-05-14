@@ -342,7 +342,7 @@ static void _get_vars_inner_rep
 }
 
 // returns true if the given node will result in an eager operation
-static bool _NodeIsEager
+static bool _nodeIsEager
 (
 	cypher_astnode_t *clause  // ast-node
 ) {
@@ -462,9 +462,6 @@ static void _replace_with_clause
 								nchildren,
 								range);
 
-	// TODO: Free original clause once things are working
-	// cypher_ast_free(clause);
-
 	// replace original clause with fully populated one
 	cypher_ast_call_subquery_replace_clauses(callsubquery, new_clause,
 		clause_idx, clause_idx);
@@ -548,9 +545,6 @@ static cypher_astnode_t *_add_first_clause
 								nchildren,
 								range);
 
-	// TODO: Free original clause once things are working
-	// cypher_ast_free(clause);
-
 	// -------------------------------------------------------------------------
 	// replace original clause with fully populated one
 	// -------------------------------------------------------------------------
@@ -572,7 +566,6 @@ static cypher_astnode_t *_add_first_clause
 	// get the query node of the outer context
 	cypher_astnode_t *outer_query = (cypher_astnode_t *)outer_ast->root;
 	cypher_ast_query_set_clause(outer_query, new_callsubquery, callsubquery_ind);
-	// free the old Call {} ast-node (TODO)
 
 	// cypher_ast_query_set_clause(query, new_clause, 0);
 	cypher_astnode_t *new_query = cypher_ast_query(NULL, 0, clauses,
@@ -695,9 +688,6 @@ static void _replace_return_clause
 								nchildren,
 								range);
 
-	// TODO: Free original clause once things are working
-	// cypher_ast_free(clause);
-
 	// replace original clause with fully populated one
 	cypher_ast_call_subquery_replace_clauses(callsubquery, new_clause,
 		n_clauses-1, n_clauses-1);
@@ -728,11 +718,11 @@ static AST *_CreateASTFromCallSubquery
 	uint clause_count = cypher_astnode_nchildren(clause);
 	cypher_astnode_t *clauses[clause_count];
 
-	// Explicitly collect all child nodes from the clause.
+	// explicitly collect all child nodes from the clause.
 	bool is_eager = false;
 	for(uint i = 0; i < clause_count; i ++) {
 		clauses[i] = (cypher_astnode_t *)cypher_astnode_get_child(clause, i);
-		is_eager |= _NodeIsEager(clauses[i]);
+		is_eager |= _nodeIsEager(clauses[i]);
 	}
 	struct cypher_input_range range = {0};
 
@@ -791,6 +781,7 @@ static AST *_CreateASTFromCallSubquery
 				// TODO: FIX! This REPLACES instead of ADDS!
 				query = _add_first_clause(query, clause, names, inter_names);
 				subquery_ast->root = query;
+
 				// update the call {} clause, in case it was changed
 				clause = (cypher_astnode_t *)AST_GetClause(orig_ast, CYPHER_AST_CALL_SUBQUERY, NULL);
 			}
@@ -871,16 +862,12 @@ static void _buildCallSubqueryPlan
 	// save the original AST
 	AST *orig_ast = QueryCtx_GetAST();
 
-	// FOR DEBUGGING (to be removed): print the AST of the subquery
-	// cypher_ast_fprint(clause, stdout, 0, NULL, 0);
-
 	// create an AST from the body of the subquery
 	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast,
 		plan->record_map);
 
 	// FOR DEBUGGING (to be removed): print the AST of the subquery
-	// printf("\n");
-	cypher_ast_fprint(subquery_ast->root, stdout, 0, NULL, 0);
+	// cypher_ast_fprint(subquery_ast->root, stdout, 0, NULL, 0);
 
 	// -------------------------------------------------------------------------
 	// build the embedded execution plan corresponding to the subquery
