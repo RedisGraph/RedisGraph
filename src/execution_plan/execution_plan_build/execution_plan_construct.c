@@ -567,9 +567,9 @@ static cypher_astnode_t *_add_first_clause
 	cypher_astnode_t *outer_query = (cypher_astnode_t *)outer_ast->root;
 	cypher_ast_query_set_clause(outer_query, new_callsubquery, callsubquery_ind);
 
-	// cypher_ast_query_set_clause(query, new_clause, 0);
 	cypher_astnode_t *new_query = cypher_ast_query(NULL, 0, clauses,
 		n_clauses + 1, clauses, n_clauses + 1, range);
+	// cypher_ast_query_set_clause(query, new_clause, 0);
 	return new_query;
 }
 
@@ -692,6 +692,7 @@ static void _replace_return_clause
 	cypher_ast_call_subquery_replace_clauses(callsubquery, new_clause,
 		n_clauses-1, n_clauses-1);
 	cypher_ast_query_set_clause(query, new_clause, n_clauses-1);
+	// cypher_ast_query_replace_clauses(query, new_clause, n_clauses-1, n_clauses-1);
 }
 
 // returns an AST containing the body of a subquery as its body (stripped from
@@ -751,48 +752,32 @@ static AST *_CreateASTFromCallSubquery
 
 		_get_vars_inner_rep(outer_mapping, &names, &inter_names);
 
-		// Algorithm:
-			// 1. Check if first clause is a WITH clause.
-				// 1.1: Yes - Replace with clause containing "n->@n" projections
-					// for all bound vars (in outer-scope context)
-				// 1.2: No - Add a WITH clause containing "n->@n" projections
-					// for all bound vars (in outer-scope context)
-
-			// 2. For every intermediate WITH clause (all except the first one),
-				// replace it with a clause that contains "@n->@n" projections
-				// for all bound vars (in outer-scope context)
-
-			// 3. Replace the RETURN clause (last) with a clause containing the
-				// projections "@n->n" for all bound vars (in outer-scope context)
-
-
-			// 1. Check if first clause is a WITH clause.
+			// check if first clause is a WITH clause
 			bool first_is_with =
 				cypher_astnode_type(clauses[0]) == CYPHER_AST_WITH;
 			if(first_is_with) {
-				// 1.1: Yes - Replace first clause (WITH) with clause containing
-					// "n->@n" projections for all bound vars in outer-scope
-					// context
+				// replace first clause (WITH) with a WITH clause containing
+				// "n->@n" projections for all bound vars in outer-scope context
 				_replace_first_clause(query, clause, names, inter_names);
 			} else if(mapping_size > 0){
-				// 1.2: No - Add a WITH clause containing "n->@n" projections
-					// for all bound vars (in outer-scope context), to be the
-					// first clause in the subquery
-				// TODO: FIX! This REPLACES instead of ADDS!
+				// add a WITH clause containing "n->@n" projections
+				// for all bound vars (in outer-scope context), to be the
+				// first clause in the subquery
 				query = _add_first_clause(query, clause, names, inter_names);
-				subquery_ast->root = query;
 
-				// update the call {} clause, in case it was changed
-				clause = (cypher_astnode_t *)AST_GetClause(orig_ast, CYPHER_AST_CALL_SUBQUERY, NULL);
+				// update the query and call {} nodes
+				subquery_ast->root = query;
+				clause = (cypher_astnode_t *)AST_GetClause(orig_ast,
+					CYPHER_AST_CALL_SUBQUERY, NULL);
 			}
 
-			// 2. For every WITH clause (except the first one), replace it with
-				// a clause that contains "@n->@n" projections for all bound
-				// vars in outer-scope context
+			// for every intermediate WITH clause (except the first one),
+			// replace it with a clause that contains "@n->@n" projections for
+			// all bound vars in outer-scope context
 			_replace_intermediate_with_clauses(query, clause, inter_names);
 
-			// 3. Replace the RETURN clause (last) with a clause containing the
-				// projections "@n->n" for all bound vars in outer-scope context
+			// replace the RETURN clause (last) with a clause containing the
+			// projections "@n->n" for all bound vars in outer-scope context
 			if(mapping_size > 0) {
 				_replace_return_clause(query, clause, names, inter_names);
 			}
@@ -806,7 +791,6 @@ static AST *_CreateASTFromCallSubquery
 			array_free(inter_names);
 	}
 
-	// TODO: Add support for UNION.
 	return subquery_ast;
 }
 
@@ -865,6 +849,10 @@ static void _buildCallSubqueryPlan
 	// create an AST from the body of the subquery
 	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast,
 		plan->record_map);
+	// update the original AST
+
+	clause = (cypher_astnode_t *)AST_GetClause(orig_ast,
+					CYPHER_AST_CALL_SUBQUERY, NULL);
 
 	// FOR DEBUGGING (to be removed): print the AST of the subquery
 	// cypher_ast_fprint(subquery_ast->root, stdout, 0, NULL, 0);

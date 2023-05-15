@@ -545,7 +545,6 @@ updating clause.")
             RETURN 0
             """ 
             : [[0],[0],[0]],
-            # TODO: Crash reusing variable names in nested CALL{}
             # """
             # UNWIND [0, 1, 2] AS x
             # CALL {
