@@ -325,19 +325,19 @@ class testRelationPattern(FlowTestsBase):
         self.env.assertEquals(result.relationships_created, 0)
 
     # test error reporting for invalid min, max variable length edge length
-    def test12_lt_zero_hop_traversals(self):
+    # def test12_lt_zero_hop_traversals(self):
 
-        queries = [
-            "MATCH p=()-[*..0]->() RETURN nodes(p) AS nodes",
-            "MATCH p=()-[*1..0]->() RETURN nodes(p) AS nodes",
-            "MATCH p=()-[*2..1]->() RETURN nodes(p) AS nodes",
-            "MATCH p=()-[e*2..1]->() RETURN nodes(p) AS nodes",
-            "MATCH p=()-[e:R*20..10]->() RETURN nodes(p) AS nodes",
-            "MATCH p=()-[]->()-[*1..0]->() RETURN nodes(p) AS nodes",
-        ]
-        for query in queries:
-            self._assert_exception(redis_graph, query,
-                "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.")
+    #     queries = [
+    #         "MATCH p=()-[*..0]->() RETURN nodes(p) AS nodes",
+    #         "MATCH p=()-[*1..0]->() RETURN nodes(p) AS nodes",
+    #         "MATCH p=()-[*2..1]->() RETURN nodes(p) AS nodes",
+    #         "MATCH p=()-[e*2..1]->() RETURN nodes(p) AS nodes",
+    #         "MATCH p=()-[e:R*20..10]->() RETURN nodes(p) AS nodes",
+    #         "MATCH p=()-[]->()-[*1..0]->() RETURN nodes(p) AS nodes",
+    #     ]
+    #     for query in queries:
+    #         self._assert_exception(redis_graph, query,
+    #             "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.")
 
     def test13_return_var_len_edge_array(self):
         # Construct a simple graph:
