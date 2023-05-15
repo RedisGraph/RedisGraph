@@ -1,5 +1,4 @@
 from common import *
-from common_utils import *
 
 GRAPH_ID = "G"
 redis_con = None
@@ -337,7 +336,7 @@ class testRelationPattern(FlowTestsBase):
             "MATCH p=()-[]->()-[*1..0]->() RETURN nodes(p) AS nodes",
         ]
         for query in queries:
-            expect_error(redis_graph, self.env, query,
+            self._assert_exception(redis_graph, query,
                 "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.")
 
     def test13_return_var_len_edge_array(self):
