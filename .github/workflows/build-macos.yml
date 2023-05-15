@@ -1,0 +1,40 @@
+name: Build on macOS
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-11
+    defaults:
+      run:
+        shell: bash -l -eo pipefail {0}
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+    - run: |
+        git config --global --add safe.directory '*'
+        git submodule update --init --recursive
+    - name: Setup
+      run: |
+        ./sbin/setup
+        export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+        ./deps/readies/bin/getredis --with-github-token
+    - name: Build
+      run: |
+        make
+        make pack
+    - name: Unit tests
+      run: |
+        make unit-tests CLEAR_LOGS=0
+    - name: Flow tests
+      run: |
+        make flow-tests CLEAR_LOGS=0
+    - name: TCK tests
+      run: |
+        make tck-tests CLEAR_LOGS=0
+    - name: Fuzzer tests
+      run: |
+        make fuzz

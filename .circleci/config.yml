@@ -1,5 +1,13 @@
 version: 2.1
 
+parameters:
+  run_default_flow:
+    default: true
+    type: boolean
+  run_benchmark_flow_label:
+    default: false
+    type: boolean
+
 commands:
   early-returns:
     steps:
@@ -58,7 +66,7 @@ commands:
             if [[ $(uname -s) == Darwin ]]; then rm -f /usr/local/bin/python3; fi
             ./deps/readies/bin/getpy3
       - run:
-          name: Setup automation (2)
+          name: Setup automation (part 2)
           shell: /bin/bash -l -eo pipefail
           command: |
             export HOMEBREW_NO_AUTO_UPDATE=1
@@ -72,7 +80,7 @@ commands:
     parameters:
       redis_version:
         type: string
-        default: "6"
+        default: "7"
       getredis_params:
         type: string
         default: ""
@@ -138,7 +146,7 @@ commands:
     parameters:
       redis_version:
         type: string
-        default: "6"
+        default: "7"
       build_params:
         type: string
         default: ""
@@ -202,6 +210,12 @@ commands:
             make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
       - save-tests-logs
       - early-return-for-forked-pull-requests
+      - run:
+          name: Upload artifacts to S3
+          command: |
+            if [[ -n $CIRCLE_BRANCH ]]; then
+                make upload-artifacts OSNICK=<<parameters.platform>> SHOW=1 VERBOSE=1
+            fi
       - run:
           name: Publish container
           shell: /bin/bash -l -eo pipefail
@@ -308,7 +322,7 @@ jobs:
     parameters:
       redis_version:
         type: string
-        default: "6"
+        default: "7"
       build_params:
         type: string
         default: ""
@@ -336,15 +350,8 @@ jobs:
       - early-returns
       - checkout-all
       - install-prerequisites
-      - restore_cache:
-          keys:
-            - v1-GraphBLAS-build-{{ checksum "deps/GraphBLAS/README.md" }}
       - run:
-          name: Build for coverage
-          shell: /bin/bash -l -eo pipefail
-          command: make COV=1
-      - run:
-          name: Test with coverage
+          name: Test coverage
           shell: /bin/bash -l -eo pipefail
           command: |
             make test COV=1
@@ -408,9 +415,9 @@ jobs:
           platform: <<parameters.platform>>
           official: "0"
 
-  build-macos:
+  build-macos-x64:
     macos:
-      xcode: 12.5.1
+      xcode: 13.2.1
     resource_class: macos.x86.medium.gen2
     parameters:
       upload:
@@ -421,6 +428,58 @@ jobs:
       - build-steps:
           cache_name: "mac-clang"
       - test-steps
+      - run:
+          name: Upload artifacts to S3
+          command: |
+            if [[ -n $CIRCLE_BRANCH && "<<parameters.upload>>" == "yes" ]]; then
+                make upload-artifacts SHOW=1 VERBOSE=1
+            fi
+      - persist-artifacts
+
+  build-macos-m1:
+    macos:
+      xcode: 14.2.0
+    resource_class: macos.m1.large.gen1
+    parameters:
+      upload:
+        type: string
+        default: "yes"
+    steps:
+      - early-returns
+      - build-steps
+      - test-steps
+      - run:
+          name: Persist artifacts?
+          command: |
+            if [[ "<<parameters.upload>>" != "yes" ]]; then
+              circleci step halt
+            fi
+      - run:
+          name: Upload artifacts to S3
+          command: |
+            if [[ -n $CIRCLE_BRANCH && "<<parameters.upload>>" == "yes" ]]; then
+                make upload-artifacts SHOW=1 VERBOSE=1
+            fi
+      - persist-artifacts
+
+  build-macos-m1:
+    macos:
+      xcode: 14.2.0
+    resource_class: macos.m1.large.gen1
+    parameters:
+      upload:
+        type: string
+        default: "yes"
+    steps:
+      - early-returns
+      - build-steps
+      - test-steps
+      - run:
+          name: Persist artifacts?
+          command: |
+            if [[ "<<parameters.upload>>" != "yes" ]]; then
+              circleci step halt
+            fi
       - run:
           name: Upload artifacts to S3
           command: |
@@ -497,7 +556,108 @@ jobs:
           shell: /bin/bash -l -eo pipefail
           command: make
       - benchmark-steps:
-          module_path: "/root/project/src/$PACKAGE_NAME.so"
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
+          benchmark_runner_group_member_id: "1"
+          benchmark_runner_group_total: "6"
+  benchmark-group-2-of-6:
+    docker:
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites:
+          benchmarks: "yes"
+      - attach_workspace:
+          at: ~/workspace
+      - run:
+          name: Build artifact
+          shell: /bin/bash -l -eo pipefail
+          command: make NPROC=16
+      - benchmark-steps:
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
+          benchmark_runner_group_member_id: "2"
+          benchmark_runner_group_total: "6"
+
+  benchmark-group-3-of-6:
+    docker:
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites:
+          benchmarks: "yes"
+      - attach_workspace:
+          at: ~/workspace
+      - run:
+          name: Build artifact
+          shell: /bin/bash -l -eo pipefail
+          command: make NPROC=16
+      - benchmark-steps:
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
+          benchmark_runner_group_member_id: "3"
+          benchmark_runner_group_total: "6"
+
+  benchmark-group-4-of-6:
+    docker:
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites:
+          benchmarks: "yes"
+      - attach_workspace:
+          at: ~/workspace
+      - run:
+          name: Build artifact
+          shell: /bin/bash -l -eo pipefail
+          command: make NPROC=16
+      - benchmark-steps:
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
+          benchmark_runner_group_member_id: "4"
+          benchmark_runner_group_total: "6"
+
+  benchmark-group-5-of-6:
+    docker:
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites:
+          benchmarks: "yes"
+      - attach_workspace:
+          at: ~/workspace
+      - run:
+          name: Build artifact
+          shell: /bin/bash -l -eo pipefail
+          command: make NPROC=16
+      - benchmark-steps:
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
+          benchmark_runner_group_member_id: "5"
+          benchmark_runner_group_total: "6"
+
+  benchmark-group-6-of-6:
+    docker:
+      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
+    resource_class: large
+    steps:
+      - early-returns
+      - checkout-all
+      - install-prerequisites:
+          benchmarks: "yes"
+      - attach_workspace:
+          at: ~/workspace
+      - run:
+          name: Build artifact
+          shell: /bin/bash -l -eo pipefail
+          command: make NPROC=16
+      - benchmark-steps:
+          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
+          benchmark_runner_group_member_id: "6"
+          benchmark_runner_group_total: "6"
 
   benchmark-profiler:
     docker:
@@ -612,14 +772,17 @@ workflows:
           context: common
           matrix:
             parameters:
-              platform: [jammy, focal, bionic, amzn2, xenial, centos7, rocky8, bullseye]
+              platform: [jammy, focal, bionic, amzn2, centos7, rocky8, bullseye]
       - build-arm-platforms:
           <<: *on-integ-and-version-tags
           context: common
           matrix:
             parameters:
               platform: [jammy, focal, bionic]
-      - build-macos:
+      - build-macos-x64:
+          <<: *on-integ-and-version-tags
+          context: common
+      - build-macos-m1:
           context: common
           <<: *on-integ-and-version-tags
       - coverage:
@@ -634,7 +797,8 @@ workflows:
           requires:
             - build-platforms
             - build-arm-platforms
-            - build-macos
+            - build-macos-x64
+            - build-macos-m1
       - upload-artifacts:
           name: upload-release-artifacts
           context: common
@@ -642,7 +806,8 @@ workflows:
           requires:
             - build-platforms
             - build-arm-platforms
-            - build-macos
+            - build-macos-x64
+            - build-macos-m1
       - release-automation:
           <<: *on-version-tags
           context: common
@@ -651,13 +816,43 @@ workflows:
       - benchmark:
           <<: *on-perf-tags
           context: common
-      # disable temporarily due to huge profile overhead in RG
-      # - benchmark-profiler:
-      #     <<: *on-perf-tags
-      #     context: common
-      # enable temporarily to understand overhead of GB
-      - benchmark-profiler:
-          <<: *on-perf-tags
+          <<: *on-integ-and-version-tags
+      - benchmark-group-2-of-6:
+          context: common
+          <<: *on-integ-and-version-tags
+      - benchmark-group-3-of-6:
+          context: common
+          <<: *on-integ-and-version-tags
+      - benchmark-group-4-of-6:
+          context: common
+          <<: *on-integ-and-version-tags
+      - benchmark-group-5-of-6:
+          context: common
+          <<: *on-integ-and-version-tags
+      - benchmark-group-6-of-6:
+          context: common
+          <<: *on-integ-and-version-tags
+
+  benchmark-flow-label:
+    when:
+      << pipeline.parameters.run_benchmark_flow_label >>
+    jobs:
+      - benchmark-group-1-of-6:
+          context: common
+          <<: *always
+      - benchmark-group-2-of-6:
+          context: common
+          <<: *always
+      - benchmark-group-3-of-6:
+          context: common
+          <<: *always
+      - benchmark-group-4-of-6:
+          context: common
+          <<: *always
+      - benchmark-group-5-of-6:
+          context: common
+          <<: *always
+      - benchmark-group-6-of-6:
           context: common
 
   nightly:
@@ -672,9 +867,9 @@ workflows:
           name: build-with-redis-<<matrix.redis_version>>
           matrix:
             parameters:
-              redis_version: ["6.0", "7", "unstable"]
-      - benchmark:
-          context: common
+              redis_version: ["6.0", "6.2", "7.0", "7.2-rc1", "unstable"]
+      - valgrind-test:
+          name: nightly-valgrind
       - fuzzer:
           name: nightly-fuzzer
       # disable temporarily due to huge profile overhead in RG

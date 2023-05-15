@@ -1,5 +1,6 @@
 import sys
 import os
+from functools import wraps
 
 from RLTest import Env, Defaults
 
@@ -27,3 +28,19 @@ CODE_COVERAGE = os.getenv('CODE_COVERAGE', '0') == '1'
 OSNICK = paella.Platform().osnick
 OS = paella.Platform().os
 ARCH = paella.Platform().arch
+
+
+def skip(cluster=False, macos=False):
+    def decorate(f):
+        @wraps(f)
+        def wrapper(x, *args, **kwargs):
+            env = x if isinstance(x, Env) else x.env
+            if not(cluster or macos):
+                env.skip()
+            if cluster and env.isCluster():
+                env.skip()
+            if macos and OS == 'macos':
+                env.skip()
+            return f(x, *args, **kwargs)
+        return wrapper
+    return decorate
