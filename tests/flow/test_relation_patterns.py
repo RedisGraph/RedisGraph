@@ -325,7 +325,7 @@ class testRelationPattern(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.relationships_created, 0)
 
-    # # test error reporting for invalid min, max variable length edge length
+    # test error reporting for invalid min, max variable length edge length
     def test12_lt_zero_hop_traversals(self):
 
         queries = [
