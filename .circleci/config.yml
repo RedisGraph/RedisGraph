@@ -839,8 +839,7 @@ workflows:
           context: common
       - build-macos-m1:
           context: common
-          #@@<<: *on-integ-and-version-tags
-          <<: *always
+          <<: *on-integ-and-version-tags
       - coverage:
           <<: *always
       - sanitize:
@@ -875,22 +874,22 @@ workflows:
             - upload-release-artifacts
       - benchmark-group-1-of-6:
           context: common
-          <<: *always
+          <<: *on-integ-and-version-tags
       - benchmark-group-2-of-6:
           context: common
-          <<: *always
+          <<: *on-integ-and-version-tags
       - benchmark-group-3-of-6:
           context: common
-          <<: *always
+          <<: *on-integ-and-version-tags
       - benchmark-group-4-of-6:
           context: common
-          <<: *always
+          <<: *on-integ-and-version-tags
       - benchmark-group-5-of-6:
           context: common
-          <<: *always
+          <<: *on-integ-and-version-tags
       - benchmark-group-6-of-6:
           context: common
-          <<: *always
+          <<: *on-integ-and-version-tags
 
   benchmark-flow-label:
     when:
