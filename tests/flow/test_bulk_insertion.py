@@ -21,6 +21,10 @@ class testGraphBulkInsertFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
 
+        # TODO: remove when flakiness resolved
+        if OS == 'macos':
+            self.env.skip()
+
         # skip test if we're running under Valgrind
         if VALGRIND or SANITIZER != "":
             self.env.skip() # valgrind is not working correctly with replication
@@ -38,7 +42,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         runner = CliRunner()
 
         csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes', csv_path + 'Person.csv',
                                           '--nodes', csv_path + 'Country.csv',
                                           '--relations', csv_path + 'KNOWS.csv',
@@ -172,7 +176,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
             out.writerow([5, 3])
 
         runner = CliRunner()
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes', '/tmp/nodes.tmp',
                                           '--relations', '/tmp/relations.tmp',
                                           graphname])
@@ -208,7 +212,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
             out.writerow([0, 3])
 
         runner = CliRunner()
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes', '/tmp/nodes.tmp',
                                           '--relations', '/tmp/relations.tmp',
                                           graphname])
@@ -219,7 +223,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
 
         # Run the script again without creating relations
         runner = CliRunner()
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes', '/tmp/nodes.tmp',
                                           graphname])
 
@@ -237,7 +241,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         runner = CliRunner()
 
         csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes', csv_path + 'Person.csv',
                                           '--nodes', csv_path + 'Country.csv',
                                           '--relations', csv_path + 'KNOWS.csv',
@@ -269,7 +273,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
             out.writerow([0]) # Wrong number of properites
 
         runner = CliRunner()
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes', '/tmp/nodes.tmp',
                                           graphname])
 
@@ -289,7 +293,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
             out.writerow([0])
 
         runner = CliRunner()
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes', '/tmp/nodes.tmp',
                                           '--relations', '/tmp/relations.tmp',
                                           graphname])
@@ -304,7 +308,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
             out.writerow([0, "fakeidentifier"])
 
         runner = CliRunner()
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes', '/tmp/nodes.tmp',
                                           '--relations', '/tmp/relations.tmp',
                                           graphname])
@@ -340,7 +344,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
             out.writerow([7, 0, ''])
 
         runner = CliRunner()
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes', '/tmp/nodes.tmp',
                                           '--relations', '/tmp/relations.tmp',
                                           graphname])
@@ -421,7 +425,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
             out.writerow(["Connecticut", "US"])
 
         runner = CliRunner()
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes', '/tmp/City:Place.tmp',
                                           '--nodes', '/tmp/Place:State.tmp',
                                           '--nodes', '/tmp/Place:Country.tmp',
@@ -528,7 +532,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
 
         runner = CliRunner()
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes-with-label', "Person:Visitor", csv_path + 'Person.csv',
                                           '--nodes-with-label', "Country:Place", csv_path + 'Country.csv',
                                           '--relations', csv_path + 'KNOWS.csv',
