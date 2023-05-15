@@ -51,9 +51,16 @@ class testRelationPattern(FlowTestsBase):
         query = """MATCH (a)-[*1]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
         result_d = redis_graph.query(query)
 
+        # default minimum length is 1
+        # the following query is equivalent to:
+        # MATCH (a)-[]->(b) RETURN a.val, b.val ORDER BY a.val, b.val
+        query = """MATCH (a)-[*..1]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        result_e = redis_graph.query(query)
+
         self.env.assertEquals(result_b.result_set, result_a.result_set)
         self.env.assertEquals(result_c.result_set, result_a.result_set)
         self.env.assertEquals(result_d.result_set, result_a.result_set)
+        self.env.assertEquals(result_e.result_set, result_a.result_set)
 
     # Test patterns that traverse 2 edges.
     def test02_two_hop_traversals(self):
@@ -316,3 +323,52 @@ class testRelationPattern(FlowTestsBase):
         result = g.query(q)
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.relationships_created, 0)
+
+    # test error reporting for invalid min, max variable length edge length
+    def test12_lt_zero_hop_traversals(self):
+
+        queries = [
+            "MATCH p=()-[*..0]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[*1..0]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[*2..1]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[e*2..1]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[e:R*20..10]->() RETURN nodes(p) AS nodes",
+            "MATCH p=()-[]->()-[*1..0]->() RETURN nodes(p) AS nodes",
+        ]
+        for query in queries:
+            self._assert_exception(redis_graph, query,
+                "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.")
+
+    def test13_return_var_len_edge_array(self):
+        # Construct a simple graph:
+        # (A)-[R]->(b)
+        # (b)-[R]->(c)
+        g = Graph(redis_con, "return_var_len_edge_array")
+        q = "CREATE (a)-[:R]->(b)-[:R]->(c)"
+        g.query(q)
+
+        query_to_expected_result = [
+            ("MATCH (a)-[r*2..2]->(b) RETURN size(nodes(r))" , [[3]]),
+            ("MATCH (a)-[r:R*2..2]->(b) RETURN size(nodes(r))" , [[3]]),
+            ("MATCH (a)-[r*1..2]->(b) RETURN size(nodes(r)) AS x ORDER BY x" , [[2], [2], [3]]),
+            ("MATCH (a)-[r*0..2]->(b) RETURN size(nodes(r)) AS x ORDER BY x" , [[1], [1], [1], [2], [2], [3]]),
+            ("MATCH (a)-[r*0..1]->(b) RETURN size(nodes(r)) AS x ORDER BY x" , [[1], [1], [1], [2], [2]]),
+            ("MATCH (a)-[r*0..0]->(b) RETURN size(nodes(r)) AS x ORDER BY x" , [[1], [1], [1]]),
+        ]
+        for query, expected_result in query_to_expected_result:
+            actual_result = g.query(query)
+            self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # for patterns of length equals to one, the expected result is of type edge
+        q = "MATCH (a)-[r*1..1]->(b) RETURN r"
+        actual_result = g.query(q)
+
+        e01 = actual_result.result_set[0][0]      
+        self.env.assertEquals(e01.src_node, 0)
+        self.env.assertEquals(e01.dest_node, 1)
+        self.env.assertEquals(e01.relation, 'R')
+
+        e12 = actual_result.result_set[1][0]
+        self.env.assertEquals(e12.src_node, 1)
+        self.env.assertEquals(e12.dest_node, 2)
+        self.env.assertEquals(e12.relation, 'R')
