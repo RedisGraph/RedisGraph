@@ -212,10 +212,12 @@ class testGraphCreationFlow(FlowTestsBase):
 
         # test using functions with invalid arguments
         queries = [
+            # Invalid argument to predicate functions, which expect a list, but the function properties() returns a Map
             "CREATE (a), (b)-[:R]->(c {k:any(x IN properties(a) WHERE x = 0)})",
             "CREATE (a), (b)-[:R]->(c {k:none(x IN properties(a) WHERE x = 0)})",
             "CREATE (a), (b)-[:R {k:single(x IN properties(a) WHERE x = 0)}]->()",
-            "CREATE (a:A {n:'A'}), (b:B {v:floor(any(v4 IN [2] WHERE b = [a IN keys(a) ]))})"
+            # Invalid argument to function floor(), which expects an Integer, Float, or Null but any() returns Boolean
+            "CREATE (a:A {n:'A'}), (b:B {v:floor(any(v4 IN [2] WHERE b = [a IN keys(a)]))})"
         ]
         for query in queries:
             try:
