@@ -193,6 +193,19 @@ OPType OpBase_Type
 	const OpBase *op
 );
 
+// returns the number of children of the op
+uint OpBase_ChildCount
+(
+	const OpBase *op
+);
+
+// returns the i'th child of the op
+OpBase *OpBase_GetChild
+(
+	OpBase *join,  // op
+	uint i         // child index
+);
+
 // mark alias as being modified by operation
 // returns the ID associated with alias
 int OpBase_Modifies

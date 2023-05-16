@@ -847,22 +847,55 @@ static OpBase *_AddEmptyProjection
 
 // returns the deepest operation in the given execution plan
 // if there is a Join op, the deepest op of every branch is returned
-static OpBase *_FindDeepestOp
+static OpBase **_FindDeepestOp
 (
 	const ExecutionPlan *plan
 ) {
 	OpBase *deepest = plan->root;
-	while(deepest->childCount > 0) {
-		deepest = deepest->children[0];
-		// in case of a CallSubquery op with no lhs, we want to stop here, as
-		// the added ops should be its first child (instead of the current one,
-		// which will be moved to be the second child)
-		if(OpBase_Type(deepest) == OPType_CallSubquery &&
-			deepest->childCount == 1) {
-				break;
+	OpBase **deepest_ops = array_new(OpBase *, 1);
+
+	OpBase *join =  ExecutionPlan_LocateOp(plan->root, OPType_JOIN);
+	if(join != NULL) {
+		bool found;
+		uint n_branches = OpBase_ChildCount(join);
+		for(uint i = 0; i < n_branches; i++) {
+			found = false;
+			deepest = OpBase_GetChild(join, i);
+
+			while(OpBase_ChildCount(deepest) > 0) {
+				deepest = deepest->children[0];
+				// in case of a CallSubquery op with no lhs, we want to stop here, as
+				// the added ops should be its first child (instead of the current one,
+				// which will be moved to be the second child)
+				// Example: "CALL {CALL {RETURN 1 AS one} RETURN one} RETURN one"
+				if(OpBase_Type(deepest) == OPType_CallSubquery &&
+					deepest->childCount == 1) {
+						found = true;
+						array_append(deepest_ops, deepest);
+						break;
+				}
+			}
+			if(!found) {
+				array_append(deepest_ops, deepest);
+			}
 		}
+	} else {
+		while(OpBase_ChildCount(deepest) > 0) {
+				deepest = deepest->children[0];
+				// in case of a CallSubquery op with no lhs, we want to stop here, as
+				// the added ops should be its first child (instead of the current one,
+				// which will be moved to be the second child)
+				// Example: "CALL {CALL {RETURN 1 AS one} RETURN one} RETURN one"
+				if(OpBase_Type(deepest) == OPType_CallSubquery &&
+					deepest->childCount == 1) {
+						array_append(deepest_ops, deepest);
+						return deepest_ops;
+				}
+			}
+			array_append(deepest_ops, deepest);
 	}
-	return deepest;
+
+	return deepest_ops;
 }
 
 // binds Project/Aggregate ops to an execution plan
@@ -878,6 +911,37 @@ static void _BindReturningOpsToPlan
 			ProjectBindToPlan(ops[i], plan) :
 			AggregateBindToPlan(ops[i], plan);
 	}
+}
+
+// add empty projections in the branches which do not contain an importing WITH
+// clause, in order to 'reset' the bound-vars environment
+static void _add_empty_projections
+(
+	AST *subquery_ast,         // subquery AST
+	cypher_astnode_t *clause,  // call subquery clause
+	OpBase **deepest_ops       // deepest op in each of the UNION branches
+) {
+	uint clause_count = cypher_ast_call_subquery_nclauses(clause);
+	uint *union_indeces = AST_GetClauseIndices(subquery_ast,
+		CYPHER_AST_UNION);
+	array_append(union_indeces, clause_count);
+	uint n_union_branches = array_len(union_indeces);
+	uint first_ind = 0;
+	const cypher_astnode_t *first_clause;
+	OpBase **deepest;
+
+	for(uint i = 0; i < n_union_branches; i++) {
+		// find first clause in the relevant branch
+		first_clause = cypher_ast_call_subquery_get_clause(clause, first_ind);
+		if(cypher_astnode_type(first_clause) != CYPHER_AST_WITH) {
+			deepest = array_elem(deepest_ops, i);
+			*deepest = _AddEmptyProjection(*deepest);
+		}
+
+		first_ind = union_indeces[i] + 1;
+	}
+
+	array_free(union_indeces);
 }
 
 static void _buildCallSubqueryPlan
@@ -908,21 +972,15 @@ static void _buildCallSubqueryPlan
 	// -------------------------------------------------------------------------
 	QueryCtx_SetAST(subquery_ast);
 	ExecutionPlan *embedded_plan = NewExecutionPlan();
-	AST_Free(subquery_ast);
 	QueryCtx_SetAST(orig_ast);
 
-	// find the deepest op in the embedded plan
-	// TODO: for every branch of the Join op, if it exists
-	OpBase *deepest = _FindDeepestOp(embedded_plan);
+	// find the deepest ops, to which we will add the projections and connectors
+	OpBase **deepest_ops = _FindDeepestOp(embedded_plan);
 
 	// if no variables are imported, add an 'empty' projection so that the
 	// records within the subquery will not carry unnecessary entries
-	// TODO: for every branch of the Join op, if it exists
-	const cypher_astnode_t *first_clause =
-		cypher_ast_call_subquery_get_clause(clause, 0);
-	if(cypher_astnode_type(first_clause) != CYPHER_AST_WITH) {
-		deepest = _AddEmptyProjection(deepest);
-	}
+	_add_empty_projections(subquery_ast, clause, deepest_ops);
+	AST_Free(subquery_ast);
 
 	// characterize whether the query is eager or not
 	OPType eager_types[] = {OPType_CREATE, OPType_UPDATE, OPType_FOREACH,
@@ -957,15 +1015,29 @@ static void _buildCallSubqueryPlan
 	// create an ArgumentList\Argument op according to the eagerness of the op,
 	// and plant it as the deepest child of the embedded plan
 	// -------------------------------------------------------------------------
+	uint n_deepest_ops = array_len(deepest_ops);
 	if(is_eager) {
-		// add an ArgumentList op
-		OpBase *argument_list = NewArgumentListOp(plan);
-		ExecutionPlan_AddOp(deepest, argument_list);
+		for(uint i = 0; i < n_deepest_ops; i++) {
+			OpBase *argument_list = NewArgumentListOp(plan);
+			ExecutionPlan_AddOp(deepest_ops[i], argument_list);
+		}
 	} else {
-		// add an Argument op
-		OpBase *argument = NewArgumentOp(plan, NULL);
-		ExecutionPlan_AddOp(deepest, argument);
+		for(uint i = 0; i < n_deepest_ops; i++) {
+			OpBase *argument = NewArgumentOp(plan, NULL);
+			ExecutionPlan_AddOp(deepest_ops[i], argument);
+		}
 	}
+	// if(is_eager) {
+	// 	// add an ArgumentList op
+	// 	OpBase *argument_list = NewArgumentListOp(plan);
+	// 	ExecutionPlan_AddOp(deepest, argument_list);
+	// } else {
+	// 	// add an Argument op
+	// 	OpBase *argument = NewArgumentOp(plan, NULL);
+	// 	ExecutionPlan_AddOp(deepest, argument);
+	// }
+
+	array_free(deepest_ops);
 
 	// -------------------------------------------------------------------------
 	// create a CallSubquery op, set it to be the root of the main plan

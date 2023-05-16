@@ -247,6 +247,26 @@ inline OPType OpBase_Type
 	return op->type;
 }
 
+// returns the number of children of the op
+inline uint OpBase_ChildCount
+(
+	const OpBase *op
+) {
+	ASSERT(op != NULL);
+	return op->childCount;
+}
+
+// returns the i'th child of the op
+OpBase *OpBase_GetChild
+(
+	OpBase *join,  // op
+	uint i         // child index
+) {
+	ASSERT(join != NULL);
+	ASSERT(i < join->childCount);
+	return join->children[i];
+}
+
 inline void OpBase_DeleteRecord
 (
 	Record r
