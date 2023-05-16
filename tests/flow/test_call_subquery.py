@@ -835,6 +835,12 @@ updating clause.")
     #     self.env.assertEquals(res.result_set[1][0],
     #     Node(label='N', properties={'name': 'Raz', 'v': 4}))
 
+    # TODO: Add a test that using UNION where:
+    #   - one branch is eager and the other is not
+    #   - both branches are eager
+    #   - both branches are not eager
+    #   - There are more than 2 branches
+
     def test22_indexes(self):
         """Test that operations on indexes are properly executed (and reseted)
         in subqueries"""

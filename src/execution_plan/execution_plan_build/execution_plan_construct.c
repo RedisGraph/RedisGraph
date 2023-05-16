@@ -472,13 +472,14 @@ static void _replace_first_clause
 (
 	cypher_astnode_t *query,         // query ast-node
 	cypher_astnode_t *callsubquery,  // call subquery ast-node
+	uint first_ind,                  // index of the clause to replace
 	char **names,                    // original bound vars
 	char **inter_names               // internal representation of bound vars
 ) {
 	// we know the first clause is a WITH clause, which we want to replace
 	cypher_astnode_t *clause =
-		(cypher_astnode_t *)cypher_ast_query_get_clause(query, 0);
-	_replace_with_clause(query, callsubquery, clause, 0, names, inter_names);
+		(cypher_astnode_t *)cypher_ast_query_get_clause(query, first_ind);
+	_replace_with_clause(query, callsubquery, clause, first_ind, names, inter_names);
 }
 
 // adds a first WITH clause to the query, projecting all bound vars (names) to
@@ -487,6 +488,7 @@ static cypher_astnode_t *_add_first_clause
 (
 	cypher_astnode_t *query,         // query ast-node
 	cypher_astnode_t *callsubquery,  // call subquery ast-node
+	uint first_ind,                  // index of the clause to replace
 	char **names,                    // original bound vars
 	char **inter_names               // internal representation of bound vars
 ) {
@@ -551,11 +553,18 @@ static cypher_astnode_t *_add_first_clause
 
 	uint n_clauses = cypher_ast_call_subquery_nclauses(callsubquery);
 	cypher_astnode_t *clauses[n_clauses + 1];
-	clauses[0] = new_clause;
-	for(uint i = 1; i < n_clauses + 1; i++) {
-		clauses[i] = (cypher_astnode_t *)cypher_ast_call_subquery_get_clause(callsubquery, i-1);
+	for(uint i = 0; i < first_ind; i++) {
+		clauses[i] = (cypher_astnode_t *)cypher_ast_call_subquery_get_clause(
+			callsubquery, i);
 	}
-	cypher_astnode_t *new_callsubquery = cypher_ast_call_subquery(clauses, n_clauses + 1, clauses, n_clauses + 1, range);
+	clauses[first_ind] = new_clause;
+	for(uint i = first_ind + 1; i < n_clauses + 1; i++) {
+		clauses[i] = (cypher_astnode_t *)cypher_ast_call_subquery_get_clause(
+			callsubquery, i-1);
+	}
+
+	cypher_astnode_t *new_callsubquery = cypher_ast_call_subquery(clauses,
+		n_clauses + 1, clauses, n_clauses + 1, range);
 
 	// find the index of the Call {} clause in the query
 	uint callsubquery_ind = -1;
@@ -580,6 +589,8 @@ static void _replace_intermediate_with_clauses
 (
 	cypher_astnode_t *query,         // query ast-node
 	cypher_astnode_t *callsubquery,  // call subquery ast-node
+	uint first_ind,                  // index of first relevant clause
+	uint last_ind,                   // index of last relevant clause
 	char **inter_names               // internal representation of bound vars
 ) {
 	// -------------------------------------------------------------------------
@@ -587,7 +598,7 @@ static void _replace_intermediate_with_clauses
 	// one
 	// -------------------------------------------------------------------------
 	uint n_clauses = cypher_ast_query_nclauses(query);
-	for(uint i = 1; i < n_clauses; i++) {
+	for(uint i = first_ind + 1; i < last_ind; i++) {
 		cypher_astnode_t *clause =
 			(cypher_astnode_t *)cypher_ast_query_get_clause(query, i);
 		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
@@ -603,14 +614,14 @@ static void _replace_return_clause
 (
 	cypher_astnode_t *query,         // query ast-node
 	cypher_astnode_t *callsubquery,  // call subquery ast-node
+	uint last_ind,                   // index of last relevant clause
 	char **names,                    // original bound vars
 	char **inter_names               // internal representation of bound vars
 ) {
 	// we know that the last clause in query is a RETURN clause, which we want
 	// to replace
-	uint n_clauses = cypher_ast_query_nclauses(query);
 	cypher_astnode_t *clause =
-		(cypher_astnode_t *)cypher_ast_query_get_clause(query, n_clauses-1);
+		(cypher_astnode_t *)cypher_ast_query_get_clause(query, last_ind-1);
 
 	uint existing_projections_count = cypher_ast_return_nprojections(clause);
 	uint n_projections = array_len(names) + existing_projections_count;
@@ -690,8 +701,8 @@ static void _replace_return_clause
 
 	// replace original clause with fully populated one
 	cypher_ast_call_subquery_replace_clauses(callsubquery, new_clause,
-		n_clauses-1, n_clauses-1);
-	cypher_ast_query_set_clause(query, new_clause, n_clauses-1);
+		last_ind - 1, last_ind - 1);
+	cypher_ast_query_set_clause(query, new_clause, last_ind - 1);
 	// cypher_ast_query_replace_clauses(query, new_clause, n_clauses-1, n_clauses-1);
 }
 
@@ -744,6 +755,10 @@ static AST *_CreateASTFromCallSubquery
 	if(is_eager && is_returning) {
 
 		uint mapping_size = raxSize(outer_mapping);
+		if(mapping_size == 0) {
+			return subquery_ast;
+		}
+
 		// create an array containing coupled names
 		// ("a1", "@a1", "a2", "@a2", ...) of the original names and the
 		// internal (temporary) representation of them.
@@ -752,18 +767,33 @@ static AST *_CreateASTFromCallSubquery
 
 		_get_vars_inner_rep(outer_mapping, &names, &inter_names);
 
+		uint *union_indeces = AST_GetClauseIndices(subquery_ast, CYPHER_AST_UNION);
+		array_append(union_indeces, clause_count);
+		uint n_union_branches = array_len(union_indeces);
+
+		uint first_ind = 0;
+		for(uint i = 0; i < n_union_branches; i++) {
+			uint last_ind = union_indeces[i];
+
 			// check if first clause is a WITH clause
 			bool first_is_with =
-				cypher_astnode_type(clauses[0]) == CYPHER_AST_WITH;
+				cypher_astnode_type(clauses[first_ind]) == CYPHER_AST_WITH;
 			if(first_is_with) {
 				// replace first clause (WITH) with a WITH clause containing
 				// "n->@n" projections for all bound vars in outer-scope context
-				_replace_first_clause(query, clause, names, inter_names);
-			} else if(mapping_size > 0){
+				_replace_first_clause(query, clause, first_ind, names, inter_names);
+			} else {
 				// add a WITH clause containing "n->@n" projections
 				// for all bound vars (in outer-scope context), to be the
 				// first clause in the subquery
-				query = _add_first_clause(query, clause, names, inter_names);
+				query = _add_first_clause(query, clause, first_ind, names,
+					inter_names);
+
+				// update indeces
+				for(uint j = 0; j < n_union_branches; j++) {
+					union_indeces[j]++;
+				}
+				last_ind++;
 
 				// update the query and call {} nodes
 				subquery_ast->root = query;
@@ -774,21 +804,24 @@ static AST *_CreateASTFromCallSubquery
 			// for every intermediate WITH clause (except the first one),
 			// replace it with a clause that contains "@n->@n" projections for
 			// all bound vars in outer-scope context
-			_replace_intermediate_with_clauses(query, clause, inter_names);
+			_replace_intermediate_with_clauses(query, clause, first_ind,
+				last_ind, inter_names);
 
 			// replace the RETURN clause (last) with a clause containing the
 			// projections "@n->n" for all bound vars in outer-scope context
-			if(mapping_size > 0) {
-				_replace_return_clause(query, clause, names, inter_names);
-			}
+			_replace_return_clause(query, clause, last_ind, names, inter_names);
+			first_ind = union_indeces[i] + 1;
+		}
 
-			// free the names and inter_names, and corresponding arrays
-			for(uint i = 0; i < mapping_size; i++) {
-				rm_free(names[i]);
-				rm_free(inter_names[i]);
-			}
-			array_free(names);
-			array_free(inter_names);
+		array_free(union_indeces);
+
+		// free the names and inter_names, and corresponding arrays
+		for(uint i = 0; i < mapping_size; i++) {
+			rm_free(names[i]);
+			rm_free(inter_names[i]);
+		}
+		array_free(names);
+		array_free(inter_names);
 	}
 
 	return subquery_ast;
@@ -849,13 +882,13 @@ static void _buildCallSubqueryPlan
 	// create an AST from the body of the subquery
 	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast,
 		plan->record_map);
-	// update the original AST
 
+	// update the original AST
 	clause = (cypher_astnode_t *)AST_GetClause(orig_ast,
 					CYPHER_AST_CALL_SUBQUERY, NULL);
 
 	// FOR DEBUGGING (to be removed): print the AST of the subquery
-	// cypher_ast_fprint(subquery_ast->root, stdout, 0, NULL, 0);
+	cypher_ast_fprint(subquery_ast->root, stdout, 0, NULL, 0);
 
 	// -------------------------------------------------------------------------
 	// build the embedded execution plan corresponding to the subquery
@@ -866,12 +899,12 @@ static void _buildCallSubqueryPlan
 	QueryCtx_SetAST(orig_ast);
 
 	// find the deepest op in the embedded plan
-	// TODO: for every branch of the Join op if it exists
+	// TODO: for every branch of the Join op, if it exists
 	OpBase *deepest = _FindDeepestOp(embedded_plan);
 
 	// if no variables are imported, add an 'empty' projection so that the
 	// records within the subquery will not carry unnecessary entries
-	// TODO: This needs to be done for every branch of the Join op, if exists
+	// TODO: for every branch of the Join op, if it exists
 	const cypher_astnode_t *first_clause =
 		cypher_ast_call_subquery_get_clause(clause, 0);
 	if(cypher_astnode_type(first_clause) != CYPHER_AST_WITH) {
