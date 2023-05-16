@@ -26,6 +26,14 @@ void ExecutionPlan_DetachOp(OpBase *op);
 /* Adds operation to execution plan as a child of parent. */
 void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp);
 
+// adds child to be the ind'th child of parent
+void ExecutionPlan_AddOpInd
+(
+	OpBase *parent,  // parent op
+	OpBase *child,   // child op
+	uint ind         // index of child
+);
+
 /* Push b right below a. */
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
 

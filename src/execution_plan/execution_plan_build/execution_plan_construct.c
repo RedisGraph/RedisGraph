@@ -835,12 +835,18 @@ static OpBase *_AddEmptyProjection
 ) {
 	OpBase *empty_proj =
 		NewProjectOp(parent->plan, array_new(AR_ExpNode *, 0));
-	ExecutionPlan_AddOp(parent, empty_proj);
-	parent = empty_proj;
+
+	if(OpBase_Type(parent) == OPType_CallSubquery) {
+		ExecutionPlan_AddOpInd(parent, empty_proj, 0);
+	} else {
+		ExecutionPlan_AddOp(parent, empty_proj);
+	}
+
 	return empty_proj;
 }
 
 // returns the deepest operation in the given execution plan
+// if there is a Join op, the deepest op of every branch is returned
 static OpBase *_FindDeepestOp
 (
 	const ExecutionPlan *plan
@@ -848,7 +854,13 @@ static OpBase *_FindDeepestOp
 	OpBase *deepest = plan->root;
 	while(deepest->childCount > 0) {
 		deepest = deepest->children[0];
-		if(OpBase_Type(deepest) == OPType_CallSubquery && deepest->childCount == 1) break;
+		// in case of a CallSubquery op with no lhs, we want to stop here, as
+		// the added ops should be its first child (instead of the current one,
+		// which will be moved to be the second child)
+		if(OpBase_Type(deepest) == OPType_CallSubquery &&
+			deepest->childCount == 1) {
+				break;
+		}
 	}
 	return deepest;
 }
@@ -888,7 +900,8 @@ static void _buildCallSubqueryPlan
 					CYPHER_AST_CALL_SUBQUERY, NULL);
 
 	// FOR DEBUGGING (to be removed): print the AST of the subquery
-	cypher_ast_fprint(subquery_ast->root, stdout, 0, NULL, 0);
+	// cypher_ast_fprint(subquery_ast->root, stdout, 0, NULL, 0);
+	// printf("\n\n\n");
 
 	// -------------------------------------------------------------------------
 	// build the embedded execution plan corresponding to the subquery

@@ -75,6 +75,21 @@ inline void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 	_OpBase_AddChild(parent, newOp);
 }
 
+// adds child to be the ind'th child of parent
+void ExecutionPlan_AddOpInd
+(
+	OpBase *parent,  // parent op
+	OpBase *child,   // child op
+	uint ind         // index of child
+) {
+	ASSERT(parent != NULL);
+	ASSERT(child != NULL);
+
+	OpBase *to_replace = parent->children[ind];
+	_ExecutionPlan_ParentReplaceChild(parent, to_replace, child);
+	_OpBase_AddChild(parent, to_replace);
+}
+
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	// B belongs to A's plan.
