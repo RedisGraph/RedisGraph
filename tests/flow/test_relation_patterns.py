@@ -326,6 +326,8 @@ class testRelationPattern(FlowTestsBase):
 
     # test error reporting for invalid min, max variable length edge length
     def test12_lt_zero_hop_traversals(self):
+        # Construct an empty graph
+        g = Graph(redis_con, "lt_zero_hop_traversals")
 
         queries = [
             "MATCH p=()-[*..0]->() RETURN nodes(p) AS nodes",
@@ -336,7 +338,7 @@ class testRelationPattern(FlowTestsBase):
             "MATCH p=()-[]->()-[*1..0]->() RETURN nodes(p) AS nodes",
         ]
         for query in queries:
-            self._assert_exception(redis_graph, query,
+            self._assert_exception(g, query,
                 "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.")
 
     def test13_return_var_len_edge_array(self):
