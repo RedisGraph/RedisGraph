@@ -1154,7 +1154,7 @@ cleanup:
 	return VISITOR_CONTINUE;
 }
 
-static bool _ValidateSubqueryFirstWithClause
+static bool _ValidateSubqueryFirstWithClauseIdentifiers
 (
 	const cypher_astnode_t *root,  // root to validate
 	rax *defined_identifiers       // bound vars
@@ -1173,10 +1173,53 @@ static bool _ValidateSubqueryFirstWithClause
 	uint nchildren = cypher_astnode_nchildren(root);
 	for(uint i = 0; i < nchildren; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-		if(!_ValidateSubqueryFirstWithClause(child, defined_identifiers)) {
+		if(!_ValidateSubqueryFirstWithClauseIdentifiers(child, defined_identifiers)) {
 			return false;
 		}
 	}
+
+	return true;
+}
+
+static bool _ValidateCallInitialWith
+(
+	const cypher_astnode_t *clause,  // `WITH` clause to validate
+	validations_ctx *vctx            // validation context
+) {
+	const cypher_astnode_t *with = clause;
+
+	for(uint i = 0; i < cypher_ast_with_nprojections(with); i++) {
+		const cypher_astnode_t *curr_proj =
+			cypher_ast_with_get_projection(with, i);
+		const cypher_astnode_t *exp =
+			cypher_ast_projection_get_expression(curr_proj);
+		const cypher_astnode_type_t t = cypher_astnode_type(exp);
+
+		if (t == CYPHER_AST_IDENTIFIER ) {
+			const char *identifier = cypher_ast_identifier_get_name(exp);
+			int len = strlen(identifier);
+			if(cypher_ast_projection_get_alias(curr_proj) != NULL) {
+				return false;
+			}
+		} else {
+			// check that the import does not make reference to an outer scope identifier.
+			// This is invalid: 'WITH 1 AS a CALL {WITH a + 1 AS b RETURN b} RETURN b'
+			if(!_ValidateSubqueryFirstWithClauseIdentifiers(exp,
+				vctx->defined_identifiers)) {
+					return false;
+			}
+		}
+
+		// order by, predicates, limit and skips are not valid
+		if(cypher_ast_with_get_skip(with)      != NULL ||
+			cypher_ast_with_get_limit(with)     != NULL ||
+			cypher_ast_with_get_order_by(with)  != NULL ||
+			cypher_ast_with_get_predicate(with) != NULL) {
+
+			return false;
+		}
+	}
+
 	return true;
 }
 
@@ -1189,10 +1232,6 @@ static VISITOR_STRATEGY _Validate_call_subquery
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	if(!start) {
-		return VISITOR_CONTINUE;
-	}
-
 	// create a query astnode with the body of the subquery as its body
 	uint nclauses = cypher_ast_call_subquery_nclauses(n);
 	cypher_astnode_t *clauses[nclauses];
@@ -1200,10 +1239,7 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	for(uint i = 0; i < nclauses; i ++) {
 		clauses[i] = (cypher_astnode_t *)cypher_astnode_get_child(n, i);
 	}
-	bool first_with_exist =
-		cypher_astnode_type(clauses[0]) == CYPHER_AST_WITH;
 	struct cypher_input_range range = {0};
-
 	cypher_astnode_t *body = cypher_ast_query(NULL, 0, clauses, nclauses,
 		clauses, nclauses, range);
 
@@ -1236,65 +1272,54 @@ static VISITOR_STRATEGY _Validate_call_subquery
 		return VISITOR_BREAK;
 	}
 
-	// validate that the with imports (if exist) are simple, i.e., 'WITH a'
-	const cypher_astnode_t *with = cypher_ast_call_subquery_get_clause(n, 0);
-	if(first_with_exist) {
-		for(uint i = 0; i < cypher_ast_with_nprojections(with); i++) {
-			const cypher_astnode_t *curr_proj =
-				cypher_ast_with_get_projection(with, i);
-			const cypher_astnode_t *exp = 
-				cypher_ast_projection_get_expression(curr_proj);
-			const cypher_astnode_type_t t = cypher_astnode_type(exp);
+	// clone the bound vars context.
+	rax *in_env = raxClone(vctx->defined_identifiers);
 
-			if (t == CYPHER_AST_IDENTIFIER ) {
-				const char *identifier = cypher_ast_identifier_get_name(exp);
-				int len = strlen(identifier);
+	// if there are no imports, set the env of bound-vars to the empty env
+	if(cypher_astnode_type(clauses[0]) != CYPHER_AST_WITH) {
+		raxFree(vctx->defined_identifiers);
+		vctx->defined_identifiers = raxNew();
+	} else {
+		// validate that the with imports (if exist) are simple, i.e., 'WITH a'
+		if(!_ValidateCallInitialWith(clauses[0], vctx)) {
+			ErrorCtx_SetError(
+				"WITH imports in CALL {} must be simple ('WITH a')");
+			return VISITOR_BREAK;
+		}
+	}
 
-				if(cypher_ast_projection_get_alias(curr_proj) != NULL) {
-					ErrorCtx_SetError(
-						"WITH imports in CALL {} must be simple ('WITH a')");
-					return VISITOR_BREAK;
-				}				
-			} else {
-				// check that the import does not make reference to an outer scope identifier.
-				// This is invalid: 'WITH 1 AS a CALL {WITH a + 1 AS b RETURN b} RETURN b'
-				if(!_ValidateSubqueryFirstWithClause(exp,
-					vctx->defined_identifiers)) {
-						ErrorCtx_SetError(
-							"WITH imports in CALL {} must be simple ('WITH a')");
-						return VISITOR_BREAK;
-				}
-			}
+	// visit the subquery clauses
+	bool last_is_union = false;
+	for(uint i = 0; i < cypher_ast_call_subquery_nclauses(n); i++) {
+		const cypher_astnode_t *clause =
+			cypher_ast_call_subquery_get_clause(n, i);
 
-			// order by, predicates, limit and skips are not valid
-			if(cypher_ast_with_get_skip(with)      != NULL ||
-				cypher_ast_with_get_limit(with)     != NULL ||
-				cypher_ast_with_get_order_by(with)  != NULL ||
-				cypher_ast_with_get_predicate(with) != NULL) {
+		// if the current clause is a `UNION` clause, it has reset the bound
+		// vars env to the empty env. We compensate for that in case there is no
+		// initial `WITH` clause
+		if(last_is_union && cypher_astnode_type(clause) == CYPHER_AST_WITH) {
+			// set the env of bound-vars to the input env
+			raxFree(vctx->defined_identifiers);
+			vctx->defined_identifiers = raxClone(in_env);
+
+			// validate that the with imports (if exist) are simple, i.e., 'WITH a'
+			if(!_ValidateCallInitialWith(clause, vctx)) {
 				ErrorCtx_SetError(
 					"WITH imports in CALL {} must be simple ('WITH a')");
 				return VISITOR_BREAK;
 			}
 		}
-	}
 
-	// clone the bound vars context.
-	rax *in_env = raxClone(vctx->defined_identifiers);
-
-	// if there are no imports, set the env of bound-vars to the empty env
-	if(!first_with_exist) {
-		raxFree(vctx->defined_identifiers);
-		vctx->defined_identifiers = raxNew();
-	}
-
-	// visit the subquery clauses
-	for(uint i = 0; i < cypher_ast_call_subquery_nclauses(n); i++) {
-		const cypher_astnode_t *clause =
-			cypher_ast_call_subquery_get_clause(n, i);
 		AST_Visitor_visit(clause, visitor);
 		if(ErrorCtx_EncounteredError()) {
 			raxFree(in_env);
 			return VISITOR_BREAK;
+		}
+
+		if(cypher_astnode_type(clause) == CYPHER_AST_UNION) {
+			last_is_union = true;
+		} else {
+			last_is_union = false;
 		}
 	}
 

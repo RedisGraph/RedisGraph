@@ -52,6 +52,8 @@ class testCallSubqueryFlow():
             "CALL {CREATE (n:N) MATCH (n:N) RETURN n} RETURN 1" : match_after_updating,
             "WITH 1 AS a CALL {WITH a CREATE (n:N) MATCH (n:N) RETURN n} RETURN a" : match_after_updating,
             "CALL {MATCH (n:N) CREATE (n:N2)} RETURN 1 ": "The bound variable 'n' can't be redeclared in a CREATE clause",
+            "MATCH (n) CALL {WITH n AS n1 RETURN n1 UNION WITH n RETURN n1} RETURN n, n1": import_error,
+            "MATCH (n) CALL {WITH n RETURN n AS n1 UNION WITH n AS n1 RETURN n1} RETURN n, n1": import_error,
         }
         for query, err in queries_errors.items():
             self.expect_error(query, err)
@@ -808,37 +810,39 @@ updating clause.")
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
 
-    # def test21_union(self):
-    #     """Test that UNION works properly within a subquery"""
+    def test21_union(self):
+        """Test that UNION works properly within a subquery"""
 
-    #     # clear the db
-    #     self.env.flush()
-    #     graph = Graph(self.env.getConnection(), GRAPH_ID)
+        # clear the db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
 
-    #     # a simple subquery, returning 2 rows
-    #     res = graph.query(
-    #         """
-    #         CALL {
-    #             RETURN 1 AS num
-    #             UNION
-    #             RETURN 2 AS num
-    #         }
-    #         RETURN num
-    #         """
-    #     )
+        # a simple subquery, returning 2 rows
+        res = graph.query(
+            """
+            CALL {
+                RETURN 1 AS num
+                UNION
+                RETURN 2 AS num
+            }
+            RETURN num
+            """
+        )
 
-    #     # assert results
-    #     self.env.assertEquals(len(res.result_set), 2)
-    #     self.env.assertEquals(res.result_set[0][0], 1)
-    #     self.env.assertEquals(res.result_set[1][0], 2)
+        # assert results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[1][0], 2)
 
     #     # a simple subquery, using input from the outer query
     #     res = graph.query(
     #         """
     #         UNWIND range(1, 2) AS i
     #         CALL {
+    #             WITH i
     #             RETURN i AS num
     #             UNION
+    #             WITH i
     #             RETURN i + 1 AS num
     #         }
     #         RETURN i, num
