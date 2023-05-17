@@ -88,9 +88,13 @@ static OpResult CallSubqueryInit
         op->arguments = array_new(Argument *, 1);
     }
 
-    bool join = (OpBase_Type(op->body) == OPType_JOIN);
+    bool join = (OpBase_Type(op->body) == OPType_JOIN) ||
+                (OpBase_Type(OpBase_GetChild(op->body, 0)) == OPType_JOIN);
     if(join) {
-        OpJoin *join = (OpJoin *)op->body;
+        OpJoin *join = (OpBase_Type(op->body) == OPType_JOIN) ?
+                        (OpJoin *)op->body :
+                        (OpJoin *)OpBase_GetChild(op->body, 0);
+
         op->n_branches = OpBase_ChildCount((OpBase *)join);
 
         for(uint i = 0; i < op->n_branches; i++) {
@@ -205,11 +209,14 @@ static Record _consume_and_return
     Record consumed;
     consumed = OpBase_Consume(op->body);
     if(consumed == NULL) {
+        OpBase_PropagateReset(op->body);
         OpBase_DeleteRecord(op->r);
         op->r = NULL;
         if(op->lhs && (op->r = OpBase_Consume(op->lhs)) != NULL) {
             // plant a clone of the record consumed at the Argument ops
-            PLANT_RECORD;
+            for(uint i = 0; i < op->n_branches; i++) {
+                Argument_AddRecord(op->arguments[i], OpBase_DeepCloneRecord(op->r));
+            }
         } else {
             // lhs depleted --> CALL {} depleted as well
             return NULL;
@@ -271,13 +278,16 @@ static Record CallSubqueryConsume
     if(op->lhs) {
         op->r = OpBase_Consume(op->lhs);
     } else if(op->first){
-        op->r = OpBase_CreateRecord(op->body);
+        op->r = OpBase_CreateRecord((OpBase *)op);
+        // op->r = OpBase_CreateRecord(op->body);
         op->first = false;
     }
 
     // plant the record consumed at the Argument ops
     if(op->r) {
-        PLANT_RECORD;
+        for(uint i = 0; i < op->n_branches; i++) {
+            Argument_AddRecord(op->arguments[i], OpBase_DeepCloneRecord(op->r));
+        }
     } else {
         // no records - lhs depleted
         return NULL;
