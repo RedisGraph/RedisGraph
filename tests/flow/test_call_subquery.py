@@ -811,35 +811,161 @@ updating clause.")
     # def test21_union(self):
     #     """Test that UNION works properly within a subquery"""
 
-    #     # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
+    #     # clear the db
+    #     self.env.flush()
+    #     graph = Graph(self.env.getConnection(), GRAPH_ID)
 
+    #     # a simple subquery, returning 2 rows
+    #     res = graph.query(
+    #         """
+    #         CALL {
+    #             RETURN 1 AS num
+    #             UNION
+    #             RETURN 2 AS num
+    #         }
+    #         RETURN num
+    #         """
+    #     )
+
+    #     # assert results
+    #     self.env.assertEquals(len(res.result_set), 2)
+    #     self.env.assertEquals(res.result_set[0][0], 1)
+    #     self.env.assertEquals(res.result_set[1][0], 2)
+
+    #     # a simple subquery, using input from the outer query
+    #     res = graph.query(
+    #         """
+    #         UNWIND range(1, 2) AS i
+    #         CALL {
+    #             RETURN i AS num
+    #             UNION
+    #             RETURN i + 1 AS num
+    #         }
+    #         RETURN i, num
+    #         """
+    #     )
+
+    #     # assert results
+    #     self.env.assertEquals(len(res.result_set), 8)
+    #     self.env.assertEquals(res.result_set[0][0], 1)
+    #     self.env.assertEquals(res.result_set[0][1], 1)
+    #     self.env.assertEquals(res.result_set[1][0], 1)
+    #     self.env.assertEquals(res.result_set[1][1], 2)
+    #     self.env.assertEquals(res.result_set[2][0], 2)
+    #     self.env.assertEquals(res.result_set[2][1], 2)
+    #     self.env.assertEquals(res.result_set[3][0], 2)
+    #     self.env.assertEquals(res.result_set[3][1], 3)
+
+    #     # create nodes in both braches of the UNION
+    #     res = graph.query(
+    #         """
+    #         CALL {
+    #             CREATE (n:N {v: 1})
+    #             RETURN n AS node
+    #             UNION
+    #             CREATE (m:M {v: 2})
+    #             RETURN m AS node
+    #         }
+    #         RETURN node
+    #         """
+    #     )
+
+    #     # assert results
+    #     self.env.assertEquals(len(res.result_set), 2)
+    #     self.env.assertEquals(res.result_set[0][0], Node(label='N',
+    #         properties={'v': 1}))
+    #     self.env.assertEquals(res.result_set[1][0], Node(label='M',
+    #         properties={'v': 2}))
+
+    #     # match nodes in one branch, and create nodes in the other
     #     res = graph.query(
     #         """
     #         CALL {
     #             MATCH (n:N)
-    #             WHERE n.v = 1
-    #             RETURN n
+    #             RETURN n AS node
     #             UNION
-    #             MATCH (n:N)
-    #             WHERE n.v = 4
-    #             RETURN n
+    #             CREATE (m:M {v: 2})
+    #             RETURN m AS node
     #         }
-    #         RETURN n
+    #         RETURN node
     #         """
     #     )
 
-    #     # assert the correctness of the results
-    #     self.env.assertEquals(len(res.result_set), 2)
-    #     self.env.assertEquals(res.result_set[0][0],
-    #     Node(label='N', properties={'name': 'Raz', 'v': 1}))
-    #     self.env.assertEquals(res.result_set[1][0],
-    #     Node(label='N', properties={'name': 'Raz', 'v': 4}))
+    #     # assert results
+    #     self.env.assertEquals(len(res.result_set), 4)
+    #     self.env.assertEquals(res.result_set[0][0], Node(label='N',
+    #         properties={'v': 1}))
+    #     self.env.assertEquals(res.result_set[1][0], Node(label='M',
+    #         properties={'v': 2}))
+    #     self.env.assertEquals(res.result_set[2][0], Node(label='M',
+    #         properties={'v': 2}))
+    #     self.env.assertEquals(res.result_set[3][0], Node(label='M',
+    #         properties={'v': 2}))
+
+    #     # match nodes in both branches
+    #     res = graph.query(
+    #         """
+    #         CALL {
+    #             MATCH (n:N)
+    #             RETURN n AS node
+    #             UNION
+    #             MATCH (m:M)
+    #             RETURN m AS node
+    #         }
+    #         RETURN node
+    #         """
+    #     )
+
+    #     # assert results
+    #     self.env.assertEquals(len(res.result_set), 4)
+    #     self.env.assertEquals(res.result_set[0][0], Node(label='N',
+    #         properties={'v': 1}))
+    #     self.env.assertEquals(res.result_set[1][0], Node(label='M',
+    #         properties={'v': 2}))
+    #     self.env.assertEquals(res.result_set[2][0], Node(label='N',
+    #         properties={'v': 1}))
+    #     self.env.assertEquals(res.result_set[3][0], Node(label='M',
+    #         properties={'v': 2}))
+
+        # # this is a subquery that will require a change for the Join operation,
+        # # as it requires the changes of one input record to be visible to the
+        # # next input record
+
+        # # clean the db
+        # self.env.flush()
+        # graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # # create two nodes with label N and property v=1, v=2
+        # graph.query("CREATE (:N {v: 1}), (:N {v: 2})")
+
+        # res = graph.query(
+        #     """
+        #     MATCH (n:N)
+        #     CALL {
+        #         WITH n
+        #         MERGE (:N {v: n.v + 1})
+        #         RETURN 1 AS ret
+        #         UNION
+        #         WITH n
+        #         CREATE (:N {v: n.v + 2})
+        #         RETURN 1 AS ret
+        #     }
+        #     RETURN count(1)
+        #     """
+        # )
+
+        # # assert results
+        # self.env.assertEquals(len(res.result_set), 1)
+        # self.env.assertEquals(res.result_set[0][0], 2)
+        # self.env.assertEquals(res.nodes_created, 2)
+
 
     # TODO: Add a test that using UNION where:
     #   - one branch is eager and the other is not
     #   - both branches are eager
     #   - both branches are not eager
     #   - There are more than 2 branches
+    #   - A subquery with UNION ALL
 
     def test22_indexes(self):
         """Test that operations on indexes are properly executed (and reseted)
