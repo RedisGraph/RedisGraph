@@ -71,4 +71,11 @@ class FlowTestsBase(object):
             if actual_result.run_time_ms > query_info.max_run_time_ms:
                 warnings.warn('Maximum runtime for query \"%s\" was: %s, but should be %s' %
                              (query_info.description, str(actual_result.run_time_ms), str(query_info.max_run_time_ms)))
-            
+    
+    # function which run the query and expects an specific error message
+    def _assert_exception(self, graph, query, expected_err_msg):
+        try:
+            graph.query(query)
+            self.env.assertTrue(False)
+        except Exception as e:
+            self.env.assertIn(expected_err_msg, str(e))
