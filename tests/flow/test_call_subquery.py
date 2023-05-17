@@ -553,7 +553,7 @@ updating clause.")
             #     }
             #     RETURN max(x) AS y
             # }
-            # RETURN x
+            # RETURN x ORDER BY x ASC
             # """
             # : [[0], [1], [2]],
             """

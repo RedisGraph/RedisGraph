@@ -17,22 +17,20 @@
 //     Otherwise, it will non-eagerly consume, and plant in the Argument op.
 //  2. It merges the records of the rhs branch and the record consumed from lhs
 //     according to the `is_returning` field.
-//  TODO:
-//  TBD: It will probably also be different in the responsibility (it won't have)
-//       over its records (record list in this case).
 
 typedef struct {
-	OpBase op;
+    OpBase op;
 
-    bool first;                   // is this the first call to consume
-    bool is_eager;                // is the op eager
-    bool is_returning;            // is the subquery returning or unit
-    OpBase *body;                 // the first op in the embedded execution-plan
-    OpBase *lhs;                  // op from which records are pulled (optional)
-    Record r;                     // current record consumed from lhs
-    Record *records;              // records aggregated by the operation
-    Argument *argument;           // Argument operation (potential tap)
-    ArgumentList *argument_list;  // ArgumentList operation (potential tap)
+    bool first;                     // is this the first call to consume
+    bool is_eager;                  // is the op eager
+    bool is_returning;              // is the subquery returning or unit
+    uint n_branches;                // number of UNION branches in the subquery
+    OpBase *body;                   // first op in the embedded execution-plan
+    OpBase *lhs;                    // op from which records are pulled
+    Record r;                       // current record consumed from lhs
+    Record *records;                // records aggregated by the operation
+    Argument **arguments;           // Argument operation (potential tap)
+    ArgumentList **argument_lists;  // ArgumentList operation (potential tap)
 
 } OpCallSubquery;
 

@@ -12,6 +12,7 @@
 static Record JoinConsume(OpBase *opBase);
 static OpResult JoinInit(OpBase *opBase);
 static OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase);
+static OpResult JoinReset(OpBase *opBase);
 
 OpBase *NewJoinOp(const ExecutionPlan *plan) {
 	OpJoin *op = rm_malloc(sizeof(OpJoin));
@@ -19,7 +20,7 @@ OpBase *NewJoinOp(const ExecutionPlan *plan) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", JoinInit, JoinConsume, 
-		NULL, NULL, JoinClone, NULL, false, plan);
+		JoinReset, NULL, JoinClone, NULL, false, plan);
 
 	return (OpBase *)op;
 }
@@ -78,3 +79,21 @@ static inline OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase)
 	return NewJoinOp(plan);
 }
 
+static OpResult JoinReset
+(
+	OpBase *opBase
+) {
+	OpJoin *op = (OpJoin *)opBase;
+	op->streamIdx = 0;
+	op->stream = op->op.children[op->streamIdx];
+
+	// map first stream resultset mapping
+	ResultSet *result_set = QueryCtx_GetResultSet();
+	if(result_set != NULL) {
+		OpBase *child = op->stream;
+		rax *mapping = ExecutionPlan_GetMappings(child->plan);
+		ResultSet_MapProjection(result_set, mapping);
+	}
+
+	return OP_OK;
+}

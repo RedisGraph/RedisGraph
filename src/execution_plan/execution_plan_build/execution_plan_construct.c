@@ -847,14 +847,14 @@ static OpBase *_AddEmptyProjection
 
 // returns the deepest operation in the given execution plan
 // if there is a Join op, the deepest op of every branch is returned
-static OpBase **_FindDeepestOp
+static OpBase **_FindDeepestOps
 (
 	const ExecutionPlan *plan
 ) {
 	OpBase *deepest = plan->root;
 	OpBase **deepest_ops = array_new(OpBase *, 1);
 
-	OpBase *join =  ExecutionPlan_LocateOp(plan->root, OPType_JOIN);
+	OpBase *join =  ExecutionPlan_LocateOp(deepest, OPType_JOIN);
 	if(join != NULL) {
 		bool found;
 		uint n_branches = OpBase_ChildCount(join);
@@ -975,7 +975,7 @@ static void _buildCallSubqueryPlan
 	QueryCtx_SetAST(orig_ast);
 
 	// find the deepest ops, to which we will add the projections and connectors
-	OpBase **deepest_ops = _FindDeepestOp(embedded_plan);
+	OpBase **deepest_ops = _FindDeepestOps(embedded_plan);
 
 	// if no variables are imported, add an 'empty' projection so that the
 	// records within the subquery will not carry unnecessary entries
@@ -1027,15 +1027,6 @@ static void _buildCallSubqueryPlan
 			ExecutionPlan_AddOp(deepest_ops[i], argument);
 		}
 	}
-	// if(is_eager) {
-	// 	// add an ArgumentList op
-	// 	OpBase *argument_list = NewArgumentListOp(plan);
-	// 	ExecutionPlan_AddOp(deepest, argument_list);
-	// } else {
-	// 	// add an Argument op
-	// 	OpBase *argument = NewArgumentOp(plan, NULL);
-	// 	ExecutionPlan_AddOp(deepest, argument);
-	// }
 
 	array_free(deepest_ops);
 

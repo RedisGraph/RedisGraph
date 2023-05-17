@@ -4,6 +4,7 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
+#include "op_join.h"
 #include "op_call_subquery.h"
 
 // forward declarations
@@ -14,6 +15,25 @@ static OpResult CallSubqueryReset(OpBase *opBase);
 static Record CallSubqueryConsumeEager(OpBase *opBase);
 static OpBase *CallSubqueryClone(const ExecutionPlan *plan, const OpBase *opBase);
 
+#define FIND_SET_DEEPEST ({\
+    while(deepest->childCount > 0) {                                          \
+        deepest = deepest->children[0];                                       \
+    }                                                                         \
+    if(op->is_eager) {                                                        \
+        ASSERT(OpBase_Type((const OpBase *)deepest) == OPType_ARGUMENT_LIST); \
+        array_append(op->argument_lists, (ArgumentList *)deepest);            \
+    } else {                                                                  \
+        ASSERT(OpBase_Type((const OpBase *)deepest) == OPType_ARGUMENT);      \
+        array_append(op->arguments, (Argument *)deepest);                     \
+    }                                                                         \
+})
+
+#define PLANT_RECORD ({\
+    for(uint i = 0; i < op->n_branches; i++) {                                \
+        Argument_AddRecord(op->arguments[i], OpBase_DeepCloneRecord(op->r));  \
+    }                                                                         \
+})
+
 // creates a new CallSubquery operation
 OpBase *NewCallSubqueryOp
 (
@@ -23,23 +43,24 @@ OpBase *NewCallSubqueryOp
 ) {
     OpCallSubquery *op = rm_calloc(1, sizeof(OpCallSubquery));
 
-	op->r             = NULL;
-	op->lhs           = NULL;
-    op->body          = NULL;
-	op->first         = true;
-	op->records       = NULL;
-    op->argument      = NULL;
-	op->argument_list = NULL;
-	op->is_eager      = is_eager;
-    op->is_returning  = is_returning;
+    op->r              = NULL;
+    op->lhs            = NULL;
+    op->body           = NULL;
+    op->first          = true;
+    op->records        = NULL;
+    op->arguments      = NULL;
+    op->argument_lists = NULL;
+    op->is_eager       = is_eager;
+    op->is_returning   = is_returning;
+    op->n_branches     = 1;
 
     // set the consume function according to eagerness of the op
     Record (*consumeFunc)(OpBase *opBase) = is_eager ? CallSubqueryConsumeEager :
                                         CallSubqueryConsume;
 
-    OpBase_Init((OpBase *)op, OPType_CallSubquery, "CallSubquery", CallSubqueryInit,
-			consumeFunc, CallSubqueryReset, NULL, CallSubqueryClone, CallSubqueryFree,
-			false, plan);
+    OpBase_Init((OpBase *)op, OPType_CallSubquery, "CallSubquery",
+        CallSubqueryInit, consumeFunc, CallSubqueryReset, NULL,
+        CallSubqueryClone, CallSubqueryFree, false, plan);
 
 	return (OpBase *)op;
 }
@@ -59,21 +80,26 @@ static OpResult CallSubqueryInit
         op->body = op->op.children[0];
     }
 
-	// search for the ArgumentList\Argument op, depending if the op is eager
-    // the second will stay NULL
-    // find the deepest operation
-    OpBase *deepest = op->body;
-    while(deepest->childCount > 0) {
-        deepest = deepest->children[0];
-    }
+    // search for the ArgumentList\Argument ops, depending if the op is eager
+    // the non-relevant field will stay NULL
     if(op->is_eager) {
-        op->argument_list = (ArgumentList *)deepest;
-        // validate found operation type, expecting ArgumentList
-        ASSERT(OpBase_Type((const OpBase *)op->argument_list) == OPType_ARGUMENT_LIST);
+        op->argument_lists = array_new(ArgumentList *, 1);
     } else {
-        // search for Argument op
-        op->argument = (Argument *)deepest;
-        ASSERT(OpBase_Type((const OpBase *)op->argument) == OPType_ARGUMENT);
+        op->arguments = array_new(Argument *, 1);
+    }
+
+    bool join = (OpBase_Type(op->body) == OPType_JOIN);
+    if(join) {
+        OpJoin *join = (OpJoin *)op->body;
+        op->n_branches = OpBase_ChildCount((OpBase *)join);
+
+        for(uint i = 0; i < op->n_branches; i++) {
+            OpBase *deepest = OpBase_GetChild((OpBase *)join, i);
+            FIND_SET_DEEPEST;
+        }
+    } else {
+        OpBase *deepest = op->body;
+        FIND_SET_DEEPEST;
     }
 
     return OP_OK;
@@ -116,9 +142,8 @@ static Record CallSubqueryConsumeEager
     op->first = false;
 
     op->records = array_new(Record, 1);
-
     // eagerly consume all records from lhs if exists or create a
-    // dummy-record, and place them op->records
+    // dummy-record, and place them\it in op->records
     Record r;
     if(op->lhs) {
         while((r = OpBase_Consume(op->lhs))) {
@@ -134,15 +159,35 @@ static Record CallSubqueryConsumeEager
     if(op->is_returning) {
         // we can pass op->records (rather than a clone), since we later return
         // the consumed records from the body
-        ArgumentList_AddRecordList(op->argument_list, op->records);
+        // ArgumentList_AddRecordList(op->argument_list, op->records);
+
+        // TODO: We need to send the records to all branches, not just the last..
+        // This requires some thinking and changing!
+
+        for(int i = 0; i < (int)op->n_branches - 2; i++) {
+            Record *records_clone;
+            array_clone_with_cb(records_clone, op->records,
+                OpBase_DeepCloneRecord);
+            ArgumentList_AddRecordList(op->argument_lists[i], records_clone);
+        }
+        Record *records_clone;
+        array_clone_with_cb(records_clone, op->records,
+            OpBase_DeepCloneRecord);
+        // give the last branch the original records
+        ArgumentList_AddRecordList(op->argument_lists[op->n_branches-1],
+            op->records);
+
         // responsibility for the records is passed to the argumentList op
         op->records = NULL;
     } else {
         // pass a clone of op->records to arglist, since we need to later return
         // the received records
-        Record *records_clone;
-        array_clone_with_cb(records_clone, op->records, OpBase_DeepCloneRecord);
-        ArgumentList_AddRecordList(op->argument_list, records_clone);
+        for(int i = 0; i < op->n_branches; i++) {
+            Record *records_clone;
+            array_clone_with_cb(records_clone, op->records,
+                OpBase_DeepCloneRecord);
+            ArgumentList_AddRecordList(op->argument_lists[i], records_clone);
+        }
 
         // consume and free all records from body
         while((r = OpBase_Consume(op->body))) {
@@ -163,8 +208,8 @@ static Record _consume_and_return
         OpBase_DeleteRecord(op->r);
         op->r = NULL;
         if(op->lhs && (op->r = OpBase_Consume(op->lhs)) != NULL) {
-            // plant a clone of the record consumed at the Argument op
-            Argument_AddRecord(op->argument, OpBase_DeepCloneRecord(op->r));
+            // plant a clone of the record consumed at the Argument ops
+            PLANT_RECORD;
         } else {
             // lhs depleted --> CALL {} depleted as well
             return NULL;
@@ -230,9 +275,9 @@ static Record CallSubqueryConsume
         op->first = false;
     }
 
-    // plant the record consumed at the Argument op
+    // plant the record consumed at the Argument ops
     if(op->r) {
-        Argument_AddRecord(op->argument, OpBase_DeepCloneRecord(op->r));
+        PLANT_RECORD;
     } else {
         // no records - lhs depleted
         return NULL;
