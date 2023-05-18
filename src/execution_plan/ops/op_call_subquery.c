@@ -249,6 +249,8 @@ static Record _handoff(OpCallSubquery *op) {
     while((consumed = OpBase_Consume(op->body))) {
         OpBase_DeleteRecord(consumed);
     }
+    // TODO: make sure this is necessary.
+    OpBase_PropagateReset(op->body);
     Record r = op->r;
     op->r = NULL;
     return r;

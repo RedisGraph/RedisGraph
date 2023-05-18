@@ -834,32 +834,31 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0], 1)
         self.env.assertEquals(res.result_set[1][0], 2)
 
-        # TODO: Fix the filtering of the Distinct op here.
-        # # a simple subquery, using input from the outer query
-        # res = graph.query(
-        #     """
-        #     UNWIND range(1, 2) AS i
-        #     CALL {
-        #         WITH i
-        #         RETURN i AS num
-        #         UNION
-        #         WITH i
-        #         RETURN i + 1 AS num
-        #     }
-        #     RETURN i, num ORDER BY i, num ASC
-        #     """
-        # )
+        # a simple subquery, using input from the outer query
+        res = graph.query(
+            """
+            UNWIND range(1, 2) AS i
+            CALL {
+                WITH i
+                RETURN i AS num
+                UNION
+                WITH i
+                RETURN i + 1 AS num
+            }
+            RETURN i, num ORDER BY i, num ASC
+            """
+        )
 
-        # # assert results
-        # self.env.assertEquals(len(res.result_set), 4)
-        # self.env.assertEquals(res.result_set[0][0], 1)
-        # self.env.assertEquals(res.result_set[0][1], 1)
-        # self.env.assertEquals(res.result_set[1][0], 1)
-        # self.env.assertEquals(res.result_set[1][1], 2)
-        # self.env.assertEquals(res.result_set[2][0], 2)
-        # self.env.assertEquals(res.result_set[2][1], 2)
-        # self.env.assertEquals(res.result_set[3][0], 2)
-        # self.env.assertEquals(res.result_set[3][1], 3)
+        # assert results
+        self.env.assertEquals(len(res.result_set), 4)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[0][1], 1)
+        self.env.assertEquals(res.result_set[1][0], 1)
+        self.env.assertEquals(res.result_set[1][1], 2)
+        self.env.assertEquals(res.result_set[2][0], 2)
+        self.env.assertEquals(res.result_set[2][1], 2)
+        self.env.assertEquals(res.result_set[3][0], 2)
+        self.env.assertEquals(res.result_set[3][1], 3)
 
         # create nodes in both braches of the UNION
         res = graph.query(
@@ -913,7 +912,7 @@ updating clause.")
                 MATCH (m:M)
                 RETURN m AS node
             }
-            RETURN node
+            RETURN node ORDER BY node.v ASC
             """
         )
 
