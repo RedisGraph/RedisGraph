@@ -233,13 +233,22 @@ static AST_Validation _ValidateMergeRelation
 		return AST_INVALID;
 	}
 
-	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(entity);
-	const char *alias = NULL;
-	if(identifier) {
-		alias = cypher_ast_identifier_get_name(identifier);
-		// Verify that we're not redeclaring a bound variable
-		if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
-			ErrorCtx_SetError("The bound variable %s' can't be redeclared in a MERGE clause", alias);
+	const cypher_astnode_t *current_identifier = cypher_ast_rel_pattern_get_identifier(entity);
+	if(current_identifier) {
+		const char* identifier_name = cypher_ast_identifier_get_name(current_identifier);
+        int len = strlen(identifier_name);
+
+        void* identifier = raxFind(defined_aliases, (unsigned char *)identifier_name, len);
+
+		if(identifier != raxNotFound) {
+            // if the identifier was previously deleted, it can't be re-created
+            if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
+                ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause because it was deleted.", len, identifier_name);
+                return AST_INVALID;
+            }
+
+		    // Verify that we're not redeclaring a bound variable
+			ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a MERGE clause", identifier_name);
 			return AST_INVALID;
 		}
 	}
@@ -290,7 +299,7 @@ static AST_Validation _ValidateMergeNode
     
     // if the identifier was deleted previously, it can't be re-created
     if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
-        ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause, it was deleted.", len, identifier_name);
+        ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause because it was deleted.", len, identifier_name);
         return AST_INVALID;
     }
 
@@ -313,11 +322,11 @@ static AST_Validation _ValidateCreateRelation
 
 			// if the identifier was previously deleted, it can't be re-created
 			if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
-				ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause, it was deleted.", len, identifier_name);
+				ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause because it was deleted.", len, identifier_name);
 					return AST_INVALID;
 			}
 
-			ErrorCtx_SetError("xxThe bound variable '%s' can't be redeclared in a CREATE clause", identifier_name);
+			ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", identifier_name);
 			return AST_INVALID;
 		}
 	}
@@ -359,7 +368,7 @@ static AST_Validation _Validate_CREATE_Entities
 
 				// if the identifier was previously deleted, it can't be re-created
 				if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
-					ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause, it was deleted.", len, identifier_name);
+					ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause because it was deleted.", len, identifier_name);
 					return AST_INVALID;
 				}
 			}
@@ -529,10 +538,17 @@ static VISITOR_STRATEGY _Validate_identifier
 		return VISITOR_BREAK;
 	}
 
-	if(identifier != raxNotFound && identifier != NULL) {
+	if(identifier != NULL) {
 		if(vctx->clause == CYPHER_AST_DELETE) {
-			((identifier_desc*)identifier)->state = DELETED;
-		} 
+            if(((identifier_desc*)identifier)->state == DELETED) {
+                ErrorCtx_SetError(
+                        "The bound variable '%.*s' can't be in DELETE clause because it was previously deleted.",
+                        len, identifier_name);
+                return VISITOR_BREAK;
+            } else {
+                ((identifier_desc*)identifier)->state = DELETED;
+            }
+        }
 	}
 
 	return VISITOR_RECURSE;
@@ -1605,11 +1621,33 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 
 	// introduce bound vars
 	for(uint i = 0; i < num_return_projections; i ++) {
-		const cypher_astnode_t *child = cypher_ast_return_get_projection(n, i);
-		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
-		if(alias_node == NULL) {
+		const cypher_astnode_t *proj = cypher_ast_return_get_projection(n, i);
+        const cypher_astnode_t *expr =
+            cypher_ast_projection_get_expression(proj);
+		const cypher_astnode_t *alias_node =
+            cypher_ast_projection_get_alias(proj);
+
+        // validate that the returned identifier has not been deleted
+        if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
+            // Retrieve "x" from "RETURN x AS a"
+			const char* identifier_name = cypher_ast_identifier_get_name(expr);
+			uint len = strlen(identifier_name);
+
+			void *identifier = raxFind(vctx->defined_identifiers,
+                (unsigned char *)identifier_name, len);
+
+            if(identifier != raxNotFound && identifier != NULL &&
+                ((identifier_desc*)identifier)->state == DELETED) {
+                ErrorCtx_SetError("The bound variable '%.*s' can't be in a RETURN clause because it was deleted.",
+                        len, identifier_name);
+                    return VISITOR_BREAK;
+            }
+        }
+
+        if(alias_node == NULL) {
 			continue;
 		}
+
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
@@ -1635,7 +1673,7 @@ static VISITOR_STRATEGY _Validate_MATCH_Clause
 	ast_visitor *visitor        // visitor
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
-	
+
 	if(!start) {
 		return VISITOR_CONTINUE;
 	}

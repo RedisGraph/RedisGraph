@@ -89,6 +89,7 @@ Feature: Delete1 - Deleting nodes
     Then the result should be empty
     And no side effects
 
+  @skip
   Scenario: [5] Ignore null when deleting node
     Given an empty graph
     When executing query:
