@@ -46,6 +46,19 @@ typedef struct {
 // number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
 static visit validations_mapping[114];
 
+// rax callback routine for freeing identifier descriptions
+static void _IdentifierDescFreeCallback(void *identifier_val) {
+	identifier_desc *val = (identifier_desc*)identifier_val;
+	rm_free(val);
+}
+
+static void _DefinedIdentifiers_Free(rax* defined_identifiers) {
+	if(defined_identifiers) {
+		raxFreeWithCallback(defined_identifiers, _IdentifierDescFreeCallback);
+		defined_identifiers= NULL;
+	}
+}
+
 // validate that allShortestPaths is in a supported place
 static bool _ValidateAllShortestPaths
 (
@@ -1336,7 +1349,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 		}
 
 		// free old env, set new one
-		raxFree(vctx->defined_identifiers);
+        _DefinedIdentifiers_Free(vctx->defined_identifiers);
 		vctx->defined_identifiers = projected_identifiers;
 	}
 
@@ -1438,7 +1451,7 @@ static VISITOR_STRATEGY _Validate_UNION_Clause
 
 	// free old bounded vars environment, create a new one
 	vctx->clause = cypher_astnode_type(n);
-	raxFree(vctx->defined_identifiers);
+	_DefinedIdentifiers_Free(vctx->defined_identifiers);
 	vctx->defined_identifiers = raxNew();
 
 	return VISITOR_RECURSE;
@@ -1887,7 +1900,7 @@ static AST_Validation _ValidateScopes
 	AST_Visitor_visit(ast->root, &visitor);
 	
 	// cleanup
-	raxFree(ctx.defined_identifiers);
+	_DefinedIdentifiers_Free(ctx.defined_identifiers);
 
 	return !ErrorCtx_EncounteredError() ? AST_VALID : AST_INVALID;
 }
@@ -2151,7 +2164,7 @@ AST_Validation AST_Validate_QueryParams
 	AST_Visitor_visit(root, &visitor);
 
 	// cleanup
-	raxFree(ctx.defined_identifiers);
+	_DefinedIdentifiers_Free(ctx.defined_identifiers);
 
 	return !ErrorCtx_EncounteredError() ? AST_VALID : AST_INVALID;
 }
@@ -2187,3 +2200,4 @@ void AST_ReportErrors
 	ErrorCtx_SetError("errMsg: %s line: %u, column: %u, offset: %zu errCtx: %s errCtxOffset: %zu",
 					  errMsg, errPos.line, errPos.column, errPos.offset, errCtx, errCtxOffset);
 }
+
