@@ -860,7 +860,7 @@ updating clause.")
         self.env.assertEquals(res.result_set[3][0], 2)
         self.env.assertEquals(res.result_set[3][1], 3)
 
-        # create nodes in both braches of the UNION
+        # create nodes in both branches of the UNION
         res = graph.query(
             """
             CALL {
