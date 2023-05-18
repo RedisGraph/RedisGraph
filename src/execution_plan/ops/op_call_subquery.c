@@ -163,12 +163,8 @@ static Record CallSubqueryConsumeEager
     if(op->is_returning) {
         // we can pass op->records (rather than a clone), since we later return
         // the consumed records from the body
-        // ArgumentList_AddRecordList(op->argument_list, op->records);
 
-        // TODO: We need to send the records to all branches, not just the last..
-        // This requires some thinking and changing!
-
-        for(int i = 0; i < (int)op->n_branches - 2; i++) {
+        for(int i = 0; i < (int)op->n_branches - 1; i++) {
             Record *records_clone;
             array_clone_with_cb(records_clone, op->records,
                 OpBase_DeepCloneRecord);
