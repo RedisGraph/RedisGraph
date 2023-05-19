@@ -255,8 +255,9 @@ static AST_Validation _ValidateMergeRelation
 
 		if(identifier != raxNotFound) {
             // if the identifier was previously deleted, it can't be re-created
+			// CREATE (x) DELETE x MERGE (x)<-[:R]-()
             if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
-                ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause because it was deleted.", len, identifier_name);
+                ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a MERGE clause because it was deleted.", len, identifier_name);
                 return AST_INVALID;
             }
 
@@ -312,7 +313,7 @@ static AST_Validation _ValidateMergeNode
     
     // if the identifier was deleted previously, it can't be re-created
     if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
-        ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause because it was deleted.", len, identifier_name);
+        ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a MERGE clause because it was deleted.", len, identifier_name);
         return AST_INVALID;
     }
 
@@ -333,11 +334,13 @@ static AST_Validation _ValidateCreateRelation
         void *identifier = raxFind(defined_aliases, (unsigned char *)identifier_name, len);
         if (identifier != raxNotFound) {
 
-			// if the identifier was previously deleted, it can't be re-created
-			if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
-				ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause because it was deleted.", len, identifier_name);
-					return AST_INVALID;
-			}
+			// if the edge was previously deleted, it can't be re-created
+			// MERGE ()-[r:R]->() WITH r AS e DELETE e CREATE (c)<-[e:R]-(d)
+			//TODO: BUG this code is not necessary here
+			// if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
+			// 	ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause because it was deleted.", len, identifier_name);
+			// 		return AST_INVALID;
+			// }
 
 			ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", identifier_name);
 			return AST_INVALID;
@@ -359,7 +362,7 @@ static AST_Validation _Validate_CREATE_Entities
 		const cypher_astnode_t *path_elem = cypher_ast_pattern_path_get_element(path, i);
 		const cypher_astnode_t *current_identifier = NULL;
 
-		if(i%2 == 0) {
+		if(i % 2 == 0) {
 			current_identifier = cypher_ast_node_pattern_get_identifier(path_elem);
 		} else {
 			current_identifier = cypher_ast_rel_pattern_get_identifier(path_elem);
@@ -380,6 +383,8 @@ static AST_Validation _Validate_CREATE_Entities
 				}
 
 				// if the identifier was previously deleted, it can't be re-created
+				// MERGE (x) DELETE x CREATE ()<-[:R]-(x)
+				// MERGE ()-[r:R]->() WITH r AS e DELETE e CREATE (c)<-[e:R]-(d)
 				if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
 					ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause because it was deleted.", len, identifier_name);
 					return AST_INVALID;
@@ -904,11 +909,14 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 			SIType alias_type = ((identifier_desc *)identifier)->type;
 			identifier_state state = ((identifier_desc *)identifier)->state;
 
-			if(alias_type != T_EDGE) {
+			// MATCH ()-[r]->(r) RETURN r
+            if(alias_type != T_EDGE) {
 				ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
 				return VISITOR_BREAK;
 			}
 
+            // MATCH (a)-[r]->()-[r]->(a) RETURN r
+            // MATCH (a:A)-[r]->(), (b:B)-[r]->() RETURN r  TODO: Check if this is valid.
 			if(vctx->clause == CYPHER_AST_MATCH && state == CREATED) {
 				ErrorCtx_SetError("Cannot use the same relationship variable '%s' for multiple patterns.", alias);
 				return VISITOR_BREAK;
@@ -1326,9 +1334,20 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 					identifier_name = cypher_ast_identifier_get_name(expr);
 					uint len = strlen(identifier_name);
 					
-					// copy original identifier properties to the aliased identifier
+					
 					void *identifier = raxFind(vctx->defined_identifiers, (unsigned char *)identifier_name, len);
 					if(identifier != raxNotFound && identifier != NULL) {
+
+						// if the aliased projected identifier was deleted, emit error
+						// MERGE (a)-[e:R]->(b) DELETE e WITH e AS r RETURN 0
+						// MERGE (a)-[e:R]->(b) DELETE a WITH a AS x RETURN 0
+						if(((identifier_desc*)identifier)->state == DELETED) {
+							ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
+								len, identifier_name);
+							goto cleanup;
+						}
+
+						// copy original identifier properties to the aliased identifier
 						identifier_desc *alias_identifier = rm_malloc(sizeof(identifier_desc));
 						alias_identifier->type  = ((identifier_desc*)identifier)->type;
 						alias_identifier->state = PROJECTED;
@@ -1341,16 +1360,38 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 						strlen(alias), NULL, NULL);	
 				}
 			} else {
+				// Retrieve "x" from "WITH x"
 				ast_alias = cypher_ast_projection_get_expression(proj);
-				alias = cypher_ast_identifier_get_name(ast_alias);
-				raxInsert(projected_identifiers, (unsigned char *)alias,
-					strlen(alias), NULL, NULL);
+
+				if(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER) {
+					identifier_name = cypher_ast_identifier_get_name(ast_alias);
+					uint len = strlen(identifier_name);
+					void *identifier = raxFind(vctx->defined_identifiers, (unsigned char *)identifier_name, len);
+
+					// if the projected identifier was deleted, emit error
+					// MERGE (a)-[e:R]->(b) DELETE e WITH e RETURN 0
+					// MERGE (a)-[e:R]->(b) DELETE a WITH a RETURN 0
+					if(identifier != raxNotFound && identifier != NULL &&
+						((identifier_desc*)identifier)->state == DELETED) {
+						ErrorCtx_SetError("The bound variable '%.*s' can't be in a WITH clause because it was deleted.",
+							len, identifier_name);
+						goto cleanup;
+					}
+				}
+
+				raxInsert(projected_identifiers, (unsigned char *)identifier_name,
+					strlen(identifier_name), NULL, NULL);
 			}
 		}
 
+cleanup:
 		// free old env, set new one
-        _DefinedIdentifiers_Free(vctx->defined_identifiers);
+		_DefinedIdentifiers_Free(vctx->defined_identifiers);
 		vctx->defined_identifiers = projected_identifiers;
+
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
+		} 
 	}
 
 	return VISITOR_CONTINUE;
