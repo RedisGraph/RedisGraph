@@ -46,13 +46,30 @@ typedef struct {
 // number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
 static visit validations_mapping[114];
 
+// rax callback routine for cloning identifier descriptions
+identifier_desc* _IdentifierDescCloneCallback(
+	const identifier_desc* orig
+) {
+	if(orig != NULL) {
+		identifier_desc *clone = rm_malloc(sizeof(identifier_desc));
+		clone->type  = orig->type;
+		clone->state = orig->state;
+		return clone;
+	}
+	return NULL;
+}
+
 // rax callback routine for freeing identifier descriptions
-static void _IdentifierDescFreeCallback(void *identifier_val) {
+static void _IdentifierDescFreeCallback(
+	void *identifier_val
+) {
 	identifier_desc *val = (identifier_desc*)identifier_val;
 	rm_free(val);
 }
 
-static void _DefinedIdentifiers_Free(rax* defined_identifiers) {
+static void _DefinedIdentifiers_Free(
+	rax* defined_identifiers
+) {
 	if(defined_identifiers) {
 		raxFreeWithCallback(defined_identifiers, _IdentifierDescFreeCallback);
 		defined_identifiers= NULL;
@@ -558,6 +575,8 @@ static VISITOR_STRATEGY _Validate_identifier
 
 	if(identifier != NULL) {
 		if(vctx->clause == CYPHER_AST_DELETE) {
+			// CREATE (a) DELETE a CREATE(b) DELETE a
+			// MERGE ()<-[e:R]-() DELETE e CREATE(b) DELETE e
             if(((identifier_desc*)identifier)->state == DELETED) {
                 ErrorCtx_SetError(
                         "The bound variable '%.*s' can't be in DELETE clause because it was previously deleted.",
@@ -1325,17 +1344,18 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 				cypher_ast_projection_get_alias(proj);
 			const char *alias;
 			const char *identifier_name;
+			void *identifier = NULL;
+
 			if(ast_alias) {
 				// Retrieve "a" from "WITH x AS a" or "WITH [1, 2, 3] AS a"
-				alias = cypher_ast_identifier_get_name(ast_alias);
+				identifier_name = cypher_ast_identifier_get_name(ast_alias);
 
 				if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
 					// Retrieve "x" from "WITH x AS a"
-					identifier_name = cypher_ast_identifier_get_name(expr);
-					uint len = strlen(identifier_name);
+					const char *current_identifier_name = cypher_ast_identifier_get_name(expr);
+					uint len = strlen(current_identifier_name);
 					
-					
-					void *identifier = raxFind(vctx->defined_identifiers, (unsigned char *)identifier_name, len);
+					identifier = raxFind(vctx->defined_identifiers, (unsigned char *)current_identifier_name, len);
 					if(identifier != raxNotFound && identifier != NULL) {
 
 						// if the aliased projected identifier was deleted, emit error
@@ -1343,7 +1363,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 						// MERGE (a)-[e:R]->(b) DELETE a WITH a AS x RETURN 0
 						if(((identifier_desc*)identifier)->state == DELETED) {
 							ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
-								len, identifier_name);
+								len, current_identifier_name);
 							goto cleanup;
 						}
 
@@ -1351,13 +1371,8 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 						identifier_desc *alias_identifier = rm_malloc(sizeof(identifier_desc));
 						alias_identifier->type  = ((identifier_desc*)identifier)->type;
 						alias_identifier->state = PROJECTED;
-						raxInsert(projected_identifiers, (unsigned char *)alias, strlen(alias), (void *)alias_identifier, NULL);
-					} else {
-						raxInsert(projected_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+						identifier = alias_identifier;
 					}
-				} else {
-					raxInsert(projected_identifiers, (unsigned char *)alias,
-						strlen(alias), NULL, NULL);	
 				}
 			} else {
 				// Retrieve "x" from "WITH x"
@@ -1366,7 +1381,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 				if(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER) {
 					identifier_name = cypher_ast_identifier_get_name(ast_alias);
 					uint len = strlen(identifier_name);
-					void *identifier = raxFind(vctx->defined_identifiers, (unsigned char *)identifier_name, len);
+					identifier = raxFind(vctx->defined_identifiers, (unsigned char *)identifier_name, len);
 
 					// if the projected identifier was deleted, emit error
 					// MERGE (a)-[e:R]->(b) DELETE e WITH e RETURN 0
@@ -1378,10 +1393,11 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 						goto cleanup;
 					}
 				}
-
-				raxInsert(projected_identifiers, (unsigned char *)identifier_name,
-					strlen(identifier_name), NULL, NULL);
 			}
+
+			raxInsert(projected_identifiers, (unsigned char *)identifier_name,
+				strlen(identifier_name), identifier, NULL);
+
 		}
 
 cleanup:
@@ -1392,6 +1408,24 @@ cleanup:
 		if(ErrorCtx_EncounteredError()) {
 			return VISITOR_BREAK;
 		} 
+	} else {
+		// if any of the identifiers was deleted, emit error
+		// CREATE ()-[:R]->(x) DELETE x WITH * RETURN 0
+		raxIterator it;
+		raxStart(&it, vctx->defined_identifiers);
+		raxSeek(&it, "^", NULL, 0);
+
+		while(raxNext(&it)) {
+			identifier_desc *identifier = (identifier_desc*)it.data;
+			if(identifier != raxNotFound && identifier != NULL &&
+				((identifier_desc*)identifier)->state == DELETED) {
+				ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
+					it.key_len, it.key);
+				return VISITOR_BREAK;
+			}
+		}
+
+		raxStop(&it);
 	}
 
 	return VISITOR_CONTINUE;
@@ -1570,7 +1604,10 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 	// used in the traversal of the visitor in the clauses of the FOREACH
 	// clause - as they are local to the FOREACH clause
 	rax *orig_env = vctx->defined_identifiers;
-	rax *scoped_env = raxClone(orig_env);
+	//rax *scoped_env = raxClone(orig_env);
+	rax *scoped_env = raxCloneWithCallback(orig_env, 
+		(void *(*)(void *))_IdentifierDescCloneCallback);
+
 	vctx->defined_identifiers = scoped_env;
 
 	// set the clause of the context
@@ -1615,7 +1652,8 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 
 	// restore original environment of bounded vars
 	vctx->defined_identifiers = orig_env;
-	raxFree(scoped_env);
+	//raxFree(scoped_env);
+	_DefinedIdentifiers_Free(scoped_env);
 
 	// check for errors
 	if(ErrorCtx_EncounteredError()) {

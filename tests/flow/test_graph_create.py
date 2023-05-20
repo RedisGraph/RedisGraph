@@ -219,10 +219,10 @@ class testGraphCreationFlow(FlowTestsBase):
                 "The bound variable 'x' can't be redeclared in a MERGE clause because it was deleted.")
         
         # test reusing deleted nodes in WITH
-        queries = [#"MERGE ()-[:R1]->(x) DELETE x WITH x RETURN 0",
+        queries = ["MERGE (x)-[:R]->() DELETE x WITH * RETURN 0",
+                   "CREATE ()-[:R]->(x) DELETE x WITH * RETURN 0",
+                   #"MERGE ()-[:R1]->(x) DELETE x WITH x RETURN 0",
                    #"CREATE ()-[:R1]->(x) DELETE x WITH x RETURN 0",
-                   #"MERGE (x)-[:R]->() DELETE x WITH * RETURN 0",
-                   #"CREATE ()-[:R]->(x) DELETE x WITH * RETURN 0",
                    "MERGE ()<-[:R1]-(x) DELETE x WITH x AS y RETURN 0",
                    "CREATE ()<-[:R1]-(x) DELETE x WITH x AS y RETURN 0",
                   ]
@@ -247,10 +247,10 @@ class testGraphCreationFlow(FlowTestsBase):
                 "The bound variable 'e' can't be redeclared in a MERGE clause because it was deleted.")
 
         # test reusing deleted edges in WITH
-        queries = [#"MERGE ()-[e:R1]->() DELETE e WITH e RETURN 0",
+        queries = ["MERGE (a)-[e:R]->(b) DELETE e WITH * RETURN 0",
+                   "CREATE (a)-[e:R]->(b) DELETE e WITH * RETURN 0",
+                   #"MERGE ()-[e:R1]->() DELETE e WITH e RETURN 0",
                    #"CREATE ()-[e:R1]->() DELETE e WITH e RETURN 0",
-                   #"MERGE (a)-[e:R]->(b) DELETE e WITH * RETURN 0",
-                   #"CREATE (a)-[e:R]->(b) DELETE e WITH * RETURN 0",
                    "MERGE ()-[e:R1]->() DELETE e WITH e AS r RETURN 0",
                    "CREATE ()-[e:R1]->() DELETE e WITH e AS r RETURN 0",
                   ]

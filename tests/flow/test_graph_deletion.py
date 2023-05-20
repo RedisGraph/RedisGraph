@@ -421,7 +421,7 @@ class testGraphDeletionFlow(FlowTestsBase):
             DELETE nodes(p2)[0]")
 
         # validate that the nodes were deleted
-        self.env.assertEquals(res.nodes_deleted, 2, depth=1)
+        self.env.assertEquals(res.nodes_deleted, 2)
 
         # create 2 nodes, with the same label N
         redis_graph.query("CREATE (:N), (:N)")
@@ -429,7 +429,7 @@ class testGraphDeletionFlow(FlowTestsBase):
             nodes(p)[0]")
 
         # validate that the nodes were deleted
-        self.env.assertEquals(res.nodes_deleted, 2, depth=1)
+        self.env.assertEquals(res.nodes_deleted, 2)
 
     def test21_delete_deleted_entities(self):
         # Queries that delete nodes/edges that were deleted previously should emit an error.
