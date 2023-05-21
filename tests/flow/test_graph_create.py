@@ -219,9 +219,7 @@ class testGraphCreationFlow(FlowTestsBase):
                 "The bound variable 'x' can't be redeclared in a MERGE clause because it was deleted.")
         
         # test reusing deleted nodes in WITH
-        queries = ["MERGE (x)-[:R]->() DELETE x WITH * RETURN 0",
-                   "CREATE ()-[:R]->(x) DELETE x WITH * RETURN 0",
-                   "MERGE ()-[:R1]->(x) DELETE x WITH x RETURN 0",
+        queries = ["MERGE ()-[:R1]->(x) DELETE x WITH x RETURN 0",
                    "CREATE ()-[:R1]->(x) DELETE x WITH x RETURN 0",
                    "MERGE ()<-[:R1]-(x) DELETE x WITH x AS y RETURN 0",
                    "CREATE ()<-[:R1]-(x) DELETE x WITH x AS y RETURN 0",
@@ -247,9 +245,7 @@ class testGraphCreationFlow(FlowTestsBase):
                 "The bound variable 'e' can't be redeclared in a MERGE clause because it was deleted.")
 
         # test reusing deleted edges in WITH
-        queries = ["MERGE (a)-[e:R]->(b) DELETE e WITH * RETURN 0",
-                   "CREATE (a)-[e:R]->(b) DELETE e WITH * RETURN 0",
-                   "MERGE ()-[e:R1]->() DELETE e WITH e RETURN 0",
+        queries = ["MERGE ()-[e:R1]->() DELETE e WITH e RETURN 0",
                    "CREATE ()-[e:R1]->() DELETE e WITH e RETURN 0",
                    "MERGE ()-[e:R1]->() DELETE e WITH e AS r RETURN 0",
                    "CREATE ()-[e:R1]->() DELETE e WITH e AS r RETURN 0",
@@ -257,6 +253,16 @@ class testGraphCreationFlow(FlowTestsBase):
         for query in queries:
             self._assert_exception(redis_graph, query,
                 "The bound variable 'e' can't be used in a WITH clause because it was deleted.")
+        
+        # test reusing deleted nodes/edges in WITH *
+        queries = ["MERGE (x)-[:R]->() DELETE x WITH * RETURN 0",
+                   "CREATE ()-[:R]->(x) DELETE x WITH * RETURN 0",
+                   "MERGE (a)-[e:R]->(b) DELETE e WITH * RETURN 0",
+                   "CREATE (a)-[e:R]->(b) DELETE e WITH * RETURN 0",
+                  ]
+        for query in queries:
+            self._assert_exception(redis_graph, query,
+                "The WITH * clause can't be used because at least one of the bound variables was deleted.")
 
         # test returning deleted nodes
         queries = ["MERGE (x) DELETE x RETURN x",

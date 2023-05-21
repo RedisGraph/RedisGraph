@@ -26,6 +26,7 @@ typedef struct {
 	rax *defined_identifiers;      // identifiers environment
 	cypher_astnode_type_t clause;  // top-level clause type
 	is_union_all union_all;        // union type (regular or ALL)
+    bool contains_deleted;         // at least one of the identifier was deleted 
 } validations_ctx;
 
 // possible states of entities during ast validation
@@ -46,7 +47,7 @@ typedef struct {
 static visit validations_mapping[114];
 
 // rax callback routine for cloning identifier descriptions
-identifier_desc* _IdentifierDescCloneCallback(
+identifier_desc* _IdentifierDescClone(
 	const identifier_desc* orig
 ) {
 	if(orig != NULL) {
@@ -167,6 +168,7 @@ static bool _AST_GetWithAliases
             cypher_ast_projection_get_alias(proj);
         const char *identifier_name;
         void *identifier = NULL;
+        void *projected_identifier = NULL;
         
         if(ast_alias) {
             // Retrieve "a" from "WITH [1, 2, 3] as a"
@@ -190,10 +192,7 @@ static bool _AST_GetWithAliases
                     }
 
                     // copy original identifier properties to the aliased identifier
-                    identifier_desc *alias_identifier = rm_malloc(sizeof(identifier_desc));
-                    alias_identifier->type  = ((identifier_desc*)identifier)->type;
-                    alias_identifier->state = CREATED;
-                    identifier = alias_identifier;
+                    projected_identifier = _IdentifierDescClone(identifier);
                 }
             }
         } else {
@@ -211,7 +210,7 @@ static bool _AST_GetWithAliases
                 uint len = strlen(identifier_name);
                 identifier = raxFind(aliases, (unsigned char *)identifier_name, len);
 
-                  if(identifier != raxNotFound && identifier != NULL) {
+                if(identifier != raxNotFound && identifier != NULL) {
                     // if the projected identifier was deleted, emit error
                     // MERGE (a)-[e:R]->(b) DELETE e WITH e RETURN 0
                     // MERGE (a)-[e:R]->(b) DELETE a WITH a RETURN 0
@@ -222,16 +221,13 @@ static bool _AST_GetWithAliases
                     }
 
                     // copy original identifier properties to the aliased identifier
-                    identifier_desc *alias_identifier = rm_malloc(sizeof(identifier_desc));
-                    alias_identifier->type  = ((identifier_desc*)identifier)->type;
-                    alias_identifier->state = CREATED;
-                    identifier = alias_identifier;
+                    projected_identifier = _IdentifierDescClone(identifier);
                 }
             }
         }
 
         raxInsert(aliases, (unsigned char *)identifier_name,
-            strlen(identifier_name), identifier, NULL);
+            strlen(identifier_name), projected_identifier, NULL);
 
 
 		// check for duplicate column names
@@ -631,6 +627,7 @@ static VISITOR_STRATEGY _Validate_identifier
                 return VISITOR_BREAK;
             } else {
                 ((identifier_desc*)identifier)->state = DELETED;
+               vctx->contains_deleted = true; 
             }
         }
 	}
@@ -1413,6 +1410,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 				cypher_ast_projection_get_alias(proj);
 			const char *identifier_name;
 			void *identifier = NULL;
+            void *projected_identifier = NULL;
 
 			if(ast_alias) {
 				// Retrieve "a" from "WITH x AS a" or "WITH [1, 2, 3] AS a"
@@ -1426,10 +1424,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 					identifier = raxFind(vctx->defined_identifiers, (unsigned char *)current_identifier_name, len);
 					if(identifier != raxNotFound && identifier != NULL) {
 						// copy original identifier properties to the aliased identifier
-						identifier_desc *alias_identifier = rm_malloc(sizeof(identifier_desc));
-						alias_identifier->type  = ((identifier_desc*)identifier)->type;
-						alias_identifier->state = ((identifier_desc*)identifier)->state;
-						identifier = alias_identifier;
+                        projected_identifier = _IdentifierDescClone(identifier);
 					}
 				}
 			} else {
@@ -1443,16 +1438,13 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 
 					if(identifier != raxNotFound && identifier != NULL) {
                        // copy original identifier properties to the aliased identifier
-                       identifier_desc *alias_identifier = rm_malloc(sizeof(identifier_desc));
-                       alias_identifier->type  = ((identifier_desc*)identifier)->type;
-                       alias_identifier->state = ((identifier_desc*)identifier)->state;
-                       identifier = alias_identifier;
+                       projected_identifier = _IdentifierDescClone(identifier);
 					}
 				}
 			}
 
 			raxInsert(projected_identifiers, (unsigned char *)identifier_name,
-				strlen(identifier_name), identifier, NULL);
+				strlen(identifier_name), projected_identifier, NULL);
 
 		}
 
@@ -1463,21 +1455,24 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 	} else {
 		// if any of the identifiers was deleted, emit error
 		// CREATE ()-[:R]->(x) DELETE x WITH * RETURN 0
-		raxIterator it;
-		raxStart(&it, vctx->defined_identifiers);
-		raxSeek(&it, "^", NULL, 0);
+        if(vctx->contains_deleted) {
+            ErrorCtx_SetError("The WITH * clause can't be used because at least one of the bound variables was deleted.");
+			return VISITOR_BREAK;
+        }
+		//raxIterator it;
+		//raxStart(&it, vctx->defined_identifiers);
+		//raxSeek(&it, "^", NULL, 0);
 
-		while(raxNext(&it)) {
-			identifier_desc *identifier = (identifier_desc*)it.data;
-			if(identifier != raxNotFound && identifier != NULL &&
-				((identifier_desc*)identifier)->state == DELETED) {
-				ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
-					(int)it.key_len, (char *)it.key);
-				return VISITOR_BREAK;
-			}
-		}
-
-		raxStop(&it);
+		//while(raxNext(&it)) {
+		//	identifier_desc *identifier = (identifier_desc*)it.data;
+		//	if(identifier != raxNotFound && identifier != NULL &&
+		//		((identifier_desc*)identifier)->state == DELETED) {
+		//		ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
+		//			(int)it.key_len, (char *)it.key);
+		//		return VISITOR_BREAK;
+		//	}
+		//}
+		//raxStop(&it);
 	}
 
 	return VISITOR_CONTINUE;
@@ -1656,9 +1651,8 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 	// used in the traversal of the visitor in the clauses of the FOREACH
 	// clause - as they are local to the FOREACH clause
 	rax *orig_env = vctx->defined_identifiers;
-	//rax *scoped_env = raxClone(orig_env);
 	rax *scoped_env = raxCloneWithCallback(orig_env, 
-		(void *(*)(void *))_IdentifierDescCloneCallback);
+		(void *(*)(void *))_IdentifierDescClone);
 
 	vctx->defined_identifiers = scoped_env;
 
@@ -1704,7 +1698,6 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 
 	// restore original environment of bounded vars
 	vctx->defined_identifiers = orig_env;
-	//raxFree(scoped_env);
 	_DefinedIdentifiers_Free(scoped_env);
 
 	// check for errors
@@ -2023,6 +2016,7 @@ static AST_Validation _ValidateScopes
 	validations_ctx ctx;
 	ctx.union_all = NOT_DEFINED;
 	ctx.defined_identifiers = raxNew();
+    ctx.contains_deleted = false;
 
 	// create a visitor
 	ast_visitor visitor = {&ctx, validations_mapping};
@@ -2287,6 +2281,7 @@ AST_Validation AST_Validate_QueryParams
 	validations_ctx ctx;
 	ctx.union_all = NOT_DEFINED;
 	ctx.defined_identifiers = raxNew();
+    ctx.contains_deleted = false;
 
 	// create a visitor
 	ast_visitor visitor = {&ctx, validations_mapping};
