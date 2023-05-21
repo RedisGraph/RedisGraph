@@ -169,7 +169,7 @@ static bool _AST_GetWithAliases
         const char *identifier_name;
         void *identifier = NULL;
         void *projected_identifier = NULL;
-        
+
         if(ast_alias) {
             // Retrieve "a" from "WITH [1, 2, 3] as a"
             identifier_name = cypher_ast_identifier_get_name(ast_alias);
@@ -188,6 +188,7 @@ static bool _AST_GetWithAliases
                     if(((identifier_desc*)identifier)->state == DELETED) {
                         ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
                                 len, current_identifier_name);
+                        raxFree(local_env);
                         return false;
                     }
 
@@ -217,6 +218,7 @@ static bool _AST_GetWithAliases
                     if (((identifier_desc*)identifier)->state == DELETED) {
                         ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
                             len, identifier_name);
+                        raxFree(local_env);
                         return false;
                     }
 
@@ -1459,20 +1461,6 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
             ErrorCtx_SetError("The WITH * clause can't be used because at least one of the bound variables was deleted.");
 			return VISITOR_BREAK;
         }
-		//raxIterator it;
-		//raxStart(&it, vctx->defined_identifiers);
-		//raxSeek(&it, "^", NULL, 0);
-
-		//while(raxNext(&it)) {
-		//	identifier_desc *identifier = (identifier_desc*)it.data;
-		//	if(identifier != raxNotFound && identifier != NULL &&
-		//		((identifier_desc*)identifier)->state == DELETED) {
-		//		ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
-		//			(int)it.key_len, (char *)it.key);
-		//		return VISITOR_BREAK;
-		//	}
-		//}
-		//raxStop(&it);
 	}
 
 	return VISITOR_CONTINUE;
