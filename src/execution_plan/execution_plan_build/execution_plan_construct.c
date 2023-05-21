@@ -554,13 +554,13 @@ static cypher_astnode_t *_add_first_clause
 	uint n_clauses = cypher_ast_call_subquery_nclauses(callsubquery);
 	cypher_astnode_t *clauses[n_clauses + 1];
 	for(uint i = 0; i < first_ind; i++) {
-		clauses[i] = (cypher_astnode_t *)cypher_ast_call_subquery_get_clause(
-			callsubquery, i);
+		clauses[i] = (cypher_astnode_t *)cypher_ast_clone(cypher_ast_call_subquery_get_clause(
+			callsubquery, i));
 	}
 	clauses[first_ind] = new_clause;
 	for(uint i = first_ind + 1; i < n_clauses + 1; i++) {
-		clauses[i] = (cypher_astnode_t *)cypher_ast_call_subquery_get_clause(
-			callsubquery, i-1);
+		clauses[i] = (cypher_astnode_t *)cypher_ast_clone(cypher_ast_call_subquery_get_clause(
+			callsubquery, i-1));
 	}
 
 	cypher_astnode_t *new_callsubquery = cypher_ast_call_subquery(clauses,
@@ -959,6 +959,7 @@ static void _buildCallSubqueryPlan
 	// create an AST from the body of the subquery
 	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast,
 		plan->record_map);
+	AST_AnnotateNamedPaths(subquery_ast);
 
 	// update the original AST
 	clause = (cypher_astnode_t *)AST_GetClause(orig_ast,

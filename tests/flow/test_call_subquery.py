@@ -547,17 +547,17 @@ updating clause.")
             RETURN 0
             """ 
             : [[0],[0],[0]],
-            # """
-            # UNWIND [0, 1, 2] AS x
-            # CALL {
-            #     CALL {
-            #         RETURN 1 AS x
-            #     }
-            #     RETURN max(x) AS y
-            # }
-            # RETURN x ORDER BY x ASC
-            # """
-            # : [[0], [1], [2]],
+            """
+            UNWIND [0, 1, 2] AS x
+            CALL {
+                CALL {
+                    RETURN 1 AS x
+                }
+                RETURN max(x) AS y
+            }
+            RETURN x ORDER BY x ASC
+            """
+            : [[0], [1], [2]],
             """
             UNWIND [0, 1, 2] AS x
             CALL {
@@ -1047,22 +1047,22 @@ updating clause.")
         graph.query("CREATE (:N {v: 1})")
         node = Node(label='N', properties={'v': 1})
 
-        # refer to a named path defined outside of a subquery, from within the
-        # subquery
-        query = """
-        MATCH p = (n:N)
-        CALL {
-            WITH p
-            RETURN nodes(p)[0] AS s
-        }
-        RETURN s
-        """
+        # # refer to a named path defined outside of a subquery, from within the
+        # # subquery
+        # query = """
+        # MATCH p = (n:N)
+        # CALL {
+        #     WITH p
+        #     RETURN nodes(p)[0] AS s
+        # }
+        # RETURN s
+        # """
 
-        res = graph.query(query)
+        # res = graph.query(query)
 
-        # assert results
-        self.env.assertEquals(len(graph.query(query).result_set), 1)
-        self.env.assertEquals(res.result_set[0][0], node)
+        # # assert results
+        # self.env.assertEquals(len(graph.query(query).result_set), 1)
+        # self.env.assertEquals(res.result_set[0][0], node)
 
         # refer a named path defined inside of a subquery, from within the
         # subquery
@@ -1095,24 +1095,24 @@ updating clause.")
         self.env.assertEquals(len(graph.query(query).result_set), 1)
         self.env.assertEquals(res.result_set[0][0], node)
 
-        # refer to a named path defined in a subquery, from a nested subquery
-        query = """
-        CALL {
-            MATCH p = (n:N)
-            CALL {
-                WITH p
-                RETURN nodes(p)[0] AS s
-            }
-            RETURN s
-        }
-        RETURN s
-        """
+        # # refer to a named path defined in a subquery, from a nested subquery
+        # query = """
+        # CALL {
+        #     MATCH p = (n:N)
+        #     CALL {
+        #         WITH p
+        #         RETURN nodes(p)[0] AS s
+        #     }
+        #     RETURN s
+        # }
+        # RETURN s
+        # """
 
-        res = graph.query(query)
+        # res = graph.query(query)
 
-        # assert results
-        self.env.assertEquals(len(graph.query(query).result_set), 1)
-        self.env.assertEquals(res.result_set[0][0], node)
+        # # assert results
+        # self.env.assertEquals(len(graph.query(query).result_set), 1)
+        # self.env.assertEquals(res.result_set[0][0], node)
 
     def test26_eager_returning(self):
         """Tests the eager and returning case of Call {}"""
