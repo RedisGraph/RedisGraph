@@ -615,7 +615,22 @@ updating clause.")
     #     res = graph.query(query)
 
     #     # assert results
-    #     self.env.assertEquals(res.result_set[0][0], {'name': 'Canada', 'langs': ['English', 'French'], 'states': [OrderedDict([('type', 'State'), ('name', 'British Columbia'), ('cities', [OrderedDict([('type', 'City'), ('name', 'Victoria')])])]), OrderedDict([('type', 'State'), ('name', 'Ontario'), ('cities', [OrderedDict([('type', 'City'), ('name', 'Toronto')])])])]})
+    #     expected_res = {'name': 'Canada',
+    #         'langs': ['English', 'French'],
+    #         'states':
+    #             [OrderedDict([
+    #                 ('type', 'State'),
+    #                 ('name', 'British Columbia'),
+    #                 ('cities', [OrderedDict([
+    #                     ('type', 'City'),
+    #                     ('name', 'Victoria')])])]),
+    #             OrderedDict([
+    #                 ('type', 'State'),
+    #                 ('name', 'Ontario'),
+    #                 ('cities', [OrderedDict([
+    #                     ('type', 'City'),
+    #                     ('name', 'Toronto')])])])]}
+    #     self.env.assertEquals(res.result_set[0][0], expected_res)
 
     def test16_rewrite_same_clauses(self):
         """Tests that rewrite same clauses works properly on clauses in a

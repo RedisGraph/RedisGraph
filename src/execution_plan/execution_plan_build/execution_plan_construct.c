@@ -441,10 +441,12 @@ static void _replace_with_clause
 	// clone any ORDER BY, SKIP, LIMIT, and WHERE modifiers to
 	// add to the children array and populate the new clause
 	uint nchildren = n_projections;
-	if(order_by)  order_by   = children[nchildren++] = cypher_ast_clone(order_by);
+	if(order_by)  order_by   = children[nchildren++] =
+		cypher_ast_clone(order_by);
 	if(skip)      skip       = children[nchildren++] = cypher_ast_clone(skip);
 	if(limit)     limit      = children[nchildren++] = cypher_ast_clone(limit);
-	if(predicate) predicate  = children[nchildren++] = cypher_ast_clone(predicate);
+	if(predicate) predicate  = children[nchildren++] =
+		cypher_ast_clone(predicate);
 
 	struct cypher_input_range range = cypher_astnode_range(clause);
 
@@ -479,7 +481,8 @@ static void _replace_first_clause
 	// we know the first clause is a WITH clause, which we want to replace
 	cypher_astnode_t *clause =
 		(cypher_astnode_t *)cypher_ast_query_get_clause(query, first_ind);
-	_replace_with_clause(query, callsubquery, clause, first_ind, names, inter_names);
+	_replace_with_clause(query, callsubquery, clause, first_ind, names,
+		inter_names);
 }
 
 // adds a first WITH clause to the query, projecting all bound vars (names) to
@@ -554,13 +557,13 @@ static cypher_astnode_t *_add_first_clause
 	uint n_clauses = cypher_ast_call_subquery_nclauses(callsubquery);
 	cypher_astnode_t *clauses[n_clauses + 1];
 	for(uint i = 0; i < first_ind; i++) {
-		clauses[i] = (cypher_astnode_t *)cypher_ast_clone(cypher_ast_call_subquery_get_clause(
-			callsubquery, i));
+		clauses[i] = (cypher_astnode_t *)cypher_ast_clone(
+			cypher_ast_call_subquery_get_clause(callsubquery, i));
 	}
 	clauses[first_ind] = new_clause;
 	for(uint i = first_ind + 1; i < n_clauses + 1; i++) {
-		clauses[i] = (cypher_astnode_t *)cypher_ast_clone(cypher_ast_call_subquery_get_clause(
-			callsubquery, i-1));
+		clauses[i] =(cypher_astnode_t *)cypher_ast_clone(
+			cypher_ast_call_subquery_get_clause(callsubquery, i-1));
 	}
 
 	cypher_astnode_t *new_callsubquery = cypher_ast_call_subquery(clauses,
@@ -574,7 +577,8 @@ static cypher_astnode_t *_add_first_clause
 
 	// get the query node of the outer context
 	cypher_astnode_t *outer_query = (cypher_astnode_t *)outer_ast->root;
-	cypher_ast_query_set_clause(outer_query, new_callsubquery, callsubquery_ind);
+	cypher_ast_query_set_clause(outer_query, new_callsubquery,
+		callsubquery_ind);
 
 	cypher_astnode_t *new_query = cypher_ast_query(NULL, 0, clauses,
 		n_clauses + 1, clauses, n_clauses + 1, range);
@@ -680,7 +684,8 @@ static void _replace_return_clause
 	// clone any ORDER BY, SKIP, LIMIT, and WHERE modifiers to
 	// add to the children array and populate the new clause
 	uint nchildren = n_projections;
-	if(order_by)  order_by   = children[nchildren++] = cypher_ast_clone(order_by);
+	if(order_by)  order_by   = children[nchildren++] =
+		cypher_ast_clone(order_by);
 	if(skip)      skip       = children[nchildren++] = cypher_ast_clone(skip);
 	if(limit)     limit      = children[nchildren++] = cypher_ast_clone(limit);
 
@@ -767,7 +772,8 @@ static AST *_CreateASTFromCallSubquery
 
 		_get_vars_inner_rep(outer_mapping, &names, &inter_names);
 
-		uint *union_indeces = AST_GetClauseIndices(subquery_ast, CYPHER_AST_UNION);
+		uint *union_indeces = AST_GetClauseIndices(subquery_ast,
+			CYPHER_AST_UNION);
 		array_append(union_indeces, clause_count);
 		uint n_union_branches = array_len(union_indeces);
 
@@ -781,7 +787,8 @@ static AST *_CreateASTFromCallSubquery
 			if(first_is_with) {
 				// replace first clause (WITH) with a WITH clause containing
 				// "n->@n" projections for all bound vars in outer-scope context
-				_replace_first_clause(query, clause, first_ind, names, inter_names);
+				_replace_first_clause(query, clause, first_ind, names,
+					inter_names);
 			} else {
 				// add a WITH clause containing "n->@n" projections
 				// for all bound vars (in outer-scope context), to be the
@@ -864,10 +871,11 @@ static OpBase **_FindDeepestOps
 
 			while(OpBase_ChildCount(deepest) > 0) {
 				deepest = deepest->children[0];
-				// in case of a CallSubquery op with no lhs, we want to stop here, as
-				// the added ops should be its first child (instead of the current one,
-				// which will be moved to be the second child)
-				// Example: "CALL {CALL {RETURN 1 AS one} RETURN one} RETURN one"
+				// in case of a CallSubquery op with no lhs, we want to stop
+				// here, as the added op should be its first child (instead of
+				// the current child, which will be moved to be the second)
+				// Example:
+				// "CALL {CALL {RETURN 1 AS one} RETURN one} RETURN one"
 				if(OpBase_Type(deepest) == OPType_CallSubquery &&
 					deepest->childCount == 1) {
 						found = true;
