@@ -9,6 +9,8 @@
 [![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
 [![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
 
+<img src="docs/docs/images/logo.svg" alt="logo" width="300"/>
+
 RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
 
 Primary features:
@@ -23,36 +25,86 @@ Primary features:
 To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
 To read the docs, visit [redis.io](https://redis.io/docs/stack/graph/).
 
-## Quickstart
+RedisGraph is part of [Redis Stack](https://github.com/redis-stack).
 
-1. [Trying RedisGraph](#trying-redisgraph)
-2. [Docker](#docker)
-3. [Build](#building)
-4. [Start](#loading-redisgraph-into-redis)
-5. [Use from any client](#using-redisgraph)
+## Setup
 
-## Trying RedisGraph
+You can either get RedisGraph setup in a Docker container or on your own machine.
 
-To try RedisGraph, either use the RedisGraph Docker image, or [create a free Redis Cloud Essentials account](https://redislabs.com/try-free/) to get a RedisGraph instance in the cloud.
-
-## Docker
-
-To quickly tryout RedisGraph, launch an instance using docker:
-
+### Docker
+To quickly try out RedisGraph, launch an instance using docker:
 ```sh
 docker run -p 6379:6379 -it --rm redis/redis-stack-server:latest
 ```
 
-### Give it a try
+### Build it yourself
 
-Once loaded you can interact with RedisGraph using redis-cli.
+You can also build RedisGraph on your own machine. Major Linux distributions as well as macOS are supported.
+
+First step is to have Redis installed, of course. The following, for example, builds Redis on a clean Ubuntu docker image (`docker pull ubuntu`):
+
+```
+mkdir ~/Redis
+cd ~/Redis
+apt-get update -y && apt-get upgrade -y
+apt-get install -y wget make pkg-config build-essential
+wget https://download.redis.io/redis-stable.tar.gz
+tar -xzvf redis-stable.tar.gz
+cd redis-stable
+make distclean
+make
+make install
+```
+
+Next, you should get the RedisGraph repository from git and build it:
+
+```
+apt-get install -y git
+cd ~/Redis
+git clone --recursive https://github.com/RedisGraph/RedisGraph.git
+cd RedisGraph
+./sbin/setup
+bash -l
+make
+```
+
+Then `exit` to exit bash.
+
+**Note:** to get a specific version of RedisGraph, e.g. 1.8.9, add `-b v1.8.9` to the `git clone` command above.
+
+Next, run `make run -n` and copy the full path of the RedisGraph executable (e.g., `/root/Redis/RedisGraph/bin/linux-x64-release/redisgraph.so`).
+
+Next, add RedisGraph module to `redis.conf`, so Redis will load when started:
+
+```
+apt-get install -y vim
+cd ~/Redis/redis-stable
+vim redis.conf
+```
+Add: `loadmodule /root/Redis/RedisGraph/bin/linux-x64-release/redisgraph.so` under the MODULES section (use the full path copied above). 
+
+Save and exit vim (ESC :wq ENTER)
+
+For more information about modules, go to the [Redis official documentation](https://redis.io/topics/modules-intro).
+
+### Run
+
+Run redis-server in the background and then redis-cli:
+
+```
+cd ~/Redis/redis-stable
+redis-server redis.conf &
+redis-cli
+```
+
+## Give it a try
+
+After you setup RedisGraph, you can interact with it using redis-cli.
+
+The format of results through `redis-cli` is described in [the RedisGraph documentation](https://redis.io/docs/stack/graph/design/result_structure/).
 
 Here we'll quickly create a small graph representing a subset of motorcycle riders and teams taking part in the MotoGP league,
 once created we'll start querying our data.
-
-### With `redis-cli`
-
-The format of results through `redis-cli` is described in [the RedisGraph documentation](https://redis.io/docs/stack/graph/design/result_structure/).
 
 ```sh
 $ redis-cli
@@ -83,105 +135,6 @@ How many riders represent team Ducati?
 1) 1) "count(r)"
 2) 1) 1) (integer) 1
 3) 1) "Query internal execution time: 0.624435 milliseconds"
-```
-
-## Building
-
-### Compiling
-
-Requirements:
-
-* The RedisGraph repository: `git clone --recurse-submodules -j8 https://github.com/RedisGraph/RedisGraph.git`
-
-* On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf python3`
-
-* On OS X, verify that `homebrew` is installed and run: `brew install cmake m4 automake peg libtool autoconf`.
-    * The version of Clang that ships with the OS X toolchain does not support OpenMP, which is a requirement for RedisGraph. One way to resolve this is to run `brew install gcc g++` and follow the on-screen instructions to update the symbolic links. Note that this is a system-wide change - setting the environment variables for `CC` and `CXX` will work if that is not an option.
-
-To build, run `make` in the project's directory.
-
-Congratulations! You can find the compiled binary at `src/redisgraph.so`.
-
-### Running tests
-
-First, install required Python packages by running ```pip install -r requirements.txt``` from the ```tests``` directory.
-
-If you've got ```redis-server``` in PATH, just invoke ```make test```.
-
-Otherwise, invoke ```REDIS_SERVER=<redis-server-location> make test```.
-
-For more verbose output, run ```make test V=1```.
-
-### Building in a docker
-
-The RedisGraph build system runs within docker. For detailed instructions on building, please [see here](docs/docker-examples/README.md).
-
-## Loading RedisGraph into Redis
-
-RedisGraph is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server: running [Redis v5.0.7 or above](https://redis.io/download).
-
-We recommend having Redis load RedisGraph during startup by adding the following to your redis.conf file:
-
-```
-loadmodule /path/to/module/src/redisgraph.so
-```
-
-In the line above, replace `/path/to/module/src/redisgraph.so` with the actual path to RedisGraph's library.
-If Redis is running as a service, you must ensure that the `redis` user (default) has the necessary file/folder permissions
-to access `redisgraph.so`.
-
-Alternatively, you can have Redis load RedisGraph using the following command line argument syntax:
-
-```sh
-~/$ redis-server --loadmodule /path/to/module/src/redisgraph.so
-```
-
-Lastly, you can also use the [`MODULE LOAD`](http://redis.io/commands/module-load) command. Note, however, that `MODULE LOAD` is a dangerous command and may be blocked/deprecated in the future due to security considerations.
-
-Once you've successfully loaded RedisGraph your Redis log should have lines similar to:
-
-```
-...
-30707:M 20 Jun 02:08:12.314 * Module 'graph' loaded from <redacted>/src/redisgraph.so
-...
-```
-
-If the server fails to launch with output similar to:
-
-```
-# Module /usr/lib/redis/modules/redisgraph.so failed to load: libgomp.so.1: cannot open shared object file: No such file or directory
-# Can't load module from /usr/lib/redis/modules/redisgraph.so: server aborting
-```
-
-The system is missing the run-time dependency OpenMP. This can be installed on Ubuntu with `apt-get install libgomp1`, on RHEL/CentOS with `yum install libgomp`, and on OSX with `brew install libomp`.
-
-## Using RedisGraph
-
-You can call RedisGraph's commands from any Redis client.
-
-### With `redis-cli`
-
-```sh
-$ redis-cli
-127.0.0.1:6379> GRAPH.QUERY social "CREATE (:person {name: 'roi', age: 33, gender: 'male', status: 'married'})"
-```
-
-### With any other client
-
-You can interact with RedisGraph using your client's ability to send raw Redis commands.
-
-Depending on your client of choice, the exact method for doing that may vary.
-
-#### Python example
-
-This code snippet shows how to use RedisGraph with raw Redis commands from Python via
-[redis-py](https://github.com/andymccurdy/redis-py):
-
-```python
-import redis
-
-r = redis.StrictRedis()
-reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi', age:33, gender:'male', status:'married'})")
 ```
 
 ### Client libraries
@@ -288,9 +241,19 @@ Some languages have client libraries that provide support for RedisGraph's comma
 [rustis-author]: https://github.com/dahomey-technologies
 [rustis-stars]: https://img.shields.io/github/stars/dahomey-technologies/rustis.svg?style=social&amp;label=Star&amp;maxAge=2592000
 
+### Running tests
+
+First, install required Python packages by running ```pip install -r requirements.txt``` from the ```tests``` directory.
+
+If you've got ```redis-server``` in PATH, just invoke ```make test```.
+
+Otherwise, invoke ```REDIS_SERVER=<redis-server-location> make test```.
+
+For more verbose output, run ```make test V=1```.
+
 ## Documentation
 
-Read the docs at [redisgraph.io](http://redisgraph.io).
+Read the docs at [redis.io/docs/stack/graph](https://redis.io/docs/stack/graph/).
 
 ## Mailing List / Forum
 
