@@ -240,7 +240,7 @@ inline const AttributeSet GraphEntity_GetAttributes
 ) {
 	ASSERT(e != NULL);
 
-	if(e->attributes != NULL) {
+	if(likely(e->attributes != NULL)) {
 		return *e->attributes;
 	}
 	return NULL;

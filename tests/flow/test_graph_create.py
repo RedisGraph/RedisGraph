@@ -94,16 +94,16 @@ class testGraphCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 1)
         self.env.assertEquals(result.result_set, expected_result)
 
-    # Fail when a property is a complex type nested within an array type
+    # Fail when a property is a complex type or complex type nested within an array type
     def test07_create_invalid_complex_type_in_array(self):
         # Test combinations of invalid types with nested and top-level arrays
         # Invalid types are NULL, maps, nodes, edges, and paths
         queries = ["CREATE (a), (b) SET a.v = [b]",
-                   "CREATE (a {v: ['str', [1, NULL]]})",
                    "CREATE (a {v: [[{k: 'v'}]]})",
-                   "CREATE (a:L)-[e:R]->(:L {v: [e]})",
-                   "CREATE (a), (b)-[:R {k:properties(a)}]->(c)",
-                   "CREATE (a), (b)-[:R]->(c {k:properties(a)})"]
+                   "CREATE (a {v: ['str', [1, NULL]]})",
+                   "CREATE (a:L)-[e:R]->(:L {v: [{}]})",
+                   "CREATE (a), (b)-[:R {k:[{}]}]->(c)",
+                ]
         for query in queries:
             try:
                 redis_graph.query(query)
@@ -197,26 +197,43 @@ class testGraphCreationFlow(FlowTestsBase):
             expected_result = [[0]]
             self.env.assertEquals(result.result_set, expected_result)
 
-    # test creating properties using node created previously in the same query
-    def test11_create_property_from_node(self):
+    # test referencing entities defined previously in the same query
+    # the "intermediate" entities and their properties will be evaluated as NULL
+    def test11_use_intermediate_entities(self):
+
         # test using function with valid arguments
+        # 'a' is evaluated as NULL, but NULL is a valid argument to the function
         queries = [
-            "CREATE (a:A), (b)-[:R {k:toJSON(a)}]->(c)",
-            "CREATE (a:A), (b)-[:R]->(c {k:toJSON(a)})",
+                "CREATE (a:A {v:0}), ()-[r:R {k:toJSON(a)}]->() RETURN r.k",
+                "CREATE (a:A {v:0}), ()-[:R]->(c {k:toJSON(a)}) RETURN c.k",
         ]
         for query in queries:
             result = redis_graph.query(query)
             self.env.assertEquals(result.nodes_created, 3, depth=1)
-            self.env.assertEquals(result.properties_set, 1, depth=1)
+            self.env.assertEquals(result.properties_set, 2, depth=1)
             self.env.assertEquals(result.relationships_created, 1, depth=1)
+            self.env.assertContains("\"properties\": {}", result.result_set[0][0])
+
+        queries = [
+                "MERGE (a:A {v:2})-[r:R {k:toJSON(a)}]->() RETURN r.k",
+                "MERGE (a:A {v:2})-[:R]->(b {k:toJSON(a)}) RETURN b.k",
+        ]
+        for query in queries:
+            result = redis_graph.query(query)
+            self.env.assertEquals(result.nodes_created, 2, depth=1)
+            self.env.assertEquals(result.properties_set, 2, depth=1)
+            self.env.assertEquals(result.relationships_created, 1, depth=1)
+            self.env.assertContains("\"properties\": {}", result.result_set[0][0])
 
         # test using functions with invalid arguments
         queries = [
-            # Invalid argument to predicate functions, which expect a list, but the function properties() returns a Map
+            # invalid argument to predicate functions, which expect a list, 
+            # but the function properties() returns a Map
             "CREATE (a), (b)-[:R]->(c {k:any(x IN properties(a) WHERE x = 0)})",
             "CREATE (a), (b)-[:R]->(c {k:none(x IN properties(a) WHERE x = 0)})",
             "CREATE (a), (b)-[:R {k:single(x IN properties(a) WHERE x = 0)}]->()",
-            # Invalid argument to function floor(), which expects an Integer, Float, or Null but any() returns Boolean
+            # invalid argument to function floor(), which expects an Integer, 
+            # Float, or Null but any() returns Boolean
             "CREATE (a:A {n:'A'}), (b:B {v:floor(any(v4 IN [2] WHERE b = [a IN keys(a)]))})"
         ]
         for query in queries:
@@ -225,3 +242,33 @@ class testGraphCreationFlow(FlowTestsBase):
                 self.env.assertTrue(False)
             except redis.exceptions.ResponseError as e:
                 self.env.assertContains("Type mismatch", str(e), depth=1)
+
+        # test referencing intermediate entities
+        # the intermediate node is evaluated as NULL
+        queries = [
+                # TODO:
+                #"MERGE (a:A)-[:R]->(b:B {v:a}) RETURN b.v",  # Property values can only be of primitive types or arrays of primitive types 
+                #"MERGE (a:A)-[r:R]->(b:B {v:r}) RETURN b.v", # Cannot merge node using null property value
+                #"CREATE (a:A)-[:R]->(b:B {v:a}) RETURN b.v", # Property values can only be of primitive types or arrays of primitive types
+                "CREATE (a:A)-[r:R]->(b:B {v:r}) RETURN b.v",
+        ]
+        for query in queries:
+            result = redis_graph.query(query)
+            self.env.assertEquals(result.result_set, [[None]], depth=1)
+
+        # test referencing properties of intermediate entities
+        # the property is evaluated as NULL
+        queries = [
+                "MERGE (a:A {v:3})-[:R]->(b:B {v:a.v}) RETURN b.v", 
+                #"MERGE (a:A)-[r:R {v:2}]->(b:B {v:r.v}) RETURN b.v", # Cannot merge node using null property value 
+                "CREATE (a:A {v:0})-[:R]->(b:B {v:a.v}) RETURN b.v", 
+                #"CREATE (a:A)-[r:R {v:2}]->(b:B {v:r.v}) RETURN b.v", # RETURN null
+        ]
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("Attempted to access undefined attribute", str(e), depth=1)
+
+
