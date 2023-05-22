@@ -170,9 +170,6 @@ static Record CallSubqueryConsumeEager
                 OpBase_DeepCloneRecord);
             ArgumentList_AddRecordList(op->argument_lists[i], records_clone);
         }
-        Record *records_clone;
-        array_clone_with_cb(records_clone, op->records,
-            OpBase_DeepCloneRecord);
         // give the last branch the original records
         ArgumentList_AddRecordList(op->argument_lists[op->n_branches-1],
             op->records);

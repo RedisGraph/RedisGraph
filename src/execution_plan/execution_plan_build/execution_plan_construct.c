@@ -959,7 +959,6 @@ static void _buildCallSubqueryPlan
 	// create an AST from the body of the subquery
 	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast,
 		plan->record_map);
-	AST_AnnotateNamedPaths(subquery_ast);
 
 	// update the original AST
 	clause = (cypher_astnode_t *)AST_GetClause(orig_ast,
