@@ -788,7 +788,6 @@ static AST *_CreateASTFromCallSubquery
 				// first clause in the subquery
 				query = _add_first_clause(query, clause, first_ind, names,
 					inter_names);
-				// TODO: Need to free previous query (Why does Sanitizer pass?)
 
 				// update union indeces
 				for(uint j = i; j < n_union_branches; j++) {
