@@ -1282,6 +1282,7 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	} else {
 		// validate that the with imports (if exist) are simple, i.e., 'WITH a'
 		if(!_ValidateCallInitialWith(clauses[0], vctx)) {
+			raxFree(in_env);
 			ErrorCtx_SetError(
 				"WITH imports in CALL {} must be simple ('WITH a')");
 			return VISITOR_BREAK;

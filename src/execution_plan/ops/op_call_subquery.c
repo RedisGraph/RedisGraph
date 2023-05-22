@@ -335,4 +335,13 @@ static void CallSubqueryFree
 	OpCallSubquery *_op = (OpCallSubquery *) op;
 
 	_freeInternals(_op);
+
+    if(_op->arguments != NULL) {
+        array_free(_op->arguments);
+        _op->arguments = NULL;
+    }
+    if(_op->argument_lists != NULL) {
+        array_free(_op->argument_lists);
+        _op->argument_lists = NULL;
+    }
 }
