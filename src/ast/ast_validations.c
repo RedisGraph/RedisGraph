@@ -46,14 +46,22 @@ typedef struct {
 // number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
 static visit validations_mapping[114];
 
+static identifier_desc *_IdentifierDescNew(
+	SIType type,           // identifier SIType
+	identifier_state state // identifier state
+) {
+	identifier_desc *identifier = rm_malloc(sizeof(identifier_desc));
+	identifier->type  = type;
+	identifier->state = state;
+	return identifier;
+}
+
 // rax callback routine for cloning identifier descriptions
-identifier_desc* _IdentifierDescClone(
+static identifier_desc *_IdentifierDescClone(
 	const identifier_desc* orig
 ) {
 	if(orig != NULL) {
-		identifier_desc *clone = rm_malloc(sizeof(identifier_desc));
-		clone->type  = orig->type;
-		clone->state = orig->state;
+		identifier_desc *clone = _IdentifierDescNew(orig->type, orig->state);
 		return clone;
 	}
 	return NULL;
@@ -963,9 +971,7 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		void *identifier = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
 		if(identifier == raxNotFound) {
-			identifier_desc *identifier = rm_malloc(sizeof(identifier_desc));
-			identifier->type  = T_EDGE;
-			identifier->state = CREATED;
+			identifier_desc *identifier = _IdentifierDescNew(T_EDGE, CREATED);
 			raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)identifier, NULL);
 			return VISITOR_RECURSE;
 		}
@@ -1021,9 +1027,7 @@ static VISITOR_STRATEGY _Validate_node_pattern
 			}
 		}
 	}
-	identifier_desc *identifier = rm_malloc(sizeof(identifier_desc));
-	identifier->type  = T_NODE;
-	identifier->state = CREATED;
+	identifier_desc *identifier = _IdentifierDescNew(T_NODE, CREATED);
 	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)identifier, NULL);
 
 	return VISITOR_RECURSE;
