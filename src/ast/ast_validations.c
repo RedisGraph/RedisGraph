@@ -168,7 +168,7 @@ static bool _AST_GetWithAliases
             cypher_ast_projection_get_alias(proj);
         const char *identifier_name;
         void *identifier = NULL;
-        void *projected_identifier = NULL;
+        identifier_desc *projected_identifier = NULL;
 
         if(ast_alias) {
             // Retrieve "a" from "WITH [1, 2, 3] as a"
@@ -193,7 +193,7 @@ static bool _AST_GetWithAliases
                     }
 
                     // copy original identifier properties to the aliased identifier
-                    projected_identifier = _IdentifierDescClone(identifier);
+                    projected_identifier = _IdentifierDescClone((identifier_desc *)identifier);
                 }
             }
         } else {
@@ -223,13 +223,13 @@ static bool _AST_GetWithAliases
                     }
 
                     // copy original identifier properties to the aliased identifier
-                    projected_identifier = _IdentifierDescClone(identifier);
+                    projected_identifier = _IdentifierDescClone((identifier_desc *)identifier);
                 }
             }
         }
 
         raxInsert(aliases, (unsigned char *)identifier_name,
-            strlen(identifier_name), projected_identifier, NULL);
+            strlen(identifier_name), (void *)projected_identifier, NULL);
 
 
 		// check for duplicate column names
@@ -970,7 +970,7 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 			return VISITOR_RECURSE;
 		}
 		
-		if(identifier != raxNotFound && identifier != NULL) {
+		if(identifier != NULL) {
 			SIType alias_type = ((identifier_desc *)identifier)->type;
 			identifier_state state = ((identifier_desc *)identifier)->state;
 
@@ -1412,7 +1412,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 				cypher_ast_projection_get_alias(proj);
 			const char *identifier_name;
 			void *identifier = NULL;
-            void *projected_identifier = NULL;
+            identifier_desc *projected_identifier = NULL;
 
 			if(ast_alias) {
 				// Retrieve "a" from "WITH x AS a" or "WITH [1, 2, 3] AS a"
@@ -1426,7 +1426,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 					identifier = raxFind(vctx->defined_identifiers, (unsigned char *)current_identifier_name, len);
 					if(identifier != raxNotFound && identifier != NULL) {
 						// copy original identifier properties to the aliased identifier
-                        projected_identifier = _IdentifierDescClone(identifier);
+                        projected_identifier = _IdentifierDescClone((identifier_desc *)identifier);
 					}
 				}
 			} else {
@@ -1440,13 +1440,13 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 
 					if(identifier != raxNotFound && identifier != NULL) {
                        // copy original identifier properties to the aliased identifier
-                       projected_identifier = _IdentifierDescClone(identifier);
+                       projected_identifier = _IdentifierDescClone((identifier_desc *)identifier);
 					}
 				}
 			}
 
 			raxInsert(projected_identifiers, (unsigned char *)identifier_name,
-				strlen(identifier_name), projected_identifier, NULL);
+				strlen(identifier_name), (void *) projected_identifier, NULL);
 
 		}
 
