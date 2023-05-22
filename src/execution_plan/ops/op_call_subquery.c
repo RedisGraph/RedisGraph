@@ -15,24 +15,30 @@ static OpResult CallSubqueryReset(OpBase *opBase);
 static Record CallSubqueryConsumeEager(OpBase *opBase);
 static OpBase *CallSubqueryClone(const ExecutionPlan *plan, const OpBase *opBase);
 
-#define FIND_SET_DEEPEST ({\
-    while(deepest->childCount > 0) {                                          \
-        deepest = deepest->children[0];                                       \
-    }                                                                         \
-    if(op->is_eager) {                                                        \
-        ASSERT(OpBase_Type((const OpBase *)deepest) == OPType_ARGUMENT_LIST); \
-        array_append(op->argument_lists, (ArgumentList *)deepest);            \
-    } else {                                                                  \
-        ASSERT(OpBase_Type((const OpBase *)deepest) == OPType_ARGUMENT);      \
-        array_append(op->arguments, (Argument *)deepest);                     \
-    }                                                                         \
-})
-
 #define PLANT_RECORD ({\
     for(uint i = 0; i < op->n_branches; i++) {                                \
         Argument_AddRecord(op->arguments[i], OpBase_DeepCloneRecord(op->r));  \
     }                                                                         \
 })
+
+// find the deepest child of a root operation, and append it to the
+// arguments/arguemnt_lists array of the CallSubquery operation
+static void _find_set_deepest
+(
+    OpCallSubquery *call_subquery,  // CallSubquery operation
+    OpBase *root                    // root op
+) {
+    while(root->childCount > 0) {
+        root = root->children[0];
+    }
+    if(call_subquery->is_eager) {
+        ASSERT(OpBase_Type((const OpBase *)root) == OPType_ARGUMENT_LIST);
+        array_append(call_subquery->argument_lists, (ArgumentList *)root);
+    } else {
+        ASSERT(OpBase_Type((const OpBase *)root) == OPType_ARGUMENT);
+        array_append(call_subquery->arguments, (Argument *)root);
+    }
+}
 
 // creates a new CallSubquery operation
 OpBase *NewCallSubqueryOp
@@ -99,11 +105,11 @@ static OpResult CallSubqueryInit
 
         for(uint i = 0; i < op->n_branches; i++) {
             OpBase *deepest = OpBase_GetChild((OpBase *)join, i);
-            FIND_SET_DEEPEST;
+            _find_set_deepest(op, deepest);
         }
     } else {
         OpBase *deepest = op->body;
-        FIND_SET_DEEPEST;
+        _find_set_deepest(op, deepest);
     }
 
     return OP_OK;
