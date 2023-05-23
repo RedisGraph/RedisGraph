@@ -11,6 +11,9 @@
 
 typedef int LabelID;
 
+// arbitrary constant to avoid read value from NULL pointer
+AttributeSet NULL_ATTRIBUTE_SET;
+
 // helper macro that instantiates 'labels' as a stack array
 // and updates 'label_count'
 #define NODE_GET_LABELS(g, n, label_count)                              \
@@ -18,10 +21,10 @@ typedef int LabelID;
 	label_count = Graph_GetNodeLabels((g), (n), labels, (label_count))
 
 // instantiate a new unpopulated node
-#define GE_NEW_NODE()           \
-(Node) {                        \
-	.attributes = NULL,         \
-	.id = INVALID_ENTITY_ID,    \
+#define GE_NEW_NODE()                  \
+(Node) {                               \
+	.attributes = &NULL_ATTRIBUTE_SET, \
+	.id = INVALID_ENTITY_ID,           \
 }
 
 // struct representing a node in the graph

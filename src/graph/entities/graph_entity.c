@@ -12,6 +12,9 @@
 #include "../../datatypes/map.h"
 #include "../../datatypes/array.h"
 
+// defined in node.h
+extern AttributeSet NULL_ATTRIBUTE_SET;
+
 // add a new property to entity
 bool GraphEntity_AddProperty
 (
@@ -35,7 +38,7 @@ SIValue *GraphEntity_GetProperty
 
 	// e->attributes is NULL when dealing with an "intermediate" entity,
 	// one which didn't had its attribute-set allocated within the graph datablock.
-	if(e->attributes == NULL) {
+	if(e->attributes == &NULL_ATTRIBUTE_SET) {
  		// note that this exception may cause memory to be leaked in the caller
  		ErrorCtx_SetError("Attempted to access undefined attribute");
  		return ATTRIBUTE_NOTFOUND;
@@ -240,10 +243,7 @@ inline const AttributeSet GraphEntity_GetAttributes
 ) {
 	ASSERT(e != NULL);
 
-	if(likely(e->attributes != NULL)) {
-		return *e->attributes;
-	}
-	return NULL;
+	return *e->attributes;
 }
 
 inline int GraphEntity_ClearAttributes

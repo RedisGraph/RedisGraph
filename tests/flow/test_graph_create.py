@@ -244,31 +244,25 @@ class testGraphCreationFlow(FlowTestsBase):
                 self.env.assertContains("Type mismatch", str(e), depth=1)
 
         # test referencing intermediate entities
-        # the intermediate node is evaluated as NULL
-        queries = [
-                # TODO:
-                #"MERGE (a:A)-[:R]->(b:B {v:a}) RETURN b.v",  # Property values can only be of primitive types or arrays of primitive types 
-                #"MERGE (a:A)-[r:R]->(b:B {v:r}) RETURN b.v", # Cannot merge node using null property value
-                #"CREATE (a:A)-[:R]->(b:B {v:a}) RETURN b.v", # Property values can only be of primitive types or arrays of primitive types
-                "CREATE (a:A)-[r:R]->(b:B {v:r}) RETURN b.v",
+        error_merge_null = "Cannot merge node using null property value"
+        error_undef_attribute = "Attempted to access undefined attribute"
+        error_primitive_type = "Property values can only be of primitive types or arrays of primitive types"
+        queries_with_errors = [
+            # reference to intermediate node
+            ("MERGE (a:A)-[:R]->(b:B {v:a}) RETURN b.v", error_primitive_type),
+            ("CREATE (a:A)-[:R]->(b:B {v:a}) RETURN b.v", error_primitive_type),
+            # reference to intermediate edge
+            ("MERGE (a:A)-[r:R]->(b:B {v:r}) RETURN b.v", error_merge_null),
+            # TODO:
+            # ("CREATE (a:A)-[r:R]->(b:B {v:r}) RETURN b.v", error_primitive_type),
+            # reference to property of intermediate node
+            ("MERGE (a:A {v:3})-[:R]->(b:B {v:a.v}) RETURN b.v", error_undef_attribute),
+            ("CREATE (a:A {v:0})-[:R]->(b:B {v:a.v}) RETURN b.v", error_undef_attribute),
+            # reference to propery of intermediate edge
+            ("MERGE (a:A)-[r:R {v:2}]->(b:B {v:r.v}) RETURN b.v", error_merge_null),
+            # TODO:
+            #("CREATE (a:A)-[r:R {v:2}]->(b:B {v:r.v}) RETURN b.v",),
         ]
-        for query in queries:
-            result = redis_graph.query(query)
-            self.env.assertEquals(result.result_set, [[None]], depth=1)
-
-        # test referencing properties of intermediate entities
-        # the property is evaluated as NULL
-        queries = [
-                "MERGE (a:A {v:3})-[:R]->(b:B {v:a.v}) RETURN b.v", 
-                #"MERGE (a:A)-[r:R {v:2}]->(b:B {v:r.v}) RETURN b.v", # Cannot merge node using null property value 
-                "CREATE (a:A {v:0})-[:R]->(b:B {v:a.v}) RETURN b.v", 
-                #"CREATE (a:A)-[r:R {v:2}]->(b:B {v:r.v}) RETURN b.v", # RETURN null
-        ]
-        for query in queries:
-            try:
-                redis_graph.query(query)
-                self.env.assertTrue(False)
-            except redis.exceptions.ResponseError as e:
-                self.env.assertContains("Attempted to access undefined attribute", str(e), depth=1)
-
+        for query, error in queries_with_errors:
+            self._assert_exception(redis_graph, query, error)
 
