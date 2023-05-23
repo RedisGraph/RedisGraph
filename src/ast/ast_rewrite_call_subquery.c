@@ -409,6 +409,7 @@ static void _rewrite_projections
     
     uint mapping_size = raxSize(outer_mapping);
     if(mapping_size == 0) {
+		raxFree(outer_mapping);
         return;
     }
 
