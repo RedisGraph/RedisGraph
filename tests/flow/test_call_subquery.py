@@ -958,6 +958,50 @@ updating clause.")
         self.env.assertEquals(res.result_set[2][0], Node(label='M',
             properties={'v': 2}))
 
+        # simple embedded call with UNION
+        res = graph.query(
+            """
+            CALL {
+                CALL {
+                    RETURN 1 AS num
+                    UNION
+                    RETURN 2 AS num
+                }
+                RETURN num
+            }
+            RETURN num
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[1][0], 2)
+
+        # TODO: crashes (5 not found)
+        # # simple embedded call with UNION
+        # res = graph.query(
+        #     """
+        #     CALL {
+        #         CALL {
+        #             RETURN 1 AS num
+        #             UNION
+        #             RETURN 2 AS num
+        #         }
+        #         RETURN num
+        #     }
+        #     RETURN num, 5
+        #     """
+        # )
+
+        # # assert results
+        # self.env.assertEquals(len(res.result_set), 2)
+        # self.env.assertEquals(res.result_set[0][0], 1)
+        # self.env.assertEquals(res.result_set[0][1], 5)
+        # self.env.assertEquals(res.result_set[1][0], 2)
+        # self.env.assertEquals(res.result_set[1][1], 5)
+
+
         # # embedded call with UNION
         # res = graph.query(
         #     """
@@ -1128,13 +1172,6 @@ updating clause.")
         self.env.assertEquals(res.result_set[5][0], 1)
         self.env.assertEquals(res.nodes_created, 1)
         self.env.assertEquals(res.properties_set, 1)
-
-    # TODO: Add a test that using UNION where:
-    #   - one branch is eager and the other is not
-    #   - both branches are eager
-    #   - both branches are not eager
-    #   - There are more than 2 branches
-    #   - A subquery with UNION ALL
 
     def test22_indexes(self):
         """Test that operations on indexes are properly executed (and reseted)
