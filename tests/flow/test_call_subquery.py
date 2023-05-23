@@ -375,6 +375,27 @@ updating clause.")
         res = graph.query("MATCH (n:TEMP) DELETE n")
         self.env.assertEquals(res.nodes_deleted, 2)
 
+        # # TODO: Bug: the nodes are not being created
+        # # Test with a returning subquery
+        # FOREACH as first clause inside {}
+        # graph.query(
+        #     """
+        #     CALL {
+        #         FOREACH (m in [1, 2] |
+        #             CREATE (:TEMP)
+        #         )
+        #     }
+        #     """
+        # )
+
+        # # assert the correctness of the results
+        # res = graph.query("MATCH(n:TEMP) RETURN n ORDER BY n.v ASC")
+        # self.env.assertEquals(len(res.result_set), 2)
+
+        # # delete the nodes with label :TEMP
+        # res = graph.query("MATCH (n:TEMP) DELETE n")
+        # self.env.assertEquals(res.nodes_deleted, 2)
+
     # tests that SKIP and LIMIT work properly
     def test11_skip_limit(self):
         """Test that SKIP works properly when placed inside a subquery"""
@@ -957,6 +978,124 @@ updating clause.")
         # self.env.assertEquals(res.result_set[0][0], 2)
         # self.env.assertEquals(res.nodes_created, 2)
 
+        # TODO: Crash
+        # # union and aggregation function
+        # res = graph.query (
+        #     """
+        #     CALL {
+        #         RETURN 1 AS v
+        #         UNION
+        #         MATCH(m:SUM)
+        #         RETURN tointeger(sum(m.v)) AS v
+        #     }
+        #     RETURN v
+        #     """
+        # )
+        #
+        # # assert results
+        # self.env.assertEquals(len(res.result_set), 2)
+        # self.env.assertEquals(res.result_set[0][0], 1)
+        # self.env.assertEquals(res.result_set[1][0], 0)
+
+        # one branch is eager and the other is not
+        res = graph.query (
+            """
+            CALL {
+                WITH 0 AS i
+                RETURN i AS v
+                UNION
+                CREATE (n:EAGER {v:1})
+                RETURN n.v AS v
+            }
+            RETURN v
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0], 0)
+        self.env.assertEquals(res.result_set[1][0], 1)
+        self.env.assertEquals(res.nodes_created, 1)
+        self.env.assertEquals(res.properties_set, 1)
+
+        # both branches are eager
+        res = graph.query (
+            """
+            CALL {
+                MERGE (m:EAGER {v:0})
+                RETURN m.v AS v
+                UNION
+                MERGE (n:EAGER {v:1})
+                SET n.v = 2
+                RETURN n.v AS v
+            }
+            RETURN v
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0], 0)
+        self.env.assertEquals(res.result_set[1][0], 2)
+        self.env.assertEquals(res.nodes_created, 1)
+        self.env.assertEquals(res.properties_set, 2)
+
+        # both branches are not eager
+        graph.query("CREATE (:X {v: 1})")
+
+        res = graph.query (
+            """
+            CALL {
+                MATCH (n:X)
+                RETURN n.v AS v
+                UNION
+                MATCH (n:X {v: 1})
+                RETURN n.v AS v
+            }
+            RETURN v
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.nodes_created, 0)
+        self.env.assertEquals(res.properties_set, 0)
+
+        # UNION ALL more than 2 branches
+        res = graph.query (
+            """
+            CALL {
+                MERGE (n:EAGER {v:7})
+                WITH n
+                RETURN n.v AS v
+                UNION ALL
+                MATCH (n:X {v: 1})
+                RETURN n.v AS v
+                UNION ALL
+                UNWIND range(1, 3) AS i
+                RETURN i AS v
+                UNION ALL
+                CALL {
+                    MERGE (n:X {v: 1})
+                    RETURN n.v AS j
+                }
+                RETURN j AS v
+            }
+            RETURN v
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 6)
+        self.env.assertEquals(res.result_set[0][0], 7)
+        self.env.assertEquals(res.result_set[1][0], 1)
+        self.env.assertEquals(res.result_set[2][0], 1)
+        self.env.assertEquals(res.result_set[3][0], 2)
+        self.env.assertEquals(res.result_set[4][0], 3)
+        self.env.assertEquals(res.result_set[5][0], 1)
+        self.env.assertEquals(res.nodes_created, 1)
+        self.env.assertEquals(res.properties_set, 1)
 
     # TODO: Add a test that using UNION where:
     #   - one branch is eager and the other is not
