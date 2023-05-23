@@ -501,14 +501,6 @@ static void _buildCallSubqueryPlan
 	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast,
 		plan->record_map);
 
-	// update the original AST
-	clause = (cypher_astnode_t *)AST_GetClause(orig_ast,
-					CYPHER_AST_CALL_SUBQUERY, NULL);
-
-	// FOR DEBUGGING (to be removed): print the AST of the subquery
-	// cypher_ast_fprint(subquery_ast->root, stdout, 0, NULL, 0);
-	// printf("\n\n\n");
-
 	// -------------------------------------------------------------------------
 	// build the embedded execution plan corresponding to the subquery
 	// -------------------------------------------------------------------------

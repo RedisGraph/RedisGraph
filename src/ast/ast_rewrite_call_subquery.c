@@ -256,15 +256,15 @@ static void _add_first_clause
     // TODO: Consider using replace_clause instead of set_clause (seal leaks)
     cypher_astnode_type_t type = cypher_astnode_type(wrapping_clause);
     if(type == CYPHER_AST_QUERY) {
-        cypher_ast_query_set_clause(wrapping_clause, new_callsubquery,
-            callsubquery_ind);
-        // cypher_ast_query_replace_clauses(wrapping_clause, new_callsubquery,
-		    // callsubquery_ind, callsubquery_ind);
+        // cypher_ast_query_set_clause(wrapping_clause, new_callsubquery,
+        //     callsubquery_ind);
+        cypher_ast_query_replace_clauses(wrapping_clause, new_callsubquery,
+		    callsubquery_ind, callsubquery_ind);
     } else if (type == CYPHER_AST_CALL_SUBQUERY){
-        cypher_ast_call_subquery_set_clause(wrapping_clause, new_callsubquery,
-            callsubquery_ind);
-        // cypher_ast_call_subquery_replace_clauses(wrapping_clause, new_callsubquery,
-            // callsubquery_ind, callsubquery_ind);
+        // cypher_ast_call_subquery_set_clause(wrapping_clause, new_callsubquery,
+        //     callsubquery_ind);
+        cypher_ast_call_subquery_replace_clauses(wrapping_clause, new_callsubquery,
+            callsubquery_ind, callsubquery_ind);
     } else {
         // shouldn't get here
         ASSERT(false);

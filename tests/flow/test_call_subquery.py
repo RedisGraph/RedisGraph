@@ -337,11 +337,8 @@ updating clause.")
                 )
                 RETURN n
             }
-            RETURN n
+            RETURN n ORDER BY n.v ASC
             """
-            # TODO: Change RETURN line to the below line once PR fixing SORT is
-            # merged
-            # RETURN n ORDER BY n.v ASC
         )
 
         # assert the correctness of the results
@@ -1307,26 +1304,26 @@ updating clause.")
         res = graph.query(query)
 
         # assert results
+        self.env.assertEquals(res.nodes_created, 1)
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(res.result_set[0][0],
             Node(label='N', properties={'name': 'Raz'}))
 
-        # # use memory from outer scope after the subquery
-        # query = """
-        # MATCH (n)
-        # CALL {
-        #     CREATE (m:M {name: 'Moshe'})
-        #     RETURN m
-        # }
-        # RETURN n, m
-        # """
+        # use memory from outer scope after the subquery
+        query = """
+        MATCH (n)
+        CALL {
+            CREATE (m:M {name: 'Moshe'})
+            RETURN m
+        }
+        RETURN n, m
+        """
 
-        # for i in range(len(res.result_set)):
-        #     for j in range(len(res.result_set[i])):
-        #         print(res.result_set[i][j])
+        res = graph.query(query)
 
-        # # assert results
-        # self.env.assertEquals(len(res.result_set), 1)
-        # self.env.assertEquals(len(res.result_set[0]), 2)
-        # self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
-        # self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
+        # assert results
+        self.env.assertEquals(res.nodes_created, 1)
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 2)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
+        self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
