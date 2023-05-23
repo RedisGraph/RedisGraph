@@ -1272,6 +1272,8 @@ static VISITOR_STRATEGY _Validate_call_subquery
 		return VISITOR_BREAK;
 	}
 
+	cypher_astnode_free(body);
+
 	// clone the bound vars context.
 	rax *in_env = raxClone(vctx->defined_identifiers);
 
