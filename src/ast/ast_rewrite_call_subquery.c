@@ -419,6 +419,7 @@ static void _rewrite_projections
     char **inter_names = array_new(char *, mapping_size);
 
     _get_vars_inner_rep(outer_mapping, &names, &inter_names);
+	raxFree(outer_mapping);
 
     // -------------------------------------------------------------------------
     // transform relevant clauses (initial WITH, intermediate WITHs and RETURN)
