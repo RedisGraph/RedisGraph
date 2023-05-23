@@ -961,6 +961,26 @@ updating clause.")
         self.env.assertEquals(res.result_set[2][0], Node(label='M',
             properties={'v': 2}))
 
+        # # embedded call with UNION
+        # res = graph.query(
+        #     """
+        #     CALL {
+        #         CALL {
+        #             RETURN 1 AS num
+        #             UNION
+        #             RETURN 2 AS num
+        #         }
+        #         RETURN num
+        #     }
+        #     RETURN num
+        #     """
+        # )
+
+        # # assert results
+        # self.env.assertEquals(len(res.result_set), 2)
+        # self.env.assertEquals(res.result_set[0][0], 1)
+        # self.env.assertEquals(res.result_set[1][0], 2)
+
         # # this is a subquery that will require a change for the Join operation,
         # # as it requires the changes of one input record to be visible to the
         # # next input record
@@ -1278,7 +1298,7 @@ updating clause.")
         query = """
         OPTIONAL MATCH (m)
         CALL {
-            CREATE (n:N)
+            CREATE (n:N {name: 'Raz'})
             RETURN n
         }
         RETURN n
@@ -1288,4 +1308,25 @@ updating clause.")
 
         # assert results
         self.env.assertEquals(len(res.result_set), 1)
-        self.env.assertEquals(res.result_set[0][0], Node(label='N'))
+        self.env.assertEquals(res.result_set[0][0],
+            Node(label='N', properties={'name': 'Raz'}))
+
+        # # use memory from outer scope after the subquery
+        # query = """
+        # MATCH (n)
+        # CALL {
+        #     CREATE (m:M {name: 'Moshe'})
+        #     RETURN m
+        # }
+        # RETURN n, m
+        # """
+
+        # for i in range(len(res.result_set)):
+        #     for j in range(len(res.result_set[i])):
+        #         print(res.result_set[i][j])
+
+        # # assert results
+        # self.env.assertEquals(len(res.result_set), 1)
+        # self.env.assertEquals(len(res.result_set[0]), 2)
+        # self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
+        # self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))

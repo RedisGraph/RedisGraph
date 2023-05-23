@@ -274,6 +274,24 @@ uint *AST_GetClauseIndices
 	return clause_indices;
 }
 
+// return the indices of all clauses of the specified type in a CALL subquery
+uint *AST_SubqueryGetClauseIndices
+(
+	const cypher_astnode_t *call_subquery,  // call {} node
+	cypher_astnode_type_t clause_type       // clause type
+) {
+	uint *clause_indices = array_new(uint, 1);
+	uint clause_count = cypher_ast_call_subquery_nclauses(call_subquery);
+	for(uint i = 0; i < clause_count; i ++) {
+		if(cypher_astnode_type(
+			cypher_ast_call_subquery_get_clause(call_subquery, i)) ==
+			clause_type) {
+				array_append(clause_indices, i);
+		}
+	}
+	return clause_indices;
+}
+
 uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	uint num_found = 0;
@@ -716,6 +734,7 @@ cypher_parse_result_t *parse_query
 	// e.g. MATCH (m) CALL { CREATE (n:N) RETURN n } RETURN n
 	// will be rewritten as:
 	// e.g. MATCH (m) CALL { WITH m AS @m CREATE (n:N) RETURN n, @m AS m } RETURN n
+	// Notice: It's problematic to put here the below line, since we add projections to 'invalid' places.
 	// rerun_validation |= AST_RewriteCallSubquery(root);
 
 	// only perform validations again if there's been a rewrite
@@ -723,6 +742,8 @@ cypher_parse_result_t *parse_query
 		parse_result_free(result);
 		return NULL;
 	}
+
+	AST_RewriteCallSubquery(root);
 
 	return result;
 }

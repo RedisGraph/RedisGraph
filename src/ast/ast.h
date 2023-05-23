@@ -113,6 +113,13 @@ uint *AST_GetClauseIndices
 	cypher_astnode_type_t clause_type
 );
 
+// return the indices of all clauses of the specified type in a CALL subquery
+uint *AST_SubqueryGetClauseIndices
+(
+	const cypher_astnode_t *call_subquery,  // call {} node
+	cypher_astnode_type_t clause_type       // clause type
+);
+
 // returns the number of times the given clause appears in the AST
 uint AST_GetClauseCount
 (

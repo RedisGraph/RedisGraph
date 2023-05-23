@@ -11,6 +11,9 @@
 #include "../util/sds/sds.h"
 #include "../procedures/procedure.h"
 
+void collect_aliases_in_scope(const cypher_astnode_t *root, uint scope_start,
+	uint scope_end, rax *identifiers);
+
 //------------------------------------------------------------------------------
 //  Annotation context - WITH/RETURN * projections
 //------------------------------------------------------------------------------
@@ -117,50 +120,41 @@ static void _collect_call_projections(
 	}
 }
 
-static void _collect_aliases_in_scope
+// collect aliases from a CALL {} clause
+static void _collect_call_subquery_projections
 (
-	const cypher_astnode_t *root,
-	uint scope_start,
-	uint scope_end,
+	const cypher_astnode_t *clause,
 	rax *identifiers
 ) {
-	ASSERT(scope_start != scope_end);
-	ASSERT(identifiers != NULL);
+	// collect returned aliases from the subquery, if there are any
+	uint nclauses = cypher_ast_call_subquery_nclauses(clause);
+	const cypher_astnode_t *last_clause =
+		cypher_ast_call_subquery_get_clause(clause, nclauses - 1);
+	bool is_returning = (cypher_astnode_type(last_clause) == CYPHER_AST_RETURN);
+	if(!is_returning) {
+		return;
+	}
 
-	for(uint i = scope_start; i < scope_end; i ++) {
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
-		cypher_astnode_type_t type = cypher_astnode_type(clause);
-
-		if(type == CYPHER_AST_WITH) {
-			// the WITH clause contains either
-			// aliases or its own STAR projection
-			_collect_with_projections(clause, identifiers);
-		} else if(type == CYPHER_AST_MATCH) {
-			// the MATCH clause contains one pattern of N paths
-			const cypher_astnode_t *pattern =
-				cypher_ast_match_get_pattern(clause);
-			_collect_aliases_in_pattern(pattern, identifiers);
-		} else if(type == CYPHER_AST_CREATE) {
-			// the CREATE clause contains one pattern of N paths
-			const cypher_astnode_t *pattern =
-				cypher_ast_create_get_pattern(clause);
-			_collect_aliases_in_pattern(pattern, identifiers);
-		} else if(type == CYPHER_AST_MERGE) {
-			// the MERGE clause contains one path
-			const cypher_astnode_t *path =
-				cypher_ast_merge_get_pattern_path(clause);
-			_collect_aliases_in_path(path, identifiers);
-		} else if(type == CYPHER_AST_UNWIND) {
-			// the UNWIND clause introduces one alias
-			const cypher_astnode_t *unwind_alias =
-				cypher_ast_unwind_get_alias(clause);
-			const char *identifier =
-				cypher_ast_identifier_get_name(unwind_alias);
-			raxTryInsert(identifiers, (unsigned char *)identifier,
-				strlen(identifier), (void *)unwind_alias, NULL);
-		} else if(type == CYPHER_AST_CALL) {
-			_collect_call_projections(clause, identifiers);
+	// collect aliases from the RETURN clause
+	uint projection_count = cypher_ast_return_nprojections(clause);
+	for(uint i = 0; i < projection_count; i ++) {
+		const cypher_astnode_t *projection =
+			cypher_ast_return_get_projection(clause, i);
+		const cypher_astnode_t *identifier_node =
+			cypher_ast_projection_get_alias(projection);
+		if(identifier_node == NULL) {
+			// the projection was not aliased
+			// so the projection itself must be an identifier
+			identifier_node = cypher_ast_projection_get_expression(projection);
+			ASSERT(cypher_astnode_type(identifier_node) == CYPHER_AST_IDENTIFIER);
+		} else {
+			// do not include empty projections, which may have been made to
+			// handle the MATCH () WITH * case
+			if(!strcmp(cypher_ast_identifier_get_name(identifier_node), "")) continue;
 		}
+		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
+		raxTryInsert(identifiers, (unsigned char *)identifier,
+			strlen(identifier), (void *)identifier_node, NULL);
 	}
 }
 
@@ -177,7 +171,7 @@ static void replace_clause
 	// collect identifiers
 	//--------------------------------------------------------------------------
 	rax *identifiers = raxNew();
-	_collect_aliases_in_scope(root, scope_start, scope_end, identifiers);
+	collect_aliases_in_scope(root, scope_start, scope_end, identifiers);
 
 	//--------------------------------------------------------------------------
 	// determine number of projections
@@ -363,6 +357,59 @@ static void replace_clause
 	cypher_ast_free(clause);
 	// replace original clause with fully populated one
 	cypher_ast_query_set_clause(root, new_clause, scope_end);
+}
+
+// collect aliases defined in a scope bounded by scope_start and scope_end
+void collect_aliases_in_scope
+(
+	const cypher_astnode_t *root,  // the query root
+	uint scope_start,              // start index of scope
+	uint scope_end,                // end index of scope
+	rax *identifiers               // rax to populate with identifiers
+) {
+	ASSERT(scope_start != scope_end);
+	ASSERT(identifiers != NULL);
+
+	for(uint i = scope_start; i < scope_end; i ++) {
+		const cypher_astnode_t *clause = cypher_astnode_type(root) ==
+										 CYPHER_AST_QUERY ?
+			cypher_ast_query_get_clause(root, i) :
+			cypher_ast_call_subquery_get_clause(root, i);
+		cypher_astnode_type_t type = cypher_astnode_type(clause);
+
+		if(type == CYPHER_AST_WITH) {
+			// the WITH clause contains either
+			// aliases or its own STAR projection
+			_collect_with_projections(clause, identifiers);
+		} else if(type == CYPHER_AST_MATCH) {
+			// the MATCH clause contains one pattern of N paths
+			const cypher_astnode_t *pattern =
+				cypher_ast_match_get_pattern(clause);
+			_collect_aliases_in_pattern(pattern, identifiers);
+		} else if(type == CYPHER_AST_CREATE) {
+			// the CREATE clause contains one pattern of N paths
+			const cypher_astnode_t *pattern =
+				cypher_ast_create_get_pattern(clause);
+			_collect_aliases_in_pattern(pattern, identifiers);
+		} else if(type == CYPHER_AST_MERGE) {
+			// the MERGE clause contains one path
+			const cypher_astnode_t *path =
+				cypher_ast_merge_get_pattern_path(clause);
+			_collect_aliases_in_path(path, identifiers);
+		} else if(type == CYPHER_AST_UNWIND) {
+			// the UNWIND clause introduces one alias
+			const cypher_astnode_t *unwind_alias =
+				cypher_ast_unwind_get_alias(clause);
+			const char *identifier =
+				cypher_ast_identifier_get_name(unwind_alias);
+			raxTryInsert(identifiers, (unsigned char *)identifier,
+				strlen(identifier), (void *)unwind_alias, NULL);
+		} else if(type == CYPHER_AST_CALL) {
+			_collect_call_projections(clause, identifiers);
+		} else if(type == CYPHER_AST_CALL_SUBQUERY) {
+			_collect_call_subquery_projections(clause, identifiers);
+		}
+	}
 }
 
 bool AST_RewriteStarProjections

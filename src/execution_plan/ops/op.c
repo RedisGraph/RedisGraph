@@ -259,12 +259,12 @@ inline uint OpBase_ChildCount
 // returns the i'th child of the op
 OpBase *OpBase_GetChild
 (
-	OpBase *join,  // op
-	uint i         // child index
+	OpBase *op,  // op
+	uint i       // child index
 ) {
-	ASSERT(join != NULL);
-	ASSERT(i < join->childCount);
-	return join->children[i];
+	ASSERT(op != NULL);
+	ASSERT(i < op->childCount);
+	return op->children[i];
 }
 
 inline void OpBase_DeleteRecord

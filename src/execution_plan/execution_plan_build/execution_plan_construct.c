@@ -4,18 +4,18 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "execution_plan_construct.h"
-#include "../../ast/enrichment/annotate_projected_named_paths.h"
-#include "execution_plan_modify.h"
-#include "../execution_plan.h"
-#include "../../RG.h"
+#include "RG.h"
 #include "../ops/ops.h"
 #include "../../errors.h"
 #include "../../query_ctx.h"
+#include "../execution_plan.h"
+#include "execution_plan_modify.h"
+#include "execution_plan_construct.h"
 #include "../../util/rax_extensions.h"
 #include "../../ast/ast_build_filter_tree.h"
 #include "../../ast/ast_build_op_contexts.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
+#include "../../ast/enrichment/annotate_projected_named_paths.h"
 
 static inline void _PushDownPathFilters(ExecutionPlan *plan,
 										OpBase *path_filter_op) {
@@ -736,10 +736,10 @@ static AST *_CreateASTFromCallSubquery
 	cypher_astnode_t *clauses[clause_count];
 
 	// explicitly collect all child nodes from the clause.
-	bool is_eager = false;
+	// bool is_eager = false;
 	for(uint i = 0; i < clause_count; i ++) {
 		clauses[i] = (cypher_astnode_t *)cypher_astnode_get_child(clause, i);
-		is_eager |= _nodeIsEager(clauses[i]);
+		// is_eager |= _nodeIsEager(clauses[i]);
 	}
 	struct cypher_input_range range = {0};
 
@@ -752,86 +752,88 @@ static AST *_CreateASTFromCallSubquery
 								range);
 	subquery_ast->root = query;
 
-	// check if the subquery is returning
-	const cypher_astnode_t *last_clause =
-		cypher_ast_call_subquery_get_clause(clause, clause_count-1);
-	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
-
-	if(is_eager && is_returning) {
-
-		uint mapping_size = raxSize(outer_mapping);
-		if(mapping_size == 0) {
-			return subquery_ast;
-		}
-
-		// create an array containing coupled names
-		// ("a1", "@a1", "a2", "@a2", ...) of the original names and the
-		// internal (temporary) representation of them.
-		char **names = array_new(char *, mapping_size);
-		char **inter_names = array_new(char *, mapping_size);
-
-		_get_vars_inner_rep(outer_mapping, &names, &inter_names);
-
-		uint *union_indeces = AST_GetClauseIndices(subquery_ast,
-			CYPHER_AST_UNION);
-		array_append(union_indeces, clause_count);
-		uint n_union_branches = array_len(union_indeces);
-
-		uint first_ind = 0;
-		for(uint i = 0; i < n_union_branches; i++) {
-			uint last_ind = union_indeces[i];
-
-			// check if first clause is a WITH clause
-			bool first_is_with =
-				cypher_astnode_type(clauses[first_ind]) == CYPHER_AST_WITH;
-			if(first_is_with) {
-				// replace first clause (WITH) with a WITH clause containing
-				// "n->@n" projections for all bound vars in outer-scope context
-				_replace_first_clause(query, clause, first_ind, names,
-					inter_names);
-			} else {
-				// add a WITH clause containing "n->@n" projections
-				// for all bound vars (in outer-scope context), to be the
-				// first clause in the subquery
-				query = _add_first_clause(query, clause, first_ind, names,
-					inter_names);
-
-				// update union indeces
-				for(uint j = i; j < n_union_branches; j++) {
-					union_indeces[j]++;
-				}
-				last_ind++;
-
-				// update the query and call {} nodes
-				subquery_ast->root = query;
-				clause = (cypher_astnode_t *)AST_GetClause(orig_ast,
-					CYPHER_AST_CALL_SUBQUERY, NULL);
-			}
-
-			// for every intermediate WITH clause (except the first one),
-			// replace it with a clause that contains "@n->@n" projections for
-			// all bound vars in outer-scope context
-			_replace_intermediate_with_clauses(query, clause, first_ind,
-				last_ind, inter_names);
-
-			// replace the RETURN clause (last) with a clause containing the
-			// projections "@n->n" for all bound vars in outer-scope context
-			_replace_return_clause(query, clause, last_ind, names, inter_names);
-			first_ind = union_indeces[i] + 1;
-		}
-
-		array_free(union_indeces);
-
-		// free the names and inter_names, and corresponding arrays
-		for(uint i = 0; i < mapping_size; i++) {
-			rm_free(names[i]);
-			rm_free(inter_names[i]);
-		}
-		array_free(names);
-		array_free(inter_names);
-	}
-
 	return subquery_ast;
+
+	// // check if the subquery is returning
+	// const cypher_astnode_t *last_clause =
+	// 	cypher_ast_call_subquery_get_clause(clause, clause_count-1);
+	// bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
+
+	// if(is_eager && is_returning) {
+
+	// 	uint mapping_size = raxSize(outer_mapping);
+	// 	if(mapping_size == 0) {
+	// 		return subquery_ast;
+	// 	}
+
+	// 	// create an array containing coupled names
+	// 	// ("a1", "@a1", "a2", "@a2", ...) of the original names and the
+	// 	// internal (temporary) representation of them.
+	// 	char **names = array_new(char *, mapping_size);
+	// 	char **inter_names = array_new(char *, mapping_size);
+
+	// 	_get_vars_inner_rep(outer_mapping, &names, &inter_names);
+
+	// 	uint *union_indeces = AST_GetClauseIndices(subquery_ast,
+	// 		CYPHER_AST_UNION);
+	// 	array_append(union_indeces, clause_count);
+	// 	uint n_union_branches = array_len(union_indeces);
+
+	// 	uint first_ind = 0;
+	// 	for(uint i = 0; i < n_union_branches; i++) {
+	// 		uint last_ind = union_indeces[i];
+
+	// 		// check if first clause is a WITH clause
+	// 		bool first_is_with =
+	// 			cypher_astnode_type(clauses[first_ind]) == CYPHER_AST_WITH;
+	// 		if(first_is_with) {
+	// 			// replace first clause (WITH) with a WITH clause containing
+	// 			// "n->@n" projections for all bound vars in outer-scope context
+	// 			_replace_first_clause(query, clause, first_ind, names,
+	// 				inter_names);
+	// 		} else {
+	// 			// add a WITH clause containing "n->@n" projections
+	// 			// for all bound vars (in outer-scope context), to be the
+	// 			// first clause in the subquery
+	// 			query = _add_first_clause(query, clause, first_ind, names,
+	// 				inter_names);
+
+	// 			// update union indeces
+	// 			for(uint j = i; j < n_union_branches; j++) {
+	// 				union_indeces[j]++;
+	// 			}
+	// 			last_ind++;
+
+	// 			// update the query and call {} nodes
+	// 			subquery_ast->root = query;
+	// 			clause = (cypher_astnode_t *)AST_GetClause(orig_ast,
+	// 				CYPHER_AST_CALL_SUBQUERY, NULL);
+	// 		}
+
+	// 		// for every intermediate WITH clause (except the first one),
+	// 		// replace it with a clause that contains "@n->@n" projections for
+	// 		// all bound vars in outer-scope context
+	// 		_replace_intermediate_with_clauses(query, clause, first_ind,
+	// 			last_ind, inter_names);
+
+	// 		// replace the RETURN clause (last) with a clause containing the
+	// 		// projections "@n->n" for all bound vars in outer-scope context
+	// 		_replace_return_clause(query, clause, last_ind, names, inter_names);
+	// 		first_ind = union_indeces[i] + 1;
+	// 	}
+
+	// 	array_free(union_indeces);
+
+	// 	// free the names and inter_names, and corresponding arrays
+	// 	for(uint i = 0; i < mapping_size; i++) {
+	// 		rm_free(names[i]);
+	// 		rm_free(inter_names[i]);
+	// 	}
+	// 	array_free(names);
+	// 	array_free(inter_names);
+	// }
+
+	// return subquery_ast;
 }
 
 // adds an empty projection as the child of parent, such that the records passed
@@ -861,7 +863,17 @@ static OpBase **_FindDeepestOps
 	OpBase *deepest = plan->root;
 	OpBase **deepest_ops = array_new(OpBase *, 1);
 
-	OpBase *join =  ExecutionPlan_LocateOp(deepest, OPType_JOIN);
+	// OpBase *join = ExecutionPlan_LocateOp(deepest, OPType_JOIN);
+	OpBase *join =
+		OpBase_Type(deepest) == OPType_JOIN ? deepest :
+		OpBase_ChildCount(deepest) > 0 &&
+			OpBase_Type(OpBase_GetChild(deepest, 0)) == OPType_JOIN ?
+				OpBase_GetChild(deepest, 0) :
+		OpBase_ChildCount(deepest) > 0 && OpBase_ChildCount(OpBase_GetChild(deepest, 0)) > 0 &&
+			OpBase_Type(OpBase_GetChild(OpBase_GetChild(deepest, 0), 0)) == OPType_JOIN ?
+				OpBase_GetChild(OpBase_GetChild(deepest, 0), 0) :
+		NULL;
+
 	if(join != NULL) {
 		bool found;
 		uint n_branches = OpBase_ChildCount(join);
@@ -983,7 +995,7 @@ static void _buildCallSubqueryPlan
 	QueryCtx_SetAST(orig_ast);
 
 	// find the deepest ops, to which we will add the projections and connectors
-	OpBase **deepest_ops = _FindDeepestOps(embedded_plan);
+	OpBase **deepest_ops = 	_FindDeepestOps(embedded_plan);
 
 	// if no variables are imported, add an 'empty' projection so that the
 	// records within the subquery will not carry unnecessary entries
