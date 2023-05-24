@@ -65,6 +65,7 @@ static OpResult NodeByIdSeekInit(OpBase *opBase) {
 
 static inline Node _SeekNextNode(NodeByIdSeek *op) {
 	Node n = GE_NEW_NODE();
+	n.attributes = NULL;
 
 	/* As long as we're within range bounds
 	 * and we've yet to get a node. */
@@ -90,7 +91,7 @@ static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
 
 	Node n = _SeekNextNode(op);
 
-	if(n.attributes == NULL || n.attributes == &NULL_ATTRIBUTE_SET) { // Failed to retrieve a node.
+	if(n.attributes == NULL) { // Failed to retrieve a node.
 		OpBase_DeleteRecord(op->child_record); // Free old record.
 		// Pull a new record from child.
 		op->child_record = OpBase_Consume(op->op.children[0]);
@@ -99,7 +100,7 @@ static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
 		// Reset iterator and evaluate again.
 		NodeByIdSeekReset(opBase);
 		n = _SeekNextNode(op);
-		if(n.attributes == NULL || n.attributes == &NULL_ATTRIBUTE_SET) return NULL; // Empty iterator; return immediately.
+		if(n.attributes == NULL) return NULL; // Empty iterator; return immediately.
 	}
 
 	// Clone the held Record, as it will be freed upstream.
@@ -115,7 +116,7 @@ static Record NodeByIdSeekConsume(OpBase *opBase) {
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
 
 	Node n = _SeekNextNode(op);
-	if(n.attributes == NULL || n.attributes == &NULL_ATTRIBUTE_SET) return NULL; // Failed to retrieve a node.
+	if(n.attributes == NULL) return NULL; // Failed to retrieve a node.
 
 	// Create a new Record.
 	Record r = OpBase_CreateRecord(opBase);
