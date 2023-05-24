@@ -403,10 +403,8 @@ void AggregateBindToPlan
 
 	// introduce the projected aliases to the plan record-mapping, and reset the
 	// record offsets to the correct indexes
-	if(op->record_offsets) {
-		array_free(op->record_offsets);
-	}
-	op->record_offsets = array_new(uint, op->key_count);
+	array_clear(op->record_offsets);
+
 	for(uint i = 0; i < op->key_count; i ++) {
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
@@ -461,4 +459,3 @@ static void AggregateFree
 		op->record_offsets = NULL;
 	}
 }
-

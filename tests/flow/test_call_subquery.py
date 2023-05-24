@@ -985,7 +985,7 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0], 1)
         self.env.assertEquals(res.result_set[1][0], 2)
 
-        # TODO: crashes (5 not found)
+        # # TODO: crashes (5 not found)
         # # simple embedded call with UNION
         # res = graph.query(
         #     """
@@ -1041,23 +1041,23 @@ updating clause.")
         # self.env.assertEquals(res.nodes_created, 2)
 
         # TODO: Crash
-        # # union and aggregation function
-        # res = graph.query (
-        #     """
-        #     CALL {
-        #         RETURN 1 AS v
-        #         UNION
-        #         MATCH(m:SUM)
-        #         RETURN tointeger(sum(m.v)) AS v
-        #     }
-        #     RETURN v
-        #     """
-        # )
-        #
-        # # assert results
-        # self.env.assertEquals(len(res.result_set), 2)
-        # self.env.assertEquals(res.result_set[0][0], 1)
-        # self.env.assertEquals(res.result_set[1][0], 0)
+        # union and aggregation function
+        res = graph.query (
+            """
+            CALL {
+                RETURN 1 AS v
+                UNION
+                MATCH(m:SUM)
+                RETURN tointeger(sum(m.v)) AS v
+            }
+            RETURN v
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[1][0], 0)
 
         # one branch is eager and the other is not
         res = graph.query (
