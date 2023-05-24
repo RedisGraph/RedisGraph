@@ -138,40 +138,6 @@ void Record_Merge
 	}
 }
 
-// merge entries from record `from` to record `to`, if their column name exists
-// in `to`. The owners (exec-plans) of the records do not have to match. If the
-// column name exists in `to`, its value will be overridden by the value of
-// `from`
-void Record_Merge_Into
-(
-	Record to,         // record to merge entries to
-	const Record from  // record to take entries from
-) {
-	// for every entry in `from`, look for the entry name in `to`. If exists ->
-	// propagate the entry
-	rax *toRax = Record_GetMappings(to);
-	raxIterator it_from;
-
-	raxStart(&it_from, Record_GetMappings(from));
-	raxSeek(&it_from, "^", NULL, 0);
-
-	// iterate over `from`
-	while(raxNext(&it_from)) {
-		// look for column name in `to` (will appear if it is a referenced-entity)
-		void *toIdx = raxFind(toRax, it_from.key, it_from.key_len);
-		if(toIdx != raxNotFound) {
-			// found entry, override value and set type
-			Entry e = from->entries[(uint)(intptr_t)it_from.data];
-			if(e.type == REC_TYPE_UNKNOWN) {
-				continue;
-			}
-			to->entries[(uint)(intptr_t)toIdx] = e;
-			// if the entry is a scalar, make sure both Records don't believe they own the allocation
-			if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&from->entries[(uint)(intptr_t)it_from.data].value.s);
-		}
-	}
-}
-
 // merge entries from `from` into `to`, transfer ownership if transfer_ownership
 // is on
 void Record_TransferEntries

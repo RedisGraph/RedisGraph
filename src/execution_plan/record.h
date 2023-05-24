@@ -67,16 +67,6 @@ void Record_Merge
 	const Record b
 );
 
-// merge entries from record `from` to record `to`, if their column name exists
-// in `to`. The owners (exec-plans) of the records do not have to match. If the
-// column name exists in `to`, its value will be overridden by the value of
-// `from`
-void Record_Merge_Into
-(
-	Record to,         // record to merge entries to
-	const Record from  // record to take entries from
-);
-
 // merge entries from `from` into `to`, transfer ownership if transfer_ownership
 // is on
 void Record_TransferEntries

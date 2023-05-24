@@ -15,12 +15,6 @@ static OpResult CallSubqueryReset(OpBase *opBase);
 static Record CallSubqueryConsumeEager(OpBase *opBase);
 static OpBase *CallSubqueryClone(const ExecutionPlan *plan, const OpBase *opBase);
 
-#define PLANT_RECORD ({\
-    for(uint i = 0; i < op->n_branches; i++) {                                \
-        Argument_AddRecord(op->arguments[i], OpBase_DeepCloneRecord(op->r));  \
-    }                                                                         \
-})
-
 // find the deepest child of a root operation, and append it to the
 // arguments/arguemnt_lists array of the CallSubquery operation
 static void _find_set_deepest
@@ -56,13 +50,14 @@ OpBase *NewCallSubqueryOp
     op->records        = NULL;
     op->arguments      = NULL;
     op->argument_lists = NULL;
+    op->n_branches     = 1;
     op->is_eager       = is_eager;
     op->is_returning   = is_returning;
-    op->n_branches     = 1;
 
     // set the consume function according to eagerness of the op
-    Record (*consumeFunc)(OpBase *opBase) = is_eager ? CallSubqueryConsumeEager :
-                                        CallSubqueryConsume;
+    Record (*consumeFunc)(OpBase *opBase) = is_eager ?
+        CallSubqueryConsumeEager :
+        CallSubqueryConsume;
 
     OpBase_Init((OpBase *)op, OPType_CallSubquery, "CallSubquery",
         CallSubqueryInit, consumeFunc, CallSubqueryReset, NULL,
@@ -134,9 +129,9 @@ static Record _handoff_eager(OpCallSubquery *op) {
 }
 
 // eagerly consume and aggregate all the records from the lhs (if exists). pass
-// the aggregated record-list to the ArgumentList operation.
-// after aggregating, return the records one-by-one to the parent op
-// merges the records if is_returning is on.
+// the aggregated record-list to the ArgumentList operation\s.
+// after aggregating, return the consumed records one-by-one to the parent op,
+// if is_returning is on.
 static Record CallSubqueryConsumeEager
 (
     OpBase *opBase  // operation
@@ -201,6 +196,9 @@ static Record CallSubqueryConsumeEager
     return _handoff_eager(op);
 }
 
+// tries to consumes a record from the body, merge it with the current input
+// record and return it. If body is depleted from this record, tries to consume
+// a record from the lhs, and repeat the process (if the lhs record is not NULL)
 static Record _consume_and_return
 (
     OpCallSubquery *op
@@ -226,18 +224,15 @@ static Record _consume_and_return
 
     Record clone = OpBase_DeepCloneRecord(op->r);
     // Merge consumed record into a clone of the received record.
-    // Note: Must use this instead of `Record_Merge()` in cases where the
-    // last op isn't a projection (e.g., Sort due to an ORDER BY etc.)
-    Record_Merge_Into(clone, consumed);
+    Record_Merge(clone, consumed);
     OpBase_DeleteRecord(consumed);
     return clone;
 }
 
 // tries to consume a record from the body. if successful, return the
-// merged\unmerged record with the input record (op->r) according to whether the
-// sq is returning\non-returning.
-// Depletes child if non-returning (body records not needed).
-// if unsuccessful (child depleted), returns NULL
+// merged\unmerged record with the input record (op->r) according to the
+// is_returning flag.
+// depletes child if is_returning is off (body records not needed).
 static Record _handoff(OpCallSubquery *op) {
     ASSERT(op->r != NULL);
 
@@ -259,9 +254,11 @@ static Record _handoff(OpCallSubquery *op) {
     return r;
 }
 
-// similar consume to the Apply op, differing from it in that a lhs is optional,
-// and that it merges the records if is_returning is on.
-// responsibility for the records remains within the op.
+// consumes a record from the lhs, plants it in the Argument\List ops, and
+// consumes a record from the body.
+// if there is already a record in op->r, it means that the body has not been
+// depleted from the current record yet, and we should consume from it before
+// consuming another record from lhs
 static Record CallSubqueryConsume
 (
     OpBase *opBase  // operation
@@ -297,7 +294,7 @@ static Record CallSubqueryConsume
     return _handoff(op);
 }
 
-// free CallSubquery internal data structures
+// frees CallSubquery internal data structures
 static void _freeInternals
 (
 	OpCallSubquery *op  // operation to free
@@ -312,6 +309,7 @@ static void _freeInternals
     }
 }
 
+// resets a CallSubquery operation
 static OpResult CallSubqueryReset
 (
     OpBase *opBase  // operation
@@ -323,6 +321,7 @@ static OpResult CallSubqueryReset
 	return OP_OK;
 }
 
+// clones a CallSubquery operation
 static OpBase *CallSubqueryClone
 (
     const ExecutionPlan *plan,  // plan
@@ -334,6 +333,7 @@ static OpBase *CallSubqueryClone
 	return NewCallSubqueryOp(plan, op->is_eager, op->is_returning);
 }
 
+// frees a CallSubquery operation
 static void CallSubqueryFree
 (
 	OpBase *op

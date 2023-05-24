@@ -339,10 +339,8 @@ static AST *_CreateASTFromCallSubquery
 	cypher_astnode_t *clauses[clause_count];
 
 	// explicitly collect all child nodes from the clause.
-	// bool is_eager = false;
 	for(uint i = 0; i < clause_count; i ++) {
 		clauses[i] = (cypher_astnode_t *)cypher_astnode_get_child(clause, i);
-		// is_eager |= _nodeIsEager(clauses[i]);
 	}
 	struct cypher_input_range range = {0};
 
@@ -428,6 +426,7 @@ static OpBase **_FindDeepestOps
 				// the added ops should be its first child (instead of the current one,
 				// which will be moved to be the second child)
 				// Example: "CALL {CALL {RETURN 1 AS one} RETURN one} RETURN one"
+				// TODO: Add FOREACH as well (?)
 				if(OpBase_Type(deepest) == OPType_CallSubquery &&
 					deepest->childCount == 1) {
 						array_append(deepest_ops, deepest);

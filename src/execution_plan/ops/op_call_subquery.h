@@ -15,8 +15,10 @@
 //     the subquery contains a consuming (eager) operation (depicted in the
 //     is_eager field), and plants that record-list in the ArgumentList op.
 //     Otherwise, it will non-eagerly consume, and plant in the Argument op.
+//     Note: If there is a JOIN op (due to a `UNION` clause) in the body, the
+//     input records are cloned and sent to all branches separately.
 //  2. It merges the records of the rhs branch and the record consumed from lhs
-//     according to the `is_returning` field.
+//     according to the `is_returning` field (whereas Apply always does so).
 
 typedef struct {
     OpBase op;

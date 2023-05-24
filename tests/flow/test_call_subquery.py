@@ -8,6 +8,9 @@ graph = None
 GRAPH_ID = "G"
 
 def _check_subquery_compression(plan: ExecutionPlan, operation_name: str):
+    """Returns True if the execution plan starting from the CallSubquery
+    operation contains a single operation with the given name"""
+
     callsubquery = locate_operation(plan.structured_plan, "CallSubquery")
     if callsubquery is not None:
         return (count_operation(callsubquery, operation_name) == 1)
@@ -23,19 +26,24 @@ class testCallSubqueryFlow():
         graph = Graph(redis_con, GRAPH_ID)
     
     def get_res_and_assertEquals(self, query, expected_result):
+        """Run the query and assert the result set is as expected"""
+
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
         return actual_result
 
     def expect_error(self, query, expected_err_msg):
+        """Run the query and expect an error with the given message"""
+
         try:
             graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError as e:
             self.env.assertIn(expected_err_msg, str(e))
 
-    # validate the non-valid queries don't pass validations
     def test01_test_validations(self):
+        """Make sure we fail on invalid queries"""
+
         import_error = "WITH imports in CALL {} must be simple ('WITH a')"
         match_after_updating = "A WITH clause is required to introduce MATCH after an updating clause"
         queries_errors = {
@@ -123,14 +131,14 @@ updating clause.")
  subquery)")
 
     def test02_simple_scan_return(self):
-        """Test a simple scan and return subquery"""
+        """Tests a simple scan and return subquery"""
 
         # the graph is empty
         # create a node, and find it via CALL {}
         res = graph.query("CREATE (n:N {name: 'Raz'})")
         self.env.assertEquals(res.nodes_created, 1)
 
-        # find a node via CALL {}
+        # find and return a node via CALL {}
         res = graph.query(
             """CALL
                 {
@@ -139,7 +147,8 @@ updating clause.")
                 }
                 RETURN n
             """
-            )
+        )
+
         # one node should have been found
         self.env.assertEquals(len(res.result_set), 1)
         # node labels and props should match created node
@@ -147,7 +156,7 @@ updating clause.")
                               Node(label='N', properties={'name': 'Raz'}))
 
     def test03_filter_results(self):
-        """Test that no records return from the subquery for scans that found
+        """Tests that no records return from the subquery for scans that found
         nothing."""
 
         # the graph has one node with label `N` and prop `name` with val `Raz`
@@ -174,7 +183,7 @@ updating clause.")
             Node(label='N', properties={'name': 'Raz', 'v': 4}))
 
     def test04_reference_innerReturn_alias(self):
-        """Test that the outer scope can reference the returned projections
+        """Tests that the outer scope can reference the returned projections
         from the subquery"""
 
         res = graph.query(
@@ -188,10 +197,11 @@ updating clause.")
             RETURN x + INNERETURN AS ret ORDER BY ret ASC
             """
         )
+
         self.env.assertEquals(res.result_set, [[5], [6], [7], [8]])
 
     def test05_many_to_one_not_first(self):
-        """Test the case Call {} gets several records, and returns only one,
+        """Tests the case Call {} gets several records, and returns only one,
         that corresponds to a record that is not the first one it gets"""
 
         # first input record to sq yields no records, next inputs do
@@ -211,8 +221,8 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0],
             Node(label='N', properties={'name': 'Raz', 'v': 4}))
 
-    def test06_many_to_one(self):
-        """Test the case Call {} changes the amount of records such that there
+    def test06_one_to_many(self):
+        """Tests the case Call {} changes the amount of records such that there
         are more output records than input"""
 
         # the graph has one node with label `N` and prop `name` with val `Raz`
@@ -239,7 +249,7 @@ updating clause.")
         Node(label='N', properties={'name': 'Raz', 'v': 4}))
 
     def test07_optional_match(self):
-        """test that OPTIONAL MATCH within the subquery works appropriately,
+        """Tests that OPTIONAL MATCH within the subquery works appropriately,
         i.e., passes records with empty columns in case no match was found"""
 
         res = graph.query(
@@ -261,7 +271,7 @@ updating clause.")
         Node(label='N', properties={'name': 'Raz', 'v': 4}))
 
     def test08_filtering(self):
-        """Test that filtering within the subquery works fine"""
+        """Tests filtering within the subquery"""
 
         # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
         # test filter using WHERE
@@ -282,7 +292,7 @@ updating clause.")
         Node(label='N', properties={'name': 'Raz', 'v': 1}))
 
     def test09_simple_ret_eager(self):
-        """Simple test for the returning eager subquery case"""
+        """Simple test for the eager and returning subquery case"""
 
         # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
         # execute a query with an eager and returning subquery inside
@@ -299,8 +309,10 @@ updating clause.")
 
         # make sure the wanted actions occurred
         self.env.assertEquals(res.properties_set, 2)
-        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz', 'v': 2}))
-        self.env.assertEquals(res.result_set[1][0], Node(label='N', properties={'name': 'Raz', 'v': 5}))
+        self.env.assertEquals(res.result_set[0][0], Node(label='N',
+            properties={'name': 'Raz', 'v': 2}))
+        self.env.assertEquals(res.result_set[1][0], Node(label='N',
+            properties={'name': 'Raz', 'v': 5}))
 
         # import outer-scope aliases, reference them inside and outside the sq
         res = graph.query(
@@ -323,7 +335,7 @@ updating clause.")
 
     # test FOREACH within CALL {} (updating (eager), returning)
     def test10_foreach(self):
-        """Test that FOREACH works properly when used inside a subquery"""
+        """Tests that FOREACH works properly when used inside a subquery"""
 
         # the graph has two nodes with label `N`, with `name` 'Raz' and `v` 4
         # and 5
@@ -395,7 +407,7 @@ updating clause.")
 
     # tests that SKIP and LIMIT work properly
     def test11_skip_limit(self):
-        """Test that SKIP works properly when placed inside a subquery"""
+        """Tests that SKIP works properly when placed inside a subquery"""
 
         # the graph has two nodes, with `name` 'Raz' and `v` 5 and 6
 
@@ -467,7 +479,7 @@ updating clause.")
 
 
     def test12_order_by(self):
-        """Test the ordering of the output of the sq, and the outer query"""
+        """Testss the ordering of the output of the sq, and the outer query"""
 
         # the graph has two nodes with label `N` and prop `name` with val `Raz`
         # with the `v` property with values 2 and 5.
@@ -541,6 +553,8 @@ updating clause.")
         self.expect_error(query, "Division by zero")
 
     def test14_nested_call_subquery(self):
+        """Tests that embedded call subqueries are handled correctly"""
+
         query_to_expected_result = {
             """
             UNWIND [0, 1, 2] AS x
@@ -651,8 +665,8 @@ updating clause.")
     #     self.env.assertEquals(res.result_set[0][0], expected_res)
 
     def test16_rewrite_same_clauses(self):
-        """Tests that rewrite same clauses works properly on clauses in a
-        subquery"""
+        """Tests that the rewriting of same consecutive clauses works properly
+        in a subquery"""
 
         # Test CREATE compression
         query = """
@@ -701,7 +715,9 @@ updating clause.")
         self.env.assertTrue(_check_subquery_compression(plan, "Delete"))
 
     def test17_leading_with(self):
-        # valid leading WITH queries
+        """Tests that we can use leading WITH queries with non-simple
+        projections if they do not import any outer-scope data"""
+
         query_to_expected_result = {
             """
             CALL {
@@ -813,7 +829,7 @@ updating clause.")
     def test20_aggregation_in_subquery(self):
         """Tests that we deal properly with aggregations in a subquery"""
 
-        # Create 3 nodes for this test
+        # Create 3 nodes
         graph.query("UNWIND range(1, 3) AS i CREATE (n:A {v:i})")
         
         query_to_expected_result = {
@@ -844,7 +860,7 @@ updating clause.")
             self.get_res_and_assertEquals(query, expected_result)
 
     def test21_union(self):
-        """Test that UNION works properly within a subquery"""
+        """Tests that UNION works properly within a subquery"""
 
         # clear the db
         self.env.flush()
@@ -1001,27 +1017,6 @@ updating clause.")
         # self.env.assertEquals(res.result_set[1][0], 2)
         # self.env.assertEquals(res.result_set[1][1], 5)
 
-
-        # # embedded call with UNION
-        # res = graph.query(
-        #     """
-        #     CALL {
-        #         CALL {
-        #             RETURN 1 AS num
-        #             UNION
-        #             RETURN 2 AS num
-        #         }
-        #         RETURN num
-        #     }
-        #     RETURN num
-        #     """
-        # )
-
-        # # assert results
-        # self.env.assertEquals(len(res.result_set), 2)
-        # self.env.assertEquals(res.result_set[0][0], 1)
-        # self.env.assertEquals(res.result_set[1][0], 2)
-
         # # this is a subquery that will require a change for the Join operation,
         # # as it requires the changes of one input record to be visible to the
         # # next input record
@@ -1138,7 +1133,7 @@ updating clause.")
         self.env.assertEquals(res.nodes_created, 0)
         self.env.assertEquals(res.properties_set, 0)
 
-        # UNION ALL more than 2 branches
+        # UNION ALL with more than 2 branches
         res = graph.query (
             """
             CALL {
@@ -1174,7 +1169,7 @@ updating clause.")
         self.env.assertEquals(res.properties_set, 1)
 
     def test22_indexes(self):
-        """Test that operations on indexes are properly executed (and reseted)
+        """Tests that operations on indexes are properly executed (and reset)
         in subqueries"""
 
         # clear the db
@@ -1206,7 +1201,8 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0], '11')
 
     def test23_multiple_segments(self):
-        """Tests that multiple segments within a subquery are handled properly"""
+        """Tests that multiple segments within a subquery are handled
+        properly"""
 
         # for the following query, we expect the deepest projection (implicit,
         # i.e., manually added to 'clean' the environment) to be bound to the

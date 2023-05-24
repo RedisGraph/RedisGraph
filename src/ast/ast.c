@@ -730,19 +730,18 @@ cypher_parse_result_t *parse_query
 	// MATCH (a:N), (b:N) RETURN a,b
 	rerun_validation |= AST_RewriteSameClauses(root);
 
-	// rewrite eager & resulting Call {} clauses
-	// e.g. MATCH (m) CALL { CREATE (n:N) RETURN n } RETURN n
-	// will be rewritten as:
-	// e.g. MATCH (m) CALL { WITH m AS @m CREATE (n:N) RETURN n, @m AS m } RETURN n
-	// Notice: It's problematic to put here the below line, since we add projections to 'invalid' places.
-	// rerun_validation |= AST_RewriteCallSubquery(root);
-
 	// only perform validations again if there's been a rewrite
 	if(rerun_validation && AST_Validate_Query(root) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;
 	}
 
+	// rewrite eager & resulting Call {} clauses
+	// e.g. MATCH (m) CALL { CREATE (n:N) RETURN n } RETURN n
+	// will be rewritten as:
+	// MATCH (m) CALL { WITH m AS @m CREATE (n:N) RETURN n, @m AS m } RETURN n
+	// Notice: It's problematic to call this before the above validation, since
+	// we add projections to 'invalid' places.
 	AST_RewriteCallSubquery(root);
 
 	return result;

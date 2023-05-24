@@ -3,6 +3,8 @@ from redis.commands.graph.execution_plan import Operation, ExecutionPlan
 
 
 def locate_operation(op: Operation, name: str):
+    """Searches for a specific operation in the execution plan and returns it if
+    found, or None otherwise"""
     if op.name == name:
         return op
     if op.children:
@@ -14,6 +16,8 @@ def locate_operation(op: Operation, name: str):
 
 # Iterate recursively the operation's children and return the number of operations with a specific name
 def count_operation(op: Operation, name: str):
+    """Returns the number of operations with a specific name in an execution
+    plan starting at op"""
     res = 0
     if op.name == name:
         res = 1
