@@ -1154,6 +1154,7 @@ cleanup:
 	return VISITOR_CONTINUE;
 }
 
+// validates that root does not contain bound identifiers
 static bool _ValidateSubqueryFirstWithClauseIdentifiers
 (
 	const cypher_astnode_t *root,  // root to validate
@@ -1181,6 +1182,7 @@ static bool _ValidateSubqueryFirstWithClauseIdentifiers
 	return true;
 }
 
+// validates a leading `WITH` clause of a subquery
 static bool _ValidateCallInitialWith
 (
 	const cypher_astnode_t *clause,  // `WITH` clause to validate
@@ -1243,7 +1245,8 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	cypher_astnode_t *body = cypher_ast_query(NULL, 0, clauses, nclauses,
 		clauses, nclauses, range);
 
-	AST ast; // Build a fake AST with the correct AST root
+	// Build an ast with the body of the subquery
+	AST ast;
 	ast.root = body;
 
 	// Verify that the RETURN clause and terminating clause do not violate scoping rules.
@@ -1310,7 +1313,8 @@ static VISITOR_STRATEGY _Validate_call_subquery
 			raxFree(vctx->defined_identifiers);
 			vctx->defined_identifiers = raxClone(in_env);
 
-			// validate that the with imports (if exist) are simple, i.e., 'WITH a'
+			// validate that the with imports (if exist) are simple, i.e.,
+			// 'WITH a'
 			if(!_ValidateCallInitialWith(clause, vctx)) {
 				raxFree(in_env);
 				ErrorCtx_SetError(
@@ -1384,8 +1388,7 @@ static bool _is_updating_clause
 		   type == CYPHER_AST_DELETE             ||
 		   type == CYPHER_AST_SET                ||
 		   type == CYPHER_AST_REMOVE             ||
-		   type == CYPHER_AST_FOREACH            ||
-		   type == CYPHER_AST_CALL_SUBQUERY && _is_updating_subquery(clause);
+		   type == CYPHER_AST_FOREACH;
 }
 
 // returns true if the subquery sq contains updating clauses, false otherwise

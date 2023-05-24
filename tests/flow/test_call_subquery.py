@@ -1,21 +1,18 @@
 from common import *
-from collections import Counter
 from collections import OrderedDict
-from execution_plan_util import locate_operation
-from execution_plan_util import count_operation
+from execution_plan_util import locate_operation, count_operation
 
 graph = None
-GRAPH_ID = "G"
+GRAPH_ID = "call_subquery"
 
-def _check_subquery_compression(plan: ExecutionPlan, operation_name: str):
-    """Returns True if the execution plan starting from the CallSubquery
-    operation contains a single operation with the given name"""
+def _assert_subquery_contains_single(plan: ExecutionPlan, operation_name: str, env):
+    """Asserts that the plan contains a single CallSubquery operation and a
+    single operation with the given name.
+    Assumes the plan has a single CallSubquery operation"""
 
     callsubquery = locate_operation(plan.structured_plan, "CallSubquery")
-    if callsubquery is not None:
-        return (count_operation(callsubquery, operation_name) == 1)
-    else:
-        return False
+    env.assertIsNotNone(callsubquery)
+    env.assertEquals(count_operation(callsubquery, operation_name), 1)
 
 class testCallSubqueryFlow():
     def __init__(self):
@@ -33,7 +30,7 @@ class testCallSubqueryFlow():
         return actual_result
 
     def expect_error(self, query, expected_err_msg):
-        """Run the query and expect an error with the given message"""
+        """Run the query and expect an error that contains the given message"""
 
         try:
             graph.query(query)
@@ -46,28 +43,29 @@ class testCallSubqueryFlow():
 
         import_error = "WITH imports in CALL {} must be simple ('WITH a')"
         match_after_updating = "A WITH clause is required to introduce MATCH after an updating clause"
-        queries_errors = {
-            "WITH 1 AS a CALL {WITH a+1 AS b RETURN b} RETURN b" : import_error,
-            "WITH {a: 1} AS map CALL {with map.a AS b RETURN b} RETURN b" : import_error,
-            "WITH [1, 2, 3] AS list CALL {WITH list[0] AS b RETURN b} RETURN b" : import_error,
-            "WITH 'RAZ' AS str CALL {WITH toUpper(str) AS b RETURN b} RETURN b" : import_error,
-            "WITH 1 AS a CALL {WITH a AS b RETURN b} RETURN b" : import_error,
-            "WITH 1 AS a CALL {WITH a LIMIT 5 RETURN a} RETURN a" : import_error,
-            "WITH 1 AS a CALL {WITH a ORDER BY a.v RETURN a} RETURN a" : import_error,
-            "WITH 1 AS a CALL {WITH a WHERE a > 5 RETURN a} RETURN a" : import_error,
-            "WITH 1 AS a CALL {WITH a SKIP 5 RETURN a} RETURN a" : import_error,
-            "WITH true AS a CALL {WITH NOT(a) AS b RETURN b} RETURN b" : import_error,
-            "CALL {CREATE (n:N) MATCH (n:N) RETURN n} RETURN 1" : match_after_updating,
-            "WITH 1 AS a CALL {WITH a CREATE (n:N) MATCH (n:N) RETURN n} RETURN a" : match_after_updating,
-            "CALL {MATCH (n:N) CREATE (n:N2)} RETURN 1 ": "The bound variable 'n' can't be redeclared in a CREATE clause",
-            "MATCH (n) CALL {WITH n AS n1 RETURN n1 UNION WITH n RETURN n1} RETURN n, n1": import_error,
-            "MATCH (n) CALL {WITH n RETURN n AS n1 UNION WITH n AS n1 RETURN n1} RETURN n, n1": import_error,
-        }
-        for query, err in queries_errors.items():
+        queries_errors = [
+            ("WITH 1 AS a CALL {WITH a+1 AS b RETURN b} RETURN b", import_error),
+            ("WITH {a: 1} AS map CALL {WITH map.a AS b RETURN b} RETURN b", import_error),
+            ("WITH [1, 2, 3] AS list CALL {WITH list[0] AS b RETURN b} RETURN b", import_error),
+            ("WITH 'RAZ' AS str CALL {WITH toUpper(str) AS b RETURN b} RETURN b", import_error),
+            ("WITH 1 AS a CALL {WITH a AS b RETURN b} RETURN b", import_error),
+            ("WITH 1 AS a CALL {WITH a LIMIT 5 RETURN a} RETURN a", import_error),
+            ("WITH 1 AS a CALL {WITH a ORDER BY a.v RETURN a} RETURN a", import_error),
+            ("WITH 1 AS a CALL {WITH a WHERE a > 5 RETURN a} RETURN a", import_error),
+            ("WITH 1 AS a CALL {WITH a SKIP 5 RETURN a} RETURN a", import_error),
+            ("WITH true AS a CALL {WITH NOT(a) AS b RETURN b} RETURN b", import_error),
+            ("CALL {CREATE (n:N) MATCH (n:N) RETURN n} RETURN 1", match_after_updating),
+            ("WITH 1 AS a CALL {WITH a CREATE (n:N) MATCH (n:N) RETURN n} RETURN a", match_after_updating),
+            ("CALL {MATCH (n:N) CREATE (n:N2)} RETURN 1 ", "The bound variable 'n' can't be redeclared in a CREATE clause"),
+            ("MATCH (n) CALL {WITH n AS n1 RETURN n1 UNION WITH n RETURN n1} RETURN n, n1", import_error),
+            ("MATCH (n) CALL {WITH n RETURN n AS n1 UNION WITH n AS n1 RETURN n1} RETURN n, n1", import_error)
+        ]
+        for query, err in queries_errors:
             self.expect_error(query, err)
 
-        # non-valid queries: import an undefined identifier
-        for query in [
+        # invalid queries: import an undefined identifier
+        queries = [
+            # There is no variable 'a' to import from the outer scope
             """
             CALL {
                 WITH a
@@ -75,6 +73,7 @@ class testCallSubqueryFlow():
             } 
             RETURN one
             """,
+            # 'a' is not defined in the first `WITH`
             """
             WITH a
             CALL {
@@ -83,13 +82,15 @@ class testCallSubqueryFlow():
             } 
             RETURN b
             """,
+            # 'a' in the inner RETURN is not defined
             """
             MATCH (a:N)
             CALL {
-                RETURN a.v AS INNERETURN
+                RETURN a.v AS INNERRETURN
             }
             RETURN 1
             """,
+            # 'a' in the outer RETURN is not defined
             """
             CALL {
                 MATCH (a:N)
@@ -97,6 +98,7 @@ class testCallSubqueryFlow():
             }
             RETURN a
             """,
+            # 'a' in inner RETURN is not defined
             """
             UNWIND [1, 2, 3, 4] AS a
             MATCH (n)
@@ -106,7 +108,8 @@ class testCallSubqueryFlow():
             }
             RETURN a + n.v
             """
-        ]:
+        ]
+        for query in queries:
             self.expect_error(query, "'a' not defined")
 
         # outer scope variables (bound) should not be returnable from the sq
@@ -119,11 +122,6 @@ class testCallSubqueryFlow():
             "A WITH clause is required to introduce CALL SUBQUERY after an \
 updating clause.")
 
-        # reading query after an updating subquery requires a separating WITH
-        query = "CALL {MATCH (m:M) CREATE (n:N) RETURN n} MATCH (n2:N) RETURN n2"
-        self.expect_error(query,
-            "A WITH clause is required to introduce MATCH after an updating clause.")
-
         # a query can not be terminated by a returning subquery
         query = "MATCH (n:N) CALL {WITH n CREATE (m:M {n: n.v}) RETURN m}"
         self.expect_error(query, "A query cannot conclude with a returning subquery \
@@ -134,7 +132,7 @@ updating clause.")
         """Tests a simple scan and return subquery"""
 
         # the graph is empty
-        # create a node, and find it via CALL {}
+        # create a node
         res = graph.query("CREATE (n:N {name: 'Raz'})")
         self.env.assertEquals(res.nodes_created, 1)
 
@@ -192,9 +190,9 @@ updating clause.")
             MATCH (n)
             CALL {
                 WITH n
-                RETURN n.v as INNERETURN
+                RETURN n.v as v
             }
-            RETURN x + INNERETURN AS ret ORDER BY ret ASC
+            RETURN x + v AS ret ORDER BY ret ASC
             """
         )
 
@@ -225,32 +223,31 @@ updating clause.")
         """Tests the case Call {} changes the amount of records such that there
         are more output records than input"""
 
-        # the graph has one node with label `N` and prop `name` with val `Raz`
-        # with the `v` property with value 4. Create another node with `v` set
-        # to 1
-        graph.query("CREATE (:N {name: 'Raz', v: 1})")
+        # the graph contains the following node (:N {name: 'Raz', v: 4}})
 
         res = graph.query(
             """
+            WITH 1 as one
             CALL {
-                UNWIND [1, 2, 3, 4] AS x
-                MATCH (n:N {v: x})
-                RETURN n
+                UNWIND [1, 2] AS x
+                RETURN x
             }
-            RETURN n
+            RETURN x, one
             """
         )
 
         # validate the results
         self.env.assertEquals(len(res.result_set), 2)
-        self.env.assertEquals(res.result_set[0][0],
-        Node(label='N', properties={'name': 'Raz', 'v': 1}))
-        self.env.assertEquals(res.result_set[1][0],
-        Node(label='N', properties={'name': 'Raz', 'v': 4}))
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[0][1], 1)
+        self.env.assertEquals(res.result_set[1][0], 2)
+        self.env.assertEquals(res.result_set[1][1], 1)
 
     def test07_optional_match(self):
         """Tests that OPTIONAL MATCH within the subquery works appropriately,
         i.e., passes records with empty columns in case no match was found"""
+
+        graph.query("CREATE (:N {name: 'Raz', v: 1})")
 
         res = graph.query(
             """
@@ -259,7 +256,7 @@ updating clause.")
                 OPTIONAL MATCH (n:N {v: x})
                 RETURN n
             }
-            RETURN n
+            RETURN n ORDER BY n.v ASC
             """
         )
 
@@ -267,8 +264,10 @@ updating clause.")
         self.env.assertEquals(len(res.result_set), 4)
         self.env.assertEquals(res.result_set[0][0],
         Node(label='N', properties={'name': 'Raz', 'v': 1}))
-        self.env.assertEquals(res.result_set[3][0],
+        self.env.assertEquals(res.result_set[1][0],
         Node(label='N', properties={'name': 'Raz', 'v': 4}))
+        self.env.assertEquals(res.result_set[2][0], None)
+        self.env.assertEquals(res.result_set[3][0], None)
 
     def test08_filtering(self):
         """Tests filtering within the subquery"""
@@ -278,8 +277,7 @@ updating clause.")
         res = graph.query(
             """
             CALL {
-                MATCH (n:N)
-                WHERE n.v = 1
+                MATCH (n:N {v: 1})
                 RETURN n
             }
             RETURN n
@@ -295,7 +293,7 @@ updating clause.")
         """Simple test for the eager and returning subquery case"""
 
         # the graph has two nodes, with `name` 'Raz' and `v` 1 and 4
-        # execute a query with an eager and returning subquery inside
+        # execute a query with an eager operation and returning subquery inside
         res = graph.query(
             """
             CALL {
@@ -334,7 +332,7 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][1], 2)
 
     # test FOREACH within CALL {} (updating (eager), returning)
-    def test10_foreach(self):
+    def test10_embedded_foreach(self):
         """Tests that FOREACH works properly when used inside a subquery"""
 
         # the graph has two nodes with label `N`, with `name` 'Raz' and `v` 4
@@ -405,9 +403,9 @@ updating clause.")
         # res = graph.query("MATCH (n:TEMP) DELETE n")
         # self.env.assertEquals(res.nodes_deleted, 2)
 
-    # tests that SKIP and LIMIT work properly
     def test11_skip_limit(self):
-        """Tests that SKIP works properly when placed inside a subquery"""
+        """Tests that SKIP and LIMIT work properly when placed inside a
+        subquery"""
 
         # the graph has two nodes, with `name` 'Raz' and `v` 5 and 6
 
@@ -473,21 +471,20 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][0],
             Node(label='W', properties={'name': '7', 'value': 7}))
 
-        # delete the nodes with label :X created only for LIMIT tests purpose
+        # delete the nodes with label :W created only for LIMIT tests purpose
         res = graph.query("MATCH (n:W) DELETE n")
         self.env.assertEquals(res.nodes_deleted, 10)
 
-
     def test12_order_by(self):
-        """Testss the ordering of the output of the sq, and the outer query"""
+        """Tests the ordering of the output of the sq, and the outer query"""
 
-        # the graph has two nodes with label `N` and prop `name` with val `Raz`
-        # with the `v` property with values 2 and 5.
+        # the graph has two nodes: (:N {name: 'Raz', v: 2}) and
+        # (:N {name: 'Raz', v: 5})
 
         res = graph.query(
             """
             CALL {
-                UNWIND [1, 2, 3, 4, 5, 6, 7] AS x
+                UNWIND range(1, 7) AS x
                 MATCH (n:N {v: x})
                 RETURN n ORDER BY n.v ASC
             }
@@ -505,7 +502,7 @@ updating clause.")
         res = graph.query(
             """
             CALL {
-                UNWIND [1, 2, 3, 4, 5, 6, 7] AS x
+                UNWIND range(1, 7) AS x
                 MATCH (n:N {v: x})
                 RETURN n ORDER BY n.v DESC
             }
@@ -524,7 +521,7 @@ updating clause.")
         res = graph.query(
             """
             CALL {
-                UNWIND [1, 2, 3, 4, 5, 6, 7] AS x
+                UNWIND range(1, 7) AS x
                 MATCH (n:N {v: x})
                 RETURN n ORDER BY n.v ASC
             }
@@ -546,40 +543,45 @@ updating clause.")
         WITH 1 AS x
         CALL {
             WITH x
+            CREATE (:TEMP {v: x})
             RETURN x / 0 AS innerReturn
         }
         RETURN innerReturn
         """
         self.expect_error(query, "Division by zero")
 
-    def test14_nested_call_subquery(self):
-        """Tests that embedded call subqueries are handled correctly"""
+        # make sure the TEMP node was deleted
+        res = graph.query("MATCH (n:TEMP) RETURN n")
+        self.env.assertEquals(len(res.result_set), 0)
 
-        query_to_expected_result = {
-            """
+    def test14_nested_call_subquery(self):
+        """Tests that embedded call subqueries are handled correctly."""
+
+        query_to_expected_result = [
+            ("""
             UNWIND [0, 1, 2] AS x
             CALL {
                 CALL {
-                    RETURN 1 AS One
+                    RETURN 1 AS one
                 }
-                RETURN 2 AS Two
+                RETURN 2 AS two, one
             }
-            RETURN 0
+            RETURN one, two, x
             """
-            : [[0],[0],[0]],
-            """
+            , [[1, 2, 0],[1, 2, 1],[1, 2, 2]]),
+            ("""
             UNWIND [0, 1, 2] AS x 
-            CALL { 
-                WITH x 
+            CALL {
+                WITH x
                 CALL {
-                    RETURN 1 AS One
-                } 
-                RETURN 2 AS Two
+                    RETURN 1 AS one
+                }
+                RETURN one, 2 AS two
             } 
-            RETURN 0
-            """ 
-            : [[0],[0],[0]],
+            RETURN one, two, x
             """
+            , [[1, 2, 0],[1, 2, 1],[1, 2, 2]]),
+            ("""
             UNWIND [0, 1, 2] AS x
             CALL {
                 CALL {
@@ -587,29 +589,11 @@ updating clause.")
                 }
                 RETURN max(x) AS y
             }
-            RETURN x ORDER BY x ASC
+            RETURN y, x ORDER BY x ASC
             """
-            : [[0], [1], [2]],
-            """
-            UNWIND [0, 1, 2] AS x
-            CALL {
-                WITH x
-                RETURN max(x) AS y
-            }
-            RETURN x ORDER BY x ASC
-            """
-            : [[0], [1], [2]],
-            """
-            UNWIND [0, 1, 2] AS x
-            CALL {
-                WITH x
-                RETURN max(x) AS y
-            }
-            RETURN y ORDER BY y ASC
-            """
-            : [[0], [1], [2]],
-        }
-        for query, expected_result in query_to_expected_result.items():
+            , [[1, 0], [1, 1], [1, 2]])
+        ]
+        for query, expected_result in query_to_expected_result:
             self.get_res_and_assertEquals(query, expected_result)
 
     # TODO: Test failing. Fix and add. This was working before the commit: 4ece7eb
@@ -665,8 +649,8 @@ updating clause.")
     #     self.env.assertEquals(res.result_set[0][0], expected_res)
 
     def test16_rewrite_same_clauses(self):
-        """Tests that the rewriting of same consecutive clauses works properly
-        in a subquery"""
+        """Tests that the AST-rewriting of same consecutive clauses works
+        properly in a subquery"""
 
         # Test CREATE compression
         query = """
@@ -677,7 +661,7 @@ updating clause.")
             """
         plan = graph.explain(query)
         # make sure that CREATE is called only once
-        self.env.assertTrue(_check_subquery_compression(plan, "Create"))
+        _assert_subquery_contains_single(plan, "Create", self.env)
 
         # Test SET compression
         query = """
@@ -688,7 +672,7 @@ updating clause.")
             }"""
         plan = graph.explain(query)
         # make sure that Update is called only once
-        self.env.assertTrue(_check_subquery_compression(plan, "Update"))
+        _assert_subquery_contains_single(plan, "Update", self.env)
 
         # Test REMOVE compression
         query = """
@@ -699,7 +683,7 @@ updating clause.")
             }"""
         plan = graph.explain(query)
         # make sure that Update is called only once
-        self.env.assertTrue(_check_subquery_compression(plan, "Update"))
+        _assert_subquery_contains_single(plan, "Update", self.env)
 
         # Test DELETE compression
         query = """
@@ -712,57 +696,63 @@ updating clause.")
             """
         plan = graph.explain(query)
         # make sure that DELETE is called only once
-        self.env.assertTrue(_check_subquery_compression(plan, "Delete"))
+        _assert_subquery_contains_single(plan, "Delete", self.env)
 
     def test17_leading_with(self):
         """Tests that we can use leading WITH queries with non-simple
         projections if they do not import any outer-scope data"""
 
-        query_to_expected_result = {
-            """
+        query_to_expected_result = [
+            ("""
             CALL {
                 WITH 1 AS b 
                 RETURN b
             }
             RETURN b
-            """ : [[1]],
             """
+            , [[1]]),
+            ("""
             CALL {
                 WITH {} AS b 
                 RETURN b
             }
             RETURN b
-            """ : [[{}]],
             """
+            , [[{}]]),
+            ("""
             CALL {
                 WITH 'a' AS b 
                 RETURN b
             } 
-            RETURN b""" : [['a']],
-            """
+            RETURN b"""
+            , [['a']]),
+            ("""
             CALL { 
                 WITH ['foo', 'bar'] AS l1 
                 RETURN l1
             } 
             RETURN l1
-            """ : [[['foo', 'bar']]],
             """
+            , [[['foo', 'bar']]]),
+            ("""
             WITH 1 AS one
             CALL {
                 WITH one, 2 as two
                 RETURN one + two AS three
             }
             RETURN three
-            """ : [[3]],
             """
+            , [[3]]),
+            ("""
             WITH 1 AS one, 2 as two
             CALL {
                 WITH one, two
                 RETURN one + two AS three
             }
             RETURN three
-            """ : [[3]],
             """
+            , [[3]]),
+            ("""
             WITH 1 AS a, 5 AS b 
             CALL {
                 WITH a 
@@ -770,9 +760,10 @@ updating clause.")
                 RETURN a + b AS c
             } 
             RETURN c
-            """ : [[3]],
-        }
-        for query, expected_result in query_to_expected_result.items():
+            """
+            , [[3]])
+        ]
+        for query, expected_result in query_to_expected_result:
             self.get_res_and_assertEquals(query, expected_result)
 
     def test18_returning_aggregations(self):

@@ -112,4 +112,3 @@ EntityUpdateEvalCtx *UpdateCtx_New(const char *alias);
 EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *ctx);
 void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx);
 void UpdateCtx_Free(EntityUpdateEvalCtx *ctx);
-
