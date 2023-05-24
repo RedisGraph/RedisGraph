@@ -41,7 +41,7 @@ typedef struct {
 typedef _AttributeSet* AttributeSet;
 
 // variable to initialize attributes pointer and avoid read value from NULL
-AttributeSet NULL_ATTRIBUTE_SET;
+static AttributeSet NULL_ATTRIBUTE_SET = NULL;
 
 // retrieves a value from set
 // NOTE: if the key does not exist

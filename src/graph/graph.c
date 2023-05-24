@@ -549,7 +549,7 @@ bool Graph_GetNode
 	n->id         = id;
 	n->attributes = _Graph_GetEntity(g->nodes, id);
 
-	return (n->attributes != &NULL_ATTRIBUTE_SET);
+	return (n->attributes != NULL);
 }
 
 bool Graph_GetEdge
@@ -565,7 +565,7 @@ bool Graph_GetEdge
 	e->id         = id;
 	e->attributes = _Graph_GetEntity(g->edges, id);
 
-	return (e->attributes != &NULL_ATTRIBUTE_SET);
+	return (e->attributes != NULL);
 }
 
 RelationID Graph_GetEdgeRelation
