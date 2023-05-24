@@ -69,6 +69,8 @@ static void _get_vars_inner_rep
 	}
 }
 
+// replaces a `WITH` clause, placed in clause_idx within `callsubquery`, with a
+// new `WITH` clause containing projections of `names` to `inter_names`
 static void _replace_with_clause
 (
 	cypher_astnode_t *callsubquery,  // call subquery ast-node
@@ -167,7 +169,7 @@ static void _replace_with_clause
 		clause_idx, clause_idx);
 }
 
-// adds a first WITH clause to the query, projecting all bound vars (names) to
+// adds a leading WITH clause to the query, projecting all bound vars (names) to
 // their internal representation (inter_names)
 static void _add_first_clause
 (

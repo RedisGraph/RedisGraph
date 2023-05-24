@@ -223,12 +223,12 @@ OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 	return ExecutionPlan_LocateOpMatchingType(root, type_arr, 1);
 }
 
-// returns pointers to all operations of a certain type in a execution plan
+// returns all operations of a certain type in a execution plan
 void ExecutionPlan_LocateOps
 (
-	OpBase ***plans,  // array in which op-pointers are stored
-	OpBase *root,    // root operation of the plan to traverse
-	OPType type      // operation type to search
+	OpBase ***plans,  // array in which ops are stored
+	OpBase *root,     // root operation of the plan to traverse
+	OPType type       // operation type to search
 ) {
 	if(root->type == type) {
 		array_append(*plans, root);
