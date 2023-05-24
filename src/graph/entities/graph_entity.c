@@ -12,9 +12,6 @@
 #include "../../datatypes/map.h"
 #include "../../datatypes/array.h"
 
-// defined in node.h
-extern AttributeSet NULL_ATTRIBUTE_SET;
-
 // add a new property to entity
 bool GraphEntity_AddProperty
 (

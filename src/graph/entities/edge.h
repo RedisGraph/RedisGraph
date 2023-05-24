@@ -14,9 +14,6 @@ typedef int RelationID;
 
 #define EDGE_LENGTH_INF UINT_MAX - 2
 
-// defined in node.h
-extern AttributeSet NULL_ATTRIBUTE_SET;
-
 // instantiate a new unpopulated edge
 #define GE_NEW_EDGE()                 \
 (Edge) {                              \

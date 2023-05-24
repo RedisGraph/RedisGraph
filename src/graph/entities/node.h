@@ -11,9 +11,6 @@
 
 typedef int LabelID;
 
-// variable to initialize attributes pointer and avoid read value from NULL
-AttributeSet NULL_ATTRIBUTE_SET;
-
 // helper macro that instantiates 'labels' as a stack array
 // and updates 'label_count'
 #define NODE_GET_LABELS(g, n, label_count)                              \
