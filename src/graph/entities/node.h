@@ -11,7 +11,7 @@
 
 typedef int LabelID;
 
-// arbitrary constant to avoid read value from NULL pointer
+// variable to initialize attributes pointer and avoid read value from NULL
 AttributeSet NULL_ATTRIBUTE_SET;
 
 // helper macro that instantiates 'labels' as a stack array

@@ -186,14 +186,14 @@ static bool _CreateEntities(OpMergeCreate *op, Record r, GraphContext *gc) {
 		// incase node has its internal attribute-set, this means the node has been retrieved from the graph
 		// i.e. bounded node
 		_IncrementalHashEntity(op->hash_state, &e->relation, 1, &converted_attr);
-		if(src_node->attributes != NULL) {
+		if(src_node->attributes != &NULL_ATTRIBUTE_SET) {
 			EntityID id = ENTITY_GET_ID(src_node);
 			void *data = &id;
 			size_t len = sizeof(id);
 			res = XXH64_update(op->hash_state, data, len);
 			ASSERT(res != XXH_ERROR);
 		}
-		if(dest_node->attributes != NULL) {
+		if(dest_node->attributes != &NULL_ATTRIBUTE_SET) {
 			EntityID id = ENTITY_GET_ID(dest_node);
 			void *data = &id;
 			size_t len = sizeof(id);
