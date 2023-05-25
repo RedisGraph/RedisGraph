@@ -11,8 +11,8 @@
 #include "../index/index.h"
 #include "../schema/schema.h"
 #include "../util/cache/cache.h"
-#include "../info/queries_log.h"
 #include "../slow_log/slow_log.h"
+#include "../queries_log/queries_log.h"
 #include "../serializers/encode_context.h"
 #include "../serializers/decode_context.h"
 
