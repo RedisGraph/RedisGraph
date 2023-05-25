@@ -6,11 +6,10 @@
 
 #pragma once
 
-#include "../info/info.h"
-#include "../graph/graphcontext.h"
 #include "cypher-parser.h"
 #include "../redismodule.h"
 #include "../util/simple_timer.h"
+#include "../graph/graphcontext.h"
 
 // ExecutorThread lists the diffrent types of threads in the system
 typedef enum {
@@ -19,69 +18,71 @@ typedef enum {
 	EXEC_THREAD_WRITER,  // write only thread
 } ExecutorThread;
 
-/* Command context, used for concurrent query processing. */
+// command context, used for concurrent query processing
 typedef struct {
-	char *query;                    // Query string.
-	RedisModuleCtx *ctx;            // Redis module context.
-	char *command_name;             // Command to execute.
-	GraphContext *graph_ctx;        // Graph context.
-	RedisModuleBlockedClient *bc;   // Blocked client.
-	bool replicated_command;        // Whether this instance was spawned by a replication command.
-	bool compact;                   // Whether this query was issued with the compact flag.
-	ExecutorThread thread;          // Which thread executes this command
-	long long timeout;              // The query timeout, if specified.
-	bool timeout_rw;                // Apply timeout on both read and write queries.
-	simple_timer_t timer;           // The timer for "GRAPH.INFO".
-	uint64_t received_timestamp;    // The timestamp when the command was received.
-	bool should_track_info;         // Whether or not to track info.
-	QueryCtx *query_ctx;            // query context
+	char *query;                   // query string
+	RedisModuleCtx *ctx;           // redis module context
+	char *command_name;            // command to execute
+	GraphContext *graph_ctx;       // graph context
+	RedisModuleBlockedClient *bc;  // blocked client
+	bool replicated_command;       // whether this instance was spawned by a replication command
+	bool compact;                  // whether this query was issued with the compact flag
+	ExecutorThread thread;         // which thread executes this command
+	long long timeout;             // the query timeout, if specified
+	bool timeout_rw;               // apply timeout on both read and write queries
+	uint64_t received_ts;          // command received at this  UNIX timestamp
+	simple_timer_t timer;          // stopwatch started upon command received
 } CommandCtx;
 
-// Create a new command context.
+// create a new command context
 CommandCtx *CommandCtx_New
 (
-	RedisModuleCtx *ctx,               // Redis module context.
-	RedisModuleBlockedClient *bc,      // Blocked client.
-	RedisModuleString *cmd_name,       // Command to execute.
-	RedisModuleString *query,          // Query string.
-	GraphContext *graph_ctx,           // Graph context.
-	ExecutorThread thread,             // Which thread executes this command
-	bool replicated_command,           // Whether this instance was spawned by a replication command.
-	bool compact,                      // Whether this query was issued with the compact flag.
-	long long timeout,                 // The query timeout, if specified.
-	bool timeout_rw,                   // Apply timeout on both read and write queries.
-	const simple_timer_t timer,        // The timer for timing the command.
-	const uint64_t received_timestamp, // The command receive timestamp (epoch).
-	const bool should_track_info,      // Whether or not to track info.
-	QueryCtx *query_ctx                // query context
+	RedisModuleCtx *ctx,           // redis module context
+	RedisModuleBlockedClient *bc,  // blocked client
+	RedisModuleString *cmd_name,   // command to execute
+	RedisModuleString *query,      // query string
+	GraphContext *graph_ctx,       // graph context
+	ExecutorThread thread,         // which thread executes this command
+	bool replicated_command,       // whether this instance was spawned by a replication command
+	bool compact,                  // whether this query was issued with the compact flag
+	long long timeout,             // the query timeout, if specified
+	bool timeout_rw,               // apply timeout on both read and write queries
+	uint64_t received_ts,          // command received at this  UNIX timestamp
+	simple_timer_t timer           // stopwatch started upon command received
 );
 
-// Tracks given 'ctx' such that in case of a crash we will be able to report
+// tracks given 'ctx' such that in case of a crash we will be able to report
 // back all of the currently running commands
-void CommandCtx_TrackCtx(CommandCtx *ctx);
+void CommandCtx_TrackCtx
+(
+	CommandCtx *ctx
+);
 
-// Remove the given CommandCtx from tracking.
-void CommandCtx_UntrackCtx(CommandCtx *ctx);
+// remove the given CommandCtx from tracking
+void CommandCtx_UntrackCtx
+(
+	CommandCtx *ctx
+);
 
-// Get Redis module context
+// get Redis module context
 RedisModuleCtx *CommandCtx_GetRedisCtx
 (
 	CommandCtx *command_ctx
 );
 
-// Get blocking client.
+// get blocking client
 RedisModuleBlockedClient *CommandCtx_GetBlockingClient
 (
 	const CommandCtx *command_ctx
 );
 
-// Get GraphContext.
+// get GraphContext
 GraphContext *CommandCtx_GetGraphContext
 (
 	const CommandCtx *command_ctx
 );
 
-// Get command name.
+// get command name
 const char *CommandCtx_GetCommandName
 (
 	const CommandCtx *command_ctx
@@ -92,34 +93,28 @@ const char *CommandCtx_GetQuery
 	const CommandCtx *command_ctx
 );
 
-// Acquire Redis global lock.
+// acquire Redis global lock
 void CommandCtx_ThreadSafeContextLock
 (
 	const CommandCtx *command_ctx
 );
 
-// Release Redis global lock.
+// release Redis global lock
 void CommandCtx_ThreadSafeContextUnlock
 (
 	const CommandCtx *command_ctx
 );
 
-// Return the time in milliseconds, spent since the last call (or initialization
-// of the object).
-uint64_t CommandCtx_GetTimeSpent
+// copy the stopwatch representing the time the command was received
+void CommandCtx_GetTimmer
 (
-	CommandCtx *
+	const CommandCtx *command_ctx,
+	simple_timer_t timer
 );
 
-// Return the timestamp in milliseconds since the UNIX epoch, indicating when
-// the command was received by the module.
-uint64_t CommandCtx_GetReceivedTimestamp
-(
-	const CommandCtx *
-);
-
-// Free command context.
+// free command context
 void CommandCtx_Free
 (
 	CommandCtx *command_ctx
 );
+

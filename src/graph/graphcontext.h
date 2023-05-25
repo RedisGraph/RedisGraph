@@ -7,14 +7,14 @@
 #pragma once
 
 #include "graph.h"
-#include "../info/info.h"
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
+#include "../util/cache/cache.h"
+#include "../info/queries_log.h"
 #include "../slow_log/slow_log.h"
 #include "../serializers/encode_context.h"
 #include "../serializers/decode_context.h"
-#include "../util/cache/cache.h"
 
 // GraphContext holds refrences to various elements of a graph object
 // It is the value sitting behind a Redis graph key
@@ -27,23 +27,21 @@
 // and take action accordingly
 
 typedef struct {
-	Graph *g;                                          // container for all matrices and entity properties
-	int ref_count;                                     // number of active references
-	rax *attributes;                                   // from strings to attribute IDs
-	uint64_t node_attributes_count;                    // counter of attributes related to nodes
-	uint64_t edge_attributes_count;                    // counter of attributes related to edges
-	pthread_rwlock_t _attribute_rwlock;                // read-write lock to protect access to the attribute maps
-	char *graph_name;                                  // string associated with graph
-	char **string_mapping;                             // from attribute IDs to strings
-	Schema **node_schemas;                             // array of schemas for each node label
-	Schema **relation_schemas;                         // array of schemas for each relation type
-	unsigned short index_count;                        // number of indicies
-	SlowLog *slowlog;                                  // slowlog associated with graph
-	GraphEncodeContext *encoding_context;              // encode context of the graph
-	GraphDecodeContext *decoding_context;              // decode context of the graph
-	Cache *cache;                                      // global cache of execution plans
-	XXH32_hash_t version;                              // graph version
-	Info *info;                                        // graph query information
+	Graph *g;                              // container for all matrices and entity properties
+	int ref_count;                         // number of active references
+	rax *attributes;                       // from strings to attribute IDs
+	pthread_rwlock_t _attribute_rwlock;    // read-write lock to protect access to the attribute maps
+	char *graph_name;                      // string associated with graph
+	char **string_mapping;                 // from attribute IDs to strings
+	Schema **node_schemas;                 // array of schemas for each node label
+	Schema **relation_schemas;             // array of schemas for each relation type
+	unsigned short index_count;            // number of indicies
+	SlowLog *slowlog;                      // slowlog associated with graph
+	QueriesLog queries_log;                // log last x executed queries
+	GraphEncodeContext *encoding_context;  // encode context of the graph
+	GraphDecodeContext *decoding_context;  // decode context of the graph
+	Cache *cache;                          // global cache of execution plans
+	XXH32_hash_t version;                  // graph version
 } GraphContext;
 
 //------------------------------------------------------------------------------
@@ -104,28 +102,6 @@ XXH32_hash_t GraphContext_GetVersion
 	const GraphContext *gc
 );
 
-uint64_t GraphContext_AllNodePropertyNamesCount
-(
-	const GraphContext *gc
-);
-uint64_t GraphContext_AllEdgePropertyNamesCount
-(
-	const GraphContext *gc
-);
-
-void GraphContext_IncreasePropertyNamesCount
-(
-	GraphContext *gc,
-	const uint64_t count,
-	const GraphEntityType entity_type
-);
-
-void GraphContext_DecreasePropertyNamesCount
-(
-	GraphContext *gc,
-	const uint64_t count,
-	const GraphEntityType entity_type
-);
 // get graph from graph context
 Graph *GraphContext_GetGraph
 (
@@ -352,6 +328,22 @@ GraphContext *GraphContext_GetRegisteredGraphContext
 SlowLog *GraphContext_GetSlowLog
 (
 	const GraphContext *gc
+);
+
+//------------------------------------------------------------------------------
+// Queries API
+//------------------------------------------------------------------------------
+
+void GraphContext_LogQuery
+(
+	const GraphContext *gc,       // graph context
+	uint64_t received,            // query received timestamp
+	double wait_duration,         // waiting time
+	double execution_duration,    // executing time
+	double report_duration,       // reporting time
+	bool parameterized,           // uses parameters
+	bool utilized_cache,          // utilized cache
+	const char *query             // query string
 );
 
 //------------------------------------------------------------------------------

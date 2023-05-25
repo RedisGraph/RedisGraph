@@ -58,12 +58,12 @@ int CircularBuffer_Add
 	void *item          // item to add
 );
 
-// forcefully adds item to buffer
-// in case buffer is full an element is overwritten
-void CircularBuffer_AddForce
+// reserve a slot within buffer
+// returns a pointer to a 'item size' slot within the buffer
+// this function is thread-safe and lock-free
+void *CircularBuffer_Reserve
 (
-	CircularBuffer cb,  // buffer to populate
-	void *item          // item to add
+	CircularBuffer cb  // buffer to populate
 );
 
 // removes oldest item from buffer

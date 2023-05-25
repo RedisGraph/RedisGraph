@@ -6,7 +6,6 @@
 
 #include "RG.h"
 #include "cmd_context.h"
-#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/pools.h"
 #include "../slow_log/slow_log.h"
@@ -17,24 +16,24 @@
  * initialized at module.c accessed via cmd_* and debug.c */
 CommandCtx **command_ctxs = NULL;
 
+// create a new command context
 CommandCtx *CommandCtx_New
 (
-	RedisModuleCtx *ctx,
-	RedisModuleBlockedClient *bc,
-	RedisModuleString *cmd_name,
-	RedisModuleString *query,
-	GraphContext *graph_ctx,
-	ExecutorThread thread,
-	bool replicated_command,
-	bool compact,
-	long long timeout,
-	bool timeout_rw,
-	const simple_timer_t timer,
-	const uint64_t received_timestamp,
-	const bool should_track_info,
-	QueryCtx *query_ctx
+	RedisModuleCtx *ctx,           // redis module context
+	RedisModuleBlockedClient *bc,  // blocked client
+	RedisModuleString *cmd_name,   // command to execute
+	RedisModuleString *query,      // query string
+	GraphContext *graph_ctx,       // graph context
+	ExecutorThread thread,         // which thread executes this command
+	bool replicated_command,       // whether this instance was spawned by a replication command
+	bool compact,                  // whether this query was issued with the compact flag
+	long long timeout,             // the query timeout, if specified
+	bool timeout_rw,               // apply timeout on both read and write queries
+	uint64_t received_ts,          // command received at this  UNIX timestamp
+	simple_timer_t timer           // stopwatch started upon command received
 ) {
-	CommandCtx *context         = rm_malloc(sizeof(CommandCtx));
+	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
+
 	context->bc                 = bc;
 	context->ctx                = ctx;
 	context->query              = NULL;
@@ -42,22 +41,21 @@ CommandCtx *CommandCtx_New
 	context->compact            = compact;
 	context->timeout            = timeout;
 	context->graph_ctx          = graph_ctx;
-	context->command_name       = NULL;
 	context->timeout_rw         = timeout_rw;
+	context->received_ts        = received_ts;
+	context->command_name       = NULL;
 	context->replicated_command = replicated_command;
-	TIMER_ASSIGN(context->timer, timer);
-	context->received_timestamp = received_timestamp;
-	context->should_track_info  = should_track_info;
-	context->query_ctx          = query_ctx;
+
+	simple_timer_copy(timer, context->timer);
 
 	if(cmd_name) {
-		// Make a copy of command name.
+		// make a copy of command name
 		const char *command_name = RedisModule_StringPtrLen(cmd_name, NULL);
 		context->command_name = rm_strdup(command_name);
 	}
 
 	if(query) {
-		// Make a copy of query.
+		// make a copy of query
 		const char *q = RedisModule_StringPtrLen(query, NULL);
 		context->query = rm_strdup(q);
 	}
@@ -142,31 +140,15 @@ void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
 	if(command_ctx->bc) RedisModule_ThreadSafeContextUnlock(command_ctx->ctx);
 }
 
-uint64_t CommandCtx_GetTimeSpent
+// copy the stopwatch representing the time the command was received
+void CommandCtx_GetTimmer
 (
-	CommandCtx *command_ctx
+	const CommandCtx *command_ctx,
+	simple_timer_t timer
 ) {
-	ASSERT(command_ctx);
-	if (!command_ctx) {
-		return 0;
-	}
+	ASSERT(command_ctx != NULL);
 
-	const uint64_t elapsed_milliseconds = TIMER_GET_ELAPSED_MILLISECONDS(command_ctx->timer);
-	TIMER_RESTART(command_ctx->timer);
-
-	return elapsed_milliseconds;
-}
-
-uint64_t CommandCtx_GetReceivedTimestamp
-(
-	const CommandCtx *command_ctx
-) {
-	ASSERT(command_ctx);
-	if (!command_ctx) {
-		return 0;
-	}
-
-	return command_ctx->received_timestamp;
+	simple_timer_copy(command_ctx->timer, timer);
 }
 
 void CommandCtx_Free(CommandCtx *command_ctx) {

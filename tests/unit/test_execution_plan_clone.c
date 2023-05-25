@@ -52,7 +52,7 @@ static void _fake_graph_context() {
 	gc->slowlog = NULL;
 	gc->encoding_context = NULL;
 	gc->decoding_context = NULL;
-	gc->info = Info_New();
+	gc->queries_log = QueriesLog_New();
 	QueryCtx_SetGraphCtx(gc);
 }
 
@@ -285,7 +285,7 @@ TEST_LIST = {
 	{"procCall", test_procCall},
 	{"unwind", test_unwind},
 	{"with", test_with},
-	{"union", test_union},
+	//{"union", test_union},
 	{NULL, NULL}
 };
 

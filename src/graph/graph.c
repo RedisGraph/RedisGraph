@@ -1141,39 +1141,6 @@ static void _Graph_FreeRelationMatrices
 	for(uint i = 0; i < relationCount; i++) RG_Matrix_free(&g->relations[i]);
 }
 
-// update entity's attribute with given value
-int Graph_UpdateEntity
-(
-	GraphEntity *ge,             // entity to update
-	Attribute_ID attr_id,        // attribute to update
-	SIValue value,               // value to be set
-	GraphEntityType entity_type  // type of the entity node/edge
-) {
-	ASSERT(ge != NULL);
-
-	int res = 0;
-
-	// handle the case in which we are deleting all attributes
-	if(attr_id == ATTRIBUTE_ID_ALL) {
-		return GraphEntity_ClearAttributes(ge);
-	}
-
-	// try to get current attribute value
-	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
-
-	if(old_value == ATTRIBUTE_NOTFOUND) {
-		// adding a new attribute; do nothing if its value is NULL
-		if(SI_TYPE(value) != T_NULL) {
-			res = GraphEntity_AddProperty(ge, attr_id, value);
-		}
-	} else {
-		// update attribute
-		res = GraphEntity_SetProperty(ge, attr_id, value);
-	}
-
-	return res;
-}
-
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {
 	ASSERT(g);
 	return DataBlock_Scan(g->nodes);

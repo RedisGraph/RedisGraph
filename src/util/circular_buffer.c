@@ -10,12 +10,14 @@
 #include "circular_buffer.h"
 #include "graph/graphcontext.h"
 
+#include <stdatomic.h>
+
 // circular buffer structure
 // the buffer is of fixed size
 // items are removed by order of insertion, similar to a queue
 struct _CircularBuffer {
 	char *read;                      // read data from here
-	char *write;                     // write data to here
+	_Atomic uint64_t write;          // write data to here
 	size_t item_size;                // item size in bytes
 	_Atomic uint64_t item_count;     // current number of items in buffer
 	uint64_t item_cap;               // max number of items held by buffer
@@ -30,10 +32,11 @@ CircularBuffer CircularBuffer_New
 	uint cap,                       // max number of items in buffer
 	CircularBufferItemFree free_cb  // [optional] item delete callback
 ) {
+
 	CircularBuffer cb = rm_malloc(sizeof(_CircularBuffer) + item_size * cap);
 
 	cb->read       = cb->data;   // read from beginning of data
-	cb->write      = cb->data;   // write to beginning of data
+	cb->write      = 0;          // write to beginning of data
 	cb->item_cap   = cap;        // buffer capacity
 	cb->item_size  = item_size;  // item size
 	cb->item_count = 0;          // no items in buffer
@@ -100,10 +103,10 @@ void CircularBuffer_ResetReader
 	n = MIN(n, CircularBuffer_ItemCount(cb));
 
 	// compensate for circularity
-	uint write_idx = (cb->write - cb->data) / cb->item_size;
+	uint write_idx = cb->write / cb->item_size;
 	int sub = write_idx - n;
 	if(sub >= 0) {
-		cb->read = cb->write - (n * cb->item_size);
+		cb->read = (cb->data + cb->write) - (n * cb->item_size);
 	} else {
 		cb->read = cb->end_marker + (sub * cb->item_size);
 	}
@@ -125,7 +128,7 @@ int CircularBuffer_Add
 	}
 
 	// copy item into buffer
-	memcpy(cb->write, item, cb->item_size);
+	memcpy(cb->data + cb->write, item, cb->item_size);
 
 	// atomic update buffer item count
 	cb->item_count++;
@@ -133,42 +136,44 @@ int CircularBuffer_Add
 	// advance write position
 	// circle back if write reached the end of the buffer
 	cb->write += cb->item_size;
-	if(unlikely(cb->write >= cb->end_marker)) {
-		cb->write = cb->data;
+	if(unlikely(cb->data + cb->write >= cb->end_marker)) {
+		cb->write = 0;
 	}
 
 	// report success
 	return 1;
 }
 
-// forcefully adds item to buffer, i.e., may run over an existing element
-// in case buffer is full an element is overwritten
-void CircularBuffer_AddForce
+// reserve a slot within buffer
+// returns a pointer to a 'item size' slot within the buffer
+// this function is thread-safe and lock-free
+void *CircularBuffer_Reserve
 (
-	CircularBuffer cb,  // buffer to populate
-	void *item          // item to add
+	CircularBuffer cb  // buffer to populate
 ) {
 	ASSERT(cb != NULL);
-	ASSERT(item != NULL);
 
-	if(CircularBuffer_Full(cb)) {
-		// free overriden item
-		if(cb->free_cb != NULL) {
-			cb->free_cb(*((void **)cb->write));
+	// determine current and next write position
+	uint64_t curr = cb->write;
+	uint64_t next = curr + cb->item_size;
+	if(unlikely(cb->data + next >= cb->end_marker)) {
+		next = 0;
+	}
+
+	// advance write position atomicly
+	while(!atomic_compare_exchange_weak(&cb->write, &curr, next)) {
+		curr = cb->write;
+		next = curr + cb->item_size;
+		if(unlikely(cb->data + next >= cb->end_marker)) {
+			next = 0;
 		}
-	} else {
-		cb->item_count++;
 	}
 
-	// copy item into buffer
-	memcpy(cb->write, item, cb->item_size);
+	// increase and cap item count
+	cb->item_count++;
+	cb->item_count = MIN(cb->item_count, cb->item_cap);
 
-	// advance write position
-	// circle back if write reached the end of the buffer
-	cb->write += cb->item_size;
-	if(unlikely(cb->write >= cb->end_marker)) {
-		cb->write = cb->data;
-	}
+	return cb->data + curr;
 }
 
 // removes oldest item from buffer
@@ -230,13 +235,14 @@ void CircularBuffer_Free
 	ASSERT(cb != NULL);
 
 	if(cb->free_cb != NULL) {
+		CircularBuffer_ResetReader(cb, cb->item_count);
 		void **reader = (void **)cb->read;
-		while (reader < (void **)cb->write) {
+		while(reader < (void **)(cb->data + cb->write)) {
 			cb->free_cb(*reader);
 			reader += cb->item_size;
 
 			// "overflow"
-			if(reader >= (void **)cb->end_marker) {
+			if(unlikely(reader >= (void **)cb->end_marker)) {
 				reader = (void **)cb->data;
 			}
 		}
@@ -244,3 +250,4 @@ void CircularBuffer_Free
 
 	rm_free(cb);
 }
+

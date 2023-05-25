@@ -15,13 +15,11 @@
 extern GraphContext **graphs_in_keyspace;
 
 // event fields count
-#define FLD_COUNT 9
+#define FLD_COUNT 7
 
 // field names
-#define FLD_NAME_STAGE               "Stage"
 #define FLD_NAME_QUERY               "Query"
 #define FLD_NAME_UTILIZED_CACHE      "Utilized cache"
-#define FLD_NAME_GRAPH_NAME          "Graph name"
 #define FLD_NAME_WAIT_DURATION       "Wait duration"
 #define FLD_NAME_TOTAL_DURATION      "Total duration"
 #define FLD_NAME_RECEIVED_TIMESTAMP  "Received at"
@@ -52,47 +50,35 @@ static void _initEventTemplate
 
 	_event[2]  = RedisModule_CreateString(
 					ctx,
-					FLD_NAME_STAGE,
-					strlen(FLD_NAME_STAGE)
-				 );
-
-	_event[4]  = RedisModule_CreateString(
-					ctx,
-					FLD_NAME_GRAPH_NAME,
-					strlen(FLD_NAME_GRAPH_NAME)
-				 );
-
-	_event[6]  = RedisModule_CreateString(
-					ctx,
 					FLD_NAME_QUERY,
 					strlen(FLD_NAME_QUERY)
 				 );
 
-	_event[8]  = RedisModule_CreateString(
+	_event[4]  = RedisModule_CreateString(
 					ctx,
 					FLD_NAME_TOTAL_DURATION,
 					strlen(FLD_NAME_TOTAL_DURATION)
 				 );
 
-	_event[10] = RedisModule_CreateString(
+	_event[6] = RedisModule_CreateString(
 					ctx,
 					FLD_NAME_WAIT_DURATION,
 					strlen(FLD_NAME_WAIT_DURATION)
 				 );
 
-	_event[12] = RedisModule_CreateString(
+	_event[8] = RedisModule_CreateString(
 					ctx,
 					FLD_NAME_EXECUTION_DURATION,
 					strlen(FLD_NAME_EXECUTION_DURATION)
 				 );
 
-	_event[14] = RedisModule_CreateString(
+	_event[10] = RedisModule_CreateString(
 					ctx,
 					FLD_NAME_REPORT_DURATION,
 					strlen(FLD_NAME_REPORT_DURATION)
 				 );
 
-	_event[16] = RedisModule_CreateString(
+	_event[12] = RedisModule_CreateString(
 					ctx,
 					FLD_NAME_UTILIZED_CACHE,
 					strlen(FLD_NAME_UTILIZED_CACHE)
@@ -103,70 +89,40 @@ static void _initEventTemplate
 // sets event values
 static void _populateEvent
 (
-	RedisModuleCtx *ctx,     // redis module context
-	const QueryInfo *qi ,    // query information
-	const char *graph_name,  // graph name
-	size_t graph_name_len    // length of graph name
+	RedisModuleCtx *ctx,  // redis module context
+	const LoggedQuery *q  // query information
 ) {
-	const millis_t total_spent_time = qi->wait_duration      +
-									  qi->execution_duration +
-									  qi->report_duration;
+	int l = 0;
+	char buff[512] = {0};
+
+	const double total_duration = q->wait_duration        +
+									q->execution_duration +
+									q->report_duration;
 
 	// FLD_NAME_RECEIVED_TIMESTAMP
-	_event[1]  = RedisModule_CreateStringFromLongLong(
-					ctx,
-					qi->received_ts
-				 );
-
-	// FLD_NAME_STAGE
-	_event[3]  = RedisModule_CreateStringFromLongLong(
-					ctx,
-					qi->stage
-				 );
-
-	// FLD_NAME_GRAPH_NAME
-	_event[5]  = RedisModule_CreateString(
-					ctx,
-					graph_name,
-					graph_name_len
-				 );
+	_event[1] = RedisModule_CreateStringFromLongLong(ctx, q->received);
 
 	// FLD_NAME_QUERY
-	_event[7]  = RedisModule_CreateString(
-					ctx,
-					qi->query_string,
-					strlen(qi->query_string)
-				 );
+	_event[3] = RedisModule_CreateString(ctx, q->query, strlen(q->query));
 
 	// FLD_NAME_TOTAL_DURATION
-	_event[9]  = RedisModule_CreateStringFromLongLong(
-					ctx,
-					total_spent_time
-				 );
+	l = sprintf(buff, "%.6f", total_duration);
+	_event[5] = RedisModule_CreateString(ctx, buff, l);
 
 	// FLD_NAME_WAIT_DURATION
-	_event[11] = RedisModule_CreateStringFromLongLong(
-					ctx,
-					qi->wait_duration
-				 );
+	l = sprintf(buff, "%.6f", q->wait_duration);
+	_event[7] = RedisModule_CreateString(ctx, buff, l);
 
 	// FLD_NAME_EXECUTION_DURATION
-	_event[13] = RedisModule_CreateStringFromLongLong(
-					ctx,
-					qi->execution_duration
-				 );
+	l = sprintf(buff, "%.6f", q->execution_duration);
+	_event[9] = RedisModule_CreateString(ctx, buff, l);
 
 	// FLD_NAME_REPORT_DURATION
-	_event[15] = RedisModule_CreateStringFromLongLong(
-					ctx,
-					qi->report_duration
-				 );
+	l = sprintf(buff, "%.6f", q->report_duration);
+	_event[11] = RedisModule_CreateString(ctx, buff, l);
 
 	// FLD_NAME_UTILIZED_CACHE
-	_event[17] = RedisModule_CreateStringFromLongLong(
-					ctx,
-					qi->utilized_cache
-				 );
+	_event[13] = RedisModule_CreateStringFromLongLong(ctx, q->utilized_cache);
 }
 
 // free event values
@@ -186,22 +142,21 @@ static void _stream_queries
 (
 	RedisModuleCtx *ctx,      // redis module context
 	RedisModuleKey *key,      // stream key
-	const char *graph_name,   // graph name
 	CircularBuffer queries    // queries to stream
 ) {
-	size_t graph_name_len = strlen(graph_name);
+	LoggedQuery *q = rm_malloc(CircularBuffer_ItemSize(queries));
 
-	QueryInfo *q;
-	while(CircularBuffer_Remove(queries, &q) == true) {
-		_populateEvent(ctx, q, graph_name, graph_name_len);
+	while(CircularBuffer_Remove(queries, q) == true) {
+		_populateEvent(ctx, q);
 
 		RedisModule_StreamAdd(key, REDISMODULE_STREAM_ADD_AUTOID, NULL,
 				_event, FLD_COUNT);
 
 		// clean up
 		_clearEvent(ctx);
-		QueryInfo_Free(q);
 	}
+
+	rm_free(q);
 }
 
 // cron task
@@ -238,10 +193,10 @@ void CronTask_streamFinishedQueries
 		// increase graph context reference count
 		GraphContext_IncreaseRefCount(gc);
 
-		Info *info = gc->info;
+		QueriesLog queries_log = gc->queries_log;
 
 		// skip graph if there are no new finished queries
-		if(Info_GetFinishedCount(info) == 0) {
+		if(QueriesLog_GetQueriesCount(queries_log) == 0) {
 			GraphContext_DecreaseRefCount(gc);
 			continue;
 		}
@@ -250,7 +205,8 @@ void CronTask_streamFinishedQueries
 		// collect queries
 		//----------------------------------------------------------------------
 
-		CircularBuffer queries = Info_ResetFinishedQueries(info);
+		CircularBuffer queries = QueriesLog_ResetQueries(queries_log);
+
 		CircularBuffer_ResetReader(queries, CircularBuffer_ItemCount(queries));
 
 		//----------------------------------------------------------------------
@@ -274,7 +230,7 @@ void CronTask_streamFinishedQueries
 		}
 
 		// add queries to stream, free individual queries
-		_stream_queries(rm_ctx, key, graph_name, queries);
+		_stream_queries(rm_ctx, key, queries);
 
 		// cap stream
 		RedisModule_StreamTrimByLength(key, REDISMODULE_STREAM_TRIM_APPROX,

@@ -116,54 +116,57 @@ void test_CircularBuffer_Circularity(void) {
 	CircularBuffer_Free(buff);
 }
 
-void _free_int
-(
-	void *item
-) {
-	free(item);
-}
-
 void test_CircularBuffer_free(void) {
-	// -------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 	// fill a buffer of size 16 with int *
-	// -------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
+
 	uint cap = 16;
-	CircularBuffer buff = CircularBuffer_New(sizeof(int *), cap, _free_int);
+	CircularBuffer buff = CircularBuffer_New(sizeof(int64_t *), cap, free);
 	for(int i = 0; i < cap; i++) {
-		int *j = malloc(sizeof(int));
-		*j = i;
-		CircularBuffer_Add(buff, &j);
+		int64_t *j = malloc(sizeof(int64_t));
+		CircularBuffer_Add(buff, (void*)j);
 	}
 
-	// -------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 	// free the buffer
-	// -------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
+
 	CircularBuffer_Free(buff);
 }
 
-void test_CircularBuffer_ForceWrite(void) {
+void test_CircularBuffer_Reserve(void) {
+
 	// -------------------------------------------------------------------------
 	// fill a buffer of size 16 with 32 integers
 	// -------------------------------------------------------------------------
+
 	uint cap = 16;
 	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap, NULL);
 	for(int i = 0; i < 2 * cap; i++) {
-		CircularBuffer_AddForce(buff, &i);
+		int *item = CircularBuffer_Reserve(buff);
+		*item = i;
 	}
+
+	// make sure item count did not exceeded buffer cap
+	TEST_ASSERT(CircularBuffer_ItemCount(buff) == CircularBuffer_Cap(buff));
 
 	// -------------------------------------------------------------------------
 	// assert override correctness
 	// -------------------------------------------------------------------------
+
 	for(uint i = 0; i < 16; i++) {
 		int item;
 		int res = CircularBuffer_Remove(buff, &item);
 		TEST_ASSERT(res == 1);
 		TEST_ASSERT(item == (i + 16));
+		TEST_ASSERT(CircularBuffer_ItemCount(buff) == 16-i-1);
 	}
 
 	// -------------------------------------------------------------------------
 	// free the buffer
 	// -------------------------------------------------------------------------
+
 	CircularBuffer_Free(buff);
 }
 
@@ -181,6 +184,7 @@ TEST_LIST = {
 	{"CircularBuffer_Population", test_CircularBufferPopulation},
 	{"CircularBuffer_Circularity", test_CircularBuffer_Circularity},
 	{"CircularBuffer_Free", test_CircularBuffer_free},
-	{"CircularBuffer_ForceWrite", test_CircularBuffer_ForceWrite},
+	{"CircularBuffer_Reserve", test_CircularBuffer_Reserve},
 	{NULL, NULL}
 };
+

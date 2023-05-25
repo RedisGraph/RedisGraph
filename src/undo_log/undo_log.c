@@ -209,11 +209,6 @@ static void _UndoLog_Rollback_Create_Node
 		Node *n = &undo_list[seq_start - i].create_op.n;
 		nodes[i] = *n;
 		_index_delete_node(ctx, n);
-		GraphContext_DecreasePropertyNamesCount(
-			ctx->gc,
-			ATTRIBUTE_SET_COUNT(*n->attributes),
-			GETYPE_NODE
-		);
 	}
 
 	Graph_DeleteNodes(ctx->gc->g, nodes, node_count);
@@ -239,12 +234,6 @@ static void _UndoLog_Rollback_Create_Edge
 		edges[i] = *e;
 		_index_delete_edge(ctx, e);
 		array_append(edges, *e);
-
-		GraphContext_DecreasePropertyNamesCount(
-			ctx->gc,
-			ATTRIBUTE_SET_COUNT(*e->attributes),
-			GETYPE_EDGE
-		);
 	}
 
 	Graph_DeleteEdges(ctx->gc->g, edges, edge_count);
@@ -267,15 +256,11 @@ static void _UndoLog_Rollback_Delete_Node
 		Graph_CreateNode(ctx->gc->g, &n, delete_op->labels,
 				delete_op->label_count);
 		*n.attributes = delete_op->set;
-		GraphContext_IncreasePropertyNamesCount(
-			ctx->gc,
-			ATTRIBUTE_SET_COUNT(*n.attributes),
-			GETYPE_NODE
-		);
 
 		// re-introduce node to indices
 		_index_node(ctx, &n);
-		// Cleanup after undo rollback, as the op D'tor is not called.
+
+		// cleanup after undo rollback, as the op D'tor is not called
 		rm_free(delete_op->labels);
 	}
 }
@@ -296,12 +281,6 @@ static void _UndoLog_Rollback_Delete_Edge
 		Graph_CreateEdge(ctx->gc->g, delete_op.srcNodeID, delete_op.destNodeID,
 				delete_op.relationID, &e);
 		*e.attributes = delete_op.set;
-
-		GraphContext_IncreasePropertyNamesCount(
-			ctx->gc,
-			ATTRIBUTE_SET_COUNT(*e.attributes),
-			GETYPE_EDGE
-		);
 
 		_index_edge(ctx, &e);
 	}

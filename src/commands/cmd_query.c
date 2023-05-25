@@ -91,7 +91,7 @@ static bool _should_replicate_effects(void)
 
 	// compute average change time:
 	// avg modification time = query execution time / #modifications
-	double exec_time = QueryCtx_GetExecutionTime();
+	double exec_time = QueryCtx_GetRuntime();
 	uint64_t n = EffectsBuffer_Length(QueryCtx_GetEffectsBuffer());
 	ASSERT(n > 0);
 	double avg_mod_time = exec_time / n;
@@ -121,20 +121,6 @@ static bool abort_and_check_timeout
 	}
 
 	return has_timed_out;
-}
-
-static void _info_indicate_query_finished
-(
-	GraphQueryCtx *gq_ctx
-) {
-	if(!gq_ctx || !gq_ctx->query_ctx || !gq_ctx->graph_ctx) {
-		return;
-	}
-
-	Info *info = gq_ctx->graph_ctx->info;
-
-	Info_IncrementNumberOfQueries(info, gq_ctx->query_ctx->flags,
-			gq_ctx->query_ctx->status);
 }
 
 static bool _index_operation_delete
@@ -314,13 +300,10 @@ static void _ExecuteQuery(void *args) {
 	// if we have migrated to a writer thread,
 	// update thread-local storage and track the CommandCtx
 	if (command_ctx->thread == EXEC_THREAD_WRITER) {
+		// transition the query from waiting to executing
+		QueryCtx_AdvanceStage(query_ctx);
 		QueryCtx_SetTLS(query_ctx);
 		CommandCtx_TrackCtx(command_ctx);
-
-		// set the stage of the query
-		Info *info = gc->info;
-		QueryInfo *qi = query_ctx->qi;
-		Info_AddToExecuting(info, qi);
 	}
 
 	// instantiate the query ResultSet
@@ -366,9 +349,9 @@ static void _ExecuteQuery(void *args) {
 			}
 
 			if(!ErrorCtx_EncounteredError()) {
-				Info_AddToReporting(gq_ctx->graph_ctx->info);
+				// transition the query from executing reporting
+				QueryCtx_AdvanceStage(query_ctx);
 				ExecutionPlan_Print(plan, rm_ctx);
-				Info_AddToFinished(gq_ctx->graph_ctx->info);
 			}
 		}
 		else {
@@ -423,9 +406,12 @@ static void _ExecuteQuery(void *args) {
 	if(!profile || ErrorCtx_EncounteredError()) {
 		// if we encountered an error, ResultSet_Reply will emit the error
 		// send result-set back to client
-		Info_AddToReporting(gq_ctx->graph_ctx->info);
+		// transition the query from executing reporting
+		QueryCtx_AdvanceStage(query_ctx);
 		ResultSet_Reply(result_set);
-		Info_AddToFinished(gq_ctx->graph_ctx->info);
+
+		// transition the query from reporting to finished
+		QueryCtx_AdvanceStage(query_ctx);
 	}
 
 	if(readonly) Graph_ReleaseLock(gc->g); // release read lock
@@ -433,10 +419,9 @@ static void _ExecuteQuery(void *args) {
 	// log query to slowlog
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
 	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query,
-				QueryCtx_GetExecutionTime(), NULL);
+				QueryCtx_GetRuntime(), NULL);
 
 	// clean up
-	_info_indicate_query_finished(gq_ctx);
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_DecreaseRefCount(gc);
 	CommandCtx_Free(command_ctx);
@@ -464,35 +449,38 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 	// update execution thread to writer
 	gq_ctx->command_ctx->thread = EXEC_THREAD_WRITER;
 
+	// regress query stage from executing back to waiting
+	QueryCtx_regressStage(gq_ctx->query_ctx);
+
 	// dispatch work to the writer thread
 	int res = ThreadPools_AddWorkWriter(_ExecuteQuery, gq_ctx, 0);
 	ASSERT(res == 0);
 }
 
-void _query(bool profile, void *args) {
+void _query
+(
+	bool profile,
+	void *args
+) {
 	CommandCtx     *command_ctx = (CommandCtx *)args;
+	QueryCtx       *query_ctx   = QueryCtx_GetQueryCtx();
 	RedisModuleCtx *ctx         = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext   *gc          = CommandCtx_GetGraphContext(command_ctx);
 	ExecutionCtx   *exec_ctx    = NULL;
 
-	// set the query context to the query context value (already allocated)
-	QueryCtx *query_ctx = command_ctx->query_ctx;
-	QueryCtx_SetTLS(query_ctx);
-
 	CommandCtx_TrackCtx(command_ctx);
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
-	QueryCtx_BeginTimer(); // start query timing
 
 	// transition the query from waiting to executing
-	QueryInfo *qi = command_ctx->query_ctx->qi;
-	Info_AddToExecuting(gc->info, qi);
+	QueryCtx_AdvanceStage(query_ctx);
 
-	// parse query parameters and build an execution plan or retrieve it from the cache
+	// parse query parameters and build an execution plan
+	// or retrieve it from the cache
 	exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 	if(exec_ctx == NULL) goto cleanup;
 
 	// update cached flag
-	QueryInfo_SetUtilizedCache(qi, exec_ctx->cached);
+	QueryCtx_SetUtilizedCache(query_ctx, exec_ctx->cached);
 
 	ExecutionType exec_type = exec_ctx->exec_type;
 	bool readonly = AST_ReadOnly(exec_ctx->ast->root);
@@ -538,7 +526,6 @@ void _query(bool profile, void *args) {
 	if(readonly || command_ctx->thread == EXEC_THREAD_MAIN) {
 		_ExecuteQuery(gq_ctx);
 	} else {
-		Info_ExecutingToWaiting(gc->info);
 		_DelegateWriter(gq_ctx);
 	}
 
@@ -548,7 +535,6 @@ cleanup:
 	// if there were any query compile time errors, report them
 	if(ErrorCtx_EncounteredError()) {
 		ErrorCtx_EmitException();
-		Info_AddToFinished(gc->info);
 	}
 
 	// Cleanup routine invoked after encountering errors in this function.
@@ -566,3 +552,4 @@ void Graph_Profile(void *args) {
 void Graph_Query(void *args) {
 	_query(false, args);
 }
+

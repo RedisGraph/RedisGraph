@@ -27,7 +27,6 @@ void Graph_Explain(void *args) {
 
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 	CommandCtx_TrackCtx(command_ctx);
-	QueryCtx_BeginTimer(); // Start query timing.
 
 	/* Retrieve the required execution items and information:
 	 * 1. Execution plan
@@ -73,3 +72,4 @@ cleanup:
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();
 }
+

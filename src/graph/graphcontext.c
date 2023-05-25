@@ -99,17 +99,15 @@ GraphContext *GraphContext_New
 ) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-	gc->version               = 0;  // initial graph version
-	gc->slowlog               = SlowLog_New();
-	gc->ref_count             = 0;  // no refences
-	gc->attributes            = raxNew();
-	gc->node_attributes_count = 0;
-	gc->edge_attributes_count = 0;
-	gc->index_count           = 0;  // no indicies
-	gc->string_mapping        = array_new(char *, 64);
-	gc->encoding_context      = GraphEncodeContext_New();
-	gc->decoding_context      = GraphDecodeContext_New();
-	gc->info                  = Info_New();
+	gc->version          = 0;  // initial graph version
+	gc->slowlog          = SlowLog_New();
+	gc->queries_log      = QueriesLog_New();
+	gc->ref_count        = 0;  // no refences
+	gc->attributes       = raxNew();
+	gc->index_count      = 0;  // no indicies
+	gc->string_mapping   = array_new(char *, 64);
+	gc->encoding_context = GraphEncodeContext_New();
+	gc->decoding_context = GraphDecodeContext_New();
 
 	// read NODE_CREATION_BUFFER size from configuration
 	// this value controls how much extra room we're willing to spend for:
@@ -241,16 +239,6 @@ XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
 	return gc->version;
 }
 
-uint64_t GraphContext_AllNodePropertyNamesCount(const GraphContext *gc) {
-	ASSERT(gc);
-	return gc->node_attributes_count;
-}
-
-uint64_t GraphContext_AllEdgePropertyNamesCount(const GraphContext *gc) {
-	ASSERT(gc);
-	return gc->edge_attributes_count;
-}
-
 // get graph from graph context
 Graph *GraphContext_GetGraph
 (
@@ -279,38 +267,6 @@ static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str) {
 	XXH32_update(state, str, strlen(str));
 	gc->version = XXH32_digest(state);
 	XXH32_freeState(state);
-}
-
-void GraphContext_IncreasePropertyNamesCount
-(
-	GraphContext *gc,
-	const uint64_t count,
-	const GraphEntityType entity_type
-) {
-	ASSERT(gc);
-	ASSERT(entity_type != GETYPE_UNKNOWN);
-
-	if (entity_type == GETYPE_EDGE) {
-		gc->edge_attributes_count += count;
-	} else if (entity_type == GETYPE_NODE) {
-		gc->node_attributes_count += count;
-	}
-}
-
-void GraphContext_DecreasePropertyNamesCount
-(
-	GraphContext *gc,
-	const uint64_t count,
-	const GraphEntityType entity_type
-) {
-	ASSERT(gc);
-	ASSERT(entity_type != GETYPE_UNKNOWN);
-
-	if (entity_type == GETYPE_EDGE) {
-		gc->edge_attributes_count -= count;
-	} else if (entity_type == GETYPE_NODE) {
-		gc->node_attributes_count -= count;
-	}
 }
 
 //------------------------------------------------------------------------------
@@ -798,6 +754,29 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 }
 
 //------------------------------------------------------------------------------
+// Queries API
+//------------------------------------------------------------------------------
+
+void GraphContext_LogQuery
+(
+	const GraphContext *gc,       // graph context
+	uint64_t received,            // query received timestamp
+	double wait_duration,         // waiting time
+	double execution_duration,    // executing time
+	double report_duration,       // reporting time
+	bool parameterized,           // uses parameters
+	bool utilized_cache,          // utilized cache
+	const char *query             // query string
+) {
+	ASSERT(gc != NULL);
+	ASSERT(query != NULL);
+
+	QueriesLog_AddQuery(gc->queries_log, received, wait_duration,
+			execution_duration, report_duration, parameterized, utilized_cache,
+			query);
+}
+
+//------------------------------------------------------------------------------
 // Cache API
 //------------------------------------------------------------------------------
 
@@ -837,10 +816,10 @@ static void _GraphContext_Free(void *arg) {
 	}
 
 	//--------------------------------------------------------------------------
-	// free the info structure
+	// free queries log
 	//--------------------------------------------------------------------------
 
-	Info_Free(gc->info);
+	QueriesLog_Free(gc->queries_log);
 
 	//--------------------------------------------------------------------------
 	// free node schemas
@@ -925,3 +904,4 @@ void GraphContext_UnlockCommit
 	// unlock GIL
 	RedisModule_ThreadSafeContextUnlock(ctx);
 }
+

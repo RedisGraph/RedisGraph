@@ -8,7 +8,6 @@
 #include "util/rmalloc.h"
 #include "reconf_handler.h"
 #include "util/thpool/pools.h"
-#include "../info/info.h"
 
 // handler function invoked when config changes
 void reconf_handler(Config_Option_Field type) {
