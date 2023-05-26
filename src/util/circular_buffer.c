@@ -237,7 +237,7 @@ void CircularBuffer_Free
 	if(cb->free_cb != NULL) {
 		CircularBuffer_ResetReader(cb, cb->item_count);
 		void **reader = (void **)cb->read;
-		while(reader < (void **)(cb->data + cb->write)) {
+		for(uint64_t i = 0; i < CircularBuffer_ItemCount(cb); i++) {
 			cb->free_cb(*reader);
 			reader += cb->item_size;
 
