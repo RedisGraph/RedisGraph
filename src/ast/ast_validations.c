@@ -29,60 +29,17 @@ typedef struct {
     bool contains_deleted;         // at least one of the identifier was deleted 
 } validations_ctx;
 
-// possible states of entities during ast validation
+// possible states of nodes/edge/paths during validation
 typedef enum {
-	CREATED   = 0x01,
-	DELETED   = 0x02,
+	BOUNDED_NODE = 0x2002,
+	BOUNDED_EDGE = 0x2004,
+	DELETED_NODE = 0x4002,
+	DELETED_EDGE = 0x4004,
 } identifier_state;
-
-// structure to describe the state and types of defined identifiers
-// during the ast validation
-typedef struct {
-	SIType type;            // identifier SIType
-	identifier_state state; // identifier state
-} identifier_desc;
 
 // ast validation visitor mappings
 // number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
 static visit validations_mapping[114];
-
-static identifier_desc *_IdentifierDescNew(
-	SIType type,           // identifier SIType
-	identifier_state state // identifier state
-) {
-	identifier_desc *identifier = rm_malloc(sizeof(identifier_desc));
-	identifier->type  = type;
-	identifier->state = state;
-	return identifier;
-}
-
-// rax callback routine for cloning identifier descriptions
-static identifier_desc *_IdentifierDescClone(
-	const identifier_desc* orig
-) {
-	if(orig != NULL) {
-		identifier_desc *clone = _IdentifierDescNew(orig->type, orig->state);
-		return clone;
-	}
-	return NULL;
-}
-
-// rax callback routine for freeing identifier descriptions
-static void _IdentifierDescFreeCallback(
-	void *identifier_val
-) {
-	identifier_desc *val = (identifier_desc*)identifier_val;
-	rm_free(val);
-}
-
-static void _DefinedIdentifiers_Free(
-	rax* defined_identifiers
-) {
-	if(defined_identifiers) {
-		raxFreeWithCallback(defined_identifiers, _IdentifierDescFreeCallback);
-		defined_identifiers= NULL;
-	}
-}
 
 // validate that allShortestPaths is in a supported place
 static bool _ValidateAllShortestPaths
@@ -176,7 +133,6 @@ static bool _AST_GetWithAliases
             cypher_ast_projection_get_alias(proj);
         const char *identifier_name;
         void *identifier = NULL;
-        identifier_desc *projected_identifier = NULL;
 
         if(ast_alias) {
             // Retrieve "a" from "WITH [1, 2, 3] as a"
@@ -189,21 +145,17 @@ static bool _AST_GetWithAliases
 
                 identifier = raxFind(aliases, (unsigned char *)current_identifier_name, len);
                 if(identifier != raxNotFound && identifier != NULL) {
-
                     // if the aliased projected identifier was deleted, emit error
                     // MERGE (a)-[e:R]->(b) DELETE e WITH e AS r RETURN 0
                     // MERGE (a)-[e:R]->(b) DELETE a WITH a AS x RETURN 0
-                    if(((identifier_desc*)identifier)->state == DELETED) {
+                    if((void*)identifier == (void *)DELETED_NODE || (void*)identifier == (void *)DELETED_EDGE) {
                         ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
                                 len, current_identifier_name);
                         raxFree(local_env);
                         return false;
                     }
-
-                    // copy original identifier properties to the aliased identifier
-                    projected_identifier = _IdentifierDescClone((identifier_desc *)identifier);
                 }
-            }
+			}
         } else {
             // Retrieve "x" from "WITH x"
             ast_alias = cypher_ast_projection_get_expression(proj);
@@ -223,22 +175,19 @@ static bool _AST_GetWithAliases
                     // if the projected identifier was deleted, emit error
                     // MERGE (a)-[e:R]->(b) DELETE e WITH e RETURN 0
                     // MERGE (a)-[e:R]->(b) DELETE a WITH a RETURN 0
-                    if (((identifier_desc*)identifier)->state == DELETED) {
+                    if((void*)identifier == (void *)DELETED_NODE || (void*)identifier == (void *)DELETED_EDGE) {
                         ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
                             len, identifier_name);
                         raxFree(local_env);
                         return false;
                     }
-
-                    // copy original identifier properties to the aliased identifier
-                    projected_identifier = _IdentifierDescClone((identifier_desc *)identifier);
                 }
-            }
+			}
         }
 
+		// project the aliased identifier
         raxInsert(aliases, (unsigned char *)identifier_name,
-            strlen(identifier_name), (void *)projected_identifier, NULL);
-
+        	strlen(identifier_name), (void *)identifier, NULL);
 
 		// check for duplicate column names
 		if(raxTryInsert(local_env, (unsigned char *)identifier_name, strlen(identifier_name), NULL, NULL) == 0) {
@@ -334,7 +283,7 @@ static AST_Validation _ValidateMergeRelation
 		if(identifier != raxNotFound) {
             // if the identifier was previously deleted, it can't be re-created
 			// CREATE (x) DELETE x MERGE (x)<-[:R]-()
-            if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
+            if(identifier != NULL && (identifier == (void *)DELETED_NODE) || identifier == (void *)DELETED_EDGE) {
                 ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a MERGE clause because it was deleted.", len, identifier_name);
                 return AST_INVALID;
             }
@@ -390,7 +339,7 @@ static AST_Validation _ValidateMergeNode
 	}
     
     // if the identifier was deleted previously, it can't be re-created
-    if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
+    if(identifier != NULL && (identifier == (void *)DELETED_NODE || identifier == (void *)DELETED_EDGE)) {
         ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a MERGE clause because it was deleted.", len, identifier_name);
         return AST_INVALID;
     }
@@ -455,7 +404,7 @@ static AST_Validation _Validate_CREATE_Entities
 				// if the identifier was previously deleted, it can't be re-created
 				// MERGE (x) DELETE x CREATE ()<-[:R]-(x)
 				// MERGE ()-[r:R]->() WITH r AS e DELETE e CREATE (c)<-[e:R]-(d)
-				if(identifier != NULL && ((identifier_desc*)identifier)->state == DELETED) {
+				if(identifier != NULL && (identifier == (void *)DELETED_NODE || identifier == (void *)DELETED_EDGE)) {
 					ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause because it was deleted.", len, identifier_name);
 					return AST_INVALID;
 				}
@@ -630,14 +579,20 @@ static VISITOR_STRATEGY _Validate_identifier
 		if(vctx->clause == CYPHER_AST_DELETE) {
 			// CREATE (a) DELETE a CREATE(b) DELETE a
 			// MERGE ()<-[e:R]-() DELETE e CREATE(b) DELETE e
-            if(((identifier_desc*)identifier)->state == DELETED) {
+            if(identifier == (void *)DELETED_NODE || identifier == (void *)DELETED_EDGE) {
                 ErrorCtx_SetError(
                         "The bound variable '%.*s' can't be in DELETE clause because it was previously deleted.",
                         len, identifier_name);
                 return VISITOR_BREAK;
             } else {
-                ((identifier_desc*)identifier)->state = DELETED;
-               vctx->contains_deleted = true; 
+                if(identifier == (void *)BOUNDED_NODE) {
+					identifier = (void *)DELETED_NODE;
+					vctx->contains_deleted = true;
+				} else if (identifier == (void *)BOUNDED_EDGE) {
+					identifier = (void *)DELETED_EDGE;
+					vctx->contains_deleted = true;
+				}
+				raxInsert(vctx->defined_identifiers, (unsigned char *)identifier_name, len, identifier, NULL);
             }
         }
 	}
@@ -971,20 +926,14 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		void *identifier = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
 		if(identifier == raxNotFound) {
-			identifier_desc *identifier = _IdentifierDescNew(T_EDGE, CREATED);
-			raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)identifier, NULL);
+			raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)BOUNDED_EDGE, NULL);
 			return VISITOR_RECURSE;
 		}
-		
-		if(identifier != NULL) {
-			SIType alias_type = ((identifier_desc *)identifier)->type;
-			identifier_state state = ((identifier_desc *)identifier)->state;
 
-			// MATCH ()-[r]->(r) RETURN r
-            if(alias_type != T_EDGE) {
+		// MATCH ()-[r]->(r) RETURN r
+		if(identifier != NULL && identifier != (void *)BOUNDED_EDGE) {
 				ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
 				return VISITOR_BREAK;
-			}
 		}
 	}
 
@@ -1019,16 +968,12 @@ static VISITOR_STRATEGY _Validate_node_pattern
 		}
 	} else {
 		void *identifier = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
-		if(identifier != raxNotFound && identifier != NULL) {
-			SIType alias_type = ((identifier_desc *)identifier)->type;
-			if(alias_type != T_NODE) {
-				ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
-				return VISITOR_BREAK;
-			}
+		if(identifier != raxNotFound && identifier != NULL && identifier != (void *)BOUNDED_NODE) {
+			ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
+			return VISITOR_BREAK;
 		}
 	}
-	identifier_desc *identifier = _IdentifierDescNew(T_NODE, CREATED);
-	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)identifier, NULL);
+	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)BOUNDED_NODE, NULL);
 
 	return VISITOR_RECURSE;
 }
@@ -1416,7 +1361,6 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 				cypher_ast_projection_get_alias(proj);
 			const char *identifier_name;
 			void *identifier = NULL;
-            identifier_desc *projected_identifier = NULL;
 
 			if(ast_alias) {
 				// Retrieve "a" from "WITH x AS a" or "WITH [1, 2, 3] AS a"
@@ -1426,12 +1370,7 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 					// Retrieve "x" from "WITH x AS a"
 					const char *current_identifier_name = cypher_ast_identifier_get_name(expr);
 					uint len = strlen(current_identifier_name);
-					
 					identifier = raxFind(vctx->defined_identifiers, (unsigned char *)current_identifier_name, len);
-					if(identifier != raxNotFound && identifier != NULL) {
-						// copy original identifier properties to the aliased identifier
-                        projected_identifier = _IdentifierDescClone((identifier_desc *)identifier);
-					}
 				}
 			} else {
 				// Retrieve "x" from "WITH x"
@@ -1441,21 +1380,15 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 					identifier_name = cypher_ast_identifier_get_name(ast_alias);
 					uint len = strlen(identifier_name);
 					identifier = raxFind(vctx->defined_identifiers, (unsigned char *)identifier_name, len);
-
-					if(identifier != raxNotFound && identifier != NULL) {
-                       // copy original identifier properties to the aliased identifier
-                       projected_identifier = _IdentifierDescClone((identifier_desc *)identifier);
-					}
 				}
 			}
 
 			raxInsert(projected_identifiers, (unsigned char *)identifier_name,
-				strlen(identifier_name), (void *) projected_identifier, NULL);
-
+				strlen(identifier_name), identifier, NULL);
 		}
 
 		// free old env, set new one
-		_DefinedIdentifiers_Free(vctx->defined_identifiers);
+		raxFree(vctx->defined_identifiers);
 		vctx->defined_identifiers = projected_identifiers;
 
 	} else {
@@ -1565,7 +1498,7 @@ static VISITOR_STRATEGY _Validate_UNION_Clause
 
 	// free old bounded vars environment, create a new one
 	vctx->clause = cypher_astnode_type(n);
-	_DefinedIdentifiers_Free(vctx->defined_identifiers);
+	raxFree(vctx->defined_identifiers);
 	vctx->defined_identifiers = raxNew();
 
 	return VISITOR_RECURSE;
@@ -1643,9 +1576,7 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 	// used in the traversal of the visitor in the clauses of the FOREACH
 	// clause - as they are local to the FOREACH clause
 	rax *orig_env = vctx->defined_identifiers;
-	rax *scoped_env = raxCloneWithCallback(orig_env, 
-		(void *(*)(void *))_IdentifierDescClone);
-
+	rax *scoped_env = raxClone(orig_env);
 	vctx->defined_identifiers = scoped_env;
 
 	// set the clause of the context
@@ -1690,7 +1621,7 @@ static VISITOR_STRATEGY _Validate_FOREACH_Clause
 
 	// restore original environment of bounded vars
 	vctx->defined_identifiers = orig_env;
-	_DefinedIdentifiers_Free(scoped_env);
+	raxFree(scoped_env);
 
 	// check for errors
 	if(ErrorCtx_EncounteredError()) {
@@ -1766,7 +1697,7 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
                 (unsigned char *)identifier_name, len);
 
             if(identifier != raxNotFound && identifier != NULL &&
-                ((identifier_desc*)identifier)->state == DELETED) {
+                (identifier == (void *)DELETED_NODE || identifier == (void *)DELETED_EDGE)) {
                 ErrorCtx_SetError("The bound variable '%.*s' can't be in a RETURN clause because it was deleted.",
                         len, identifier_name);
                     return VISITOR_BREAK;
@@ -1776,7 +1707,6 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
         if(alias_node == NULL) {
 			continue;
 		}
-
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
@@ -2017,7 +1947,7 @@ static AST_Validation _ValidateScopes
 	AST_Visitor_visit(ast->root, &visitor);
 	
 	// cleanup
-	_DefinedIdentifiers_Free(ctx.defined_identifiers);
+	raxFree(ctx.defined_identifiers);
 
 	return !ErrorCtx_EncounteredError() ? AST_VALID : AST_INVALID;
 }
@@ -2282,7 +2212,7 @@ AST_Validation AST_Validate_QueryParams
 	AST_Visitor_visit(root, &visitor);
 
 	// cleanup
-	_DefinedIdentifiers_Free(ctx.defined_identifiers);
+	raxFree(ctx.defined_identifiers);
 
 	return !ErrorCtx_EncounteredError() ? AST_VALID : AST_INVALID;
 }
