@@ -46,7 +46,7 @@ QueriesLog QueriesLog_New(void) {
 
 	// item_size = LoggedQuery + Max query string length (2500 chracters)
 	size_t item_size = sizeof(LoggedQuery) + 2500;
-	log->queries = CircularBuffer_New(item_size, cap, NULL);
+	log->queries = CircularBuffer_New(item_size, cap);
 
 	return log;
 }
@@ -173,7 +173,7 @@ CircularBuffer QueriesLog_ResetQueries
 
 	CircularBuffer prev = log->queries;
 	CircularBuffer buffer = CircularBuffer_New(CircularBuffer_ItemSize(prev),
-			CircularBuffer_Cap(prev), NULL);
+			CircularBuffer_Cap(prev));
 
 	// swap buffers
 	// acquire WRITE lock, waiting for all readers to finish

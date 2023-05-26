@@ -22,15 +22,13 @@ struct _CircularBuffer {
 	_Atomic uint64_t item_count;     // current number of items in buffer
 	uint64_t item_cap;               // max number of items held by buffer
 	char *end_marker;                // marks the end of the buffer
-	CircularBufferItemFree free_cb;  // free callback
 	char data[];                     // data
 };
 
 CircularBuffer CircularBuffer_New
 (
-	size_t item_size,               // size of item in bytes
-	uint cap,                       // max number of items in buffer
-	CircularBufferItemFree free_cb  // [optional] item delete callback
+	size_t item_size,  // size of item in bytes
+	uint cap           // max number of items in buffer
 ) {
 
 	CircularBuffer cb = rm_malloc(sizeof(_CircularBuffer) + item_size * cap);
@@ -41,7 +39,6 @@ CircularBuffer CircularBuffer_New
 	cb->item_size  = item_size;  // item size
 	cb->item_count = 0;          // no items in buffer
 	cb->end_marker = cb->data + (item_size * cap);
-	cb->free_cb    = free_cb;
 
 	return cb;
 }
@@ -233,20 +230,6 @@ void CircularBuffer_Free
 	CircularBuffer cb  // buffer to free
 ) {
 	ASSERT(cb != NULL);
-
-	if(cb->free_cb != NULL) {
-		CircularBuffer_ResetReader(cb, cb->item_count);
-		void **reader = (void **)cb->read;
-		for(uint64_t i = 0; i < CircularBuffer_ItemCount(cb); i++) {
-			cb->free_cb(*reader);
-			reader += cb->item_size;
-
-			// "overflow"
-			if(unlikely(reader >= (void **)cb->end_marker)) {
-				reader = (void **)cb->data;
-			}
-		}
-	}
 
 	rm_free(cb);
 }

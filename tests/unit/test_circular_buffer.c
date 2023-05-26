@@ -16,7 +16,7 @@ void setup() {
 #include "acutest.h"
 
 void test_CircularBufferInit(void) {
-	CircularBuffer buff = CircularBuffer_New(sizeof(int), 16, NULL);
+	CircularBuffer buff = CircularBuffer_New(sizeof(int), 16);
 
 	// a new circular buffer should be empty
 	TEST_ASSERT(CircularBuffer_Empty(buff) == true);
@@ -34,7 +34,7 @@ void test_CircularBufferInit(void) {
 void test_CircularBufferPopulation(void) {
 	int n;
 	int cap = 16;
-	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap, NULL);
+	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap);
 
 	// remove item from an empty buffer should report failure
 	TEST_ASSERT(CircularBuffer_Remove(buff, &n) == 0);
@@ -79,7 +79,7 @@ void test_CircularBufferPopulation(void) {
 void test_CircularBuffer_Circularity(void) {
 	int n;
 	int cap = 16;
-	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap, NULL);
+	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap);
 
 	//--------------------------------------------------------------------------
 	// fill buffer
@@ -122,15 +122,21 @@ void test_CircularBuffer_free(void) {
 	//--------------------------------------------------------------------------
 
 	uint cap = 16;
-	CircularBuffer buff = CircularBuffer_New(sizeof(int64_t *), cap, free);
+	CircularBuffer buff = CircularBuffer_New(sizeof(int64_t *), cap);
 	for(int i = 0; i < cap; i++) {
 		int64_t *j = malloc(sizeof(int64_t));
-		CircularBuffer_Add(buff, (void*)j);
+		CircularBuffer_Add(buff, (void*)&j);
 	}
 
 	//--------------------------------------------------------------------------
 	// free the buffer
 	//--------------------------------------------------------------------------
+
+	for(int i = 0; i < cap; i++) {
+		int64_t *item;
+		CircularBuffer_Remove(buff, &item);
+		free(item);
+	}
 
 	CircularBuffer_Free(buff);
 }
@@ -142,7 +148,7 @@ void test_CircularBuffer_Reserve(void) {
 	// -------------------------------------------------------------------------
 
 	uint cap = 16;
-	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap, NULL);
+	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap);
 	for(int i = 0; i < 2 * cap; i++) {
 		int *item = CircularBuffer_Reserve(buff);
 		*item = i;

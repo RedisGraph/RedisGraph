@@ -331,7 +331,7 @@ bool Indexer_Init(void) {
 	}
 
 	// create task queue
-	indexer->q = CircularBuffer_New(sizeof(IndexerTask), 256, NULL);
+	indexer->q = CircularBuffer_New(sizeof(IndexerTask), 256);
 
 	// create worker thread
 	pthread_attr_t attr;
