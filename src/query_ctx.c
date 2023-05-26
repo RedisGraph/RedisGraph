@@ -128,7 +128,6 @@ void QueryCtx_AdvanceStage
 (
 	QueryCtx *ctx  // query context
 ) {
-	return;
 	ASSERT(ctx != NULL);
 
 	// transition to next stage
