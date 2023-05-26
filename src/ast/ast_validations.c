@@ -29,10 +29,10 @@ typedef struct {
 } validations_ctx;
 
 typedef enum {
-	MATCHED_NODE = 0x01,
-	MATCHED_EDGE = 0x02,
-	BOUNDED_NODE = 0x04,
-	BOUNDED_EDGE = 0x08,
+	MATCHED_NODE = 0x1002,
+	MATCHED_EDGE = 0x1004,
+	BOUNDED_NODE = 0x2002,
+	BOUNDED_EDGE = 0x2004,
 } identifier_state;
 
 // ast validation visitor mappings

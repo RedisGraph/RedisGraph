@@ -227,12 +227,12 @@ class testGraphCreationFlow(FlowTestsBase):
 
         # test using functions with invalid arguments
         queries = [
-            # invalid argument to predicate functions, which expect a list, 
+            # invalid argument to predicate functions, which expect a list,
             # but the function properties() returns a Map
             "CREATE (a), (b)-[:R]->(c {k:any(x IN properties(a) WHERE x = 0)})",
             "CREATE (a), (b)-[:R]->(c {k:none(x IN properties(a) WHERE x = 0)})",
             "CREATE (a), (b)-[:R {k:single(x IN properties(a) WHERE x = 0)}]->()",
-            # invalid argument to function floor(), which expects an Integer, 
+            # invalid argument to function floor(), which expects an Integer,
             # Float, or Null but any() returns Boolean
             "CREATE (a:A {n:'A'}), (b:B {v:floor(any(v4 IN [2] WHERE b = [a IN keys(a)]))})"
         ]
@@ -256,15 +256,16 @@ class testGraphCreationFlow(FlowTestsBase):
             # reference to intermediate edge
             ("MERGE ()-[r:R {v:r}]->()", error_undef_node_edge),
             ("CREATE ()-[r:R {v:r}]->()", error_undef_node_edge),
-            ("MERGE (a:A)-[r:R]->(b:B {v:r})", error_primitive_type),
-            ("CREATE (a:A)-[r:R]->(b:B {v:r})", error_primitive_type),
+            ("MERGE ()-[r:R]->(b:B {v:r})", error_primitive_type),
+            ("CREATE ()-[r:R]->(b:B {v:r})", error_primitive_type),
             # reference to property of intermediate node
-            ("MERGE (a:A {v:3})-[:R]->(b:B {v:a.v})", error_undef_attribute),
-            ("CREATE (a:A {v:0})-[:R]->(b:B {v:a.v})", error_undef_attribute),
+            ("CREATE (a {v:1}), (b {v:a.v})", error_undef_attribute),
+            ("MERGE (a {v:3})-[:R]->(b:B {v:a.v})", error_undef_attribute),
+            ("CREATE (a {v:0})-[:R]->(b:B {v:a.v})", error_undef_attribute),
             # reference to propery of intermediate edge
-            ("MERGE (a:A)-[r:R {v:2}]->(b:B {v:r.v})", error_undef_attribute),
-            ("CREATE (a:A)-[r:R {v:2}]->(b:B {v:r.v})", error_undef_attribute),
+            ("MERGE ()-[r:R {v:2}]->(b:B {v:r.v})", error_undef_attribute),
+            ("CREATE ()-[r:R {v:2}]->(b:B {v:r.v})", error_undef_attribute),
+            ("CREATE ()-[r:R {v:1}]->(), (a {v:r.v})", error_undef_attribute),
         ]
         for query, error in queries_with_errors:
             self._assert_exception(redis_graph, query, error)
-
