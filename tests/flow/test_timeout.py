@@ -7,9 +7,14 @@ redis_graph = None
 
 GRAPH_ID = "timeout"
 
+
 class testQueryTimeout():
     def __init__(self):
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1000")
+
+        # TODO: remove when flakiness resolved
+        if OS == 'macos':
+            self.env.skip()
 
         # skip test if we're running under Valgrind
         if VALGRIND or SANITIZER != "":

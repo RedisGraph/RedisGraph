@@ -17,7 +17,6 @@
 #include "GB_unop__include.h"
 #endif
 
-GB_PUBLIC
 void GB_cast_array              // typecast an array
 (
     GB_void *Cx,                // output array

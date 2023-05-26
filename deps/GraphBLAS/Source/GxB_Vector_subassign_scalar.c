@@ -75,7 +75,6 @@ GB_ASSIGN_SCALAR (void *    , UDT    ,  )
 #define GB_FREE_ALL GB_Matrix_free (&S) ;
 #include "GB_static_header.h"
 
-GB_PUBLIC
 GrB_Info GxB_Vector_subassign_Scalar   // w<Mask>(I) = accum (w(I),s)
 (
     GrB_Vector w,                   // input/output matrix for results

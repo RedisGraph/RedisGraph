@@ -15,7 +15,6 @@ GrB_Info GB_Op_free             // free a user-created op
     GB_Operator *op_handle      // handle of operator to free
 ) ;
 
-GB_PUBLIC
 bool GB_op_is_second    // return true if op is SECOND, of the right type
 (
     GrB_BinaryOp op,

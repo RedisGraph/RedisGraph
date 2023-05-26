@@ -395,6 +395,14 @@
                         { 
                             // C (i,j) = alpha + B(i,j)
                             GB_LOAD_B (bij, Bx, pB+p, B_iso) ;
+                            // GB_COMPILER_MSC_2019 workaround: the following
+                            // line of code triggers a bug in the MSC 19.2x
+                            // compiler in Visual Studio 2019, only for the
+                            // FIRST_FC32 and SECOND_FC32 operators.  As a
+                            // workaround, this template is not used for
+                            // those operators when compiling GraphBLAS with
+                            // this compiler.  Note the bug may also appear
+                            // in VS2022, but this has not yet been tested.
                             GB_BINOP (GB_CX (pC+p), alpha_scalar, bij, i, j) ;
                         }
                         #else

@@ -10,7 +10,6 @@
 #ifndef GB_DESCRIPTOR_GET_H
 #define GB_DESCRIPTOR_GET_H
 
-GB_PUBLIC
 GrB_Info GB_Descriptor_get      // get the contents of a descriptor
 (
     const GrB_Descriptor desc,  // descriptor to query, may be NULL

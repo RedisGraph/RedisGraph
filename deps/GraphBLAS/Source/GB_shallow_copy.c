@@ -28,7 +28,6 @@
 
 #define GB_FREE_ALL ;
 
-GB_PUBLIC
 GrB_Info GB_shallow_copy    // create a purely shallow matrix
 (
     GrB_Matrix C,           // output matrix C, with a static header
