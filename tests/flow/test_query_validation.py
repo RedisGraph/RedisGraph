@@ -492,22 +492,21 @@ class testQueryValidationFlow(FlowTestsBase):
             assert("a not defined" in str(e))
             pass
 
-    # TODO: This should be validated by ast_validations.c
-    # def test34_self_referential_properties(self):    
-    #     try:
-    #         # The server should emit an error on trying to create a node with a self-referential property.
-    #         query = """CREATE (a:L {v: a.v})"""
-    #         redis_graph.query(query)
-    #         assert(False)
-    #     except redis.exceptions.ResponseError as e:
-    #         # Expecting an error.
-    #         self.env.assertIn("undefined attribute", str(e))
+    def test34_self_referential_properties(self):
+        try:
+            # The server should emit an error on trying to create a node with a self-referential property.
+            query = """CREATE (a:L {v: a.v})"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            self.env.assertIn("undefined attribute", str(e))
 
-    #     # MATCH clauses should be able to use self-referential properties as existential filters.
-    #     query = """MATCH (a {age: a.age}) RETURN a.age"""
-    #     actual_result = redis_graph.query(query)
-    #     expected_result = [[34]]
-    #     self.env.assertEquals(actual_result.result_set, expected_result)
+        # MATCH clauses should be able to use self-referential properties as existential filters.
+        query = """MATCH (a {age: a.age}) RETURN a.age"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[34]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
 
     # Test a query that allocates a large buffer.
     def test35_large_query(self):

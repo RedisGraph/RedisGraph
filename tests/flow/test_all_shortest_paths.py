@@ -120,7 +120,7 @@ class testAllShortestPaths():
             self.env.assertIn("encountered unexpected type in Record; expected Node", str(e))
 
         # Test NULL endpoint
-        query = """MATCH (v1 {v: 1}) OPTIONAL MATCH (v9 {v: v9}) WITH v1, v9 MATCH p = allShortestPaths((v1)-[*]->(v9)) RETURN p"""
+        query = """MATCH (v1 {v: 1}) OPTIONAL MATCH (v9 {v: 9}) WITH v1, v9 MATCH p = allShortestPaths((v1)-[*]->(v9)) RETURN p"""
         actual_result = self.graph.query(query)
         expected_result = []
         self.env.assertEqual(actual_result.result_set, expected_result)
