@@ -78,6 +78,7 @@ Feature: Delete2 - Deleting relationships
     And the side effects should be:
       | -relationships | 1 |
 
+
   Scenario: [4] Ignore null when deleting relationship
     Given an empty graph
     When executing query:
