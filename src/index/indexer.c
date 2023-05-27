@@ -195,7 +195,7 @@ static void *_indexer_run
 	void *arg
 ) {
 	// set the thread name
-	pthread_setname_np(pthread_self(), "Indexer");
+	pthread_setname_np("Indexer");
 
 	while(true) {
 		// pop an item from queue
