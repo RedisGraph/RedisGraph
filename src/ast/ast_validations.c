@@ -1687,23 +1687,6 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 		const cypher_astnode_t *alias_node =
             cypher_ast_projection_get_alias(proj);
 
-        // validate that the returned identifier has not been deleted
-        if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
-            // Retrieve "x" from "RETURN x AS a"
-			const char* identifier_name = cypher_ast_identifier_get_name(expr);
-			uint len = strlen(identifier_name);
-
-			void *identifier = raxFind(vctx->defined_identifiers,
-                (unsigned char *)identifier_name, len);
-
-            if(identifier != raxNotFound && identifier != NULL &&
-                (identifier == (void *)DELETED_NODE || identifier == (void *)DELETED_EDGE)) {
-                ErrorCtx_SetError("The bound variable '%.*s' can't be in a RETURN clause because it was deleted.",
-                        len, identifier_name);
-                    return VISITOR_BREAK;
-            }
-        }
-
         if(alias_node == NULL) {
 			continue;
 		}
