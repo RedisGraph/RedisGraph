@@ -170,6 +170,9 @@ static void *Cron_Run
 (
 	void *arg
 ) {
+	// set the thread name
+	pthread_setname_np(pthread_self(), "Cron");
+
 	while(cron->alive) {
 		// execute due tasks
 		CRON_TASK *task = NULL;

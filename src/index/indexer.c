@@ -194,6 +194,9 @@ static void *_indexer_run
 (
 	void *arg
 ) {
+	// set the thread name
+	pthread_setname_np(pthread_self(), "Indexer");
+
 	while(true) {
 		// pop an item from queue
 		// if queue is empty thread will be put to sleep

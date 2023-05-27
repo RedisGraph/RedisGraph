@@ -38,6 +38,7 @@
 #define SIMPLE_TIMER_H
 
 #include <time.h>
+#include <stdint.h>
 
 //------------------------------------------------------------------------------
 // decide which timer to use
