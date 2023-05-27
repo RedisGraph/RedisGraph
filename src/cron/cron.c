@@ -23,6 +23,7 @@
 typedef struct {
 	struct timespec due;    // absolute time for when task should run
 	CronTaskCB cb;          // callback to call when task is due
+	CronTaskFree free;      // [optional] private data free function
 	void *pdata;            // [optional] private data passed to callback
 } CRON_TASK;
 
@@ -144,7 +145,13 @@ static void CRON_FreeTask
 (
 	CRON_TASK *t
 ) {
-	ASSERT(t);
+	ASSERT(t != NULL);
+
+	// free task private data
+	if(t->pdata != NULL && t->free != NULL) {
+		t->free(t->pdata);
+	}
+
 	rm_free(t);
 }
 
@@ -228,27 +235,31 @@ void Cron_Stop(void) {
 	cron = NULL;
 }
 
+// create a new CRON task
 CronTaskHandle Cron_AddTask
 (
-	uint when,
-	CronTaskCB cb,
-	void *pdata
+	uint when,          // number of miliseconds until task invocation
+	CronTaskCB work,    // callback to call when task is due
+	CronTaskFree free,  // [optional] task private data free function
+	void *pdata         // [optional] private data to pass to callback
 ) {
-	ASSERT(cb   != NULL);
-	ASSERT(cron != NULL);
+	ASSERT(work   != NULL);
+	ASSERT(cron   != NULL);
+	ASSERT(!(free != NULL && pdata == NULL));
 
 	CRON_TASK *task = rm_malloc(sizeof(CRON_TASK));
 
-	task->cb    = cb;
-	task->pdata = pdata;
+	task->cb    = work;
 	task->due   = due_in_ms(when);
+	task->free  = free;
+	task->pdata = pdata;
 
 	CRON_InsertTask(task);
 
 	return (uintptr_t)task;
 }
 
-void Cron_AbortTask
+bool Cron_AbortTask
 (
 	CronTaskHandle t
 ) {
@@ -259,10 +270,12 @@ void Cron_AbortTask
 	// try remove the task
 	if(!CRON_RemoveTask(task)) {
 		// task performed
-		return;
+		return false;
 	}
 	
 	// free task
 	CRON_FreeTask(task);
+
+	return true;
 }
 

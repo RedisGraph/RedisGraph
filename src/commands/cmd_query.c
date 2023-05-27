@@ -272,7 +272,7 @@ void QueryTimedOut(void *pdata) {
 // set timeout for query execution
 CronTaskHandle Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
 	// increase execution plan ref count
-	return Cron_AddTask(timeout, QueryTimedOut, plan);
+	return Cron_AddTask(timeout, QueryTimedOut, NULL, plan);
 }
 
 inline static bool _readonly_cmd_mode(CommandCtx *ctx) {

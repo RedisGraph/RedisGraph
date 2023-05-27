@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include "util/uuid.h"
+#include "cron/cron.h"
 #include "util/thpool/pools.h"
 #include "util/redis_version.h"
 #include "graph/graphcontext.h"
@@ -267,9 +268,14 @@ static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uin
 	if (!getenv("RS_GLOBAL_DTORS")) {  // used only with sanitizer or valgrind
 		return; 
 	}
-	// Stop threads before finalize GraphBLAS.
+
+	// stop cron
+	Cron_Stop();
+
+	// stop threads before finalize GraphBLAS
 	ThreadPools_Destroy();
-	// Server is shutting down, finalize GraphBLAS.
+
+	// server is shutting down, finalize GraphBLAS
 	GrB_finalize();
 
 	RedisModule_Log(ctx, "notice", "%s", "Clearing RediSearch resources on shutdown");
@@ -372,7 +378,7 @@ static void RG_AfterForkChild() {
 static void _RegisterForkHooks() {
 	redis_main_thread_id = pthread_self();  // This function is being called on the main thread context.
 
-	/* Register handlers to control the behavior of fork calls. */
+	// register handlers to control the behavior of fork calls
 	int res = pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild);
 	ASSERT(res == 0);
 }
@@ -404,7 +410,7 @@ void ModuleEventHandler_AUXAfterKeyspaceEvent(void) {
 }
 
 void RegisterEventHandlers(RedisModuleCtx *ctx) {
-	_RegisterForkHooks();       // Set up hooks for forking logic to prevent bgsave deadlocks.
-	_RegisterServerEvents(ctx); // Set up hooks for rename and server events on Redis 6 and up.
+	_RegisterForkHooks();       // set up hooks for forking logic to prevent bgsave deadlocks
+	_RegisterServerEvents(ctx); // set up hooks for rename and server events on Redis 6 and up
 }
 

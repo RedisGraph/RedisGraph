@@ -243,8 +243,8 @@ static void test_cronExec() {
 	AddTaskData add_task_data = _AddTaskData_New(add_task, (void *)&Z);
 	AddTaskData mul_task_data = _AddTaskData_New(mul_task, (void *)&Y);
 
-	Cron_AddTask(15, _AddTaskData_Execute, &add_task_data);
-	Cron_AddTask(5, _AddTaskData_Execute, &mul_task_data);
+	Cron_AddTask(15, _AddTaskData_Execute, NULL, &add_task_data);
+	Cron_AddTask(5,  _AddTaskData_Execute, NULL, &mul_task_data);
 
 	_AddTaskData_Wait(add_task_data);
 	_AddTaskData_Wait(mul_task_data);
@@ -267,7 +267,8 @@ static void test_cronAbort() {
 	AddTaskData data = _AddTaskData_New(add_task, (void *)&Y);
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, &data);
+	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, NULL,
+			&data);
 
 	// abort task
 	Cron_AbortTask(task_handle);
@@ -294,7 +295,8 @@ static void test_cronLateAbort() {
 	AddTaskData data = _AddTaskData_New(add_task, (void *)&Y);
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, &data);
+	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, NULL,
+			&data);
 
 	_AddTaskData_Wait(data);
 	_AddTaskData_Free(data);
@@ -317,7 +319,8 @@ static void test_MultiAbort() {
 	AddTaskData data = _AddTaskData_New(add_task, (void *)&Y);
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, &data);
+	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, NULL,
+			&data);
 
 	// abort task multiple times, should not crash or hang
 	for(int i = 0; i < 20; i++) {
@@ -346,7 +349,8 @@ static void test_abortNoneExistingTask() {
 	AddTaskData data = _AddTaskData_New(add_task, (void*)&Y);
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, &data);
+	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, NULL,
+			&data);
 	CronTaskHandle none_existing_task_handle = task_handle + 1;
 
 	// abort task, should not crash hang
@@ -368,7 +372,8 @@ static void test_AbortRunningTask() {
 	int ms = 100;
 	AddTaskData data = _AddTaskData_New(long_running_task, (void*)&ms);
 	// issue a long running task, task will sleep for 100 'ms'
-	CronTaskHandle task_handle = Cron_AddTask(0, _AddTaskData_Execute, &data);
+	CronTaskHandle task_handle = Cron_AddTask(0, _AddTaskData_Execute, NULL,
+			&data);
 
 	_AddTaskData_WaitForRunning(data);
 

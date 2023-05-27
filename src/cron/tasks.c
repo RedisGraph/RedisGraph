@@ -11,7 +11,6 @@
 
 // add recurring tasks
 void Cron_AddRecurringTasks(void) {
-	return;
 	//--------------------------------------------------------------------------
 	// add query logging task
 	//--------------------------------------------------------------------------
@@ -26,7 +25,7 @@ void Cron_AddRecurringTasks(void) {
 		ctx->graph_idx = 0;
 
 		// add recurring task
-		Cron_AddTask(0, CronTask_streamFinishedQueries, (void*)ctx);
+		Cron_AddTask(0, CronTask_streamFinishedQueries, rm_free, (void*)ctx);
 	}
 }
 

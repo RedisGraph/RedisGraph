@@ -263,21 +263,24 @@ void CronTask_streamFinishedQueries
 	// determine next invocation
 	//--------------------------------------------------------------------------
 
+	// create private data for next invocation
+	StreamFinishedQueryCtx *_pdata = rm_malloc(sizeof(StreamFinishedQueryCtx));
+
 	// task ran out of time and there's additional graph to process
 	bool speedup = (ctx->graph_idx < n);
 
 	if(speedup) {
 		// reduce delay, hard limit 10ms
-		ctx->when = MAX(10, ctx->when - 1);
+		_pdata->when = MAX(10, ctx->when - 1);
 	} else {
 		// increase delay, hard limit 100ms
-		ctx->when = MIN(100, ctx->when + 1);
+		_pdata->when = MIN(100, ctx->when + 1);
 	}
 
 	// wrap around
-	ctx->graph_idx = ctx->graph_idx % n;
+	_pdata->graph_idx = ctx->graph_idx % n;
 
 	// re-add task to CRON
-	Cron_AddTask(ctx->when, CronTask_streamFinishedQueries, ctx);
+	Cron_AddTask(ctx->when, CronTask_streamFinishedQueries, rm_free, _pdata);
 }
 
