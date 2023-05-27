@@ -212,8 +212,6 @@ void QueryCtx_SetAST
 (
 	AST *ast
 ) {
-	ASSERT(ast != NULL);
-
 	QueryCtx *ctx = _QueryCtx_GetCreateCtx();
 	ctx->query_data.ast = ast;
 }

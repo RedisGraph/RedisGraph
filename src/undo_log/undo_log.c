@@ -233,7 +233,6 @@ static void _UndoLog_Rollback_Create_Edge
 		Edge *e = &undo_list[seq_start - i].create_op.e;
 		edges[i] = *e;
 		_index_delete_edge(ctx, e);
-		array_append(edges, *e);
 	}
 
 	Graph_DeleteEdges(ctx->gc->g, edges, edge_count);

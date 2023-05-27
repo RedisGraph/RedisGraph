@@ -285,7 +285,7 @@ TEST_LIST = {
 	{"procCall", test_procCall},
 	{"unwind", test_unwind},
 	{"with", test_with},
-	//{"union", test_union},
+	{"union", test_union},
 	{NULL, NULL}
 };
 
