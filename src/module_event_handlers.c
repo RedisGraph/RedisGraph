@@ -451,15 +451,13 @@ static void RG_AfterForkChild() {
 	// in forked process
 	GxB_set(GxB_NTHREADS, 1);
 
-	GraphContext *gc = NULL;
-	GraphIterator it = Globals_ScanGraphs();
-	while((gc = GraphIterator_Next(it)) != NULL) {
-		Graph *g = gc->g;
-
+	GraphContext **graphs = Globals_Get_GraphsInKeyspace();
+	uint32_t n = array_len(graphs);
+	for(uint32_t i = 0; i < n; i++) {
+		Graph *g = graphs[i]->g;
 		// all matrices should be synced, set synchronization policy to NOP
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 	}
-	GraphIterator_Free(&it);
 }
 
 static void _RegisterForkHooks() {

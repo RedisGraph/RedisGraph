@@ -23,6 +23,9 @@ void Globals_Set_ProcessIsChild
 	bool process_is_child
 );
 
+// get direct access to 'graphs_in_keyspace'
+GraphContext **Globals_Get_GraphsInKeyspace(void);
+
 // free globals
 void Globals_Free(void);
 

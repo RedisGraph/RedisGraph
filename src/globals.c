@@ -51,6 +51,11 @@ void Globals_Set_ProcessIsChild
 	pthread_rwlock_unlock(&_globals.lock);
 }
 
+// get direct access to 'graphs_in_keyspace'
+GraphContext **Globals_Get_GraphsInKeyspace(void) {
+	return _globals.graphs_in_keyspace;
+}
+
 // add graph to global tracker
 void Globals_AddGraph
 (
