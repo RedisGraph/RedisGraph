@@ -280,6 +280,23 @@ static void _buildForeachOp
 	ExecutionPlan_AddOp(foreach, embedded_plan->root);
 }
 
+// looks for a Join operation at root or root->children[0] and returns it, or
+// NULL if not found
+static OpBase *_getJoin
+(
+	OpBase *root  // root op from which to look for the Join op
+) {
+	// check if there is a Join operation (from UNION or UNION ALL)
+	OpBase *join_op = NULL;
+	if(root->type == OPType_JOIN) {
+		join_op = root;
+	} else if(root->childCount > 0 && root->children[0]->type == OPType_JOIN) {
+		join_op = root->children[0];
+	}
+
+	return join_op;
+}
+
 // look for the returning projections/aggregations from a given operation.
 // do not recurse into nested Call {} clauses
 static void _collectReturningProjections
@@ -289,28 +306,23 @@ static void _collectReturningProjections
 ) {
 	OPType return_types[] = {OPType_PROJECT, OPType_AGGREGATE};
 
-	// check if there is a Union operation (from UNION or UNION ALL)
-	OpBase *union_op = NULL;
-	if(root->type == OPType_JOIN) {
-		union_op = root;
-	} else if(root->children[0]->type == OPType_JOIN) {
-		union_op = root->children[0];
-	}
+	// check if there is a Join operation (from UNION or UNION ALL)
+	OpBase *join_op = _getJoin(root);
 
 	// if there is a Union operation, we need to look at all branches
-	if(union_op == NULL) {
+	if(join_op == NULL) {
 		// only one returning projection/aggregation
 		OpBase *returning_op =
 			ExecutionPlan_LocateOpMatchingType(root, return_types, 2);
 		array_append(*returning_ops, returning_op);
-		return;
-	}
-	// multiple returning projections/aggregations
-	for(uint i = 0; i < union_op->childCount; i++) {
-		OpBase *child = union_op->children[i];
-		OpBase *returning_op =
-			ExecutionPlan_LocateOpMatchingType(child, return_types, 2);
-		array_append(*returning_ops, returning_op);
+	} else {
+		// multiple returning projections/aggregations
+		for(uint i = 0; i < join_op->childCount; i++) {
+			OpBase *child = join_op->children[i];
+			OpBase *returning_op =
+				ExecutionPlan_LocateOpMatchingType(child, return_types, 2);
+			array_append(*returning_ops, returning_op);
+		}
 	}
 }
 
@@ -542,6 +554,12 @@ static void _buildCallSubqueryPlan
 		// bind the RETURN projections/aggregations to the outer plan ('plan')
 		_BindReturningOpsToPlan(returning_ops, plan);
 		array_free(returning_ops);
+	}
+
+	// set Join op to not modify the ResultSet mapping
+	OpBase *join_op = _getJoin(embedded_plan->root);
+	if(join_op != NULL) {
+		JoinSetUpdateColumnMap(join_op, false);
 	}
 
 	// -------------------------------------------------------------------------

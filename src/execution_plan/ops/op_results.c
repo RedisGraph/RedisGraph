@@ -4,8 +4,9 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "op_results.h"
 #include "RG.h"
+#include "op_join.h"
+#include "op_results.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../configuration/config.h"
@@ -34,7 +35,7 @@ static OpResult ResultsInit(OpBase *opBase) {
 
 	// map resultset columns to record entries
 	OpBase *join = ExecutionPlan_LocateOp(opBase, OPType_JOIN);
-	if(op->result_set != NULL && join == NULL) {
+	if(op->result_set != NULL && (join == NULL || !JoinGetUpdateColumnMap(join))) {
 		rax *mapping = ExecutionPlan_GetMappings(opBase->plan);
 		ResultSet_MapProjection(op->result_set, mapping);
 	}
