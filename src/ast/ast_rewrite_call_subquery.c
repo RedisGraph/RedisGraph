@@ -556,16 +556,11 @@ static bool _AST_RewriteCallSubqueryClauses
 		cypher_astnode_t *clause = (cypher_astnode_t *)get_clause(
 			wrapping_clause, i);
 		if(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY) {
-			// recursively rewrite embedded Call {} clauses
-			rewritten |= _AST_RewriteCallSubqueryClauses(clause);
-
-			// update clause, in case it was rewritten
-			if(rewritten) {
-				clause = type == CYPHER_AST_QUERY ?
-					(cypher_astnode_t *)cypher_ast_query_get_clause(
-						wrapping_clause, i) :
-					(cypher_astnode_t *)cypher_ast_call_subquery_get_clause(
-						wrapping_clause, i);
+			// recursively rewrite embedded Call {} clauses, and update clause
+			// in case it was rewritten
+			if(_AST_RewriteCallSubqueryClauses(clause)) {
+				clause = (cypher_astnode_t *)get_clause(wrapping_clause, i);
+				rewritten = true;
 			}
 
 			// rewrite the Call {} clause
