@@ -44,8 +44,8 @@ QueriesLog QueriesLog_New(void) {
 	bool get = Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &cap);
 	ASSERT(get == true);
 
-	// item_size = LoggedQuery + Max query string length (2500 chracters)
-	size_t item_size = sizeof(LoggedQuery) + 2500;
+	// item_size = LoggedQuery + Max query string length (2000 chracters)
+	size_t item_size = sizeof(LoggedQuery) + 2000;
 	log->queries = CircularBuffer_New(item_size, cap);
 
 	return log;
