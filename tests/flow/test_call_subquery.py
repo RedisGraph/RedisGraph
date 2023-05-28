@@ -750,15 +750,6 @@ updating clause.")
             """
             , [[['foo', 'bar']]]),
             ("""
-            WITH 1 AS one
-            CALL {
-                WITH one, 2 as two
-                RETURN one + two AS three
-            }
-            RETURN three
-            """
-            , [[3]]),
-            ("""
             WITH 1 AS one, 2 as two
             CALL {
                 WITH one, two

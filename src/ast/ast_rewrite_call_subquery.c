@@ -558,10 +558,7 @@ static bool _AST_RewriteCallSubqueryClauses
 		if(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY) {
 			// recursively rewrite embedded Call {} clauses, and update clause
 			// in case it was rewritten
-			if(_AST_RewriteCallSubqueryClauses(clause)) {
-				clause = (cypher_astnode_t *)get_clause(wrapping_clause, i);
-				rewritten = true;
-			}
+			rewritten |= _AST_RewriteCallSubqueryClauses(clause);
 
 			// rewrite the Call {} clause
 			// TODO: Get rid of 'end' argument in the function below - we know

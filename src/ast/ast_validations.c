@@ -37,7 +37,6 @@ static visit validations_mapping[115];
 static AST_Validation _ValidateQuerySequence(const AST *ast);
 static AST_Validation _ValidateClauseOrder(const AST *ast);
 static AST_Validation _ValidateUnion_Clauses(const AST *ast);
-static bool _is_updating_subquery(const cypher_astnode_t *sq);
 
 // validate that allShortestPaths is in a supported place
 static bool _ValidateAllShortestPaths
@@ -1163,11 +1162,7 @@ static bool _ValidateSubqueryFirstWithClauseIdentifiers
 	ASSERT(root != NULL);
 
 	if(cypher_astnode_type(root) == CYPHER_AST_IDENTIFIER) {
-		const char *ident = cypher_ast_identifier_get_name(root);
-		// if the identifier is already bound, return false
-		if(raxFind(defined_identifiers, (unsigned char *)ident, strlen(ident)) != raxNotFound) {
-			return false;
-		}
+		return false;
 	}
 
 	// recursively traverse all children
@@ -1185,14 +1180,15 @@ static bool _ValidateSubqueryFirstWithClauseIdentifiers
 // validates a leading `WITH` clause of a subquery
 static bool _ValidateCallInitialWith
 (
-	const cypher_astnode_t *clause,  // `WITH` clause to validate
+	const cypher_astnode_t *with_clause,  // `WITH` clause to validate
 	validations_ctx *vctx            // validation context
 ) {
-	const cypher_astnode_t *with = clause;
+	bool found_simple = false;
+	bool found_non_simple = false;
 
-	for(uint i = 0; i < cypher_ast_with_nprojections(with); i++) {
+	for(uint i = 0; i < cypher_ast_with_nprojections(with_clause); i++) {
 		const cypher_astnode_t *curr_proj =
-			cypher_ast_with_get_projection(with, i);
+			cypher_ast_with_get_projection(with_clause, i);
 		const cypher_astnode_t *exp =
 			cypher_ast_projection_get_expression(curr_proj);
 		const cypher_astnode_type_t t = cypher_astnode_type(exp);
@@ -1200,26 +1196,31 @@ static bool _ValidateCallInitialWith
 		if (t == CYPHER_AST_IDENTIFIER ) {
 			const char *identifier = cypher_ast_identifier_get_name(exp);
 			int len = strlen(identifier);
-			if(cypher_ast_projection_get_alias(curr_proj) != NULL) {
+			if(found_non_simple ||
+			   cypher_ast_projection_get_alias(curr_proj) != NULL) {
 				return false;
 			}
+			found_simple = true;
 		} else {
-			// check that the import does not make reference to an outer scope identifier.
-			// This is invalid: 'WITH 1 AS a CALL {WITH a + 1 AS b RETURN b} RETURN b'
-			if(!_ValidateSubqueryFirstWithClauseIdentifiers(exp,
+			// check that the import does not make reference to an outer scope
+			// identifier. This is invalid:
+			// 'WITH 1 AS a CALL {WITH a + 1 AS b RETURN b} RETURN b'
+			if(found_simple || !_ValidateSubqueryFirstWithClauseIdentifiers(exp,
 				vctx->defined_identifiers)) {
 					return false;
 			}
+			found_non_simple = true;
 		}
 
-		// order by, predicates, limit and skips are not valid
-		if(cypher_ast_with_get_skip(with)      != NULL ||
-			cypher_ast_with_get_limit(with)     != NULL ||
-			cypher_ast_with_get_order_by(with)  != NULL ||
-			cypher_ast_with_get_predicate(with) != NULL) {
+	}
 
-			return false;
-		}
+	// order by, predicates, limit and skips are not valid
+	if(cypher_ast_with_get_skip(with_clause)      != NULL ||
+		cypher_ast_with_get_limit(with_clause)     != NULL ||
+		cypher_ast_with_get_order_by(with_clause)  != NULL ||
+		cypher_ast_with_get_predicate(with_clause) != NULL) {
+
+		return false;
 	}
 
 	return true;
@@ -1389,21 +1390,6 @@ static bool _is_updating_clause
 		   type == CYPHER_AST_SET                ||
 		   type == CYPHER_AST_REMOVE             ||
 		   type == CYPHER_AST_FOREACH;
-}
-
-// returns true if the subquery sq contains updating clauses, false otherwise
-static bool _is_updating_subquery
-(
-	const cypher_astnode_t *sq  // the subquery to check
-) {
-	// traverse the clauses of the sq, return true if one is updating
-	uint nclauses = cypher_ast_call_subquery_nclauses(sq);
-	for(uint i = 0; i < nclauses; i++) {
-		if(_is_updating_clause(cypher_ast_call_subquery_get_clause(sq, i))) {
-			return true;
-		}
-	}
-	return false;
 }
 
 // validate a WITH clause
@@ -1945,7 +1931,7 @@ static AST_Validation _ValidateClauseOrder
 							  cypher_astnode_typestr(type));
 			return AST_INVALID;
 		}
-		encountered_updating_clause = (encountered_updating_clause   ||
+		encountered_updating_clause = (encountered_updating_clause ||
 									   _is_updating_clause(clause));
 
 		if(type == CYPHER_AST_MATCH) {
