@@ -357,8 +357,37 @@ static OpBase *_AddEmptyProjection
 	return empty_proj;
 }
 
-// returns the deepest operation in the given execution plan
-// if there is a Join op, the deepest op of every branch is returned
+// finds the deepest operation starting from root, and appends it to deepest_ops
+// if a call {} op with one child is found, it is appended to deepest_ops
+static void _get_deepest
+(
+	OpBase *root,          // root op from which to look for the deepest op
+	OpBase ***deepest_ops  // target array to which the deepest op is appended
+) {
+	OpBase *deepest = root;
+	bool found = false;
+
+	while(OpBase_ChildCount(deepest) > 0) {
+		deepest = deepest->children[0];
+		// in case of a CallSubquery op with no lhs, we want to stop
+		// here, as the added op should be its first child (instead of
+		// the current child, which will be moved to be the second)
+		// Example:
+		// "CALL {CALL {RETURN 1 AS one} RETURN one} RETURN one"
+		if(OpBase_Type(deepest) == OPType_CallSubquery &&
+			deepest->childCount == 1) {
+				found = true;
+				array_append(*deepest_ops, deepest);
+				break;
+		}
+	}
+
+	if(!found) {
+		array_append(*deepest_ops, deepest);
+	}
+}
+
+// returns an array of with the deepest ops of an execution plan
 static OpBase **_FindDeepestOps
 (
 	const ExecutionPlan *plan
@@ -378,45 +407,13 @@ static OpBase **_FindDeepestOps
 		NULL;
 
 	if(join != NULL) {
-		bool found;
 		uint n_branches = OpBase_ChildCount(join);
 		for(uint i = 0; i < n_branches; i++) {
-			found = false;
 			deepest = OpBase_GetChild(join, i);
-
-			while(OpBase_ChildCount(deepest) > 0) {
-				deepest = deepest->children[0];
-				// in case of a CallSubquery op with no lhs, we want to stop
-				// here, as the added op should be its first child (instead of
-				// the current child, which will be moved to be the second)
-				// Example:
-				// "CALL {CALL {RETURN 1 AS one} RETURN one} RETURN one"
-				if(OpBase_Type(deepest) == OPType_CallSubquery &&
-					deepest->childCount == 1) {
-						found = true;
-						array_append(deepest_ops, deepest);
-						break;
-				}
-			}
-			if(!found) {
-				array_append(deepest_ops, deepest);
-			}
+			_get_deepest(deepest, &deepest_ops);
 		}
 	} else {
-		while(OpBase_ChildCount(deepest) > 0) {
-				deepest = deepest->children[0];
-				// in case of a CallSubquery op with no lhs, we want to stop here, as
-				// the added ops should be its first child (instead of the current one,
-				// which will be moved to be the second child)
-				// Example: "CALL {CALL {RETURN 1 AS one} RETURN one} RETURN one"
-				// TODO: Add FOREACH as well (?)
-				if(OpBase_Type(deepest) == OPType_CallSubquery &&
-					deepest->childCount == 1) {
-						array_append(deepest_ops, deepest);
-						return deepest_ops;
-				}
-			}
-			array_append(deepest_ops, deepest);
+		_get_deepest(deepest, &deepest_ops);
 	}
 
 	return deepest_ops;
