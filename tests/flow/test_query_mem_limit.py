@@ -23,10 +23,7 @@ MEM_HOG_QUERY      =  """UNWIND range(0, 100000) AS x
                          WHERE (x / 2) = 50
                          RETURN x, count(x)"""
 
-MEM_THRIFTY_QUERY  =  """UNWIND range(0, 10) AS x
-                         WITH x
-                         WHERE (x / 2) = 50
-                         RETURN x, count(x)"""
+MEM_THRIFTY_QUERY  =  """RETURN 1"""
 
 
 def issue_query(conn, q, should_fail):
@@ -48,25 +45,30 @@ class testQueryMemoryLimit():
         self.conn = self.env.getConnection()
 
     def stress_server(self, queries):
-        connections = []
         qs = []
+        connections = []
         should_fails = []
+        shared_connections = []
         thread_count = self.conn.execute_command("GRAPH.CONFIG", "GET", "THREAD_COUNT")[1]
         pool = Pool(nodes=thread_count)
 
-        # init connections
+        # init shared connections
         for t in range(thread_count):
-            connections.append(self.env.getConnection())
+            shared_connections.append(self.env.getConnection())
 
-        for q in queries:
+        for idx, q in enumerate(queries):
             qs.append(q[0])
             should_fails.append(q[1])
+            connections.append(shared_connections[idx%len(shared_connections)])
 
         # invoke queries
         result = pool.map(issue_query, connections, qs, should_fails)
 
         # validate all process return true
         self.env.assertTrue(all(result))
+
+        # clear pool
+        pool.clear()
 
     def test_01_read_memory_limit_config(self):
         # read configuration, test default value, expecting unlimited memory cap
@@ -136,3 +138,4 @@ class testQueryMemoryLimit():
             queries.append((q, should_fail))
 
         self.stress_server(queries)
+
