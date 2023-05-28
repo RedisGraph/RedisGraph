@@ -172,7 +172,7 @@ static Record CallSubqueryConsumeEager
             ArgumentList_AddRecordList(op->argument_lists[i], records_clone);
         }
         // give the last branch the original records
-        ArgumentList_AddRecordList(op->argument_lists[op->n_branches-1],
+        ArgumentList_AddRecordList(op->argument_lists[op->n_branches - 1],
             op->records);
 
         // responsibility for the records is passed to the argumentList op

@@ -97,30 +97,6 @@ static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	return NewProjectOp(plan, exps);
 }
 
-// adds projections to a Project operation
-void ProjectAddProjections
-(
-	OpBase *opBase,     // operations to add the projections to
-	char **names,       // variable names
-	char **alias_names  // projected names
-) {
-	OpProject *op = (OpProject *) opBase;
-
-	uint exp_count = array_len(names);
-
-	for(uint i = 0; i < exp_count; i++) {
-		// create the AR_EXPNode from it
-		struct cypher_input_range range = {0};
-		AR_ExpNode *new_node = AR_EXP_NewVariableOperandNode(names[i]);
-		array_append(op->exps, new_node);
-		new_node->resolved_name = alias_names[i];
-		int record_idx = OpBase_Modifies(opBase, alias_names[i]);
-		array_append(op->record_offsets, record_idx);
-	}
-
-	op->exp_count += exp_count;
-}
-
 void ProjectBindToPlan
 (
 	OpBase *opBase,      // op to bind

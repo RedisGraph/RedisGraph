@@ -23,7 +23,7 @@ OpBase *NewJoinOp(const ExecutionPlan *plan) {
 		JoinReset, NULL, JoinClone, NULL, false, plan);
 
 	// default behavior is to update resultset mapping
-	op->updateColumnMap = true;
+	op->update_column_map = true;
 
 	return (OpBase *)op;
 }
@@ -36,9 +36,9 @@ static OpResult JoinInit(OpBase *opBase) {
 
 	// map first stream resultset mapping
 	ResultSet *result_set = QueryCtx_GetResultSet();
-	// Note: Init should be called after `updateColumnMap` is externally set if
+	// Note: Init should be called after `update_column_map` is externally set if
 	// non-default behavior is desired
-	if(result_set != NULL && op->updateColumnMap) {
+	if(result_set != NULL && op->update_column_map) {
 		OpBase *child = op->stream;
 		rax *mapping = ExecutionPlan_GetMappings(child->plan);
 		ResultSet_MapProjection(result_set, mapping);
@@ -50,7 +50,7 @@ static OpResult JoinInit(OpBase *opBase) {
 static Record JoinConsume(OpBase *opBase) {
 	OpJoin *op = (OpJoin *)opBase;
 	Record r = NULL;
-	bool newStream = false;
+	bool new_stream = false;
 
 	while(!r) {
 		// Try pulling from current stream.
@@ -66,11 +66,11 @@ static Record JoinConsume(OpBase *opBase) {
 
 			op->stream = op->op.children[op->streamIdx];
 			// Switched streams, need to update the ResultSet column mapping
-			newStream = true;
+			new_stream = true;
 			continue;
 		}
 
-		if(op->updateColumnMap && newStream) {
+		if(op->update_column_map && new_stream) {
 			// We have a new record mapping, update the ResultSet column map to match it.
 			ResultSet_MapProjection(QueryCtx_GetResultSet(), r->mapping);
 		}
@@ -82,7 +82,7 @@ static Record JoinConsume(OpBase *opBase) {
 static inline OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	ASSERT(opBase->type == OPType_JOIN);
 	OpBase *clone = NewJoinOp(plan);
-	((OpJoin *)clone)->updateColumnMap = ((OpJoin *)opBase)->updateColumnMap;
+	((OpJoin *)clone)->update_column_map = ((OpJoin *)opBase)->update_column_map;
 	return clone;
 }
 
@@ -96,7 +96,7 @@ static OpResult JoinReset
 
 	// map first stream resultset mapping
 	ResultSet *result_set = QueryCtx_GetResultSet();
-	if(result_set != NULL && op->updateColumnMap) {
+	if(result_set != NULL && op->update_column_map) {
 		OpBase *child = op->stream;
 		rax *mapping = ExecutionPlan_GetMappings(child->plan);
 		ResultSet_MapProjection(result_set, mapping);
@@ -111,7 +111,7 @@ void JoinSetUpdateColumnMap
 	bool update_column_map
 ) {
 	ASSERT(op->type == OPType_JOIN);
-	((OpJoin *)op)->updateColumnMap = update_column_map;
+	((OpJoin *)op)->update_column_map = update_column_map;
 }
 
 bool JoinGetUpdateColumnMap
@@ -119,5 +119,5 @@ bool JoinGetUpdateColumnMap
 	const OpBase *op
 ) {
 	ASSERT(op->type == OPType_JOIN);
-	return ((OpJoin *)op)->updateColumnMap;
+	return ((OpJoin *)op)->update_column_map;
 }

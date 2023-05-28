@@ -4,10 +4,10 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
+#include "ast_shared.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "ast_rewrite_call_subquery.h"
-#include "ast_rewrite_star_projections.h"
 
 // returns true if the given node will result in an eager operation
 static bool _nodeIsEager
@@ -429,15 +429,15 @@ static void _rewrite_projections
     // -------------------------------------------------------------------------
 
     // if there is a UNION clause in the subquery, each branch must be handled
-    uint *union_indeces = AST_SubqueryGetClauseIndices(clause,
+    uint *union_indices = AST_SubqueryGetClauseIndices(clause,
         CYPHER_AST_UNION);
     uint clause_count = cypher_ast_call_subquery_nclauses(clause);
-    array_append(union_indeces, clause_count);
-    uint n_union_branches = array_len(union_indeces);
+    array_append(union_indices, clause_count);
+    uint n_union_branches = array_len(union_indices);
 
     uint first_ind = 0;
     for(uint i = 0; i < n_union_branches; i++) {
-        uint last_ind = union_indeces[i];
+        uint last_ind = union_indices[i];
 
         // check if first clause is a WITH clause
         const cypher_astnode_t *first_clause =
@@ -457,7 +457,7 @@ static void _rewrite_projections
 
             // update union indeces
             for(uint j = i; j < n_union_branches; j++) {
-                union_indeces[j]++;
+                union_indices[j]++;
             }
             last_ind++;
 
@@ -479,10 +479,10 @@ static void _rewrite_projections
         // replace the RETURN clause (last) with a clause containing the
         // projections "@n->n" for all bound vars in outer-scope context
         _replace_return_clause(clause, last_ind, names, inter_names);
-        first_ind = union_indeces[i] + 1;
+        first_ind = union_indices[i] + 1;
     }
 
-    array_free(union_indeces);
+    array_free(union_indices);
 
     // free the names and inter_names, and corresponding arrays
     for(uint i = 0; i < mapping_size; i++) {

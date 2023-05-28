@@ -368,30 +368,6 @@ static OpBase *AggregateClone
 	return NewAggregateOp(plan, exps);
 }
 
-// adds projections to an Aggregate operation
-void AggregateAddProjections
-(
-	OpBase *opBase,     // operation to add the projections to
-	char **names,       // variable names
-	char **alias_names  // projected variable names
-) {
-	OpAggregate *op = (OpAggregate *) opBase;
-
-	uint exp_count = array_len(names);
-
-	for(uint i = 0; i < exp_count; i++) {
-		// create the AR_EXPNode from it
-		struct cypher_input_range range = {0};
-		AR_ExpNode *new_node = AR_EXP_NewVariableOperandNode(names[i]);
-		array_append(op->key_exps, new_node);
-		new_node->resolved_name = alias_names[i];
-		int record_idx = OpBase_Modifies(opBase, alias_names[i]);
-		array_append(op->record_offsets, record_idx);
-	}
-
-	op->key_count += exp_count;
-}
-
 // bind the Aggregate operation to the execution plan
 void AggregateBindToPlan
 (

@@ -8,15 +8,6 @@
 
 #include "ast.h"
 
-// collect aliases defined in a scope bounded by scope_start and scope_end
-void collect_aliases_in_scope
-(
-	const cypher_astnode_t *root,  // the query root
-	uint scope_start,              // start index of scope
-	uint scope_end,                // end index of scope
-	rax *identifiers               // rax to populate with identifiers
-);
-
 // rewrite WITH/RETURN * clauses in query to project explicit identifiers,
 // returning true if a rewrite has been performed
 bool AST_RewriteStarProjections

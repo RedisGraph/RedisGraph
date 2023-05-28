@@ -1008,6 +1008,7 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][0], 2)
         self.env.assertEquals(res.result_set[1][1], 5)
 
+        # # TODO:
         # # this is a subquery that will require a change for the Join operation,
         # # as it requires the changes of one input record to be visible to the
         # # next input record

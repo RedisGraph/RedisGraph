@@ -340,6 +340,7 @@ static void _annotate_callsubquery_clause_projected_named_path
 	// have the value in the record
 	const cypher_astnode_t *exp = cypher_ast_call_subquery_get_clause(
 		callsubquery_clause, 0);
+	// TODO: Add support for UNION - we can have other WITH clauses in other UNION branches
 	if(cypher_astnode_type(exp) == CYPHER_AST_WITH) {
 		_collect_projected_identifier(exp, identifier_map);
 	}

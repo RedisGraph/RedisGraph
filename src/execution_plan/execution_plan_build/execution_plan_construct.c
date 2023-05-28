@@ -475,10 +475,10 @@ static void _add_empty_projections
 	OpBase **deepest_ops       // deepest op in each of the UNION branches
 ) {
 	uint clause_count = cypher_ast_call_subquery_nclauses(clause);
-	uint *union_indeces = AST_GetClauseIndices(subquery_ast,
+	uint *union_indices = AST_GetClauseIndices(subquery_ast,
 		CYPHER_AST_UNION);
-	array_append(union_indeces, clause_count);
-	uint n_union_branches = array_len(union_indeces);
+	array_append(union_indices, clause_count);
+	uint n_union_branches = array_len(union_indices);
 	uint first_ind = 0;
 	const cypher_astnode_t *first_clause;
 	OpBase **deepest;
@@ -491,10 +491,10 @@ static void _add_empty_projections
 			*deepest = _AddEmptyProjection(*deepest);
 		}
 
-		first_ind = union_indeces[i] + 1;
+		first_ind = union_indices[i] + 1;
 	}
 
-	array_free(union_indeces);
+	array_free(union_indices);
 }
 
 static void _buildCallSubqueryPlan
