@@ -10,6 +10,7 @@
 #include "debug.h"
 #include "errors.h"
 #include "version.h"
+#include "globals.h"
 #include "util/arr.h"
 #include "cron/cron.h"
 #include "query_ctx.h"
@@ -39,8 +40,6 @@
 //------------------------------------------------------------------------------
 // Module-level global variables
 //------------------------------------------------------------------------------
-GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
-bool process_is_child;              // Flag indicating whether the running process is a child.
 
 extern CommandCtx **command_ctxs;
 
@@ -55,11 +54,6 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 		return REDISMODULE_ERR;
 	}
 	return REDISMODULE_OK;
-}
-
-static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	graphs_in_keyspace = array_new(GraphContext *, 1);
-	process_is_child = false;
 }
 
 // starts cron and register recurring tasks
@@ -136,7 +130,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	AR_RegisterFuncs();  // register arithmetic functions
 
 	// set up global lock and variables scoped to the entire module
-	_PrepareModuleGlobals(ctx, argv, argc);
+	Globals_Init();
 
 	// set up the module's configurable variables,
 	// using user-defined values where provided

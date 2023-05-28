@@ -4,16 +4,15 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "../util/arr.h"
+#include "RG.h"
 #include "../redismodule.h"
-#include "../graph/graphcontext.h"
 #include "../module_event_handlers.h"
+
+#include <string.h>
 
 void ModuleEventHandler_AUXBeforeKeyspaceEvent(void);
 void ModuleEventHandler_AUXAfterKeyspaceEvent(void);
 
-// Global array tracking all extant GraphContexts (defined in module.c)
-extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
 
 static void Debug_AUX(RedisModuleString **argv, int argc) {
@@ -30,7 +29,6 @@ static void Debug_AUX(RedisModuleString **argv, int argc) {
 
 int Graph_Debug(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	ASSERT(ctx != NULL);
-	ASSERT(graphs_in_keyspace != NULL);
 	RedisModule_ReplicateVerbatim(ctx);
 
 	if(strcmp(RedisModule_StringPtrLen(argv[1], NULL), "AUX") == 0) {
@@ -41,3 +39,4 @@ int Graph_Debug(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	return REDISMODULE_OK;
 }
+

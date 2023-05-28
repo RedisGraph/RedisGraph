@@ -142,14 +142,14 @@ void QueryCtx_AdvanceStage
 			_QueryCtx_UpdateReportingTime(ctx);
 
 			// done reporting, log query
-		//	GraphContext_LogQuery(ctx->gc,
-		//			ctx->stats.received_ts,
-		//			ctx->stats.wait_duration_ms,
-		//			ctx->stats.execution_duration_ms,
-		//			ctx->stats.report_duration_ms,
-		//			ctx->stats.parameterized,
-		//			ctx->stats.utilized_cache,
-		//			ctx->query_data.query);
+			GraphContext_LogQuery(ctx->gc,
+					ctx->stats.received_ts,
+					ctx->stats.wait_duration_ms,
+					ctx->stats.execution_duration_ms,
+					ctx->stats.report_duration_ms,
+					ctx->stats.parameterized,
+					ctx->stats.utilized_cache,
+					ctx->query_data.query);
 			break;
 		default:
 			assert(false && "unexpected query stage");

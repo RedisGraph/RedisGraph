@@ -4,10 +4,9 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include <sys/param.h>
-#include <pthread.h>
-#include "graphcontext.h"
 #include "../RG.h"
+#include "globals.h"
+#include "graphcontext.h"
 #include "../util/arr.h"
 #include "../util/uuid.h"
 #include "../query_ctx.h"
@@ -18,8 +17,9 @@
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
-// Global array tracking all extant GraphContexts (defined in module.c)
-extern GraphContext **graphs_in_keyspace;
+#include <sys/param.h>
+#include <pthread.h>
+
 extern uint aux_field_counter;
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
@@ -40,17 +40,6 @@ static uint64_t _count_indices_from_schemas(const Schema** schemas) {
 	}
 
 	return count;
-}
-
-// delete a GraphContext reference from the `graphs_in_keyspace` global array
-void _GraphContext_RemoveFromRegistry(GraphContext *gc) {
-	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i++) {
-		if(graphs_in_keyspace[i] == gc) {
-			graphs_in_keyspace = array_del_fast(graphs_in_keyspace, i);
-			break;
-		}
-	}
 }
 
 // increase graph context ref count by 1
@@ -74,7 +63,7 @@ inline void GraphContext_DecreaseRefCount
 		Config_Option_get(Config_ASYNC_DELETE, &async_delete);
 
 		// remove graph context from global `graphs_in_keyspace` array
-		_GraphContext_RemoveFromRegistry(gc);
+		Globals_RemoveGraph(gc);
 
 		if(async_delete) {
 			// Async delete
@@ -151,7 +140,8 @@ static GraphContext *_GraphContext_Create
 ) {
 	// Create and initialize a graph context.
 	GraphContext *gc = GraphContext_New(graph_name);
-	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
+	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name,
+			strlen(graph_name));
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
 
@@ -163,6 +153,7 @@ static GraphContext *_GraphContext_Create
 
 	RedisModule_FreeString(ctx, graphID);
 	RedisModule_CloseKey(key);
+
 	return gc;
 }
 
@@ -722,24 +713,24 @@ void GraphContext_RegisterWithModule(GraphContext *gc) {
 
 	// increase graph context ref count
 	GraphContext_IncreaseRefCount(gc);
-
-	// See if the graph context is not already in the keyspace.
-	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i ++) {
-		if(graphs_in_keyspace[i] == gc) return;
-	}
-	array_append(graphs_in_keyspace, gc);
+	Globals_AddGraph(gc);
 }
 
-GraphContext *GraphContext_GetRegisteredGraphContext(const char *graph_name) {
+GraphContext *GraphContext_GetRegisteredGraphContext
+(
+	const char *graph_name
+) {
 	GraphContext *gc = NULL;
-	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i ++) {
-		if(strcmp(graphs_in_keyspace[i]->graph_name, graph_name) == 0) {
-			gc = graphs_in_keyspace[i];
+	GraphIterator it = Globals_ScanGraphs();
+
+	while((gc = GraphIterator_Next(it)) != NULL) {
+		if(strcmp(gc->graph_name, graph_name) == 0) {
 			break;
 		}
 	}
+
+	GraphIterator_Free(&it);
+
 	return gc;
 }
 
