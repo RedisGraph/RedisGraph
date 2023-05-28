@@ -335,15 +335,24 @@ static void _annotate_callsubquery_clause_projected_named_path
 		.referenced_entities = ast->referenced_entities
 	};
 
-	// collect identifiers from importing WITH clause (if exists)
+	// collect identifiers from importing WITH clauses (if exist)
 	// annotate them only. the later references of imported paths with already
 	// have the value in the record
-	const cypher_astnode_t *exp = cypher_ast_call_subquery_get_clause(
-		callsubquery_clause, 0);
-	// TODO: Add support for UNION - we can have other WITH clauses in other UNION branches
-	if(cypher_astnode_type(exp) == CYPHER_AST_WITH) {
-		_collect_projected_identifier(exp, identifier_map);
+	uint *clause_indices = AST_GetClauseIndices(&subquery_clauses_ast, CYPHER_AST_UNION);
+	uint n_union_branches = array_len(clause_indices);
+	// handle first `UNION` branch
+	cypher_astnode_t *first_in_branch = clauses[0];
+	if(cypher_astnode_type(first_in_branch) == CYPHER_AST_WITH) {
+		_collect_projected_identifier(first_in_branch, identifier_map);
 	}
+	// handle rest of `UNION` branches
+	for(uint i = 0; i < n_union_branches; i++) {
+		first_in_branch = clauses[clause_indices[i] + 1];
+		if(cypher_astnode_type(first_in_branch) == CYPHER_AST_WITH) {
+			_collect_projected_identifier(first_in_branch, identifier_map);
+		}
+	}
+	array_free(clause_indices);
 
 	// annotate named paths referring the outer scope
 	_annotate_relevant_projected_named_path_identifier(ast, identifier_map,

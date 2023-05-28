@@ -1309,6 +1309,25 @@ updating clause.")
         self.env.assertEquals(len(graph.query(query).result_set), 1)
         self.env.assertEquals(res.result_set[0][0], node)
 
+        # import named paths inside a subquery containing a UNION clause
+        query = """
+        MATCH p = (n:N)
+        CALL {
+            RETURN {v: 2} AS node
+            UNION
+            WITH p
+            RETURN nodes(p)[0] AS node
+        }
+        RETURN node ORDER BY node.v ASC
+        """
+
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(len(graph.query(query).result_set), 2)
+        self.env.assertEquals(res.result_set[0][0], node)
+        self.env.assertEquals(res.result_set[1][0], OrderedDict([('v', 2)]))
+
     def test26_eager_returning(self):
         """Tests the eager and returning case of Call {}"""
 
