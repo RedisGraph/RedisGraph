@@ -73,7 +73,7 @@
 #define QUEUED_QUERIES_UNLIMITED           UINT64_MAX
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT      100000
 #define CMD_INFO_DEFAULT                   true
-#define CMD_INFO_QUERIES_MAX_COUNT_DEFAULT 10000
+#define CMD_INFO_QUERIES_MAX_COUNT_DEFAULT 1000
 
 // configuration object
 typedef struct {
