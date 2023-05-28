@@ -77,9 +77,6 @@ void ExecutionPlan_LocateOps
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
 									   rax *references_to_resolve);
 
-// returns true if a tap exists in the plan
-bool ExecutionPlan_HasLocateTaps(ExecutionPlan *plan);
-
 /* Find the earliest operation at which all references are resolved, if any,
  * both above the provided recurse_limit and without recursing past a blacklisted op. */
 OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,

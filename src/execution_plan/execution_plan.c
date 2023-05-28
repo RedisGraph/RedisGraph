@@ -201,6 +201,27 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	return segments;
 }
 
+static bool _ExecutionPlan_HasLocateTaps
+(
+	OpBase *root
+) {
+	if((root->childCount == 0 && root->type != OPType_ARGUMENT
+			&& root->type != OPType_ARGUMENT_LIST)
+		|| root->type == OPType_FOREACH
+		|| root->type == OPType_CallSubquery) {
+			return true;
+	}
+
+	// recursively visit children
+	for(int i = 0; i < root->childCount; i++) {
+		if(_ExecutionPlan_HasLocateTaps(root->children[i])) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static ExecutionPlan *_tie_segments
 (
 	ExecutionPlan **segments,
@@ -228,7 +249,7 @@ static ExecutionPlan *_tie_segments
 		// for instance: FOREACH(i in [i] | CREATE (n:N))
 		// in any other case, there must be a tap
 
-		ASSERT(ExecutionPlan_HasLocateTaps(segment) == true);
+		ASSERT(_ExecutionPlan_HasLocateTaps(segment->root) == true);
 
 		connecting_op = segment->root;
 		while(connecting_op->childCount > 0) {
