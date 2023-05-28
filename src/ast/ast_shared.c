@@ -350,7 +350,7 @@ static void _collect_call_subquery_projections
 	}
 
 	// collect aliases from the RETURN clause
-	uint projection_count = cypher_ast_return_nprojections(clause);
+	uint projection_count = cypher_ast_return_nprojections(last_clause);
 	for(uint i = 0; i < projection_count; i ++) {
 		const cypher_astnode_t *projection =
 			cypher_ast_return_get_projection(clause, i);

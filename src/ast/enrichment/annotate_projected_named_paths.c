@@ -338,21 +338,22 @@ static void _annotate_callsubquery_clause_projected_named_path
 	// collect identifiers from importing WITH clauses (if exist)
 	// annotate them only. the later references of imported paths with already
 	// have the value in the record
-	uint *clause_indices = AST_GetClauseIndices(&subquery_clauses_ast, CYPHER_AST_UNION);
-	uint n_union_branches = array_len(clause_indices);
+	uint *union_indices = AST_GetClauseIndices(&subquery_clauses_ast,
+		CYPHER_AST_UNION);
+	uint n_union_clauses = array_len(union_indices);
 	// handle first `UNION` branch
 	cypher_astnode_t *first_in_branch = clauses[0];
 	if(cypher_astnode_type(first_in_branch) == CYPHER_AST_WITH) {
 		_collect_projected_identifier(first_in_branch, identifier_map);
 	}
 	// handle rest of `UNION` branches
-	for(uint i = 0; i < n_union_branches; i++) {
-		first_in_branch = clauses[clause_indices[i] + 1];
+	for(uint i = 0; i < n_union_clauses; i++) {
+		first_in_branch = clauses[union_indices[i] + 1];
 		if(cypher_astnode_type(first_in_branch) == CYPHER_AST_WITH) {
 			_collect_projected_identifier(first_in_branch, identifier_map);
 		}
 	}
-	array_free(clause_indices);
+	array_free(union_indices);
 
 	// annotate named paths referring the outer scope
 	_annotate_relevant_projected_named_path_identifier(ast, identifier_map,

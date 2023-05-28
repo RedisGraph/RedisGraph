@@ -161,16 +161,14 @@ static Record CallSubqueryConsumeEager
         array_append(op->records, r);
     }
 
-    if(op->is_returning) {
-        // we can pass op->records (rather than a clone), since we later return
-        // the consumed records from the body
+    for(int i = 0; i < (int)op->n_branches - 1; i++) {
+        Record *records_clone;
+        array_clone_with_cb(records_clone, op->records,
+            OpBase_DeepCloneRecord);
+        ArgumentList_AddRecordList(op->argument_lists[i], records_clone);
+    }
 
-        for(int i = 0; i < (int)op->n_branches - 1; i++) {
-            Record *records_clone;
-            array_clone_with_cb(records_clone, op->records,
-                OpBase_DeepCloneRecord);
-            ArgumentList_AddRecordList(op->argument_lists[i], records_clone);
-        }
+    if(op->is_returning) {
         // give the last branch the original records
         ArgumentList_AddRecordList(op->argument_lists[op->n_branches - 1],
             op->records);
@@ -178,14 +176,12 @@ static Record CallSubqueryConsumeEager
         // responsibility for the records is passed to the argumentList op
         op->records = NULL;
     } else {
-        // pass a clone of op->records to arglist, since we need to later return
-        // the received records
-        for(int i = 0; i < op->n_branches; i++) {
-            Record *records_clone;
-            array_clone_with_cb(records_clone, op->records,
-                OpBase_DeepCloneRecord);
-            ArgumentList_AddRecordList(op->argument_lists[i], records_clone);
-        }
+        // give the last branch a clone of the original records
+        Record *records_clone;
+        array_clone_with_cb(records_clone, op->records,
+            OpBase_DeepCloneRecord);
+        ArgumentList_AddRecordList(op->argument_lists[op->n_branches - 1],
+            records_clone);
 
         // consume and free all records from body
         while((r = OpBase_Consume(op->body))) {
@@ -340,7 +336,7 @@ static void CallSubqueryFree
 ) {
 	OpCallSubquery *_op = (OpCallSubquery *) op;
 
-	_freeInternals(_op);
+    _freeInternals(_op);
 
     if(_op->arguments != NULL) {
         array_free(_op->arguments);

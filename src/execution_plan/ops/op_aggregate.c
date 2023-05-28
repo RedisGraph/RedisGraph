@@ -12,10 +12,10 @@
 #include "../../util/rmalloc.h"
 
 // forward declarations
+static void AggregateFree(OpBase *opBase);
 static Record AggregateConsume(OpBase *opBase);
 static OpResult AggregateReset(OpBase *opBase);
 static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase);
-static void AggregateFree(OpBase *opBase);
 
 // fake hash function
 // hash of key is simply key

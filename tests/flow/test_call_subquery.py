@@ -541,13 +541,27 @@ updating clause.")
         """Tests that mid-run fails are recovered correctly (free'd)"""
 
         query = """
-        WITH 1 AS x
+        UNWIND [1, 0, 3] as x
         CALL {
             WITH x
-            CREATE (:TEMP {v: x})
-            RETURN x / 0 AS innerReturn
+            CREATE (:TEMP {v: 5 / x})
+            RETURN x AS innerReturn
         }
         RETURN innerReturn
+        """
+        self.expect_error(query, "Division by zero")
+
+        # make sure the TEMP node was deleted
+        res = graph.query("MATCH (n:TEMP) RETURN n")
+        self.env.assertEquals(len(res.result_set), 0)
+
+        # eager non-returning case
+        query = """
+        UNWIND [1, 0, 3] as x
+        CALL {
+            WITH x
+            CREATE (:TEMP {v: 5 / x})
+        }
         """
         self.expect_error(query, "Division by zero")
 
