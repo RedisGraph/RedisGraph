@@ -50,7 +50,6 @@ OpBase *NewCallSubqueryOp
     op->records        = NULL;
     op->arguments      = NULL;
     op->argument_lists = NULL;
-    op->n_branches     = 1;
     op->is_eager       = is_eager;
     op->is_returning   = is_returning;
 
@@ -96,9 +95,9 @@ static OpResult CallSubqueryInit
                         (OpJoin *)op->body :
                         (OpJoin *)OpBase_GetChild(op->body, 0);
 
-        op->n_branches = OpBase_ChildCount((OpBase *)join);
+        uint n_branches = OpBase_ChildCount((OpBase *)join);
 
-        for(uint i = 0; i < op->n_branches; i++) {
+        for(uint i = 0; i < n_branches; i++) {
             OpBase *deepest = OpBase_GetChild((OpBase *)join, i);
             _find_set_deepest(op, deepest);
         }
@@ -161,7 +160,8 @@ static Record CallSubqueryConsumeEager
         array_append(op->records, r);
     }
 
-    for(int i = 0; i < (int)op->n_branches - 1; i++) {
+    int n_branches = (int)array_len(op->argument_lists);
+    for(int i = 0; i < n_branches - 1; i++) {
         Record *records_clone;
         array_clone_with_cb(records_clone, op->records,
             OpBase_DeepCloneRecord);
@@ -170,7 +170,7 @@ static Record CallSubqueryConsumeEager
 
     if(op->is_returning) {
         // give the last branch the original records
-        ArgumentList_AddRecordList(op->argument_lists[op->n_branches - 1],
+        ArgumentList_AddRecordList(op->argument_lists[n_branches - 1],
             op->records);
 
         // responsibility for the records is passed to the argumentList op
@@ -180,7 +180,7 @@ static Record CallSubqueryConsumeEager
         Record *records_clone;
         array_clone_with_cb(records_clone, op->records,
             OpBase_DeepCloneRecord);
-        ArgumentList_AddRecordList(op->argument_lists[op->n_branches - 1],
+        ArgumentList_AddRecordList(op->argument_lists[n_branches - 1],
             records_clone);
 
         // consume and free all records from body
@@ -207,7 +207,8 @@ static Record _consume_and_return
         op->r = NULL;
         if(op->lhs && (op->r = OpBase_Consume(op->lhs)) != NULL) {
             // plant a clone of the record consumed at the Argument ops
-            for(uint i = 0; i < op->n_branches; i++) {
+            uint n_branches = array_len(op->arguments);
+            for(uint i = 0; i < n_branches; i++) {
                 Argument_AddRecord(op->arguments[i], OpBase_DeepCloneRecord(op->r));
             }
         } else {
@@ -279,7 +280,8 @@ static Record CallSubqueryConsume
 
     // plant the record consumed at the Argument ops
     if(op->r) {
-        for(uint i = 0; i < op->n_branches; i++) {
+        uint n_branches = array_len(op->arguments);
+        for(uint i = 0; i < n_branches; i++) {
             Argument_AddRecord(op->arguments[i], OpBase_DeepCloneRecord(op->r));
         }
     } else {
