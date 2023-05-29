@@ -15,9 +15,9 @@ static OpResult CallSubqueryReset(OpBase *opBase);
 static Record CallSubqueryConsumeEager(OpBase *opBase);
 static OpBase *CallSubqueryClone(const ExecutionPlan *plan, const OpBase *opBase);
 
-// find the deepest child of a root operation, and append it to the
-// arguments/arguemnt_lists array of the CallSubquery operation
-static void _find_set_deepest
+// find the deepest child of a root operation (connector), and append it to the
+// arguments/argumentLists array of the CallSubquery operation
+static void _append_connector
 (
     OpCallSubquery *call_subquery,  // CallSubquery operation
     OpBase *root                    // root op
@@ -27,7 +27,7 @@ static void _find_set_deepest
     }
     if(call_subquery->is_eager) {
         ASSERT(OpBase_Type((const OpBase *)root) == OPType_ARGUMENT_LIST);
-        array_append(call_subquery->argument_lists, (ArgumentList *)root);
+        array_append(call_subquery->argumentLists, (ArgumentList *)root);
     } else {
         ASSERT(OpBase_Type((const OpBase *)root) == OPType_ARGUMENT);
         array_append(call_subquery->arguments, (Argument *)root);
@@ -49,7 +49,7 @@ OpBase *NewCallSubqueryOp
     op->first          = true;
     op->records        = NULL;
     op->arguments      = NULL;
-    op->argument_lists = NULL;
+    op->argumentLists = NULL;
     op->is_eager       = is_eager;
     op->is_returning   = is_returning;
 
@@ -83,7 +83,7 @@ static OpResult CallSubqueryInit
     // search for the ArgumentList\Argument ops, depending if the op is eager
     // the non-relevant field will stay NULL
     if(op->is_eager) {
-        op->argument_lists = array_new(ArgumentList *, 1);
+        op->argumentLists = array_new(ArgumentList *, 1);
     } else {
         op->arguments = array_new(Argument *, 1);
     }
@@ -99,11 +99,11 @@ static OpResult CallSubqueryInit
 
         for(uint i = 0; i < n_branches; i++) {
             OpBase *deepest = OpBase_GetChild((OpBase *)join, i);
-            _find_set_deepest(op, deepest);
+            _append_connector(op, deepest);
         }
     } else {
         OpBase *deepest = op->body;
-        _find_set_deepest(op, deepest);
+        _append_connector(op, deepest);
     }
 
     return OP_OK;
@@ -160,17 +160,17 @@ static Record CallSubqueryConsumeEager
         array_append(op->records, r);
     }
 
-    int n_branches = (int)array_len(op->argument_lists);
+    int n_branches = (int)array_len(op->argumentLists);
     for(int i = 0; i < n_branches - 1; i++) {
         Record *records_clone;
         array_clone_with_cb(records_clone, op->records,
             OpBase_DeepCloneRecord);
-        ArgumentList_AddRecordList(op->argument_lists[i], records_clone);
+        ArgumentList_AddRecordList(op->argumentLists[i], records_clone);
     }
 
     if(op->is_returning) {
         // give the last branch the original records
-        ArgumentList_AddRecordList(op->argument_lists[n_branches - 1],
+        ArgumentList_AddRecordList(op->argumentLists[n_branches - 1],
             op->records);
 
         // responsibility for the records is passed to the argumentList op
@@ -180,7 +180,7 @@ static Record CallSubqueryConsumeEager
         Record *records_clone;
         array_clone_with_cb(records_clone, op->records,
             OpBase_DeepCloneRecord);
-        ArgumentList_AddRecordList(op->argument_lists[n_branches - 1],
+        ArgumentList_AddRecordList(op->argumentLists[n_branches - 1],
             records_clone);
 
         // consume and free all records from body
@@ -344,8 +344,8 @@ static void CallSubqueryFree
         array_free(_op->arguments);
         _op->arguments = NULL;
     }
-    if(_op->argument_lists != NULL) {
-        array_free(_op->argument_lists);
-        _op->argument_lists = NULL;
+    if(_op->argumentLists != NULL) {
+        array_free(_op->argumentLists);
+        _op->argumentLists = NULL;
     }
 }

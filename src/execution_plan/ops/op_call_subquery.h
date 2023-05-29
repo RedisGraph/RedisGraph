@@ -22,15 +22,15 @@
 typedef struct {
     OpBase op;
 
-    bool first;                     // is this the first call to consume
-    bool is_eager;                  // is the op eager
-    bool is_returning;              // is the subquery returning or unit
-    OpBase *body;                   // first op in the embedded execution-plan
-    OpBase *lhs;                    // op from which records are pulled
-    Record r;                       // current record consumed from lhs
-    Record *records;                // records aggregated by the operation
-    Argument **arguments;           // Argument operation (potential tap)
-    ArgumentList **argument_lists;  // ArgumentList operation (potential tap)
+    bool first;                    // is this the first call to consume
+    bool is_eager;                 // is the op eager
+    bool is_returning;             // is the subquery returning or unit
+    OpBase *body;                  // first op in the embedded execution-plan
+    OpBase *lhs;                   // op from which records are pulled
+    Record r;                      // current record consumed from lhs
+    Record *records;               // records aggregated by the operation
+    Argument **arguments;          // Argument operation (potential tap)
+    ArgumentList **argumentLists;  // ArgumentList operation (potential tap)
 
 } OpCallSubquery;
 
