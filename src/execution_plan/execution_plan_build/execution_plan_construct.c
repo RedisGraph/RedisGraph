@@ -395,16 +395,16 @@ static OpBase **_FindDeepestOps
 	OpBase *deepest = plan->root;
 	OpBase **deepest_ops = array_new(OpBase *, 1);
 
-	// OpBase *join = ExecutionPlan_LocateOp(deepest, OPType_JOIN);
-	OpBase *join =
-		OpBase_Type(deepest) == OPType_JOIN ? deepest :
-		OpBase_ChildCount(deepest) > 0 &&
-			OpBase_Type(OpBase_GetChild(deepest, 0)) == OPType_JOIN ?
-				OpBase_GetChild(deepest, 0) :
-		OpBase_ChildCount(deepest) > 0 && OpBase_ChildCount(OpBase_GetChild(deepest, 0)) > 0 &&
-			OpBase_Type(OpBase_GetChild(OpBase_GetChild(deepest, 0), 0)) == OPType_JOIN ?
-				OpBase_GetChild(OpBase_GetChild(deepest, 0), 0) :
-		NULL;
+	// check root and its first child for a Join op
+	OpBase *join = _getJoin(deepest);
+	// if didn't find, check for a Join op in the first child of the first child
+	if(join == NULL                                       &&
+	   OpBase_ChildCount(deepest) > 0                     &&
+	   OpBase_ChildCount(OpBase_GetChild(deepest, 0)) > 0 &&
+	   (OpBase_Type(OpBase_GetChild(OpBase_GetChild(deepest, 0), 0)) ==
+		OPType_JOIN)) {
+			join = OpBase_GetChild(OpBase_GetChild(deepest, 0), 0);
+	}
 
 	if(join != NULL) {
 		uint n_branches = OpBase_ChildCount(join);

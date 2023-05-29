@@ -846,15 +846,15 @@ updating clause.")
             : [[2]],
             """
             CALL {
-                OPTIONAL MATCH (n:A) 
-                    WHERE n.v%2=0 
-                WITH collect(n.v) AS cn 
-                OPTIONAL MATCH (m:A) 
-                    WHERE m.v%2=1 
-                WITH sum(m.v) AS cm, cn  
+                OPTIONAL MATCH (n:A)
+                    WHERE n.v%2=0
+                WITH collect(n.v) AS cn
+                OPTIONAL MATCH (m:A)
+                    WHERE m.v%2=1
+                WITH sum(m.v) AS cm, cn
                 RETURN cn, cm
-            } 
-            RETURN cn, cm""" 
+            }
+            RETURN cn, cm"""
             : [[[2], 4]]
         }
         for query, expected_result in query_to_expected_result.items():
@@ -1379,6 +1379,90 @@ updating clause.")
         self.env.assertEquals(len(res.result_set[0]), 2)
         self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
         self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
+
+        # nested eager & returning subquery
+        query = """
+        MATCH (n:N)
+        CALL {
+            CREATE (m:M {name: 'Moshe'})
+            WITH m
+            CALL {
+                CREATE (o:O {name: 'Omer'})
+                RETURN o
+            }
+            RETURN m, o
+        }
+        RETURN n, m, o
+        """
+
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(res.nodes_created, 2)
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 3)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
+        self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
+        self.env.assertEquals(res.result_set[0][2], Node(label='O', properties={'name': 'Omer'}))
+
+        # highly nested eager & returning subquery
+        query = """
+        MATCH (n:N)
+        CALL {
+            CREATE (m:M {name: 'Moshe'})
+            WITH m
+            CALL {
+                CREATE (o:O {name: 'Omer'})
+                WITH o
+                CALL {
+                    CREATE (p:P {name: 'Pini'})
+                    RETURN p
+                }
+                RETURN o, p
+            }
+            RETURN m, o, p
+        }
+        RETURN n, m, o, p
+        """
+
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(res.nodes_created, 3)
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 4)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
+        self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
+        self.env.assertEquals(res.result_set[0][2], Node(label='O', properties={'name': 'Omer'}))
+        self.env.assertEquals(res.result_set[0][3], Node(label='P', properties={'name': 'Pini'}))
+
+        # TODO: n's data is not returned
+        # # nested eager & returning subquery in a non-(eager & returning)
+        # # subquery
+        # query = """
+        # MATCH (n:N)
+        # CALL {
+        #     CALL {
+        #         CREATE (m:M {name: 'Moshe'})
+        #         RETURN m
+        #     }
+        #     RETURN m
+        # }
+        # RETURN n, m
+        # """
+
+        # res = graph.query(query)
+
+        # for i in res.result_set:
+        #     for j in i:
+        #         print(j)
+
+        # # assert results
+        # self.env.assertEquals(res.nodes_created, 1)
+        # self.env.assertEquals(len(res.result_set), 1)
+        # self.env.assertEquals(len(res.result_set[0]), 2)
+        # self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
+        # self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
 
     def test27_read_no_with_after_writing_subquery(self):
         """Tests that a read clause following a writing subquery is handled

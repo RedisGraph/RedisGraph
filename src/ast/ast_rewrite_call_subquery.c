@@ -82,19 +82,41 @@ static void _replace_with_clause
 		cypher_ast_call_subquery_get_clause(callsubquery, clause_idx);
 
 	uint existing_projections_count = cypher_ast_with_nprojections(clause);
-	uint n_projections = array_len(names) + existing_projections_count;
+	uint n_projections = array_len(inter_names) + existing_projections_count;
 	uint proj_idx = 0;
 	cypher_astnode_t *projections[n_projections + 1];
 
 	// -------------------------------------------------------------------------
 	// create projections for bound vars
 	// -------------------------------------------------------------------------
-	uint n_orig_names = n_projections - existing_projections_count;
-	for(uint i = 0; i < n_orig_names; i++) {
+	uint n_names = array_len(names);
+	uint n_inter_names = array_len(inter_names);
+	for(uint i = 0; i < n_names; i++) {
 		// create a projection for the bound var
 		struct cypher_input_range range = {0};
 		cypher_astnode_t *exp = cypher_ast_identifier(names[i],
 			strlen(names[i]), range);
+		int ind = n_inter_names - n_names + i;
+		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[ind],
+			strlen(inter_names[ind]), range);
+		cypher_astnode_t *children[2];
+		children[0] = exp;
+		children[1] = alias;
+		uint nchildren = 2;
+
+		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
+				nchildren, range);
+	}
+
+	// -------------------------------------------------------------------------
+	// create projections for bound vars from outer context
+	// -------------------------------------------------------------------------
+	uint n_outer_names = n_inter_names - n_names;
+	for(uint i = 0; i < n_outer_names; i++) {
+		// create a projection for the bound var
+		struct cypher_input_range range = {0};
+		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[i],
+			strlen(inter_names[i]), range);
 		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
 			strlen(inter_names[i]), range);
 		cypher_astnode_t *children[2];
@@ -180,24 +202,48 @@ static void _add_first_clause
 	char **names,                       // original bound vars
 	char **inter_names                  // internal representation of bound vars
 ) {
-	uint n_projections = array_len(names);
+	uint n_names = array_len(names);
+	uint n_inter_names = array_len(inter_names);
+
+	uint n_projections = n_inter_names;
 	uint proj_idx = 0;
 	cypher_astnode_t *projections[n_projections + 1];
 
 	// -------------------------------------------------------------------------
 	// create projections for bound vars
 	// -------------------------------------------------------------------------
-	for(uint i = 0; i < array_len(names); i++) {
+	for(uint i = 0; i < n_names; i++) {
 		// create a projection for the bound var
 		struct cypher_input_range range = {0};
 		cypher_astnode_t *exp = cypher_ast_identifier(names[i],
 			strlen(names[i]), range);
+		int ind = n_inter_names - n_names + i;
+		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[ind],
+			strlen(inter_names[ind]), range);
+		cypher_astnode_t *children[2];
+		children[0] = exp;
+		children[1] = alias;
+		uint nchildren = 2;
+
+		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
+				nchildren, range);
+	}
+
+	// -------------------------------------------------------------------------
+	// create projections for bound vars from outer context
+	// -------------------------------------------------------------------------
+	uint n_outer_names = n_inter_names - n_names;
+	for(uint i = 0; i < n_outer_names; i++) {
+		// create a projection for the bound var
+		struct cypher_input_range range = {0};
+		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[i],
+			strlen(inter_names[i]), range);
 		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
 			strlen(inter_names[i]), range);
 		cypher_astnode_t *children[2];
 		children[0] = exp;
 		children[1] = alias;
-		unsigned int nchildren  = 2;
+		uint nchildren = 2;
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
 				nchildren, range);
@@ -283,7 +329,6 @@ static void _replace_intermediate_with_clauses
 	uint last_ind,                      // index of last relevant clause
 	char **inter_names                  // internal representation of bound vars
 ) {
-	// TODO: Enhace performance by setting a getter function here instead of mid-loop branch.,
 	for(uint i = first_ind + 1; i < last_ind; i++) {
 		cypher_astnode_t *clause =
 			(cypher_astnode_t *)cypher_ast_call_subquery_get_clause(
@@ -310,25 +355,49 @@ static void _replace_return_clause
 		(cypher_astnode_t *)cypher_ast_call_subquery_get_clause(callsubquery,
 			last_ind-1);
 
+	uint n_names = array_len(names);
+	uint n_inter_names = array_len(inter_names);
+
 	uint existing_projections_count = cypher_ast_return_nprojections(clause);
-	uint n_projections = array_len(names) + existing_projections_count;
+	uint n_projections = n_inter_names + existing_projections_count;
 	uint proj_idx = 0;
 	cypher_astnode_t *projections[n_projections + 1];
 
 	// -------------------------------------------------------------------------
 	// create projections for bound vars
 	// -------------------------------------------------------------------------
-	for(uint i = 0; i < array_len(names); i++) {
+	for(uint i = 0; i < n_names; i++) {
 		// create a projection for the bound var
 		struct cypher_input_range range = {0};
-		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[i],
-			strlen(inter_names[i]), range);
+		int ind = n_inter_names - n_names + i;
+		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[ind],
+			strlen(inter_names[ind]), range);
 		cypher_astnode_t *alias = cypher_ast_identifier(names[i],
 			strlen(names[i]), range);
 		cypher_astnode_t *children[2];
 		children[0] = exp;
 		children[1] = alias;
-		unsigned int nchildren  = 2;
+		uint nchildren = 2;
+
+		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
+				nchildren, range);
+	}
+
+	// -------------------------------------------------------------------------
+	// create projections for bound vars from outer context
+	// -------------------------------------------------------------------------
+	uint n_outer_names = n_inter_names - n_names;
+	for(uint i = 0; i < n_outer_names; i++) {
+		// create a projection for the bound var
+		struct cypher_input_range range = {0};
+		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[i],
+			strlen(inter_names[i]), range);
+		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
+			strlen(inter_names[i]), range);
+		cypher_astnode_t *children[2];
+		children[0] = exp;
+		children[1] = alias;
+		uint nchildren = 2;
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
 				nchildren, range);
@@ -399,7 +468,8 @@ static void _rewrite_projections
 	cypher_astnode_t *clause,           // call {} clause to rewrite
 	uint clause_ind,                    // index of call {} clause in query
 	uint start,                         // start ind of outer-scope bound vars
-	uint end                            // end ind of outer-scope bound vars
+	uint end,                           // end ind of outer-scope bound vars
+	char ***inter_names                 // internal representation of bound vars
 ) {
 	// -------------------------------------------------------------------------
 	// collect outer scope bound vars
@@ -419,9 +489,9 @@ static void _rewrite_projections
 	// ("a1", "@a1", "a2", "@a2", ...) of the original names and the
 	// internal (temporary) representation of them.
 	char **names = array_new(char *, mapping_size);
-	char **inter_names = array_new(char *, mapping_size);
+	// char **inter_names = array_new(char *, mapping_size);
 
-	_get_vars_inner_rep(outer_mapping, &names, &inter_names);
+	_get_vars_inner_rep(outer_mapping, &names, inter_names);
 	raxFree(outer_mapping);
 
 	// -------------------------------------------------------------------------
@@ -448,12 +518,12 @@ static void _rewrite_projections
 			// replace first clause (WITH) with a WITH clause containing
 			// "n->@n" projections for all bound vars in outer-scope context
 			_replace_with_clause(clause, first_ind,
-				names, inter_names);
+				names, *inter_names);
 		} else {
 			// add a leading WITH clause containing "n->@n" projections
 			// for all bound vars (in outer-scope context)
 			_add_first_clause(wrapping_clause, clause, clause_ind, first_ind,
-				names, inter_names);
+				names, *inter_names);
 
 			// update union indeces
 			for(uint j = i; j < n_union_branches; j++) {
@@ -462,7 +532,6 @@ static void _rewrite_projections
 			last_ind++;
 
 			// update the query and call {} nodes
-
 			clause = (cypher_astnode_t *)
 				(cypher_astnode_type(wrapping_clause) == CYPHER_AST_QUERY ?
 					cypher_ast_query_get_clause(wrapping_clause, clause_ind) :
@@ -474,23 +543,21 @@ static void _rewrite_projections
 		// replace it with a clause that contains "@n->@n" projections for
 		// all bound vars in outer-scope context
 		_replace_intermediate_with_clauses(clause, first_ind, last_ind,
-			inter_names);
+			*inter_names);
 
 		// replace the RETURN clause (last) with a clause containing the
 		// projections "@n->n" for all bound vars in outer-scope context
-		_replace_return_clause(clause, last_ind, names, inter_names);
+		_replace_return_clause(clause, last_ind, names, *inter_names);
 		first_ind = union_indices[i] + 1;
 	}
 
 	array_free(union_indices);
 
 	// free the names and inter_names, and corresponding arrays
-	for(uint i = 0; i < mapping_size; i++) {
-		rm_free(names[i]);
-		rm_free(inter_names[i]);
-	}
-	array_free(names);
-	array_free(inter_names);
+	// for(uint i = 0; i < mapping_size; i++) {
+	// 	rm_free(names[i]);
+	// }
+	// array_free(names);
 }
 
 // rewrites the subquery to contain the projections needed in case of an
@@ -502,10 +569,9 @@ static bool _AST_RewriteCallSubqueryClause
 	cypher_astnode_t *clause,           // the clause to rewrite
 	uint clause_ind,                    // index of clause in query
 	uint start,                         // start ind from which to collect bound vars
-	uint end                            // end ind until from which to collect bound vars
+	uint end,                           // end ind until from which to collect bound vars
+	char ***inter_names                 // internal representation of bound vars
 ) {
-	bool rewritten = false;
-
 	uint wrapping_subclauses_count =
 		cypher_astnode_type(wrapping_clause) == CYPHER_AST_QUERY ?
 			cypher_ast_query_nclauses(wrapping_clause) :
@@ -525,16 +591,18 @@ static bool _AST_RewriteCallSubqueryClause
 	}
 
 	if(is_eager && is_returning) {
-		rewritten = true;
-		_rewrite_projections(wrapping_clause, clause, clause_ind, start, end);
+		_rewrite_projections(wrapping_clause, clause, clause_ind, start, end,
+			inter_names);
+		return true;
 	}
 
-	return rewritten;
+	return false;
 }
 
 static bool _AST_RewriteCallSubqueryClauses
 (
-	cypher_astnode_t *wrapping_clause  // clause (query/call {})
+	cypher_astnode_t *wrapping_clause,  // clause (query/call {})
+	char **outer_inter_names            // internal names of bound vars in outer-scope ('@n', '@m', etc.)
 ) {
 	bool rewritten = false;
 
@@ -556,15 +624,23 @@ static bool _AST_RewriteCallSubqueryClauses
 		cypher_astnode_t *clause = (cypher_astnode_t *)get_clause(
 			wrapping_clause, i);
 		if(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY) {
+			// if the subquery is returning & eager, rewrite its projections
+			bool clause_rewritten = _AST_RewriteCallSubqueryClause(
+				wrapping_clause, clause, i, start_scope, i, &outer_inter_names);
+
+			// update clause, in case it was replaced
+			if(clause_rewritten) {
+				clause = (cypher_astnode_t *)get_clause(wrapping_clause, i);
+				rewritten = true;
+			}
+
+			// `outer_inter_names` now contains the internal representation of
+			// the current context as well
+
 			// recursively rewrite embedded Call {} clauses, and update clause
 			// in case it was rewritten
-			rewritten |= _AST_RewriteCallSubqueryClauses(clause);
-
-			// rewrite the Call {} clause
-			// TODO: Get rid of 'end' argument in the function below - we know
-			// it's also 'clause_ind'.
-			rewritten |= _AST_RewriteCallSubqueryClause(wrapping_clause,
-				clause, i, start_scope, i);
+			rewritten |= _AST_RewriteCallSubqueryClauses(clause,
+				outer_inter_names);
 		}
 
 		// update start_scope if needed
@@ -601,5 +677,14 @@ bool AST_RewriteCallSubquery
 		return rewritten;
 	}
 
-	return _AST_RewriteCallSubqueryClauses(query);
+	char **inter_names = array_new(char *, 0);
+	rewritten = _AST_RewriteCallSubqueryClauses(query, inter_names);
+	uint n_inter_names = array_len(inter_names);
+	// for(uint i = 0; i < n_inter_names; i++) {
+	// 	rm_free(inter_names[i]);
+	// }
+	// array_free(inter_names);
+
+	// cypher_ast_fprint(root, stdout, 0, NULL, 0);
+	return rewritten;
 }
