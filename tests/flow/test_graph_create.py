@@ -247,8 +247,10 @@ class testGraphCreationFlow(FlowTestsBase):
                 self.env.assertContains("Type mismatch", str(e), depth=1)
 
         # test referencing intermediate entities
+        error_invalid_input = "Invalid input"
         error_undef_attribute = "Attempted to access undefined attribute"
         error_undef_node_edge = "Attempted to access undefined node/edge"
+        error_unhandled_type = "Encountered unhandled type in inlined properties"
         error_primitive_type = "Property values can only be of primitive types or arrays of primitive types"
 
         queries_with_errors = [
@@ -273,6 +275,14 @@ class testGraphCreationFlow(FlowTestsBase):
             ("MERGE ()-[r:R {v:2}]->(b:B {v:r.v})", error_undef_attribute),
             ("CREATE ()-[r:R {v:2}]->(b:B {v:r.v})", error_undef_attribute),
             ("CREATE ()-[r:R {v:1}]->(), (a {v:r.v})", error_undef_attribute),
+
+            # assign path pattern to property
+            ("MATCH ({v:()}) RETURN 0", error_invalid_input),
+            ("MATCH (a {v:()-[]->()}) RETURN a", error_unhandled_type),
+            ("MERGE ({v:()}) RETURN 0", error_invalid_input),
+            ("MERGE (a {v:()-[]->()}) return n", error_unhandled_type),
+            ("CREATE ({v:()}) RETURN 0", error_invalid_input),
+            ("CREATE (a {v:()-[]->()}) return n", error_unhandled_type),
         ]
 
         for query, error in queries_with_errors:

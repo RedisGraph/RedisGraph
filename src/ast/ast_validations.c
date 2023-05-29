@@ -736,16 +736,6 @@ static AST_Validation _ValidateInlinedProperties
 	uint prop_count = cypher_ast_map_nentries(props);
 	for(uint i = 0; i < prop_count; i++) {
 		const cypher_astnode_t *prop_val = cypher_ast_map_get_value(props, i);
-		const cypher_astnode_t **patterns = AST_GetTypedNodes(prop_val,
-				CYPHER_AST_PATTERN_PATH);
-		uint patterns_count = array_len(patterns);
-		array_free(patterns);
-		if(patterns_count > 0) {
-			// encountered query of the form:
-			// MATCH (a {prop: ()-[]->()}) RETURN a
-			ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
-			return AST_INVALID;
-		}
 
 		//----------------------------------------------------------------------
 		// ...
@@ -753,7 +743,13 @@ static AST_Validation _ValidateInlinedProperties
 
 		cypher_astnode_type_t type = cypher_astnode_type(prop_val);
 
-		if(type == CYPHER_AST_IDENTIFIER) {
+		if (type == CYPHER_AST_PATTERN_PATH) {
+			// encountered query of the form:
+			// MATCH (a {prop: ()-[]->()}) RETURN a
+			ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
+			return AST_INVALID;
+
+		} else if(type == CYPHER_AST_IDENTIFIER) {
 			const char *identifier_name = cypher_ast_identifier_get_name(prop_val);
 
 			// emit an error if the property reference to the same node/edge
