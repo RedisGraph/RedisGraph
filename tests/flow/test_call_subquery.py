@@ -499,7 +499,11 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][0],
         Node(label='N', properties={'name': 'Raz', 'v': 6}))
 
-        # TODO: For some reason the sorting doesn't affect the records order - Debug.
+        # TODO: We reverse the order in op_callsubquery after sorting, which
+        # tampers with the sorting of the ORDER BY here. Changing this comes
+        # with a cost (probably) - Neo4j just doesn't promise any order on
+        # returned records from a subquery
+
         # res = graph.query(
         #     """
         #     CALL {
@@ -1375,3 +1379,71 @@ updating clause.")
         self.env.assertEquals(len(res.result_set[0]), 2)
         self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
         self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
+
+    def test27_read_no_with_after_writing_subquery(self):
+        """Tests that a read clause following a writing subquery is handled
+        correctly with\without a separating `WITH` clause"""
+
+        # clean the db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # using a separating `WITH`
+        res = graph.query(
+            """
+            CALL {
+                CREATE (n:N {name: 'Roi'})
+                RETURN n
+            }
+            WITH n
+            MATCH (n2:N)
+            RETURN n2
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N',
+            properties={'name': 'Roi'}))
+
+        # delete the node
+        res = graph.query("MATCH (n) DELETE n")
+        self.env.assertEquals(res.nodes_deleted, 1)
+
+        # same query, without a separating `WITH`
+        res = graph.query(
+            """
+            CALL {
+                CREATE (n:N {name: 'Roi'})
+                RETURN n
+            }
+            MATCH (n2:N)
+            RETURN n2
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N',
+            properties={'name': 'Roi'}))
+
+        # delete the node
+        res = graph.query("MATCH (n) DELETE n")
+        self.env.assertEquals(res.nodes_deleted, 1)
+
+        # # TODO: crash (n2 not found. Works with a separating `WITH`.)
+        # # same query, without a separating `WITH`, and without a `RETURN` clause
+        # res = graph.query(
+        #     """
+        #     CALL {
+        #         CREATE (n:N {name: 'Roi'})
+        #     }
+        #     MATCH (n2:N)
+        #     RETURN n2
+        #     """
+        # )
+
+        # # assert results
+        # self.env.assertEquals(len(res.result_set), 1)
+        # self.env.assertEquals(res.result_set[0][0], Node(label='N',
+        #     properties={'name': 'Roi'}))
