@@ -200,13 +200,14 @@ class testGraphCreationFlow(FlowTestsBase):
     # test referencing entities defined previously in the same query
     # the "intermediate" entities and their properties will be evaluated as NULL
     def test11_use_intermediate_entities(self):
-
         # test using function with valid arguments
-        # 'a' is evaluated as NULL, but NULL is a valid argument to the function
+        # 'a' is an intermidate node, which doesn't have any attributes just yet
+
         queries = [
                 "CREATE (a:A {v:0}), ()-[r:R {k:toJSON(a)}]->() RETURN r.k",
                 "CREATE (a:A {v:0}), ()-[:R]->(c {k:toJSON(a)}) RETURN c.k",
         ]
+
         for query in queries:
             result = redis_graph.query(query)
             self.env.assertEquals(result.nodes_created, 3, depth=1)
@@ -218,6 +219,7 @@ class testGraphCreationFlow(FlowTestsBase):
                 "MERGE (a:A {v:2})-[r:R {k:toJSON(a)}]->() RETURN r.k",
                 "MERGE (a:A {v:2})-[:R]->(b {k:toJSON(a)}) RETURN b.k",
         ]
+
         for query in queries:
             result = redis_graph.query(query)
             self.env.assertEquals(result.nodes_created, 2, depth=1)
@@ -236,6 +238,7 @@ class testGraphCreationFlow(FlowTestsBase):
             # Float, or Null but any() returns Boolean
             "CREATE (a:A {n:'A'}), (b:B {v:floor(any(v4 IN [2] WHERE b = [a IN keys(a)]))})"
         ]
+
         for query in queries:
             try:
                 redis_graph.query(query)
@@ -247,25 +250,31 @@ class testGraphCreationFlow(FlowTestsBase):
         error_undef_attribute = "Attempted to access undefined attribute"
         error_undef_node_edge = "Attempted to access undefined node/edge"
         error_primitive_type = "Property values can only be of primitive types or arrays of primitive types"
+
         queries_with_errors = [
             # reference to intermediate node
             ("MERGE (a:A {v:a})", error_undef_node_edge),
             ("CREATE (a:A {v:a})", error_undef_node_edge),
             ("MERGE (a:A)-[:R]->(b:B {v:a})", error_primitive_type),
             ("CREATE (a:A)-[:R]->(b:B {v:a})", error_primitive_type),
+
             # reference to intermediate edge
             ("MERGE ()-[r:R {v:r}]->()", error_undef_node_edge),
             ("CREATE ()-[r:R {v:r}]->()", error_undef_node_edge),
             ("MERGE ()-[r:R]->(b:B {v:r})", error_primitive_type),
             ("CREATE ()-[r:R]->(b:B {v:r})", error_primitive_type),
+
             # reference to property of intermediate node
             ("CREATE (a {v:1}), (b {v:a.v})", error_undef_attribute),
             ("MERGE (a {v:3})-[:R]->(b:B {v:a.v})", error_undef_attribute),
             ("CREATE (a {v:0})-[:R]->(b:B {v:a.v})", error_undef_attribute),
+
             # reference to propery of intermediate edge
             ("MERGE ()-[r:R {v:2}]->(b:B {v:r.v})", error_undef_attribute),
             ("CREATE ()-[r:R {v:2}]->(b:B {v:r.v})", error_undef_attribute),
             ("CREATE ()-[r:R {v:1}]->(), (a {v:r.v})", error_undef_attribute),
         ]
+
         for query, error in queries_with_errors:
             self._assert_exception(redis_graph, query, error)
+

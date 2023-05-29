@@ -712,7 +712,8 @@ static VISITOR_STRATEGY _Validate_reduce
 	return VISITOR_CONTINUE;
 }
 
-// Validate the property maps used in node/edge patterns in MATCH, and CREATE clauses
+// validate the property maps used in node/edge patterns
+// in MATCH and CREATE clauses
 static AST_Validation _ValidateInlinedProperties
 (
 	const cypher_astnode_t *props, // ast-node representing the map
@@ -724,7 +725,7 @@ static AST_Validation _ValidateInlinedProperties
 		return AST_VALID;
 	}
 
-	// Emit an error if the properties are not presented as a map, as in:
+	// emit an error if the properties are not presented as a map, as in:
 	// MATCH (p {invalid_property_construction}) RETURN p
 	if(cypher_astnode_type(props) != CYPHER_AST_MAP) {
 		ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
@@ -735,22 +736,28 @@ static AST_Validation _ValidateInlinedProperties
 	uint prop_count = cypher_ast_map_nentries(props);
 	for(uint i = 0; i < prop_count; i++) {
 		const cypher_astnode_t *prop_val = cypher_ast_map_get_value(props, i);
-		const cypher_astnode_t **patterns = AST_GetTypedNodes(prop_val, CYPHER_AST_PATTERN_PATH);
+		const cypher_astnode_t **patterns = AST_GetTypedNodes(prop_val,
+				CYPHER_AST_PATTERN_PATH);
 		uint patterns_count = array_len(patterns);
 		array_free(patterns);
 		if(patterns_count > 0) {
-			// Encountered query of the form:
+			// encountered query of the form:
 			// MATCH (a {prop: ()-[]->()}) RETURN a
 			ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
 			return AST_INVALID;
 		}
+
+		//----------------------------------------------------------------------
+		// ...
+		//----------------------------------------------------------------------
 
 		cypher_astnode_type_t type = cypher_astnode_type(prop_val);
 
 		if(type == CYPHER_AST_IDENTIFIER) {
 			const char *identifier_name = cypher_ast_identifier_get_name(prop_val);
 
-			// emit an error if the property reference to the same node/edge that is under validation
+			// emit an error if the property reference to the same node/edge
+			// that is under validation
 			// CREATE (a {v:a})
 			// CREATE ()-[r {v:r}]->()
 			if(alias != NULL && strcmp(alias, identifier_name) == 0) {
@@ -763,7 +770,7 @@ static AST_Validation _ValidateInlinedProperties
 			void *identifier_type = raxFind(defined_identifiers, (unsigned char *)identifier_name,
 										strlen(identifier_name));
 
-			if(identifier_type != NULL &&
+			if(identifier_type != raxNotFound &&
 				(identifier_type == (void *)BOUNDED_NODE || identifier_type == (void *)BOUNDED_EDGE ||
 				identifier_type == (void *)MATCHED_NODE || identifier_type == (void *)MATCHED_EDGE )) {
 				ErrorCtx_SetError("Property values can only be of primitive types or arrays of primitive types");
