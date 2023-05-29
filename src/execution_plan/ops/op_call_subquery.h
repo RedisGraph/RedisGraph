@@ -9,16 +9,15 @@
 #include "op_argument.h"
 #include "op_argument_list.h"
 
-// The Call-Subquery operation is similar to the Apply operation, differing
-// from it in two main aspects:
-//  1. It eagerly consumes the records of its first child (lhs) IF the body of
-//     the subquery contains a consuming (eager) operation (depicted in the
-//     is_eager field), and plants that record-list in the ArgumentList op.
-//     Otherwise, it will non-eagerly consume, and plant in the Argument op.
-//     Note: If there is a JOIN op (due to a `UNION` clause) in the body, the
-//     input records are cloned and sent to all branches separately.
-//  2. It merges the records of the rhs branch and the record consumed from lhs
-//     according to the `is_returning` field (whereas Apply always does so).
+// The Call {} operation is used to embed a subquery in the
+// execution-plan. It generally passes records from its first child (lhs), to
+// the body (rhs) of the subquery via the Argument\ArgumentList operations,
+// and then merges the records returned from the body with the records consumed
+// from lhs, according to whether the subquery is returning or not (i.e,
+// terminates with a `RETURN` clause). If there is no lhs, a dummy record
+// is created and passed to the body.
+// The Call {} operation is eager\non-eager according to whether its body
+// is\isn't eager (non-eager -> Arguments, eager -> ArgumentLists).
 
 typedef struct {
     OpBase op;
