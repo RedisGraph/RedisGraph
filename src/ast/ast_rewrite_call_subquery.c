@@ -485,11 +485,8 @@ static void _rewrite_projections
 		return;
 	}
 
-	// create an array containing coupled names
-	// ("a1", "@a1", "a2", "@a2", ...) of the original names and the
-	// internal (temporary) representation of them.
+	// create an array for the outer scope bound vars
 	char **names = array_new(char *, mapping_size);
-	// char **inter_names = array_new(char *, mapping_size);
 
 	_get_vars_inner_rep(outer_mapping, &names, inter_names);
 	raxFree(outer_mapping);
@@ -554,7 +551,8 @@ static void _rewrite_projections
 	array_free(union_indices);
 
 	// free the names and inter_names, and corresponding arrays
-	for(uint i = 0; i < mapping_size; i++) {
+	uint n_names = array_len(names);
+	for(uint i = 0; i < n_names; i++) {
 		rm_free(names[i]);
 	}
 	array_free(names);
