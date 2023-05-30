@@ -554,10 +554,10 @@ static void _rewrite_projections
 	array_free(union_indices);
 
 	// free the names and inter_names, and corresponding arrays
-	// for(uint i = 0; i < mapping_size; i++) {
-	// 	rm_free(names[i]);
-	// }
-	// array_free(names);
+	for(uint i = 0; i < mapping_size; i++) {
+		rm_free(names[i]);
+	}
+	array_free(names);
 }
 
 // rewrites the subquery to contain the projections needed in case of an
