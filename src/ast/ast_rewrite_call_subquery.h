@@ -15,7 +15,7 @@
 // 3. "@n" -> "n" in the final RETURN clause.
 // if the subquery will not result in an eager & returning execution-plan, does
 // nothing
-bool AST_RewriteCallSubquery
+void AST_RewriteCallSubquery
 (
 	const cypher_astnode_t *root // root of AST
 );

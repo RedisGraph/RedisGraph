@@ -1464,6 +1464,30 @@ updating clause.")
         # self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
         # self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
 
+        # multiple eager & returning subqueries, one sequentialy
+        query = """
+        MATCH (n:N)
+        CALL {
+            CREATE (m:M {name: 'Moshe'})
+            RETURN m
+        }
+        CALL {
+            CREATE (o:O {name: 'Omer'})
+            RETURN o
+        }
+        RETURN n, m, o
+        """
+
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(res.nodes_created, 2)
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 3)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
+        self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
+        self.env.assertEquals(res.result_set[0][2], Node(label='O', properties={'name': 'Omer'}))
+
     def test27_read_no_with_after_writing_subquery(self):
         """Tests that a read clause following a writing subquery is handled
         correctly with\without a separating `WITH` clause"""
