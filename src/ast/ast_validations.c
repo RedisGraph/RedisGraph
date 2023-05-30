@@ -1295,7 +1295,8 @@ static VISITOR_STRATEGY _Validate_call_subquery
 		if(!_ValidateCallInitialWith(clauses[0], vctx)) {
 			raxFree(in_env);
 			ErrorCtx_SetError(
-				"WITH imports in CALL {} must be simple ('WITH a')");
+				"WITH imports in CALL {} must contain simple references to \
+outside variables (e.g., 'WITH a')");
 			return VISITOR_BREAK;
 		}
 	}
@@ -1319,7 +1320,8 @@ static VISITOR_STRATEGY _Validate_call_subquery
 			if(!_ValidateCallInitialWith(clause, vctx)) {
 				raxFree(in_env);
 				ErrorCtx_SetError(
-					"WITH imports in CALL {} must be simple ('WITH a')");
+					"WITH imports in CALL {} must contain simple references to \
+outside variables (e.g., 'WITH a')");
 				return VISITOR_BREAK;
 			}
 		}

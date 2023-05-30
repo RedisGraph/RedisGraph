@@ -41,7 +41,7 @@ class testCallSubqueryFlow():
     def test01_test_validations(self):
         """Make sure we fail on invalid queries"""
 
-        import_error = "WITH imports in CALL {} must be simple ('WITH a')"
+        import_error = "WITH imports in CALL {} must contain simple references to outside variables (e.g., 'WITH a')"
         match_after_updating = "A WITH clause is required to introduce MATCH after an updating clause"
         queries_errors = [
             ("WITH 1 AS a CALL {WITH a+1 AS b RETURN b} RETURN b", import_error),
