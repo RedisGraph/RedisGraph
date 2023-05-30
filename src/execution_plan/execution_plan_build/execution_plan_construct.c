@@ -348,13 +348,24 @@ static OpBase *_AddEmptyProjection
 	OpBase *empty_proj =
 		NewProjectOp(parent->plan, array_new(AR_ExpNode *, 0));
 
-	if(OpBase_Type(parent) == OPType_CallSubquery) {
+	OPType type = OpBase_Type(parent);
+	if(type == OPType_CallSubquery || type == OPType_FOREACH) {
 		ExecutionPlan_AddOpInd(parent, empty_proj, 0);
 	} else {
 		ExecutionPlan_AddOp(parent, empty_proj);
 	}
 
 	return empty_proj;
+}
+
+// returns true if op is effectively a deepest op (i.e., no lhs)
+static bool _is_deepest_call_foreach
+(
+	OpBase *op  // op to check
+) {
+	OPType type = OpBase_Type(op);
+	return (type == OPType_CallSubquery || type == OPType_FOREACH) &&
+			op->childCount == 1;
 }
 
 // finds the deepest operation starting from root, and appends it to deepest_ops
@@ -365,8 +376,14 @@ static void _get_deepest
 	OpBase ***deepest_ops  // target array to which the deepest op is appended
 ) {
 	OpBase *deepest = root;
-	bool found = false;
 
+	// check root
+	if(_is_deepest_call_foreach(deepest)) {
+		array_append(*deepest_ops, deepest);
+		return;
+	}
+
+	// traverse children
 	while(OpBase_ChildCount(deepest) > 0) {
 		deepest = deepest->children[0];
 		// in case of a CallSubquery op with no lhs, we want to stop
@@ -374,17 +391,14 @@ static void _get_deepest
 		// the current child, which will be moved to be the second)
 		// Example:
 		// "CALL {CALL {RETURN 1 AS one} RETURN one} RETURN one"
-		if(OpBase_Type(deepest) == OPType_CallSubquery &&
-			deepest->childCount == 1) {
-				found = true;
-				array_append(*deepest_ops, deepest);
-				break;
+		OPType type = OpBase_Type(deepest);
+		if(_is_deepest_call_foreach(deepest)){
+			array_append(*deepest_ops, deepest);
+			return;
 		}
 	}
 
-	if(!found) {
-		array_append(*deepest_ops, deepest);
-	}
+	array_append(*deepest_ops, deepest);
 }
 
 // returns an array of with the deepest ops of an execution plan
@@ -506,7 +520,7 @@ static void _buildCallSubqueryPlan
 	QueryCtx_SetAST(orig_ast);
 
 	// find the deepest ops, to which we will add the projections and connectors
-	OpBase **deepest_ops = 	_FindDeepestOps(embedded_plan);
+	OpBase **deepest_ops = _FindDeepestOps(embedded_plan);
 
 	// if no variables are imported, add an 'empty' projection so that the
 	// records within the subquery will not carry unnecessary entries

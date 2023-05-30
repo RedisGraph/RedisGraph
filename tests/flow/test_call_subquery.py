@@ -383,25 +383,24 @@ updating clause.")
         self.env.assertEquals(res.nodes_deleted, 2)
 
         # # TODO: Fix - Probably Foreach is trying to insert records in to the wrong ArgList op.
-        # # Test with a returning subquery
-        # FOREACH as first clause inside {}
-        # graph.query(
-        #     """
-        #     CALL {
-        #         FOREACH (m in [1, 2] |
-        #             CREATE (:TEMP)
-        #         )
-        #     }
-        #     """
-        # )
+        # FOREACH is first clause inside {}
+        graph.query(
+            """
+            CALL {
+                FOREACH (m in [1, 2] |
+                    CREATE (:TEMP)
+                )
+            }
+            """
+        )
 
-        # # assert the correctness of the results
-        # res = graph.query("MATCH(n:TEMP) RETURN n ORDER BY n.v ASC")
-        # self.env.assertEquals(len(res.result_set), 2)
+        # assert the correctness of the results
+        res = graph.query("MATCH(n:TEMP) RETURN n ORDER BY n.v ASC")
+        self.env.assertEquals(len(res.result_set), 2)
 
-        # # delete the nodes with label :TEMP
-        # res = graph.query("MATCH (n:TEMP) DELETE n")
-        # self.env.assertEquals(res.nodes_deleted, 2)
+        # delete the nodes with label :TEMP
+        res = graph.query("MATCH (n:TEMP) DELETE n")
+        self.env.assertEquals(res.nodes_deleted, 2)
 
     def test11_skip_limit(self):
         """Tests that SKIP and LIMIT work properly when placed inside a
