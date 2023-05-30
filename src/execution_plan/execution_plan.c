@@ -205,10 +205,12 @@ static bool _ExecutionPlan_HasLocateTaps
 (
 	OpBase *root
 ) {
-	if((root->childCount == 0 && root->type != OPType_ARGUMENT
-			&& root->type != OPType_ARGUMENT_LIST)
-		|| root->type == OPType_FOREACH
-		|| root->type == OPType_CallSubquery) {
+	if((root->childCount == 0 && root->type != OPType_ARGUMENT &&
+		root->type != OPType_ARGUMENT_LIST) ||
+		// when Foreach or Call {} have a single child, they don't need a tap
+		(root->childCount == 1 &&
+			(root->type == OPType_FOREACH || root->type == OPType_CallSubquery))
+		) {
 			return true;
 	}
 
