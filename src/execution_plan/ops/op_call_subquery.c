@@ -27,10 +27,11 @@ static void _append_connector
     }
     if(call_subquery->is_eager) {
         ASSERT(OpBase_Type((const OpBase *)root) == OPType_ARGUMENT_LIST);
-        array_append(call_subquery->argumentLists, (ArgumentList *)root);
+        array_append(call_subquery->connectors->argumentLists,
+            (ArgumentList *)root);
     } else {
         ASSERT(OpBase_Type((const OpBase *)root) == OPType_ARGUMENT);
-        array_append(call_subquery->arguments, (Argument *)root);
+        array_append(call_subquery->connectors->arguments, (Argument *)root);
     }
 }
 
@@ -43,15 +44,14 @@ OpBase *NewCallSubqueryOp
 ) {
     OpCallSubquery *op = rm_calloc(1, sizeof(OpCallSubquery));
 
-    op->r              = NULL;
-    op->lhs            = NULL;
-    op->body           = NULL;
-    op->first          = true;
-    op->records        = NULL;
-    op->arguments      = NULL;
-    op->argumentLists = NULL;
-    op->is_eager       = is_eager;
-    op->is_returning   = is_returning;
+    op->r            = NULL;
+    op->lhs          = NULL;
+    op->body         = NULL;
+    op->first        = true;
+    op->records      = NULL;
+    op->connectors   = NULL;
+    op->is_eager     = is_eager;
+    op->is_returning = is_returning;
 
     // set the consume function according to eagerness of the op
     Record (*consumeFunc)(OpBase *opBase) = is_eager ?
@@ -82,10 +82,13 @@ static OpResult CallSubqueryInit
 
     // search for the ArgumentList\Argument ops, depending if the op is eager
     // the non-relevant field will stay NULL
+    op->connectors = rm_malloc(sizeof(Connector));
     if(op->is_eager) {
-        op->argumentLists = array_new(ArgumentList *, 1);
+        op->connectors->argumentLists = array_new(ArgumentList *, 1);
+        op->connectors->type = CONNECTOR_ARGUMENT_LIST;
     } else {
-        op->arguments = array_new(Argument *, 1);
+        op->connectors->arguments = array_new(Argument *, 1);
+        op->connectors->type = CONNECTOR_ARGUMENT;
     }
 
     bool join = (OpBase_Type(op->body) == OPType_JOIN) ||
@@ -160,18 +163,19 @@ static Record CallSubqueryConsumeEager
         array_append(op->records, r);
     }
 
-    int n_branches = (int)array_len(op->argumentLists);
+    int n_branches = (int)array_len(op->connectors->argumentLists);
     for(int i = 0; i < n_branches - 1; i++) {
         Record *records_clone;
         array_clone_with_cb(records_clone, op->records,
             OpBase_DeepCloneRecord);
-        ArgumentList_AddRecordList(op->argumentLists[i], records_clone);
+        ArgumentList_AddRecordList(op->connectors->argumentLists[i],
+            records_clone);
     }
 
     if(op->is_returning) {
         // give the last branch the original records
-        ArgumentList_AddRecordList(op->argumentLists[n_branches - 1],
-            op->records);
+        ArgumentList_AddRecordList(
+            op->connectors->argumentLists[n_branches - 1], op->records);
 
         // responsibility for the records is passed to the argumentList op
         op->records = NULL;
@@ -180,8 +184,8 @@ static Record CallSubqueryConsumeEager
         Record *records_clone;
         array_clone_with_cb(records_clone, op->records,
             OpBase_DeepCloneRecord);
-        ArgumentList_AddRecordList(op->argumentLists[n_branches - 1],
-            records_clone);
+        ArgumentList_AddRecordList(
+            op->connectors->argumentLists[n_branches - 1], records_clone);
 
         // consume and free all records from body
         while((r = OpBase_Consume(op->body))) {
@@ -207,9 +211,10 @@ static Record _consume_and_return
         op->r = NULL;
         if(op->lhs && (op->r = OpBase_Consume(op->lhs)) != NULL) {
             // plant a clone of the record consumed at the Argument ops
-            uint n_branches = array_len(op->arguments);
+            uint n_branches = array_len(op->connectors->arguments);
             for(uint i = 0; i < n_branches; i++) {
-                Argument_AddRecord(op->arguments[i], OpBase_DeepCloneRecord(op->r));
+                Argument_AddRecord(op->connectors->arguments[i],
+                    OpBase_DeepCloneRecord(op->r));
             }
         } else {
             // lhs depleted --> CALL {} depleted as well
@@ -280,9 +285,10 @@ static Record CallSubqueryConsume
 
     // plant the record consumed at the Argument ops
     if(op->r) {
-        uint n_branches = array_len(op->arguments);
+        uint n_branches = array_len(op->connectors->arguments);
         for(uint i = 0; i < n_branches; i++) {
-            Argument_AddRecord(op->arguments[i], OpBase_DeepCloneRecord(op->r));
+            Argument_AddRecord(op->connectors->arguments[i],
+                OpBase_DeepCloneRecord(op->r));
         }
     } else {
         // no records - lhs depleted
@@ -340,12 +346,17 @@ static void CallSubqueryFree
 
     _freeInternals(_op);
 
-    if(_op->arguments != NULL) {
-        array_free(_op->arguments);
-        _op->arguments = NULL;
-    }
-    if(_op->argumentLists != NULL) {
-        array_free(_op->argumentLists);
-        _op->argumentLists = NULL;
+    if(_op->connectors != NULL) {
+        if(_op->connectors->type == CONNECTOR_ARGUMENT &&
+           _op->connectors->arguments != NULL) {
+            array_free(_op->connectors->arguments);
+            _op->connectors->arguments = NULL;
+        } else if(_op->connectors->type == CONNECTOR_ARGUMENT_LIST &&
+           _op->connectors->argumentLists != NULL) {
+            array_free(_op->connectors->argumentLists);
+            _op->connectors->argumentLists = NULL;
+        }
+        rm_free(_op->connectors);
+        _op->connectors = NULL;
     }
 }

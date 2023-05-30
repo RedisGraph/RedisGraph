@@ -19,6 +19,19 @@
 // The Call {} operation is eager\non-eager according to whether its body
 // is\isn't eager (non-eager -> Arguments, eager -> ArgumentLists).
 
+typedef enum {
+    CONNECTOR_ARGUMENT,      // Arguments
+    CONNECTOR_ARGUMENT_LIST  // ArgumentLists
+} ConnectorType;
+
+typedef struct Connector{
+    union {
+        Argument **arguments;
+        ArgumentList **argumentLists;
+    };
+    ConnectorType type;
+} Connector;
+
 typedef struct {
     OpBase op;
 
@@ -29,8 +42,7 @@ typedef struct {
     OpBase *lhs;                   // op from which records are pulled
     Record r;                      // current record consumed from lhs
     Record *records;               // records aggregated by the operation
-    Argument **arguments;          // Argument operation (potential tap)
-    ArgumentList **argumentLists;  // ArgumentList operation (potential tap)
+    Connector *connectors;         // connectors to the body (Args/ArgLists)
 
 } OpCallSubquery;
 
