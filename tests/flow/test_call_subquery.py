@@ -1459,6 +1459,28 @@ updating clause.")
         # self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
         # self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
 
+        # TODO: n2 is not recognized (debug). (separating `WITH` clause solves)
+        # non-returning updating subquery followed by matching clause, with no
+        # separating `WITH` clause
+        # query = """
+        # CALL {
+        #     CREATE (n:M {name: 'Raz'})
+        # }
+        # MATCH (n2:M)
+        # RETURN n2
+        # """
+
+        # res = graph.query(query)
+
+        # # assert results
+        # self.env.assertEquals(res.nodes_created, 1)
+        # self.env.assertEquals(len(res.result_set), 1)
+        # self.env.assertEquals(res.result_set[0][0],
+        #     Node(label='M', properties={'name': 'Raz'}))
+
+        # delete created node
+        graph.query("MATCH (m:M) DELETE m")
+
         # multiple eager & returning subqueries, one sequentialy
         query = """
         MATCH (n:N)
