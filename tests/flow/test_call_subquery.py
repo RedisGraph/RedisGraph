@@ -41,7 +41,7 @@ class testCallSubqueryFlow():
     def test01_test_validations(self):
         """Make sure we fail on invalid queries"""
 
-        import_error = "WITH imports in CALL {} must contain simple references to outside variables (e.g., 'WITH a')"
+        import_error = "WITH imports in CALL {} must consist of only simple references to outside variables"
         match_after_updating = "A WITH clause is required to introduce MATCH after an updating clause"
         queries_errors = [
             ("WITH 1 AS a CALL {WITH a+1 AS b RETURN b} RETURN b", import_error),
@@ -749,24 +749,12 @@ updating clause.")
             """
             , [[['foo', 'bar']]]),
             ("""
-            WITH 1 AS one, 2 as two
             CALL {
-                WITH one, two
-                RETURN one + two AS three
+                WITH toUpper('a') AS A, 5 - 2 AS num
+                RETURN A, num
             }
-            RETURN three
-            """
-            , [[3]]),
-            ("""
-            WITH 1 AS a, 5 AS b 
-            CALL {
-                WITH a 
-                WITH a, 1 + a AS b 
-                RETURN a + b AS c
-            } 
-            RETURN c
-            """
-            , [[3]])
+            RETURN *
+            """, [['A', 3]])
         ]
         for query, expected_result in query_to_expected_result:
             self.get_res_and_assertEquals(query, expected_result)
@@ -801,6 +789,26 @@ updating clause.")
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(res.result_set[0][0], Node(label='N'))
 
+        query = """
+        UNWIND ['a', 'b', 'c', 'a', 'b', 'b'] AS x
+        CALL {
+            WITH x
+            RETURN toUpper(x) AS key, count(1) AS count
+        }
+        RETURN key, count ORDER BY key
+        """
+
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 3)
+        self.env.assertEquals(res.result_set[0][0], 'A')
+        self.env.assertEquals(res.result_set[0][1], 2)
+        self.env.assertEquals(res.result_set[1][0], 'B')
+        self.env.assertEquals(res.result_set[1][1], 3)
+        self.env.assertEquals(res.result_set[2][0], 'C')
+        self.env.assertEquals(res.result_set[2][1], 1)
+
     def test19_optional_match(self):
         """Tests that we deal properly with `OPTIONAL MATCH` clauses in a
         subquery"""
@@ -828,8 +836,8 @@ updating clause.")
         # Create 3 nodes
         graph.query("UNWIND range(1, 3) AS i CREATE (n:A {v:i})")
         
-        query_to_expected_result = {
-            """
+        query_to_expected_result = [
+            ("""
             CALL {
                 MATCH (n:A) 
                     WHERE n.v % 2 = 0 
@@ -838,21 +846,21 @@ updating clause.")
             } 
             RETURN cn
             """ 
-            : [[2]],
-            """
+            , [[2]]),
+            ("""
             CALL {
                 OPTIONAL MATCH (n:A)
-                    WHERE n.v%2=0
+                    WHERE n.v % 2 = 0
                 WITH collect(n.v) AS cn
                 OPTIONAL MATCH (m:A)
-                    WHERE m.v%2=1
+                    WHERE m.v % 2 = 1
                 WITH sum(m.v) AS cm, cn
                 RETURN cn, cm
             }
             RETURN cn, cm"""
-            : [[[2], 4]]
-        }
-        for query, expected_result in query_to_expected_result.items():
+            , [[[2], 4]])
+        ]
+        for query, expected_result in query_to_expected_result:
             self.get_res_and_assertEquals(query, expected_result)
 
     def test21_union(self):
@@ -883,12 +891,13 @@ updating clause.")
         res = graph.query(
             """
             UNWIND range(1, 2) AS i
+            WITH i AS i, i AS x
             CALL {
                 WITH i
                 RETURN i AS num
                 UNION
-                WITH i
-                RETURN i + 1 AS num
+                WITH x
+                RETURN x + 1 AS num
             }
             RETURN i, num ORDER BY i, num ASC
             """
@@ -947,7 +956,34 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][0], Node(label='M',
             properties={'v': 2}))
 
+        # use bound data
+        res = graph.query(
+            """
+            UNWIND range(1, 2) AS i
+            CALL {
+                WITH i
+                CREATE (n:TEMP {v: i})
+                RETURN n.v AS num
+                UNION ALL
+                RETURN 1 AS num
+            }
+            RETURN i, num ORDER BY i, num ASC
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 4)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[0][1], 1)
+        self.env.assertEquals(res.result_set[1][0], 1)
+        self.env.assertEquals(res.result_set[1][1], 1)
+        self.env.assertEquals(res.result_set[2][0], 2)
+        self.env.assertEquals(res.result_set[2][1], 1)
+        self.env.assertEquals(res.result_set[3][0], 2)
+        self.env.assertEquals(res.result_set[3][1], 2)
+
         # match nodes in both branches
+        # the graph contains: (:N {v: 1}), (:M {v: 2}), (:M {v: 2})
         res = graph.query(
             """
             CALL {
