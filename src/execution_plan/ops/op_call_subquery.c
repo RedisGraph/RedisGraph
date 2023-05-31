@@ -5,6 +5,8 @@
  */
 
 #include "op_join.h"
+#include "op_sort.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 #include "op_call_subquery.h"
 
 // forward declarations

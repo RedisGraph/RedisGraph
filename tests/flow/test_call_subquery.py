@@ -498,28 +498,24 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][0],
         Node(label='N', properties={'name': 'Raz', 'v': 6}))
 
-        # TODO: We reverse the order in op_callsubquery after sorting, which
-        # tampers with the sorting of the ORDER BY here. Changing this comes
-        # with a cost (probably) - Neo4j just doesn't promise any order on
-        # returned records from a subquery
+        # same query, but with descending order
+        res = graph.query(
+            """
+            CALL {
+                UNWIND range(1, 7) AS x
+                MATCH (n:N {v: x})
+                RETURN n ORDER BY n.v DESC
+            }
+            RETURN n
+            """
+        )
 
-        # res = graph.query(
-        #     """
-        #     CALL {
-        #         UNWIND range(1, 7) AS x
-        #         MATCH (n:N {v: x})
-        #         RETURN n ORDER BY n.v DESC
-        #     }
-        #     RETURN n
-        #     """
-        # )
-
-        # # validate the results
-        # self.env.assertEquals(len(res.result_set), 2)
-        # self.env.assertEquals(res.result_set[0][0],
-        # Node(label='N', properties={'name': 'Raz', 'v': 6}))
-        # self.env.assertEquals(res.result_set[1][0],
-        # Node(label='N', properties={'name': 'Raz', 'v': 5}))
+        # validate the results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 6}))
+        self.env.assertEquals(res.result_set[1][0],
+        Node(label='N', properties={'name': 'Raz', 'v': 5}))
 
         # multiple Sort operations, in and outside the CallSubquery op
         res = graph.query(

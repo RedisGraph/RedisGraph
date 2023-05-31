@@ -433,7 +433,24 @@ static OpBase **_FindDeepestOps
 	return deepest_ops;
 }
 
-// binds the returning ops in embedded_plan to plan
+static void _bind_returning_op
+(
+	OpBase *op,  // op to bind
+	ExecutionPlan *plan  // plan to bind op to
+) {
+	OPType type = OpBase_Type(op);
+	if(type == OPType_PROJECT) {
+		ProjectBindToPlan(op, plan);
+	} else if(type == OPType_AGGREGATE) {
+		AggregateBindToPlan(op, plan);
+	} else {
+		OpBase_UpdatePlan(op, plan);
+	}
+}
+
+// binds the returning ops (effectively, all ops between the first
+// Project\Aggregate and CallSubquery in every branch, inclusive) in
+// embedded_plan to plan
 static void _BindReturningOpsToPlan
 (
 	ExecutionPlan *embedded_plan,  // plan containing the returning ops
@@ -450,18 +467,22 @@ static void _BindReturningOpsToPlan
 		// only one returning projection/aggregation
 		OpBase *returning_op =
 			ExecutionPlan_LocateOpMatchingType(root, return_types, 2);
-		OpBase_Type(returning_op) == OPType_PROJECT ?
-			ProjectBindToPlan(returning_op, plan) :
-			AggregateBindToPlan(returning_op, plan);
+		while(returning_op != NULL) {
+			_bind_returning_op(returning_op, plan);
+			returning_op = returning_op->parent;
+		}
 	} else {
 		// multiple returning projections/aggregations
 		for(uint i = 0; i < join_op->childCount; i++) {
 			OpBase *child = join_op->children[i];
 			OpBase *returning_op =
 				ExecutionPlan_LocateOpMatchingType(child, return_types, 2);
-			OpBase_Type(returning_op) == OPType_PROJECT ?
-			ProjectBindToPlan(returning_op, plan) :
-			AggregateBindToPlan(returning_op, plan);
+			while(returning_op != NULL) {
+				OPType type = OpBase_Type(returning_op);
+
+				_bind_returning_op(returning_op, plan);
+				returning_op = returning_op->parent;
+			}
 		}
 	}
 }

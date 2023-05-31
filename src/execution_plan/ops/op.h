@@ -262,6 +262,13 @@ void OpBase_UpdateConsume
 	fpConsume consume
 );
 
+// updates the plan of an operation
+void OpBase_UpdatePlan
+(
+	OpBase *op,
+	const struct ExecutionPlan *plan
+);
+
 // creates a new record that will be populated during execution
 Record OpBase_CreateRecord
 (

@@ -214,6 +214,16 @@ void OpBase_UpdateConsume
 	else op->consume = consume;
 }
 
+// updates the plan of an operation
+void OpBase_UpdatePlan
+(
+	OpBase *op,
+	const struct ExecutionPlan *plan
+) {
+	ASSERT(op != NULL);
+	op->plan = plan;
+}
+
 inline Record OpBase_CreateRecord
 (
 	const OpBase *op
