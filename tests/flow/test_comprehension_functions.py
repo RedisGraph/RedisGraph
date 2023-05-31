@@ -408,7 +408,7 @@ class testComprehensionFunctions(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [[[]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
-        
+
         # Create a single relationship
         query = "CREATE ()-[:R]->()"
         redis_graph.query(query)
@@ -449,8 +449,10 @@ class testComprehensionFunctions(FlowTestsBase):
         expected_result = [[[1, 1, 2, 3]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        # For each node, lookup for its undirected relationship. For each releationship there will be an entry with the value 1.
-        # The result of the case will be to lookup again and for each relationship add the matched node's val field value to an array.
+        # For each node, lookup for its undirected relationship.
+        # For each relationship there will be an entry with the value 1.
+        # The result of the case will be to lookup again and for each
+        # relationship add the matched node's val field value to an array.
         # Since there is two relationships:
         # a, a-->b, a-->c will yield [1, 1]
         # b, a--b will yield [2]
@@ -461,4 +463,15 @@ class testComprehensionFunctions(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [[[1, 1]], [[2]], [[3]], [[]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test22_pattern_comprehension_scope(self):
+        # variables included by the pattern comprehension can't be available
+        # out of its scope
+        queries = [
+            "MATCH (a) RETURN [p = (a)-[e]->(f) WHERE e.v < 7 | f] as z, p",
+            "MATCH (a) RETURN [p = (a)-[e]->(f) WHERE e.v < 7 | f] as z, e",
+            "MATCH (a) RETURN [p = (a)-[e]->(f) WHERE e.v < 7 | f] as z, f",
+        ]
+        for query in queries:
+            self._assert_exception(redis_graph, query, "not defined")
 

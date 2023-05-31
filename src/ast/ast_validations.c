@@ -29,15 +29,14 @@ typedef struct {
 } validations_ctx;
 
 typedef enum {
-	MATCHED_NODE = 0x1002,
-	MATCHED_EDGE = 0x1004,
 	BOUNDED_NODE = 0x2002,
 	BOUNDED_EDGE = 0x2004,
+	BOUNDED_PATH = 0x2008,
 } identifier_state;
 
 // ast validation visitor mappings
-// number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 116
-static visit validations_mapping[116];
+// number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
+static visit validations_mapping[114];
 
 // validate that allShortestPaths is in a supported place
 static bool _ValidateAllShortestPaths
@@ -414,42 +413,51 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 
 	// we enter ONLY when start=true, so no check is needed
 
+	// pattern comprehension example:
+	// MATCH (a) RETURN [p = (a)-[e]->(f) WHERE e.v < 10 | f]
+	// the identifier is: p
+	// the pattern is:    (a)-[e]->(f)
+	// the predicate is:  e.v < 10
+	// the eval is:       f
+
 	bool is_new;
 	const char *identifier;
+
+	// build a new environment of bounded vars from the current one to be
+	// used in the traversal of the visitor in the pattern comprehension
+	// validation, because they are local to the pattern
+	rax *orig_env = vctx->defined_identifiers;
+	rax *scoped_env = raxClone(orig_env);
+	vctx->defined_identifiers = scoped_env;
 
 	const cypher_astnode_t *id =
 		cypher_ast_pattern_comprehension_get_identifier(n);
 
 	if(id) {
 		identifier = cypher_ast_identifier_get_name(id);
-		is_new = (raxFind(vctx->defined_identifiers,
-					(unsigned char *)identifier, strlen(identifier)) == raxNotFound);
-	}
-	else {
-		is_new = false;
-	}
 
-	// introduce local identifier if it is not yet introduced
-	if(is_new) {
+		// introduce local identifier if it is not yet introduced
+		// if the identifier exists, it will be overwitten in scoped environment
+		// MATCH (a) RETURN [a=()-[]->() | 0];
 		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier,
-				strlen(identifier), NULL, NULL);
+			strlen(identifier), (void *)BOUNDED_PATH, NULL);
 	}
-
 
 	// visit expression-children
 	// visit pattern
-	// MATCH (a) RETURN [(a)-[e]->(f) | f]
-	// the pattern is (a)-[e]->(f)
 	const cypher_astnode_t *pattern =
 		cypher_ast_pattern_comprehension_get_pattern(n);
 	if(pattern != NULL) {
 		cypher_astnode_type_t node_type = cypher_astnode_type(pattern);
+		// the pattern might include new identifiers, then we set
+		// the clause temporarly to CYPHER_AST_PATTERN_COMPREHENSION
+		// to prevent the validation of referred identifiers
 		cypher_astnode_type_t clause_backup = vctx->clause;
 		vctx->clause = CYPHER_AST_PATTERN_COMPREHENSION;
 		AST_Visitor_visit(pattern, visitor);
 		vctx->clause = clause_backup;
 		if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
+			goto cleanup;
 		}
 	}
 
@@ -459,7 +467,7 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 	if(pred) {
 		AST_Visitor_visit(pred, visitor);
 		if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
+			goto cleanup;
 		}
 	}
 
@@ -468,15 +476,18 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 	if(eval) {
 		AST_Visitor_visit(eval, visitor);
 		if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
+			goto cleanup;
 		}
 	}
 
-	// pattern comprehension identifier is no longer bound
-	// remove it from bound vars if it was introduced
-	if(is_new) {
-		raxRemove(vctx->defined_identifiers, (unsigned char *)identifier,
-				strlen(identifier), NULL);
+cleanup:
+	// restore original environment of bounded vars
+	vctx->defined_identifiers = orig_env;
+	raxFree(scoped_env);
+
+	// check for errors
+	if(ErrorCtx_EncounteredError()) {
+		return VISITOR_BREAK;
 	}
 
 	// do not traverse children
@@ -795,8 +806,8 @@ static AST_Validation _ValidateInlinedProperties
 			void *identifier_type = raxFind(defined_identifiers,
 								   		(unsigned char *)identifier_name, len);
 
-			if(identifier_type == (void *)BOUNDED_NODE || identifier_type == (void *)BOUNDED_EDGE ||
-				identifier_type == (void *)MATCHED_NODE || identifier_type == (void *)MATCHED_EDGE ) {
+			if(identifier_type == (void *)BOUNDED_NODE ||
+			   identifier_type == (void *)BOUNDED_EDGE) {
 				ErrorCtx_SetError("Property values can only be of primitive types or arrays of primitive types");
 				return AST_INVALID;
 			}
@@ -957,7 +968,7 @@ static VISITOR_STRATEGY _Validate_node_pattern
 		// the sub tree spanned from this node is valid
 		if(alias != NULL) {
 				raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
-					strlen(alias), (void *)MATCHED_NODE, NULL);
+					strlen(alias), (void *)BOUNDED_NODE, NULL);
 		}
 		return VISITOR_CONTINUE;
 	}
@@ -979,8 +990,7 @@ static VISITOR_STRATEGY _Validate_node_pattern
 
 			if(alias_type  != raxNotFound          &&
 				alias_type != NULL                 &&
-				alias_type != (void *)BOUNDED_NODE &&
-				alias_type != (void *)MATCHED_NODE) {
+				alias_type != (void *)BOUNDED_NODE) {
 				// MATCH ()-[n]->() CREATE (n)-[:R]->()
 					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
 				return VISITOR_BREAK;
@@ -1944,7 +1954,7 @@ bool AST_ValidationsMappingInit(void) {
 	// create a mapping for the validations
 
 	// set default entries
-	for(uint i = 0; i < 116; i++) {
+	for(uint i = 0; i < 114; i++) {
 		validations_mapping[i] = _default_visit;
 	}
 
