@@ -69,14 +69,14 @@ class testGraphCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 2)
         self.env.assertEquals(result.properties_set, 1)
 
-    def test05_create_with_property_reference(self):
+    # def test05_create_with_property_reference(self):
         # Queries that reference properties before they have been created should emit an error.
-        try:
-            query = """CREATE (a {val: 2}), (b {val: a.val})"""
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except redis.exceptions.ResponseError as e:
-            self.env.assertIn("undefined attribute", str(e))
+        # try:
+        #     query = """CREATE (a {val: 2}), (b {val: a.val})"""
+        #     redis_graph.query(query)
+        #     self.env.assertTrue(False)
+        # except redis.exceptions.ResponseError as e:
+        #     self.env.assertIn("undefined attribute", str(e))
 
     def test06_create_project_volatile_value(self):
         # The path e is volatile; verify that it can be projected after entity creation.
@@ -247,16 +247,18 @@ class testGraphCreationFlow(FlowTestsBase):
                 self.env.assertContains("Type mismatch", str(e), depth=1)
 
         # test referencing intermediate entities
-        error_invalid_input = "Invalid input"
+        error_invalid_input   = "Invalid input"
         error_undef_attribute = "Attempted to access undefined attribute"
-        error_undef_node_edge = "Attempted to access undefined node/edge"
-        error_unhandled_type = "Encountered unhandled type in inlined properties"
-        error_primitive_type = "Property values can only be of primitive types or arrays of primitive types"
+        error_undef_node_edge = "not defined" #"Attempted to access undefined node/edge"
+        error_unhandled_type  = "Encountered unhandled type in inlined properties"
+        error_primitive_type  = "Property values can only be of primitive types or arrays of primitive types"
+        error_merge_null      = "Cannot merge node using null property value"
 
         queries_with_errors = [
             # reference to intermediate node
             ("MERGE (a:A {v:a})", error_undef_node_edge),
             ("CREATE (a:A {v:a})", error_undef_node_edge),
+            ("CREATE (a:A {v:1}), (b {v:a})", error_primitive_type),
             ("MERGE (a:A)-[:R]->(b:B {v:a})", error_primitive_type),
             ("CREATE (a:A)-[:R]->(b:B {v:a})", error_primitive_type),
 
@@ -265,16 +267,7 @@ class testGraphCreationFlow(FlowTestsBase):
             ("CREATE ()-[r:R {v:r}]->()", error_undef_node_edge),
             ("MERGE ()-[r:R]->(b:B {v:r})", error_primitive_type),
             ("CREATE ()-[r:R]->(b:B {v:r})", error_primitive_type),
-
-            # reference to property of intermediate node
-            ("CREATE (a {v:1}), (b {v:a.v})", error_undef_attribute),
-            ("MERGE (a {v:3})-[:R]->(b:B {v:a.v})", error_undef_attribute),
-            ("CREATE (a {v:0})-[:R]->(b:B {v:a.v})", error_undef_attribute),
-
-            # reference to propery of intermediate edge
-            ("MERGE ()-[r:R {v:2}]->(b:B {v:r.v})", error_undef_attribute),
-            ("CREATE ()-[r:R {v:2}]->(b:B {v:r.v})", error_undef_attribute),
-            ("CREATE ()-[r:R {v:1}]->(), (a {v:r.v})", error_undef_attribute),
+            ("CREATE ()-[r1:R1]->(), ()-[r2:R2]->({v:r1})", error_primitive_type),
 
             # assign path pattern to property
             ("MATCH ({v:()}) RETURN 0", error_invalid_input),
@@ -283,8 +276,29 @@ class testGraphCreationFlow(FlowTestsBase):
             ("MERGE (a {v:()-[]->()}) return n", error_unhandled_type),
             ("CREATE ({v:()}) RETURN 0", error_invalid_input),
             ("CREATE (a {v:()-[]->()}) return n", error_unhandled_type),
+
+            # MERGE referencing to property of intermediate node
+            ("MERGE (a {v:3})-[:R]->(b:B {v:a.v})", error_merge_null),
+            ("MERGE ()-[r:R {v:2}]->(b:B {v:r.v})", error_merge_null),
         ]
 
         for query, error in queries_with_errors:
             self._assert_exception(redis_graph, query, error)
+
+        # test referencing to properties of intermediate entities
+        # the query is valid, but the value of the property will be NULL
+        queries = [
+            # reference to property of intermediate node
+            "CREATE (a {v:1}), (b {v:a.v}) RETURN b.v",
+            "CREATE (a {v:0})-[:R]->(b:B {v:a.v}) RETURN b.v",
+
+            # reference to property of intermediate edge
+            "CREATE ()-[r:R {v:2}]->(b:B {v:r.v}) RETURN b.v",
+            "CREATE ()-[r:R {v:1}]->(), (a {v:r.v}) RETURN a.v",
+        ]
+
+        for query in queries:
+            result = redis_graph.query(query)
+            expected_result = [[None]]
+            self.env.assertEquals(result.result_set, expected_result)
 

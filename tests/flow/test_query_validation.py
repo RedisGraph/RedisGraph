@@ -492,15 +492,15 @@ class testQueryValidationFlow(FlowTestsBase):
             assert("a not defined" in str(e))
             pass
 
-    def test34_self_referential_properties(self):
-        try:
-            # The server should emit an error on trying to create a node with a self-referential property.
-            query = """CREATE (a:L {v: a.v})"""
-            redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting an error.
-            self.env.assertIn("undefined attribute", str(e))
+    # def test34_self_referential_properties(self):
+    #     try:
+    #         # The server should emit an error on trying to create a node with a self-referential property.
+    #         query = """CREATE (a:L {v: a.v})"""
+    #         redis_graph.query(query)
+    #         assert(False)
+    #     except redis.exceptions.ResponseError as e:
+    #         # Expecting an error.
+    #         self.env.assertIn("undefined attribute", str(e))
 
         # MATCH clauses should be able to use self-referential properties as existential filters.
         query = """MATCH (a {age: a.age}) RETURN a.age"""
@@ -674,6 +674,7 @@ class testQueryValidationFlow(FlowTestsBase):
 
         # invalid usage of undefined variables in a `RETURN` clause
         invalid_queries = [
+            "RETURN a + 1",
             "RETURN a AS a",
             "RETURN [a] AS a",
             "RETURN [a[a[a]]] AS a",
