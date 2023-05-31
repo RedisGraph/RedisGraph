@@ -118,29 +118,21 @@ void Globals_Free(void) {
 // graphs in keyspace iterator
 //------------------------------------------------------------------------------
 
-// graphs_in_keyspace iterator
-typedef struct _GraphIterator {
-	uint64_t idx;       // current graph index
-	GraphContext *val;  // current graph
-} _GraphIterator;
-
-// scan graphs in keyspace
-// returns an iterator
-GraphIterator Globals_ScanGraphs(void) {
-	GraphIterator it = rm_calloc(1, sizeof(struct _GraphIterator));
+// initialize iterator over graphs in keyspace
+void Globals_ScanGraphs(GraphIterator *it) {
+	ASSERT(it != NULL);
+	it->idx = 0;
 
 	// acquire READ lock
 	// will be freed once the iterator is freed
 	pthread_rwlock_rdlock(&_globals.lock);
-
-	return it;
 }
 
 // seek iterator to index
 void GraphIterator_Seek
 (
-	GraphIterator it,  // iterator
-	uint64_t idx       // index to seek to
+	GraphIterator *it,  // iterator
+	uint64_t idx        // index to seek to
 ) {
 	ASSERT(it != NULL);
 	it->idx = idx;
@@ -151,7 +143,7 @@ void GraphIterator_Seek
 // otherwise returns NULL
 GraphContext *GraphIterator_Next
 (
-	GraphIterator it  // iterator to advance
+	GraphIterator *it  // iterator to advance
 ) {
 	ASSERT(it != NULL);
 
@@ -170,12 +162,9 @@ void GraphIterator_Free
 (
 	GraphIterator *it  // iterator to free
 ) {
-	ASSERT(it != NULL && *it != NULL);
+	ASSERT(it != NULL);
 
 	// release lock
 	pthread_rwlock_unlock(&_globals.lock);
-
-	rm_free(*it);
-	*it = NULL;
 }
 

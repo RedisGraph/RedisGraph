@@ -10,9 +10,9 @@
 
 // task context
 typedef struct {
-	uint32_t graph_idx;    // last processed graph index
-	simple_timer_t timer;  // time spent processing
-	uint32_t when;         // next scheduling
+	uint32_t graph_idx;        // last processed graph index
+	simple_timer_t stopwatch;  // time spent processing
+	uint32_t when;             // next scheduling
 } StreamFinishedQueryCtx;
 
 // cron task

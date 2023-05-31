@@ -88,36 +88,33 @@ static double _QueryCtx_GetCountedMilliseconds
 }
 
 // reads the stage timer and updates the waiting time with it
-static double _QueryCtx_UpdateWaitingTime
+static void _QueryCtx_UpdateWaitingTime
 (
 	QueryCtx *ctx  // query context
 ) {
 	ASSERT(ctx != NULL);
 
 	ctx->stats.wait_duration_ms += _QueryCtx_GetCountedMilliseconds(ctx);
-	return ctx->stats.wait_duration_ms;
 }
 
 // reads the stage timer and updates the execution time with it
-static double _QueryCtx_UpdateExecutionTime
+static void _QueryCtx_UpdateExecutionTime
 (
 	QueryCtx *ctx  // query context
 ) {
 	ASSERT(ctx != NULL);
 
 	ctx->stats.execution_duration_ms += _QueryCtx_GetCountedMilliseconds(ctx);
-	return ctx->stats.execution_duration_ms;
 }
 
 // reads the stage timer and updates the reporting time with it
-static double _QueryCtx_UpdateReportingTime
+static void _QueryCtx_UpdateReportingTime
 (
 	QueryCtx *ctx  // query context
 ) {
 	ASSERT(ctx != NULL);
 
 	ctx->stats.report_duration_ms += _QueryCtx_GetCountedMilliseconds(ctx);
-	return ctx->stats.report_duration_ms;
 }
 
 // advance query's stage
@@ -158,6 +155,7 @@ void QueryCtx_AdvanceStage
 	// advance to next stage
 	ctx->stage = ctx->stage << 1;
 }
+
 // regress query's stage
 // waiting <- executing
 void QueryCtx_regressStage

@@ -16,13 +16,13 @@
 // the buffer is of fixed size
 // items are removed by order of insertion, similar to a queue
 struct _CircularBuffer {
-	char *read;                      // read data from here
-	_Atomic uint64_t write;          // write data to here
-	size_t item_size;                // item size in bytes
-	_Atomic uint64_t item_count;     // current number of items in buffer
-	uint64_t item_cap;               // max number of items held by buffer
-	char *end_marker;                // marks the end of the buffer
-	char data[];                     // data
+	char *read;                   // read data from here
+	_Atomic uint64_t write;       // write data to here
+	size_t item_size;             // item size in bytes
+	_Atomic uint64_t item_count;  // current number of items in buffer
+	uint64_t item_cap;            // max number of items held by buffer
+	char *end_marker;             // marks the end of the buffer
+	char data[];                  // data
 };
 
 CircularBuffer CircularBuffer_New
@@ -100,10 +100,11 @@ void CircularBuffer_ResetReader
 	n = MIN(n, CircularBuffer_ItemCount(cb));
 
 	// compensate for circularity
-	uint write_idx = cb->write / cb->item_size;
+	uint64_t write = cb->write;
+	uint write_idx = write / cb->item_size;
 	int sub = write_idx - n;
 	if(sub >= 0) {
-		cb->read = (cb->data + cb->write) - (n * cb->item_size);
+		cb->read = (cb->data + write) - (n * cb->item_size);
 	} else {
 		cb->read = cb->end_marker + (sub * cb->item_size);
 	}
@@ -125,17 +126,21 @@ int CircularBuffer_Add
 	}
 
 	// copy item into buffer
-	memcpy(cb->data + cb->write, item, cb->item_size);
+	uint64_t write = cb->write;
+	memcpy(cb->data + write, item, cb->item_size);
 
 	// atomic update buffer item count
 	cb->item_count++;
 
 	// advance write position
 	// circle back if write reached the end of the buffer
-	cb->write += cb->item_size;
-	if(unlikely(cb->data + cb->write >= cb->end_marker)) {
-		cb->write = 0;
+	write += cb->item_size;
+	if(unlikely(cb->data + write >= cb->end_marker)) {
+		write = 0;
 	}
+
+	// update write
+	cb->write = write;
 
 	// report success
 	return 1;

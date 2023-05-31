@@ -159,7 +159,6 @@ static void _stream_queries
 
 // cron task
 // stream finished queries for each graph in the keyspace
-// task is alowed to run for 1ms before it terminates and reschedules
 void CronTask_streamFinishedQueries
 (
 	void *pdata  // task context
@@ -167,27 +166,34 @@ void CronTask_streamFinishedQueries
 	StreamFinishedQueryCtx *ctx    = (StreamFinishedQueryCtx*)pdata;
 	RedisModuleCtx         *rm_ctx = RedisModule_GetThreadSafeContext(NULL);
 
-	// process up to 16 buffers
-	RedisModuleString *keys[16] = {0};
-	CircularBuffer  buffers[16] = {0};
-
 	// initialize stream event template
 	if(unlikely(_event[0] == NULL)) {
 		_initEventTemplate(rm_ctx);
 	}
 
-	uint32_t i = 0;  // number of buffers to process
+	// start stopwatch
+	double deadline = 2;  // 2ms
+	simple_tic(ctx->stopwatch);
+
 	uint32_t max_query_count = 0;  // determine max number of queries to collect
 	Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_query_count);
 
 	GraphContext *gc = NULL;
-	GraphIterator it = Globals_ScanGraphs();
-	GraphIterator_Seek(it, ctx->graph_idx);
 
-	// pick up from where we've left
-	// for each graph in the keyspace
-	while((gc = GraphIterator_Next(it)) != NULL && i < 16) {
+	while(TIMER_GET_ELAPSED_MILLISECONDS(ctx->stopwatch) < deadline) {
+		// pick up from where we've left
+		// for each graph in the keyspace
+		GraphIterator it;
+		Globals_ScanGraphs(&it);
+		GraphIterator_Seek(&it, ctx->graph_idx);
+		GraphIterator_Free(&it);
+
 		ctx->graph_idx++;
+
+		// iterator depleted
+		if((gc = GraphIterator_Next(&it)) == NULL) {
+			break;
+		}
 
 		QueriesLog queries_log = gc->queries_log;
 
@@ -196,71 +202,58 @@ void CronTask_streamFinishedQueries
 			continue;
 		}
 
-		//----------------------------------------------------------------------
-		// collect queries
-		//----------------------------------------------------------------------
-
-		CircularBuffer queries = QueriesLog_ResetQueries(queries_log);
-		CircularBuffer_ResetReader(queries, CircularBuffer_ItemCount(queries));
-		buffers[i] = queries;
-
-		//----------------------------------------------------------------------
-		// open stream
-		//----------------------------------------------------------------------
-
 		const char *graph_name = GraphContext_GetName(gc);
 		uint graph_name_len = strlen(graph_name);
 		RedisModuleString* keyname = RedisModule_CreateStringPrintf(rm_ctx,
 				"telematics{%s}", graph_name);
-		keys[i] = keyname;
 
-		i++;
-	}
+		// acquire GIL
+		// RedisModule_ThreadSafeContextLock(rm_ctx);
 
-	GraphIterator_Free(&it);
+		//----------------------------------------------------------------------
+		// try to acquire GIL
+		//----------------------------------------------------------------------
 
-	// acquire GIL
-	RedisModule_ThreadSafeContextLock(rm_ctx);
+		uint8_t attempts = 8;  // maximum number of attempts to acquire the GIL
+		bool gil_acquired = false;
 
-	//--------------------------------------------------------------------------
-	// stream queries
-	//--------------------------------------------------------------------------
-
-	for(uint32_t j = 0; j < i; j++) {
-		CircularBuffer queries = buffers[j];
-		RedisModuleString *keyname = keys[j];
-
-		RedisModuleKey *key = RedisModule_OpenKey(rm_ctx, keyname,
-				REDISMODULE_WRITE);
-
-		// make sure key is of type stream
-		if(RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_STREAM) {
-			// TODO: decide how to handle this...	
+		while(attempts > 0 && !gil_acquired) {
+			attempts--;
+			gil_acquired =
+				RedisModule_ThreadSafeContextTryLock(rm_ctx) == REDISMODULE_OK;
 		}
 
-		// add queries to stream, free individual queries
-		_stream_queries(rm_ctx, key, queries);
+		if(gil_acquired == true) {
+			CircularBuffer queries = QueriesLog_ResetQueries(queries_log);
+			CircularBuffer_ResetReader(queries,
+					CircularBuffer_ItemCount(queries));
 
-		// cap stream
-		RedisModule_StreamTrimByLength(key, REDISMODULE_STREAM_TRIM_APPROX,
-				max_query_count);
+			//------------------------------------------------------------------
+			// stream queries
+			//------------------------------------------------------------------
 
-		// clean up
-		RedisModule_CloseKey(key);
-	}
+			RedisModuleKey *key = RedisModule_OpenKey(rm_ctx, keyname,
+					REDISMODULE_WRITE);
 
-	// release GIL
-	RedisModule_ThreadSafeContextUnlock(rm_ctx);
+			// make sure key is of type stream
+			if(RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_STREAM) {
+				// TODO: decide how to handle this...	
+			}
 
-	//--------------------------------------------------------------------------
-	// clean up
-	//--------------------------------------------------------------------------
+			// add queries to stream, free individual queries
+			_stream_queries(rm_ctx, key, queries);
 
-	for(uint32_t j = 0; j < i; j++) {
-		CircularBuffer queries = buffers[j];
-		RedisModuleString *keyname = keys[j];
+			// cap stream
+			RedisModule_StreamTrimByLength(key,
+					REDISMODULE_STREAM_TRIM_APPROX, max_query_count);
 
-		CircularBuffer_Free(queries);
+			// clean up
+			RedisModule_CloseKey(key);
+
+			// release GIL
+			RedisModule_ThreadSafeContextUnlock(rm_ctx);
+		}
+
 		RedisModule_FreeString(rm_ctx, keyname);
 	}
 
@@ -273,14 +266,14 @@ void CronTask_streamFinishedQueries
 	// create private data for next invocation
 	StreamFinishedQueryCtx *_pdata = rm_malloc(sizeof(StreamFinishedQueryCtx));
 
-	if(gc != NULL) {
-		// task ran out of time and there's additional graph to process
-		_pdata->graph_idx = ctx->graph_idx;
+	// set next iteration graph index
+	_pdata->graph_idx =	(gc == NULL) ? 0 : ctx->graph_idx;
+
+	bool speed_up = (gc != NULL);
+	if(speed_up) {
 		// reduce delay, hard limit 10ms
 		_pdata->when = MAX(10, ctx->when - 1);
 	} else {
-		// wrap around
-		_pdata->graph_idx = 0;
 		// increase delay, hard limit 100ms
 		_pdata->when = MIN(100, ctx->when + 1);
 	}

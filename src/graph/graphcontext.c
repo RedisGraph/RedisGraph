@@ -720,10 +720,12 @@ GraphContext *GraphContext_GetRegisteredGraphContext
 (
 	const char *graph_name
 ) {
-	GraphContext *gc = NULL;
-	GraphIterator it = Globals_ScanGraphs();
+	GraphIterator it;
+	Globals_ScanGraphs(&it);
 
-	while((gc = GraphIterator_Next(it)) != NULL) {
+	GraphContext *gc = NULL;
+
+	while((gc = GraphIterator_Next(&it)) != NULL) {
 		if(strcmp(gc->graph_name, graph_name) == 0) {
 			break;
 		}

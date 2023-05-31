@@ -26,6 +26,7 @@ typedef struct QueriesCounters {
 // maintains a log of queries
 typedef struct _QueriesLog {
 	CircularBuffer queries;    // buffer
+	CircularBuffer swap;       // swap buffer
 	QueriesCounters counters;  // counters with states
 	pthread_rwlock_t rwlock;   // RWLock
 } _QueriesLog;
@@ -46,6 +47,7 @@ QueriesLog QueriesLog_New(void) {
 
 	// item_size = LoggedQuery + Max query string length (2000 chracters)
 	size_t item_size = sizeof(LoggedQuery) + 2000;
+	log->swap    = CircularBuffer_New(item_size, cap);
 	log->queries = CircularBuffer_New(item_size, cap);
 
 	return log;
@@ -171,21 +173,23 @@ CircularBuffer QueriesLog_ResetQueries
 ) {
 	ASSERT(log != NULL);
 
-	CircularBuffer prev = log->queries;
-	CircularBuffer buffer = CircularBuffer_New(CircularBuffer_ItemSize(prev),
-			CircularBuffer_Cap(prev));
-
+	//--------------------------------------------------------------------------
 	// swap buffers
+	//--------------------------------------------------------------------------
+
+	CircularBuffer prev = log->queries;
+
 	// acquire WRITE lock, waiting for all readers to finish
 	int res = pthread_rwlock_wrlock(&log->rwlock);
 	ASSERT(res == 0);
 
-	// swap
-	log->queries = buffer;
+	log->queries = log->swap;
 
 	// release lock
 	res = pthread_rwlock_unlock(&log->rwlock);
 	ASSERT(res == 0);
+
+	log->swap = prev;
 
 	return prev;
 }
@@ -197,6 +201,7 @@ void QueriesLog_Free
 ) {
 	ASSERT(log != NULL);
 
+	CircularBuffer_Free(log->swap);
 	CircularBuffer_Free(log->queries);
 
 	pthread_rwlock_destroy(&log->rwlock);

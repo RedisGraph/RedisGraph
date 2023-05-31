@@ -196,10 +196,11 @@ static void _CreateKeySpaceMetaKeys
 (
 	RedisModuleCtx *ctx
 ) {
+	GraphIterator it;
 	GraphContext *gc = NULL;
-	GraphIterator it = Globals_ScanGraphs();
+	Globals_ScanGraphs(&it);
 
-	while((gc = GraphIterator_Next(it)) != NULL) _CreateGraphMetaKeys(ctx, gc);
+	while((gc = GraphIterator_Next(&it)) != NULL) _CreateGraphMetaKeys(ctx, gc);
 
 	GraphIterator_Free(&it);
 }
@@ -212,10 +213,11 @@ static void _ClearKeySpaceMetaKeys
 	RedisModuleCtx *ctx,
 	bool decode
 ) {
+	GraphIterator it;
 	GraphContext *gc = NULL;
-	GraphIterator it = Globals_ScanGraphs();
+	Globals_ScanGraphs(&it);
 
-	while((gc = GraphIterator_Next(it)) != NULL) {
+	while((gc = GraphIterator_Next(&it)) != NULL) {
 		_DeleteGraphMetaKeys(ctx, gc, decode);
 	}
 
@@ -256,16 +258,17 @@ static void _ReplicationRoleChangedEventHandler
 	uint64_t subevent,
 	void *data
 ) {
+	GraphIterator it;
 	GraphContext *gc = NULL;
-	GraphIterator it = Globals_ScanGraphs();
+	Globals_ScanGraphs(&it);
 	if(subevent == REDISMODULE_EVENT_REPLROLECHANGED_NOW_MASTER) {
 		// now master enable constraints
-		while((gc = GraphIterator_Next(it)) != NULL) {
+		while((gc = GraphIterator_Next(&it)) != NULL) {
 			GraphContext_EnableConstrains(gc);
 		}
 	} else if (subevent == REDISMODULE_EVENT_REPLROLECHANGED_NOW_REPLICA) {
 		// now slave disable constraints
-		while((gc = GraphIterator_Next(it)) != NULL) {
+		while((gc = GraphIterator_Next(&it)) != NULL) {
 			GraphContext_DisableConstrains(gc);
 		}
 	}
@@ -403,9 +406,10 @@ static void RG_ForkPrepare() {
 	// return if we have half-baked graphs
 	if(INTERMEDIATE_GRAPHS) return;
 
+	GraphIterator it;
 	GraphContext *gc = NULL;
-	GraphIterator it = Globals_ScanGraphs();
-	while((gc = GraphIterator_Next(it)) != NULL) {
+	Globals_ScanGraphs(&it);
+	while((gc = GraphIterator_Next(&it)) != NULL) {
 		// acquire read lock, guarantee graph isn't modified
 		Graph *g = gc->g;
 		Graph_AcquireReadLock(g);
@@ -429,10 +433,11 @@ static void RG_AfterForkParent() {
 	if(INTERMEDIATE_GRAPHS) return;
 
 	// the child process forked, release all acquired locks
+	GraphIterator it;
 	GraphContext *gc = NULL;
-	GraphIterator it = Globals_ScanGraphs();
+	Globals_ScanGraphs(&it);
 
-	while((gc = GraphIterator_Next(it)) != NULL) {
+	while((gc = GraphIterator_Next(&it)) != NULL) {
 		Graph_ReleaseLock(gc->g);
 	}
 

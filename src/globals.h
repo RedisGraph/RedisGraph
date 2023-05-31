@@ -8,8 +8,10 @@
 
 #include "graph/graphcontext.h"
 
-// forward declaration of opaque graph iterator structure
-typedef struct _GraphIterator *GraphIterator;
+// graphs_in_keyspace iterator
+typedef struct GraphIterator {
+	uint64_t idx;       // current graph index
+} GraphIterator;
 
 // initialize global variables
 void Globals_Init(void);
@@ -47,15 +49,14 @@ void Globals_RemoveGraph
 	GraphContext *gc  // graph to remove
 );
 
-// scan graphs in keyspace
-// returns an iterator
-GraphIterator Globals_ScanGraphs(void);
+// initialize iterator over graphs in keyspace
+void Globals_ScanGraphs(GraphIterator *it);
 
 // seek iterator to index
 void GraphIterator_Seek
 (
-	GraphIterator it,  // iterator
-	uint64_t idx       // index to seek to
+	GraphIterator *it,  // iterator
+	uint64_t idx        // index to seek to
 );
 
 // advance iterator
@@ -63,7 +64,7 @@ void GraphIterator_Seek
 // otherwise returns NULL
 GraphContext *GraphIterator_Next
 (
-	GraphIterator it  // iterator to advance
+	GraphIterator *it  // iterator to advance
 );
 
 // free iterator
