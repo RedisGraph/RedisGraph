@@ -178,25 +178,28 @@ void *CircularBuffer_Reserve
 	return cb->data + curr;
 }
 
-// removes oldest item from buffer
-bool CircularBuffer_Remove
+// read oldest item from buffer
+void *CircularBuffer_Read
 (
-	CircularBuffer cb,  // buffer to remove item from
-	void *item          // [output] pointer populated with removed item
+	CircularBuffer cb,  // buffer to read item from
+	void *item          // [optional] pointer populated with removed item
 ) {
 	ASSERT(cb != NULL);
-	ASSERT(item != NULL);
 
 	// make sure there's data to return
 	if(unlikely(CircularBuffer_Empty(cb))) {
-		return false;
+		return NULL;
 	}
+
+	void *read = cb->read;
 
 	// update buffer item count
 	cb->item_count--;
 
 	// copy item from buffer to output
-	memcpy(item, cb->read, cb->item_size);
+	if(item != NULL) {
+		memcpy(item, cb->read, cb->item_size);
+	}
 
 	// advance read position
 	// circle back if read reached the end of the buffer
@@ -205,28 +208,8 @@ bool CircularBuffer_Remove
 		cb->read = cb->data;
 	}
 
-	// report success
-	return true;
-}
-
-// read oldest item from buffer
-bool CircularBuffer_Read
-(
-	CircularBuffer cb,  // buffer to read item from
-	void *item          // [output] pointer populated with removed item
-) {
-	ASSERT(cb != NULL);
-	ASSERT(item != NULL);
-
-	bool res = CircularBuffer_Remove(cb, item);
-
-	// compensate CircularBuffer_Remove reduction of item_count
-	if(res != 0) {
-		// restore item_count
-		cb->item_count++;
-	}
-
-	return res;
+	// return original read position
+	return read;
 }
 
 // free buffer (does not free its elements if its free callback is NULL)

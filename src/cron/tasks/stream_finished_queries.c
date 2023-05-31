@@ -142,9 +142,12 @@ static void _stream_queries
 	RedisModuleKey *key,      // stream key
 	CircularBuffer queries    // queries to stream
 ) {
-	LoggedQuery *q = rm_malloc(CircularBuffer_ItemSize(queries));
+	LoggedQuery *q = NULL;
 
-	while(CircularBuffer_Remove(queries, q) == true) {
+	// reset reader
+	CircularBuffer_ResetReader(queries, CircularBuffer_ItemCount(queries));
+
+	while((q = CircularBuffer_Read(queries, NULL)) != NULL) {
 		_populateEvent(ctx, q);
 
 		RedisModule_StreamAdd(key, REDISMODULE_STREAM_ADD_AUTOID, NULL,
@@ -153,8 +156,6 @@ static void _stream_queries
 		// clean up
 		_clearEvent(ctx);
 	}
-
-	rm_free(q);
 }
 
 // cron task
@@ -180,18 +181,20 @@ void CronTask_streamFinishedQueries
 
 	GraphContext *gc = NULL;
 
+	// as long as we've got processing time
 	while(TIMER_GET_ELAPSED_MILLISECONDS(ctx->stopwatch) < deadline) {
 		// pick up from where we've left
 		// for each graph in the keyspace
 		GraphIterator it;
 		Globals_ScanGraphs(&it);
 		GraphIterator_Seek(&it, ctx->graph_idx);
+		gc = GraphIterator_Next(&it);
 		GraphIterator_Free(&it);
 
 		ctx->graph_idx++;
 
 		// iterator depleted
-		if((gc = GraphIterator_Next(&it)) == NULL) {
+		if((gc) == NULL) {
 			break;
 		}
 
@@ -225,8 +228,6 @@ void CronTask_streamFinishedQueries
 
 		if(gil_acquired == true) {
 			CircularBuffer queries = QueriesLog_ResetQueries(queries_log);
-			CircularBuffer_ResetReader(queries,
-					CircularBuffer_ItemCount(queries));
 
 			//------------------------------------------------------------------
 			// stream queries

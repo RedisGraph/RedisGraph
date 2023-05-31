@@ -64,18 +64,11 @@ void *CircularBuffer_Reserve
 	CircularBuffer cb  // buffer to populate
 );
 
-// removes oldest item from buffer
-bool CircularBuffer_Remove
-(
-	CircularBuffer cb,  // buffer to remove item from
-	void *item          // [output] pointer populated with removed item
-);
-
 // read oldest item from buffer
-bool CircularBuffer_Read
+void *CircularBuffer_Read
 (
 	CircularBuffer cb,  // buffer to read item from
-	void *item          // [output] pointer populated with removed item
+	void *item          // [optional] pointer populated with removed item
 );
 
 // sets the read pointer to be 'n' entries behind the write pointer

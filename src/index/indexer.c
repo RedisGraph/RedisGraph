@@ -291,8 +291,8 @@ static void _indexer_PopTask
 		ASSERT(res == 0);
 	}
 
-	res = CircularBuffer_Remove(indexer->q, task);
-	ASSERT(res == 1);
+	void *read = CircularBuffer_Read(indexer->q, task);
+	ASSERT(read != NULL);
 
 	// unlock
 	res = pthread_mutex_unlock(&indexer->m);

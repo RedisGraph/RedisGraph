@@ -37,7 +37,7 @@ void test_CircularBufferPopulation(void) {
 	CircularBuffer buff = CircularBuffer_New(sizeof(int), cap);
 
 	// remove item from an empty buffer should report failure
-	TEST_ASSERT(CircularBuffer_Remove(buff, &n) == 0);
+	TEST_ASSERT(CircularBuffer_Read(buff, &n) == NULL);
 
 	//--------------------------------------------------------------------------
 	// fill buffer
@@ -60,16 +60,16 @@ void test_CircularBufferPopulation(void) {
 	//--------------------------------------------------------------------------
 	for(int i = 0; i < cap; i++) {
 		// get item from buffer
-		TEST_ASSERT(CircularBuffer_Remove(buff, &n) == 1);
+		TEST_ASSERT(CircularBuffer_Read(buff, &n) != NULL);
 
 		// validate item's value
 		TEST_ASSERT(n == i);
 	}
 	TEST_ASSERT(CircularBuffer_Empty(buff) == true);
 
-	// forcefully try to remove an item from an empty buffer
+	// forcefully try to read an item from an empty buffer
 	for(int i = 0; i < 10; i++) {
-		TEST_ASSERT(CircularBuffer_Remove(buff, &n) == 0);
+		TEST_ASSERT(CircularBuffer_Read(buff, &n) == NULL);
 	}
 
 	// clean up
@@ -94,20 +94,21 @@ void test_CircularBuffer_Circularity(void) {
 	TEST_ASSERT(CircularBuffer_Add(buff, &n) == 0);
 
 	// removing an item should make space in the buffer
-	TEST_ASSERT(CircularBuffer_Remove(buff, &n) == 1);
+	TEST_ASSERT(CircularBuffer_Read(buff, &n) != NULL);
 	TEST_ASSERT(CircularBuffer_Add(buff, &n) == 1);
 
 	//--------------------------------------------------------------------------
 	// clear buffer
 	//--------------------------------------------------------------------------
+
 	while(CircularBuffer_Empty(buff) == false) {
-		CircularBuffer_Remove(buff, &n);
+		CircularBuffer_Read(buff, &n);
 	}
 
 	// add/remove elements cycling through the buffer multiple times
 	for(int i = 0; i < cap * 4; i++) {
 		TEST_ASSERT(CircularBuffer_Add(buff, &i) == 1);
-		TEST_ASSERT(CircularBuffer_Remove(buff, &n) == 1);
+		TEST_ASSERT(CircularBuffer_Read(buff, &n) != NULL);
 		TEST_ASSERT(n == i);
 	}
 	TEST_ASSERT(CircularBuffer_Empty(buff) == true);
@@ -134,7 +135,7 @@ void test_CircularBuffer_free(void) {
 
 	for(int i = 0; i < cap; i++) {
 		int64_t *item;
-		CircularBuffer_Remove(buff, &item);
+		CircularBuffer_Read(buff, &item);
 		free(item);
 	}
 
@@ -163,8 +164,8 @@ void test_CircularBuffer_Reserve(void) {
 
 	for(uint i = 0; i < 16; i++) {
 		int item;
-		int res = CircularBuffer_Remove(buff, &item);
-		TEST_ASSERT(res == 1);
+		void *res = CircularBuffer_Read(buff, &item);
+		TEST_ASSERT(res != NULL);
 		TEST_ASSERT(item == (i + 16));
 		TEST_ASSERT(CircularBuffer_ItemCount(buff) == 16-i-1);
 	}
