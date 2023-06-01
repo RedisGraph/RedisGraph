@@ -43,7 +43,7 @@ typedef enum {
 	OPType_UNWIND,
 	OPType_FOREACH,
 	OPType_PROC_CALL,
-	OPType_CallSubquery,
+	OPType_CALLSUBQUERY,
 	OPType_ARGUMENT,
 	OPType_ARGUMENT_LIST,
 	OPType_CARTESIAN_PRODUCT,

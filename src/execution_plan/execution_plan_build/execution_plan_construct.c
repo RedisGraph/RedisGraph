@@ -349,7 +349,7 @@ static OpBase *_AddEmptyProjection
 		NewProjectOp(parent->plan, array_new(AR_ExpNode *, 0));
 
 	OPType type = OpBase_Type(parent);
-	if(type == OPType_CallSubquery || type == OPType_FOREACH) {
+	if(type == OPType_CALLSUBQUERY || type == OPType_FOREACH) {
 		ExecutionPlan_AddOpInd(parent, empty_proj, 0);
 	} else {
 		ExecutionPlan_AddOp(parent, empty_proj);
@@ -364,7 +364,7 @@ static bool _is_deepest_call_foreach
 	OpBase *op  // op to check
 ) {
 	OPType type = OpBase_Type(op);
-	return (type == OPType_CallSubquery || type == OPType_FOREACH) &&
+	return (type == OPType_CALLSUBQUERY || type == OPType_FOREACH) &&
 			op->childCount == 1;
 }
 

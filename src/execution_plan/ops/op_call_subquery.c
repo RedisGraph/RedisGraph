@@ -5,9 +5,8 @@
  */
 
 #include "op_join.h"
-#include "op_sort.h"
-#include "../execution_plan_build/execution_plan_modify.h"
 #include "op_call_subquery.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 // forward declarations
 static void CallSubqueryFree(OpBase *opBase);
@@ -41,17 +40,12 @@ static void _append_connector
 OpBase *NewCallSubqueryOp
 (
 	const ExecutionPlan *plan,  // execution plan
-    bool is_eager,              // if an updating clause lies in the body, eagerly consume the records
-    bool is_returning           // is the subquery returning or unit
+    bool is_eager,              // is the subquery eager or not
+    bool is_returning           // is the subquery returning or not
 ) {
     OpCallSubquery *op = rm_calloc(1, sizeof(OpCallSubquery));
 
-    op->r            = NULL;
-    op->lhs          = NULL;
-    op->body         = NULL;
     op->first        = true;
-    op->records      = NULL;
-    op->connectors   = NULL;
     op->is_eager     = is_eager;
     op->is_returning = is_returning;
 
@@ -60,7 +54,7 @@ OpBase *NewCallSubqueryOp
         CallSubqueryConsumeEager :
         CallSubqueryConsume;
 
-    OpBase_Init((OpBase *)op, OPType_CallSubquery, "CallSubquery",
+    OpBase_Init((OpBase *)op, OPType_CALLSUBQUERY, "CallSubquery",
         CallSubqueryInit, consumeFunc, CallSubqueryReset, NULL,
         CallSubqueryClone, CallSubqueryFree, false, plan);
 
@@ -79,11 +73,11 @@ static OpResult CallSubqueryInit
         op->lhs = op->op.children[0];
         op->body = op->op.children[1];
     } else {
+        op->lhs = NULL;
         op->body = op->op.children[0];
     }
 
     // search for the ArgumentList\Argument ops, depending if the op is eager
-    // the non-relevant field will stay NULL
     op->connectors = rm_malloc(sizeof(Connector));
     if(op->is_eager) {
         op->connectors->argumentLists = array_new(ArgumentList *, 1);
@@ -93,17 +87,23 @@ static OpResult CallSubqueryInit
         op->connectors->type = CONNECTOR_ARGUMENT;
     }
 
-    bool join = (OpBase_Type(op->body) == OPType_JOIN) ||
-                (OpBase_Type(OpBase_GetChild(op->body, 0)) == OPType_JOIN);
-    if(join) {
-        OpJoin *join = (OpBase_Type(op->body) == OPType_JOIN) ?
-                        (OpJoin *)op->body :
-                        (OpJoin *)OpBase_GetChild(op->body, 0);
+    // search for a Join op (placement depends on whether we have `UNION` or
+    // `UNION ALL`)
+    bool   join     = false;
+    OpJoin *op_join = NULL;
 
-        uint n_branches = OpBase_ChildCount((OpBase *)join);
+    if((OpBase_Type(op->body) == OPType_JOIN)) {
+        join = true;
+        op_join = (OpJoin *)op->body;
+    } else if(OpBase_Type(OpBase_GetChild(op->body, 0)) == OPType_JOIN) {
+        join = true;
+        op_join = (OpJoin *)OpBase_GetChild(op->body, 0);
+    }
+    if(join) {
+        uint n_branches = OpBase_ChildCount((OpBase *)op_join);
 
         for(uint i = 0; i < n_branches; i++) {
-            OpBase *deepest = OpBase_GetChild((OpBase *)join, i);
+            OpBase *deepest = OpBase_GetChild((OpBase *)op_join, i);
             _append_connector(op, deepest);
         }
     } else {
@@ -332,7 +332,7 @@ static OpBase *CallSubqueryClone
     const ExecutionPlan *plan,  // plan
     const OpBase *opBase        // operation to clone
 ) {
-    ASSERT(opBase->type == OPType_CallSubquery);
+    ASSERT(opBase->type == OPType_CALLSUBQUERY);
 	OpCallSubquery *op = (OpCallSubquery *) opBase;
 
 	return NewCallSubqueryOp(plan, op->is_eager, op->is_returning);
