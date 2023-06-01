@@ -139,8 +139,7 @@ void GraphIterator_Seek
 }
 
 // advance iterator
-// returns graph object in case iterator isn't depleted
-// otherwise returns NULL
+// returns graph object in case iterator isn't depleted, otherwise returns NULL
 GraphContext *GraphIterator_Next
 (
 	GraphIterator *it  // iterator to advance

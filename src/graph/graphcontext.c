@@ -47,6 +47,7 @@ inline void GraphContext_IncreaseRefCount
 (
 	GraphContext *gc
 ) {
+	ASSERT(gc != NULL);
 	__atomic_fetch_add(&gc->ref_count, 1, __ATOMIC_RELAXED);
 }
 
@@ -55,6 +56,8 @@ inline void GraphContext_DecreaseRefCount
 (
 	GraphContext *gc
 ) {
+	ASSERT(gc != NULL);
+
 	// if the reference count is 0
 	// the graph has been marked for deletion and no queries are active
 	// free the graph

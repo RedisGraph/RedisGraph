@@ -187,14 +187,12 @@ void CronTask_streamFinishedQueries
 		// for each graph in the keyspace
 		GraphIterator it;
 		Globals_ScanGraphs(&it);
-		GraphIterator_Seek(&it, ctx->graph_idx);
+		GraphIterator_Seek(&it, ctx->graph_idx++);
 		gc = GraphIterator_Next(&it);
-		GraphIterator_Free(&it);
-
-		ctx->graph_idx++;
 
 		// iterator depleted
 		if((gc) == NULL) {
+			GraphIterator_Free(&it);
 			break;
 		}
 
@@ -202,13 +200,14 @@ void CronTask_streamFinishedQueries
 
 		// skip graph if there are no new finished queries
 		if(QueriesLog_GetQueriesCount(queries_log) == 0) {
+			GraphIterator_Free(&it);
 			continue;
 		}
 
-		const char *graph_name = GraphContext_GetName(gc);
-		uint graph_name_len = strlen(graph_name);
-		RedisModuleString* keyname = RedisModule_CreateStringPrintf(rm_ctx,
-				"telematics{%s}", graph_name);
+		RedisModuleString* keyname = RedisModule_CreateStringPrintf(NULL,
+				"telematics{%s}", GraphContext_GetName(gc));
+
+		GraphIterator_Free(&it);
 
 		// acquire GIL
 		// RedisModule_ThreadSafeContextLock(rm_ctx);
