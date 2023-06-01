@@ -512,6 +512,7 @@ static VISITOR_STRATEGY _Validate_identifier
 	if(vctx->clause != CYPHER_AST_CREATE &&
 	   vctx->clause != CYPHER_AST_MATCH &&
 	   vctx->clause != CYPHER_AST_MERGE &&
+	   vctx->clause != CYPHER_AST_PROJECTION &&
 	   vctx->clause != CYPHER_AST_PATTERN_COMPREHENSION) {
 		if(_Validate_referred_identifier(vctx->defined_identifiers, identifier) == AST_INVALID) {
 			return VISITOR_BREAK;
@@ -555,16 +556,27 @@ static VISITOR_STRATEGY _Validate_projection
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	// we enter ONLY when start=true, so no check is needed
+	cypher_astnode_type_t node_type = cypher_astnode_type(n);
 
-	const cypher_astnode_t *exp = cypher_ast_projection_get_expression(n);
-	AST_Visitor_visit(exp, visitor);
-	if(ErrorCtx_EncounteredError()) {
-		return VISITOR_BREAK;
+	if(node_type == CYPHER_AST_BINARY_OPERATOR) {
+
+		if(!start) {
+			return VISITOR_CONTINUE;
+		}
+
+		vctx->clause = node_type;
+		return VISITOR_RECURSE;
+	} else {
+
+		const cypher_astnode_t *exp = cypher_ast_projection_get_expression(n);
+		AST_Visitor_visit(exp, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
+		}
+
+		// do not traverse children
+		return VISITOR_CONTINUE;
 	}
-
-	// do not traverse children
-	return VISITOR_CONTINUE;
 }
 
 // validate a function-call
@@ -635,7 +647,9 @@ static VISITOR_STRATEGY _Validate_apply_operator
 	// Collect the function name.
 	const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(n);
 	const char *func_name = cypher_ast_function_name_get_value(func);
+	// MATCH (m:P)--(y:P) WITH m.age AS age, count(y.age) AS cnt ORDER BY m.age + count(y.age) RETURN age
 	if(_ValidateFunctionCall(func_name, (vctx->clause == CYPHER_AST_WITH ||
+										vctx->clause == CYPHER_AST_APPLY_OPERATOR ||
 										vctx->clause == CYPHER_AST_RETURN)) == AST_INVALID) {
 		return VISITOR_BREAK;
 	}
@@ -1912,17 +1926,32 @@ static VISITOR_STRATEGY _Validate_binary_op
 	// MATCH (s) WHERE s.name = undefVar RETURN 0
 	// MATCH (s) WHERE s.name = undefVar AND s.age = 10 RETURN 0
 	// RETURN reduce(sum=0, n in [1,2,3] | sum+x)
-	// TODO:
 	// RETURN a + 1
 	// WITH a + 2 AS c RETURN 0
 	if(vctx->clause == CYPHER_AST_MATCH ||
 	   vctx->clause == CYPHER_AST_BINARY_OPERATOR ||
-	   vctx->clause == CYPHER_AST_REDUCE //||
-	   //vctx->clause == CYPHER_AST_RETURN //||
-	   //vctx->clause == CYPHER_AST_WITH
-	) {
-		vctx->clause = cypher_astnode_type(n);
-		return VISITOR_RECURSE;
+	   vctx->clause == CYPHER_AST_REDUCE ||
+	   vctx->clause == CYPHER_AST_WITH ||
+	   vctx->clause == CYPHER_AST_RETURN ||
+	   vctx->clause == CYPHER_AST_PROJECTION) {
+		cypher_astnode_type_t clause_backup = vctx->clause;
+
+		const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(n);
+		const cypher_astnode_t *rhs = cypher_ast_binary_operator_get_argument2(n);
+
+		vctx->clause = cypher_astnode_type(lhs);
+		AST_Visitor_visit(lhs, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
+		}
+
+		vctx->clause = cypher_astnode_type(rhs);
+		AST_Visitor_visit(rhs, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
+		}
+
+		vctx->clause = clause_backup;
 	}
 	return VISITOR_CONTINUE;
 }
