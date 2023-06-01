@@ -23,6 +23,7 @@ typedef struct {
 typedef struct {
 	bool alive;                   // indicates cron is active
 	heap_t *tasks;                // min heap of cron tasks
+	CRON_TASK *current_task;      // current task being executed
 	pthread_mutex_t mutex;        // mutex control access to tasks
 	pthread_mutex_t condv_mutex;  // mutex control access to condv
 	pthread_cond_t condv;         // conditional variable
@@ -166,7 +167,9 @@ static void *Cron_Run
 			}
 
 			// perform and free task
+			cron->current_task = task;
 			CRON_PerformTask(task);
+			cron->current_task = task;
 			CRON_FreeTask(task);
 		}
 
@@ -246,6 +249,8 @@ void Cron_AbortTask
 
 	// try remove the task
 	if(!CRON_RemoveTask(task)) {
+		// task is currently being performed, wait for it to finish
+		while (cron->current_task == task) { }
 		// task performed
 		return;
 	}
