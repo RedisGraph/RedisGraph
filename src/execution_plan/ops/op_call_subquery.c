@@ -281,7 +281,6 @@ static Record CallSubqueryConsume
         op->r = OpBase_Consume(op->lhs);
     } else if(op->first){
         op->r = OpBase_CreateRecord((OpBase *)op);
-        // op->r = OpBase_CreateRecord(op->body);
         op->first = false;
     }
 

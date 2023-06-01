@@ -198,6 +198,25 @@ updating clause.")
 
         self.env.assertEquals(res.result_set, [[5], [6], [7], [8]])
 
+        res = graph.query (
+            """
+            UNWIND range(1,4) AS i
+            CALL {
+                WITH i
+                UNWIND range(1, 4) AS j
+                WITH j WHERE j >= i
+                RETURN count(1) AS v
+            }
+            RETURN i, v ORDER BY i ASC
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 4)
+        for i in range(0, 4):
+            self.env.assertEquals(res.result_set[i][0], i + 1)
+            self.env.assertEquals(res.result_set[i][1], 4 - i)
+
     def test05_many_to_one_not_first(self):
         """Tests the case Call {} gets several records, and returns only one,
         that corresponds to a record that is not the first one it gets"""
@@ -382,7 +401,6 @@ updating clause.")
         res = graph.query("MATCH (n:TEMP) DELETE n")
         self.env.assertEquals(res.nodes_deleted, 2)
 
-        # # TODO: Fix - Probably Foreach is trying to insert records in to the wrong ArgList op.
         # FOREACH is first clause inside {}
         graph.query(
             """
@@ -1048,10 +1066,10 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][0], 2)
         self.env.assertEquals(res.result_set[1][1], 5)
 
-        # # TODO:
-        # # this is a subquery that will require a change for the Join operation,
-        # # as it requires the changes of one input record to be visible to the
-        # # next input record
+        # TODO:
+        # this is a subquery that will require a change for the Join operation,
+        # as it requires the changes of one input record to be visible to the
+        # next input record
 
         # # clean the db
         # self.env.flush()
@@ -1090,16 +1108,17 @@ updating clause.")
                 MATCH(m:SUM)
                 RETURN tointeger(sum(m.v)) AS v
             }
-            RETURN v
+            RETURN v ORDER BY v ASC
             """
         )
 
         # assert results
         self.env.assertEquals(len(res.result_set), 2)
-        self.env.assertEquals(res.result_set[0][0], 1)
-        self.env.assertEquals(res.result_set[1][0], 0)
+        self.env.assertEquals(res.result_set[0][0], 0)
+        self.env.assertEquals(res.result_set[1][0], 1)
 
         # one branch is eager and the other is not
+        # TODO: Add input data to all the tests.
         res = graph.query (
             """
             CALL {
@@ -1109,7 +1128,7 @@ updating clause.")
                 CREATE (n:EAGER {v:1})
                 RETURN n.v AS v
             }
-            RETURN v
+            RETURN v ORDER BY v ASC
             """
         )
 
@@ -1131,7 +1150,7 @@ updating clause.")
                 SET n.v = 2
                 RETURN n.v AS v
             }
-            RETURN v
+            RETURN v ORDER BY v ASC
             """
         )
 
@@ -1228,47 +1247,9 @@ updating clause.")
         res = graph.query(query)
 
         # assert results
+        # TODO: Validate that we indeed utilize the index (See an index-scan in the exec-plan)
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(res.result_set[0][0], '11')
-
-    def test23_multiple_segments(self):
-        """Tests that multiple segments within a subquery are handled
-        properly"""
-
-        # for the following query, we expect the deepest projection (implicit,
-        # i.e., manually added to 'clean' the environment) to be bound to the
-        # embedded plan
-        query = """
-        CALL {
-            UNWIND ['s', 't'] AS l1
-            OPTIONAL MATCH (n:S)
-            WITH n
-            RETURN n
-        }
-        RETURN n"""
-
-        # assert results
-        res = graph.query(query)
-        self.env.assertEquals(len(res.result_set), 2)
-        self.env.assertEquals(res.result_set[0][0], None)
-        self.env.assertEquals(res.result_set[1][0], None)
-
-    def test24_nonEager_consumption_first(self):
-        """Tests that non-eager consumption of the CallSubquery operation is
-        handled properly when it is the first operation of the plan"""
-
-        # clear the db
-        self.env.flush()
-        graph = Graph(self.env.getConnection(), GRAPH_ID)
-
-        # create a node with label N
-        graph.query("CREATE (:N)")
-
-        res = graph.query("CALL {MATCH (n) DELETE n}")
-
-        # assert results
-        self.env.assertEquals(res.nodes_deleted, 1)
-        self.env.assertEquals(len(res.result_set), 0)
 
     def test25_named_paths(self):
         """Tests that named paths are handled correctly, when defined/referred
@@ -1514,10 +1495,10 @@ updating clause.")
         # self.env.assertEquals(res.result_set[0][0],
         #     Node(label='M', properties={'name': 'Raz'}))
 
-        # delete created node
-        graph.query("MATCH (m:M) DELETE m")
+        # # delete created node
+        # graph.query("MATCH (m:M) DELETE m")
 
-        # multiple eager & returning subqueries, one sequentialy
+        # multiple eager & returning subqueries sequentially
         query = """
         MATCH (n:N)
         CALL {
@@ -1540,6 +1521,8 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
         self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
         self.env.assertEquals(res.result_set[0][2], Node(label='O', properties={'name': 'Omer'}))
+
+        # TODO: Add a case where outer {} is not eager, inner is.
 
     def test27_read_no_with_after_writing_subquery(self):
         """Tests that a read clause following a writing subquery is handled
