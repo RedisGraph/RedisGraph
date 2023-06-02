@@ -124,11 +124,27 @@ static bool _AST_GetWithAliases
 	uint num_with_projections = cypher_ast_with_nprojections(node);
 	for(uint i = 0; i < num_with_projections; i ++) {
 		const cypher_astnode_t *child = cypher_ast_with_get_projection(node, i);
-		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
+		const cypher_astnode_t *expr =
+			cypher_ast_projection_get_expression(child);
+		const cypher_astnode_t *alias_node =
+			cypher_ast_projection_get_alias(child);
+		void *identifier = NULL;
 		const char *alias;
+		uint len = 0;
+
 		if(alias_node) {
 			// Retrieve "a" from "WITH [1, 2, 3] as a"
 			alias = cypher_ast_identifier_get_name(alias_node);
+			len = strlen(alias);
+
+			if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
+                // Retrieve "x" from "WITH x AS a"
+                const char *current_identifier_name = cypher_ast_identifier_get_name(expr);
+                uint len = strlen(current_identifier_name);
+
+				// load current identifier state to project it
+                identifier = raxFind(aliases, (unsigned char *)current_identifier_name, len);
+			}
 		} else {
 			// Retrieve "a" from "WITH a"
 			const cypher_astnode_t *expr = cypher_ast_projection_get_expression(child);
@@ -136,10 +152,16 @@ static bool _AST_GetWithAliases
 				ErrorCtx_SetError("WITH clause projections must be aliased");
 				raxFree(local_env);
 				return false;
+			} else {
+				// load current identifier state to project it
+                alias = cypher_ast_identifier_get_name(expr);
+                len = strlen(alias);
+                identifier = raxFind(aliases, (unsigned char *)alias, len);
 			}
-			alias = cypher_ast_identifier_get_name(expr);
 		}
-		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
+
+		// project the aliased identifier
+		raxInsert(aliases, (unsigned char *)alias, strlen(alias), (void *)identifier, NULL);
 
 		// check for duplicate column names
 		if(raxTryInsert(local_env, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
@@ -307,10 +329,10 @@ static AST_Validation _Validate_CREATE_Entities
 	rax *defined_aliases           // bound vars
 ) {
 	uint nelems = cypher_ast_pattern_path_nelements(path);
-	 // redeclaration of a node is not allowed only when the path is of length 0
-	 // as in: MATCH (a) CREATE (a)
-	 // otherwise, using a defined alias of a node is allowed
-	 // as in: MATCH (a) CREATE (a)-[:E]->(:B)
+	// redeclaration of a node is not allowed only when the path is of length 0
+	// as in: MATCH (a) CREATE (a)
+	// otherwise, using a defined alias of a node is allowed
+	// as in: MATCH (a) CREATE (a)-[:E]->(:B)
 	if(nelems == 1) {
 		const cypher_astnode_t *node =
 			cypher_ast_pattern_path_get_element(path, 0);
@@ -325,7 +347,106 @@ static AST_Validation _Validate_CREATE_Entities
 			}
 		}
 	}
+	return AST_VALID;
+}
 
+// validate each entity referenced in a single path of a MATCH clause
+static AST_Validation _Validate_MATCH_Entities
+(
+	const cypher_astnode_t *path,  // ast-node (pattern-path)
+	rax *defined_aliases           // bound vars
+) {
+	uint nelems = cypher_ast_pattern_path_nelements(path);
+
+	rax *local_env = raxNew();
+
+	for(uint i = 0 ; i < nelems; i++) {
+		const cypher_astnode_t *path_elem = cypher_ast_pattern_path_get_element(path, i);
+		const cypher_astnode_t *current_identifier = NULL;
+
+		if(i % 2 == 0) {
+			current_identifier = cypher_ast_node_pattern_get_identifier(path_elem);
+		} else {
+			current_identifier = cypher_ast_rel_pattern_get_identifier(path_elem);
+		}
+
+		if(current_identifier) {
+			const char *identifier_name =
+				cypher_ast_identifier_get_name(current_identifier);
+			int len = strlen(identifier_name);
+			void *identifier = raxFind(defined_aliases,
+							  (unsigned char *)identifier_name, len);
+
+			if(i % 2 == 0) {
+				// validate nodes
+
+				// MATCH ()-[r]->() MATCH(r) RETURN 0
+				if(identifier != raxNotFound && identifier != NULL
+					&& identifier != (void *)BOUNDED_NODE) {
+					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.",
+						identifier_name);
+					break;
+				}
+
+				// MATCH (r)-[r]-() RETURN 0
+				void *node_identifier = raxFind(local_env,
+									(unsigned char *)identifier_name, len);
+
+				if(node_identifier == raxNotFound) {
+					raxInsert(local_env, (unsigned char *) identifier_name,
+						len, (void *)BOUNDED_NODE, NULL);
+				} else if(node_identifier != (void *)BOUNDED_NODE) {
+					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.",
+						identifier_name);
+					break;
+				}
+			} else {
+				// validate edges
+
+				// if the identifier was defined previously, out of this
+				// pattern, its type must be BOUNDED_EDGE or NULL.
+				// These queries are valid:
+				// MATCH (a) WITH a MATCH (a:L)-[e]->(b) RETURN a
+				// WITH NULL AS e MATCH (a:L)-[e]->(b) RETURN e
+				// but these are not valid:
+				// MATCH (n) WITH n AS e MATCH (a:L)-[e]->(b) RETURN e
+				// TODO: This query is being accepted, but it is invalid:
+				// WITH 1 AS x MATCH ()-[x]->() RETURN 0
+				if(identifier != raxNotFound && identifier != NULL
+					&& identifier != (void *)BOUNDED_EDGE) {
+					ErrorCtx_SetError("The alias '%.*s' is not an edge",
+						len, identifier_name);
+					break;
+				}
+
+				// validation using local env, because until now, these
+				// identifiers are not part of the clause context
+				void *edge_identifier = raxFind(local_env,
+									(unsigned char *)identifier_name, len);
+
+				if(edge_identifier == raxNotFound) {
+					raxInsert(local_env, (unsigned char *)identifier_name,
+						len, (void *)BOUNDED_EDGE, NULL);
+				} else if(edge_identifier == (void *)BOUNDED_EDGE) {
+					// the edge label must be unique inside the pattern path
+					// MATCH (a)-[r]->()-[r]->(a) RETURN 0
+					ErrorCtx_SetError("Cannot use the same relationship variable '%s'",
+						identifier_name);
+					break;
+				} else {
+					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.",
+						identifier_name);
+					break;
+
+				}
+			}
+		}
+	}
+
+	raxFree(local_env);
+	if(ErrorCtx_EncounteredError()) {
+		return AST_INVALID;
+	}
 	return AST_VALID;
 }
 
@@ -910,8 +1031,11 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 				// WITH 1 AS x MATCH ()-[x]->()
 				// MATCH ()-[e]->()-[e]->()
 				// CREATE ()-[e]->()-[e]->()
-				ErrorCtx_SetError("The alias '%s' is already defined.", alias);
-				return VISITOR_BREAK;
+				// MATCH was validated in _Validate_MATCH_Entities()
+				if(vctx->clause != CYPHER_AST_MATCH) {
+					ErrorCtx_SetError("The alias '%s' is already defined.", alias);
+					return VISITOR_BREAK;
+				}
 			}
 		}
 		return VISITOR_CONTINUE;
@@ -981,8 +1105,8 @@ static VISITOR_STRATEGY _Validate_node_pattern
 	if(!start) {
 		// the sub tree spanned from this node is valid
 		if(alias != NULL) {
-				raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
-					strlen(alias), (void *)BOUNDED_NODE, NULL);
+			raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
+				strlen(alias), (void *)BOUNDED_NODE, NULL);
 		}
 		return VISITOR_CONTINUE;
 	}
@@ -1084,6 +1208,9 @@ static VISITOR_STRATEGY _Validate_pattern_path
 
 	if(vctx->clause == CYPHER_AST_CREATE &&
 		_Validate_CREATE_Entities(n, vctx->defined_identifiers) == AST_INVALID){
+		return VISITOR_BREAK;
+	} else if(vctx->clause == CYPHER_AST_MATCH &&
+		_Validate_MATCH_Entities(n, vctx->defined_identifiers) == AST_INVALID){
 		return VISITOR_BREAK;
 	}
 
@@ -1359,22 +1486,49 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 	// if one of the 'projections' is a star -> proceed with current env
 	// otherwise build a new environment using the new column names (aliases)
 	if(!cypher_ast_with_has_include_existing(n)) {
-		// free old env, set new one
-		raxFree(vctx->defined_identifiers);
-		vctx->defined_identifiers = raxNew();
+		rax *projected_identifiers = raxNew();
 
 		// introduce the WITH aliases to the bound vars context
 		for(uint i = 0; i < cypher_ast_with_nprojections(n); i++) {
 			const cypher_astnode_t *proj = cypher_ast_with_get_projection(n, i);
+			const cypher_astnode_t *expr =
+				cypher_ast_projection_get_expression(proj);
 			const cypher_astnode_t *ast_alias =
 				cypher_ast_projection_get_alias(proj);
-			if(!ast_alias) {
+			const char *identifier_name;
+			void *identifier = NULL;
+
+			if(ast_alias) {
+				// Retrieve "a" from "WITH x AS a" or "WITH [1, 2, 3] AS a"
+				identifier_name = cypher_ast_identifier_get_name(ast_alias);
+
+				if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
+					// Retrieve "x" from "WITH x AS a"
+					const char *current_identifier_name =
+						cypher_ast_identifier_get_name(expr);
+					uint len = strlen(current_identifier_name);
+					identifier = raxFind(vctx->defined_identifiers,
+						  (unsigned char *)current_identifier_name, len);
+				}
+			} else {
+				// Retrieve "x" from "WITH x"
 				ast_alias = cypher_ast_projection_get_expression(proj);
+
+				if(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER) {
+					identifier_name = cypher_ast_identifier_get_name(ast_alias);
+					uint len = strlen(identifier_name);
+					identifier = raxFind(vctx->defined_identifiers,
+						  (unsigned char *)identifier_name, len);
+				}
 			}
-			const char *alias = cypher_ast_identifier_get_name(ast_alias);
-			raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
-				strlen(alias), NULL, NULL);
+
+			raxInsert(projected_identifiers, (unsigned char *)identifier_name,
+				strlen(identifier_name), identifier, NULL);
 		}
+
+		// free old env, set new one
+		raxFree(vctx->defined_identifiers);
+		vctx->defined_identifiers = projected_identifiers;
 	}
 
 	return VISITOR_CONTINUE;
