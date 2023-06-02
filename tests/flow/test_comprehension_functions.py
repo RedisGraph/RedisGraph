@@ -464,7 +464,7 @@ class testComprehensionFunctions(FlowTestsBase):
         expected_result = [[[1, 1]], [[2]], [[3]], [[]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-    def test22_pattern_comprehension_scope(self):
+    def test21_pattern_comprehension_scope(self):
         # variables included by the pattern comprehension can't be available
         # out of its scope
         queries = [

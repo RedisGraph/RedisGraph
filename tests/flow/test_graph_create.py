@@ -153,7 +153,7 @@ class testGraphCreationFlow(FlowTestsBase):
     # test creating queries with matching relationship type :R|R
     # the results can't report duplicates
     def test10_match_duplicated_reltype(self):
-        query = """CREATE (a:A)-[r1:R1]->(b:B), (a:A)-[r2:R2]->(b:B)"""
+        query = """CREATE (a:A)-[r1:R1]->(b:B), (a)-[r2:R2]->(b)"""
         result = redis_graph.query(query)
         self.env.assertEquals(result.nodes_created, 2)
         self.env.assertEquals(result.relationships_created, 2)
@@ -249,7 +249,7 @@ class testGraphCreationFlow(FlowTestsBase):
         # test referencing intermediate entities
         error_invalid_input   = "Invalid input"
         error_undef_attribute = "Attempted to access undefined attribute"
-        error_undef_node_edge = "not defined" #"Attempted to access undefined node/edge"
+        error_undef_node_edge = "not defined"
         error_unhandled_type  = "Encountered unhandled type in inlined properties"
         error_primitive_type  = "Property values can only be of primitive types or arrays of primitive types"
         error_merge_null      = "Cannot merge node using null property value"
@@ -301,4 +301,30 @@ class testGraphCreationFlow(FlowTestsBase):
             result = redis_graph.query(query)
             expected_result = [[None]]
             self.env.assertEquals(result.result_set, expected_result)
+
+    def test12_redeclaring_matched_vars(self):
+        error_redeclare_node      = "The alias 'n' can't be redeclared as node"
+        error_redeclare_in_merge  = "The bound variable 'n' can't be redeclared in a MERGE clause"
+        error_redeclare_in_create = "The bound variable 'n' can't be redeclared in a CREATE clause"
+        error_props_in_merge      = "The bound node 'n' can't be redeclared in a MERGE clause"
+        error_props_in_create     = "The bound node 'n' can't be redeclared in a CREATE clause"
+        queries = [
+            # Redeclare with a different type
+            ("MATCH ()-[n]->() CREATE (n)-[:R]->()", error_redeclare_node),
+            ("MATCH (n)-[:R]->() CREATE ()-[n:R]->()", error_redeclare_in_create),
+            ("MATCH ()-[n]->() MERGE (n)-[:R]->()", error_redeclare_node),
+            ("MATCH (n)-[:R]->() MERGE ()-[n:R]->()", error_redeclare_in_merge),
+            # Modify matched entity
+            # ("MATCH (n)-[]->() CREATE (n:L)-[:R]->()", error_props_in_create),
+            # ("MATCH (n)-[]->() CREATE (n {v:1})-[:R]->()", error_props_in_create),
+            ("MATCH ()-[n]->() CREATE ()-[n:R]->()", error_redeclare_in_create),
+            ("MATCH ()-[n]->() CREATE ()-[n {v:2}]->()", error_redeclare_in_create),
+            ("MATCH (n)-[:R]->() MERGE (n:L)-[:R]->()", error_props_in_merge),
+            ("MATCH (n)-[:R]->() MERGE (n {v:1})-[:R]->()", error_props_in_merge),
+            ("MATCH ()-[n]->() MERGE ()-[n:R]->()", error_redeclare_in_merge),
+            ("MATCH ()-[n]->() MERGE ()-[n {v:2}]->()", error_redeclare_in_merge),
+        ]
+
+        for query, error in queries:
+            self._assert_exception(redis_graph, query, error)
 

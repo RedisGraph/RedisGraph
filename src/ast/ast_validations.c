@@ -253,7 +253,7 @@ static AST_Validation _ValidateMergeRelation
 		alias = cypher_ast_identifier_get_name(identifier);
 		// Verify that we're not redeclaring a bound variable
 		if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
-			ErrorCtx_SetError("The bound variable %s' can't be redeclared in a MERGE clause", alias);
+			ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a MERGE clause", alias);
 			return AST_INVALID;
 		}
 	}
@@ -288,11 +288,17 @@ static AST_Validation _ValidateMergeNode
 
 	const char *alias = cypher_ast_identifier_get_name(identifier);
 	// If the entity is unaliased or not previously bound, it cannot be redeclared
-	if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) == raxNotFound) {
+	void *identifier_state = raxFind(defined_aliases, (unsigned char *)alias, strlen(alias));
+	if(identifier_state == raxNotFound) {
 		return AST_VALID;
+	} else if (identifier_state != NULL
+			&& identifier_state != (void *)BOUNDED_NODE) {
+		ErrorCtx_SetError("The alias '%s' can't be redeclared as node", alias);
+		return AST_INVALID;
 	}
 
 	// If the entity is already bound, the MERGE pattern should not introduce labels or properties
+	// MATCH (n)-[:R]->() MERGE (n:L)-[:R]->()
 	if(cypher_ast_node_pattern_nlabels(entity) ||
 	   cypher_ast_node_pattern_get_properties(entity)) {
 		ErrorCtx_SetError("The bound node '%s' can't be redeclared in a MERGE clause", alias);
@@ -1031,7 +1037,7 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 				// WITH 1 AS x MATCH ()-[x]->()
 				// MATCH ()-[e]->()-[e]->()
 				// CREATE ()-[e]->()-[e]->()
-				// MATCH was validated in _Validate_MATCH_Entities()
+				// MATCH was validated by _Validate_MATCH_Entities()
 				if(vctx->clause != CYPHER_AST_MATCH) {
 					ErrorCtx_SetError("The alias '%s' is already defined.", alias);
 					return VISITOR_BREAK;
@@ -1130,7 +1136,7 @@ static VISITOR_STRATEGY _Validate_node_pattern
 				alias_type != NULL                 &&
 				alias_type != (void *)BOUNDED_NODE) {
 				// MATCH ()-[n]->() CREATE (n)-[:R]->()
-					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
+					ErrorCtx_SetError("The alias '%s' can't be redeclared as node", alias);
 				return VISITOR_BREAK;
 			}
 		}
@@ -1233,7 +1239,8 @@ static VISITOR_STRATEGY _Validate_named_path
 	// introduce identifiers to bound variables environment
 	const cypher_astnode_t *alias_node = cypher_ast_named_path_get_identifier(n);
 	const char *alias = cypher_ast_identifier_get_name(alias_node);
-	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias),
+		   NULL, NULL);
 
 	return VISITOR_RECURSE;
 }
