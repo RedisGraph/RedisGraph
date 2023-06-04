@@ -169,7 +169,7 @@ static void *Cron_Run
 			// perform and free task
 			cron->current_task = task;
 			CRON_PerformTask(task);
-			cron->current_task = task;
+			cron->current_task = NULL;
 			CRON_FreeTask(task);
 		}
 
