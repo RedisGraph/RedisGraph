@@ -1716,3 +1716,60 @@ updating clause.")
         # self.env.assertEquals(len(res.result_set), 1)
         # self.env.assertEquals(res.result_set[0][0], Node(label='N',
         #     properties={'name': 'Roi'}))
+
+    # def test28_rewrite_star_projections(self):
+    #     """Tests that star projections within call {}are rewritten correctly"""
+
+    #     # import data with *
+    #     res = graph.query(
+    #         """
+    #         WITH a AS 1, b AS 2
+    #         CALL {
+    #             WITH *
+    #             RETURN a + b AS c
+    #         }
+    #         RETURN a, b, c
+    #         """
+    #     )
+
+    #     # assert results
+    #     self.env.assertEquals(len(res.result_set), 1)
+    #     self.env.assertEquals(len(res.result_set[0]), 3)
+    #     for i in range(3):
+    #         self.env.assertEquals(res.result_set[0][i], i + 1)
+
+    #     # return with *
+    #     res = graph.query(
+    #         """
+    #         CALL {
+    #             WITH 1 AS a, 2 AS b
+    #             RETURN *
+    #         }
+    #         RETURN a, b
+    #         """
+    #     )
+
+    #     # assert results
+    #     self.env.assertEquals(len(res.result_set), 1)
+    #     self.env.assertEquals(len(res.result_set[0]), 2)
+    #     for i in range(2):
+    #         self.env.assertEquals(res.result_set[0][i], i + 1)
+
+    #     # both import with * and return with *
+    #     res = graph.query(
+    #         """
+    #         WITH 1 AS a, 2 AS b
+    #         CALL {
+    #             WITH *
+    #             WITH a + b AS c
+    #             RETURN *
+    #         }
+    #         RETURN a, b, c
+    #         """
+    #     )
+
+    #     # assert results
+    #     self.env.assertEquals(len(res.result_set), 1)
+    #     self.env.assertEquals(len(res.result_set[0]), 3)
+    #     for i in range(3):
+    #         self.env.assertEquals(res.result_set[0][i], i + 1)
