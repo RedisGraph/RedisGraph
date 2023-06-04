@@ -9,13 +9,13 @@
 #include "../util/rmalloc.h"
 #include "ast_rewrite_call_subquery.h"
 
-// returns true if the given node will result in an eager operation
-static bool _nodeIsEager
-(
-	const cypher_astnode_t *clause  // ast-node
-) {
-	bool is_eager = false;
+static bool _node_is_eager(const cypher_astnode_t *node);
 
+// returns true if the given ast-node will result in an eager operation
+static bool _clause_is_eager
+(
+	const cypher_astnode_t *clause
+) {
 	// -------------------------------------------------------------------------
 	// check if clause type is one of: CREATE, MERGE, SET or REMOVE
 	// -------------------------------------------------------------------------
@@ -30,14 +30,44 @@ static bool _nodeIsEager
 		return true;
 	}
 
+	if(type == CYPHER_AST_CALL_SUBQUERY) {
+		return _node_is_eager(clause);
+	}
+
 	// -------------------------------------------------------------------------
 	// check if clause is a WITH or RETURN clause with an aggregation
 	// -------------------------------------------------------------------------
 	if(type == CYPHER_AST_RETURN || type == CYPHER_AST_WITH) {
-		is_eager = AST_ClauseContainsAggregation(clause);
+		return AST_ClauseContainsAggregation(clause);
+	}
+}
+
+// returns true if the given node will result in an execution-plan that will
+// contain an eager operation
+static bool _node_is_eager
+(
+	const cypher_astnode_t *node  // ast-node
+) {
+	uint n_clauses;
+	const cypher_astnode_t *(*get_clause)(const cypher_astnode_t *, uint);
+
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+	if(type == CYPHER_AST_QUERY) {
+		n_clauses = cypher_ast_query_nclauses(node);
+		get_clause = cypher_ast_query_get_clause;
+	} else {
+		n_clauses = cypher_ast_call_subquery_nclauses(node);
+		get_clause = cypher_ast_call_subquery_get_clause;
 	}
 
-	return is_eager;
+	for(uint i = 0; i < n_clauses; i++) {
+		const cypher_astnode_t *curr_clause = get_clause(node, i);
+		if(_clause_is_eager(curr_clause)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 // fill `names` and `inner_names` with the bound vars and their internal
@@ -583,10 +613,11 @@ static bool _AST_RewriteCallSubqueryClause
 		cypher_ast_call_subquery_get_clause(clause, subclauses_count - 1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
 
-	bool is_eager = false;
-	for(uint i = 0; i < subclauses_count && !is_eager; i ++) {
-		is_eager |= _nodeIsEager(cypher_astnode_get_child(clause, i));
-	}
+	bool is_eager = _node_is_eager(clause);
+	// bool is_eager = false;
+	// for(uint i = 0; i < subclauses_count && !is_eager; i ++) {
+	// 	is_eager |= _nodeIsEager(cypher_astnode_get_child(clause, i));
+	// }
 
 	if(is_eager && is_returning) {
 		_rewrite_projections(wrapping_clause, clause, clause_ind, start, end,

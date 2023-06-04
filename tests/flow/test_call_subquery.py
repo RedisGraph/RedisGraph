@@ -1522,34 +1522,6 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][2], Node(label='O', properties={'name': 'Omer'}))
         self.env.assertEquals(res.result_set[0][3], Node(label='P', properties={'name': 'Pini'}))
 
-        # TODO: n's data is not returned
-        # # nested eager & returning subquery in a non-(eager & returning)
-        # # subquery
-        # query = """
-        # MATCH (n:N)
-        # CALL {
-        #     CALL {
-        #         CREATE (m:M {name: 'Moshe'})
-        #         RETURN m
-        #     }
-        #     RETURN m
-        # }
-        # RETURN n, m
-        # """
-
-        # res = graph.query(query)
-
-        # for i in res.result_set:
-        #     for j in i:
-        #         print(j)
-
-        # # assert results
-        # self.env.assertEquals(res.nodes_created, 1)
-        # self.env.assertEquals(len(res.result_set), 1)
-        # self.env.assertEquals(len(res.result_set[0]), 2)
-        # self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
-        # self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
-
         # TODO: n2 is not recognized (debug). (separating `WITH` clause solves)
         # non-returning updating subquery followed by matching clause, with no
         # separating `WITH` clause
@@ -1596,6 +1568,29 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
         self.env.assertEquals(res.result_set[0][2], Node(label='O', properties={'name': 'Omer'}))
 
+        # nested eager & returning subquery in a non-(eager & returning)
+        # subquery
+        query = """
+        MATCH (n:N)
+        CALL {
+            CALL {
+                CREATE (m:M {name: 'Moshe'})
+                RETURN m
+            }
+            RETURN m
+        }
+        RETURN n, m
+        """
+
+        res = graph.query(query)
+
+        # assert results
+        self.env.assertEquals(res.nodes_created, 1)
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 2)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
+        self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
+
         # outer {} is not eager, inner is
         res = graph.query(
             """
@@ -1617,37 +1612,60 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0], 1)
         self.env.assertEquals(res.result_set[0][1], list(range(1, 6)))
 
-        # TODO: x data deleted (nil instead of 1, 2, 3) because of inner {}
-        # # same concept as the above test, using input data
-        # # create 3 nodes (:TEMP {v: 1\2\3})
-        # res = graph.query("UNWIND range(1, 3) AS x CREATE (n:TEMP {v: x})")
-        # self.env.assertEquals(res.nodes_created, 3)
+        # outer {} is eager, but not returning, inner is
+        res = graph.query(
+            """
+            MATCH (n:N)
+            CALL {
+                WITH n
+                WITH n, 1 AS x
+                CALL {
+                    CREATE (m:M {name: 'Moshe'})
+                    RETURN m
+                }
+                SET n.v = 1
+            }
+            RETURN n
+            """
+        )
 
-        # res = graph.query(
-        #     """
-        #     UNWIND range(1, 3) AS x
-        #     CALL {
-        #         WITH x
-        #         MATCH (n:TEMP {v: x})
-        #         CALL {
-        #             WITH n
-        #             UNWIND range(0, n.v) AS num
-        #             RETURN collect(num) AS y
-        #         }
-        #         RETURN y
-        #     }
-        #     RETURN x, y ORDER BY x
-        #     """
-        # )
+        # assert results
+        self.env.assertEquals(res.nodes_created, 1)
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 1)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N',
+            properties={'name': 'Raz', 'v': 1}))
 
-        # # assert results
-        # self.env.assertEquals(len(res.result_set), 3)
-        # self.env.assertEquals(res.result_set[0][0], 1)
-        # self.env.assertEquals(res.result_set[0][1], list(range(0, 2)))
-        # self.env.assertEquals(res.result_set[1][0], 2)
-        # self.env.assertEquals(res.result_set[1][1], list(range(0, 3)))
-        # self.env.assertEquals(res.result_set[2][0], 3)
-        # self.env.assertEquals(res.result_set[2][1], list(range(0, 4)))
+        # same concept as the above test, using input data
+        # create 3 nodes (:TEMP {v: 1\2\3})
+        res = graph.query("UNWIND range(1, 3) AS x CREATE (n:TEMP {v: x})")
+        self.env.assertEquals(res.nodes_created, 3)
+
+        res = graph.query(
+            """
+            UNWIND range(1, 3) AS x
+            CALL {
+                WITH x
+                MATCH (n:TEMP {v: x})
+                CALL {
+                    WITH n
+                    UNWIND range(0, n.v) AS num
+                    RETURN collect(num) AS y
+                }
+                RETURN y
+            }
+            RETURN x, y ORDER BY x
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 3)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[0][1], list(range(0, 2)))
+        self.env.assertEquals(res.result_set[1][0], 2)
+        self.env.assertEquals(res.result_set[1][1], list(range(0, 3)))
+        self.env.assertEquals(res.result_set[2][0], 3)
+        self.env.assertEquals(res.result_set[2][1], list(range(0, 4)))
 
     def test27_read_no_with_after_writing_subquery(self):
         """Tests that a read clause following a writing subquery is handled
