@@ -11,28 +11,57 @@
 // forward declarations
 static void CallSubqueryFree(OpBase *opBase);
 static OpResult CallSubqueryInit(OpBase *opBase);
-static Record CallSubqueryConsume(OpBase *opBase);
 static OpResult CallSubqueryReset(OpBase *opBase);
+static Record CallSubqueryConsume(OpBase *opBase);
 static Record CallSubqueryConsumeEager(OpBase *opBase);
-static OpBase *CallSubqueryClone(const ExecutionPlan *plan, const OpBase *opBase);
+static OpBase *CallSubqueryClone(const ExecutionPlan *plan,
+    const OpBase *opBase);
 
 // find the deepest child of a root operation (connector), and append it to the
 // arguments/argumentLists array of the CallSubquery operation
 static void _append_connector
 (
     OpCallSubquery *call_subquery,  // CallSubquery operation
-    OpBase *root                    // root op
+    OpBase *branch                  // root op of the branch
 ) {
-    while(root->childCount > 0) {
-        root = root->children[0];
+    while(branch->childCount > 0) {
+        branch = branch->children[0];
     }
+
     if(call_subquery->is_eager) {
-        ASSERT(OpBase_Type((const OpBase *)root) == OPType_ARGUMENT_LIST);
-        array_append(call_subquery->connectors->argumentLists,
-            (ArgumentList *)root);
+        ASSERT(OpBase_Type((const OpBase *)branch) == OPType_ARGUMENT_LIST);
+        array_append(call_subquery->connectors.argumentLists,
+            (ArgumentList *)branch);
     } else {
-        ASSERT(OpBase_Type((const OpBase *)root) == OPType_ARGUMENT);
-        array_append(call_subquery->connectors->arguments, (Argument *)root);
+        ASSERT(OpBase_Type((const OpBase *)branch) == OPType_ARGUMENT);
+        array_append(call_subquery->connectors.arguments, (Argument *)branch);
+    }
+}
+
+// plant the input record(s) in the ArgumentList operation(s)
+static void _plant_records_ArgumentLists
+(
+    OpCallSubquery *op  // CallSubquery operation
+) {
+    int n_branches = (int)array_len(op->connectors.argumentLists);
+    for(int i = 0; i < n_branches - 1; i++) {
+        Record *records_clone;
+        array_clone_with_cb(records_clone, op->records,
+            OpBase_DeepCloneRecord);
+        ArgumentList_AddRecordList(op->connectors.argumentLists[i],
+            records_clone);
+    }
+}
+
+// plant the input record in the Argument operation(s)
+static void _plant_records_Arguments
+(
+    OpCallSubquery *op  // CallSubquery operation
+) {
+    uint n_branches = array_len(op->connectors.arguments);
+    for(uint i = 0; i < n_branches; i++) {
+        Argument_AddRecord(op->connectors.arguments[i],
+            OpBase_DeepCloneRecord(op->r));
     }
 }
 
@@ -78,48 +107,53 @@ static OpResult CallSubqueryInit
     }
 
     // search for the ArgumentList\Argument ops, depending if the op is eager
-    op->connectors = rm_malloc(sizeof(Connector));
     if(op->is_eager) {
-        op->connectors->argumentLists = array_new(ArgumentList *, 1);
-        op->connectors->type = CONNECTOR_ARGUMENT_LIST;
+        op->connectors.type = CONNECTOR_ARGUMENT_LIST;
+        op->connectors.argumentLists = array_new(ArgumentList *, 1);
     } else {
-        op->connectors->arguments = array_new(Argument *, 1);
-        op->connectors->type = CONNECTOR_ARGUMENT;
+        op->connectors.type = CONNECTOR_ARGUMENT;
+        op->connectors.arguments = array_new(Argument *, 1);
     }
 
-    // search for a Join op (placement depends on whether we have `UNION` or
-    // `UNION ALL`)
-    bool   join     = false;
+    // in the case the subquery contains a `UNION` or `UNION ALL` clause, we
+    // need to duplicate the input records to the multiple branches of the
+    // Join op, that will be placed in one of the first two ops of the sub-plan
+    // (first child or its child, according to whether there is an `ALL`)
+    // "CALL {RETURN 1 AS num UNION RETURN 2 AS num} RETURN num"
+    // "CALL {RETURN 1 AS num UNION ALL RETURN 2 AS num} RETURN num"
+    //
+    // search for a Join op
+
     OpJoin *op_join = NULL;
-
     if((OpBase_Type(op->body) == OPType_JOIN)) {
-        join = true;
         op_join = (OpJoin *)op->body;
-    } else if(OpBase_Type(OpBase_GetChild(op->body, 0)) == OPType_JOIN) {
-        join = true;
-        op_join = (OpJoin *)OpBase_GetChild(op->body, 0);
+    } else if(OpBase_ChildCount(op->body) > 0 &&
+        OpBase_Type(OpBase_GetChild(op->body, 0)) == OPType_JOIN) {
+            op_join = (OpJoin *)OpBase_GetChild(op->body, 0);
     }
-    if(join) {
+
+    if(op_join != NULL) {
         uint n_branches = OpBase_ChildCount((OpBase *)op_join);
 
         for(uint i = 0; i < n_branches; i++) {
-            OpBase *deepest = OpBase_GetChild((OpBase *)op_join, i);
-            _append_connector(op, deepest);
+            OpBase *branch = OpBase_GetChild((OpBase *)op_join, i);
+            _append_connector(op, branch);
         }
     } else {
-        OpBase *deepest = op->body;
-        _append_connector(op, deepest);
+        OpBase *branch = op->body;
+        _append_connector(op, branch);
     }
 
     return OP_OK;
 }
 
 // passes a record to the parent op.
-// if the subquery is non-returning, all the records have already been
-// consumed from the body (child depleted), so that we only need to return the
-// received records.
-// if the subquery is returning, return a the record received from the body
-static Record _handoff_eager(OpCallSubquery *op) {
+// if the subquery is non-returning, yield input record(s)
+// otherwise, yields a record produced by the subquery
+static Record _handoff_eager
+(
+    OpCallSubquery *op  // CallSubquery operation
+) {
     ASSERT(op->is_returning || op->records != NULL);
 
     if(!op->is_returning) {
@@ -133,9 +167,10 @@ static Record _handoff_eager(OpCallSubquery *op) {
 }
 
 // eagerly consume and aggregate all the records from the lhs (if exists). pass
-// the aggregated record-list to the ArgumentList operation\s.
-// after aggregating, return the consumed records one-by-one to the parent op,
-// if is_returning is on.
+// the aggregated record-list to the ArgumentList operation(s)
+// after aggregating, return records to caller. if the subquery is returning,
+// return the consumed record(s) from the body. otherwise, return the input
+// record(s)
 static Record CallSubqueryConsumeEager
 (
     OpBase *opBase  // operation
@@ -147,7 +182,6 @@ static Record CallSubqueryConsumeEager
         return _handoff_eager(op);
     }
 
-    // make sure next entries don't get here
     op->first = false;
 
     op->records = array_new(Record, 1);
@@ -165,31 +199,27 @@ static Record CallSubqueryConsumeEager
         array_append(op->records, r);
     }
 
-    int n_branches = (int)array_len(op->connectors->argumentLists);
-    for(int i = 0; i < n_branches - 1; i++) {
-        Record *records_clone;
-        array_clone_with_cb(records_clone, op->records,
-            OpBase_DeepCloneRecord);
-        ArgumentList_AddRecordList(op->connectors->argumentLists[i],
-            records_clone);
-    }
+    _plant_records_ArgumentLists(op);
 
+    int n_branches = (int)array_len(op->connectors.argumentLists);
     if(op->is_returning) {
         // give the last branch the original records
         ArgumentList_AddRecordList(
-            op->connectors->argumentLists[n_branches - 1], op->records);
+            op->connectors.argumentLists[n_branches - 1], op->records);
 
-        // responsibility for the records is passed to the argumentList op
+        // responsibility for the records is passed to the argumentList op(s)
         op->records = NULL;
     } else {
-        // give the last branch a clone of the original records
+        // give the last branch a clone of the original record(s)
         Record *records_clone;
         array_clone_with_cb(records_clone, op->records,
             OpBase_DeepCloneRecord);
         ArgumentList_AddRecordList(
-            op->connectors->argumentLists[n_branches - 1], records_clone);
+            op->connectors.argumentLists[n_branches - 1], records_clone);
+    }
 
-        // consume and free all records from body
+    if(!op->is_returning) {
+        // deplete body and discard records
         while((r = OpBase_Consume(op->body))) {
             OpBase_DeleteRecord(r);
         }
@@ -199,9 +229,9 @@ static Record CallSubqueryConsumeEager
 }
 
 // tries to consumes a record from the body, merge it with the current input
-// record and return it. If body is depleted from this record, tries to consume
+// record and return it. If body is depleted for this record, tries to consume
 // a record from the lhs, and repeat the process (if the lhs record is not NULL)
-static Record _consume_and_return
+static Record _consume_and_merge
 (
     OpCallSubquery *op
 ) {
@@ -213,17 +243,12 @@ static Record _consume_and_return
         op->r = NULL;
         if(op->lhs && (op->r = OpBase_Consume(op->lhs)) != NULL) {
             // plant a clone of the record consumed at the Argument ops
-            uint n_branches = array_len(op->connectors->arguments);
-            for(uint i = 0; i < n_branches; i++) {
-                Argument_AddRecord(op->connectors->arguments[i],
-                    OpBase_DeepCloneRecord(op->r));
-            }
+            _plant_records_Arguments(op);
         } else {
             // lhs depleted --> CALL {} depleted as well
             return NULL;
         }
-        // goto return_cycle;
-        return _consume_and_return(op);
+        return _consume_and_merge(op);
     }
 
     Record clone = OpBase_DeepCloneRecord(op->r);
@@ -233,36 +258,42 @@ static Record _consume_and_return
     return clone;
 }
 
-// tries to consume a record from the body. if successful, return the
+// tries to consume a record from the body. if successful, returns the
 // merged\unmerged record with the input record (op->r) according to the
 // is_returning flag.
-// depletes child if is_returning is off (body records not needed).
+// depletes child if is_returning is off (discard body records)
 static Record _handoff(OpCallSubquery *op) {
     ASSERT(op->r != NULL);
 
-    // returning subquery: consume --> merge --> return merged.
+    //--------------------------------------------------------------------------
+    // returning subquery
+    //--------------------------------------------------------------------------
+
     if(op->is_returning) {
-        return _consume_and_return(op);
+        return _consume_and_merge(op);
     }
 
+    //--------------------------------------------------------------------------
+    // non-returning subquery
+    //--------------------------------------------------------------------------
+
     Record consumed;
-    // non-returning subquery: drain the body, deleting (freeing) the records
-    // return current record
+    // drain the body, deleting the subquery records and return current record
     while((consumed = OpBase_Consume(op->body))) {
         OpBase_DeleteRecord(consumed);
     }
-    // TODO: make sure this is necessary.
     OpBase_PropagateReset(op->body);
     Record r = op->r;
     op->r = NULL;
     return r;
 }
 
-// consumes a record from the lhs, plants it in the Argument\List ops, and
-// consumes a record from the body.
-// if there is already a record in op->r, it means that the body has not been
-// depleted from the current record yet, and we should consume from it before
-// consuming another record from lhs
+// consumes a record from the lhs, plants it in the Argument\List op(s), and
+// consumes a record from the body until depletion.
+// in case the subquery is returning, merges the input (lhs) record with the
+// output record. otherwise, the input record is passed as-is
+// upon depletion of the body, repeats the above. depletion of lhs yields
+// depletion of this operation
 static Record CallSubqueryConsume
 (
     OpBase *opBase  // operation
@@ -274,23 +305,20 @@ static Record CallSubqueryConsume
     if(op->r) {
         return _handoff(op);
     }
+    ASSERT(op->r == NULL);
 
-    // consume from lhs if exists, otherwise create dummy-record to pass to rhs
-    // (the latter case will happen AT MOST once)
+    // consume from lhs if exists, otherwise create a dummy-record to pass to
+    // the body (rhs). the latter case will happen AT MOST once
     if(op->lhs) {
         op->r = OpBase_Consume(op->lhs);
-    } else if(op->first){
+    } else if(op->first) {
         op->r = OpBase_CreateRecord((OpBase *)op);
         op->first = false;
     }
 
     // plant the record consumed at the Argument ops
     if(op->r) {
-        uint n_branches = array_len(op->connectors->arguments);
-        for(uint i = 0; i < n_branches; i++) {
-            Argument_AddRecord(op->connectors->arguments[i],
-                OpBase_DeepCloneRecord(op->r));
-        }
+        _plant_records_Arguments(op);
     } else {
         // no records - lhs depleted
         return NULL;
@@ -347,17 +375,15 @@ static void CallSubqueryFree
 
     _freeInternals(_op);
 
-    if(_op->connectors != NULL) {
-        if(_op->connectors->type == CONNECTOR_ARGUMENT &&
-           _op->connectors->arguments != NULL) {
-            array_free(_op->connectors->arguments);
-            _op->connectors->arguments = NULL;
-        } else if(_op->connectors->type == CONNECTOR_ARGUMENT_LIST &&
-           _op->connectors->argumentLists != NULL) {
-            array_free(_op->connectors->argumentLists);
-            _op->connectors->argumentLists = NULL;
+    if(_op->connectors.type != CONNECTOR_NONE) {
+        if(_op->connectors.type == CONNECTOR_ARGUMENT &&
+           _op->connectors.arguments != NULL) {
+            array_free(_op->connectors.arguments);
+            _op->connectors.arguments = NULL;
+        } else if(_op->connectors.type == CONNECTOR_ARGUMENT_LIST &&
+           _op->connectors.argumentLists != NULL) {
+            array_free(_op->connectors.argumentLists);
+            _op->connectors.argumentLists = NULL;
         }
-        rm_free(_op->connectors);
-        _op->connectors = NULL;
     }
 }
