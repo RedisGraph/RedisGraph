@@ -236,7 +236,7 @@ class testGraphCreationFlow(FlowTestsBase):
             "CREATE (a), (b)-[:R {k:single(x IN properties(a) WHERE x = 0)}]->()",
             # invalid argument to function floor(), which expects an Integer,
             # Float, or Null but any() returns Boolean
-            "CREATE (a:A {n:'A'}), (b:B {v:floor(any(v4 IN [2] WHERE b = [a IN keys(a)]))})"
+            "CREATE (a:A {v:floor(true)})"
         ]
 
         for query in queries:

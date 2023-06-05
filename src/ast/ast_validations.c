@@ -2074,41 +2074,30 @@ static VISITOR_STRATEGY _Validate_binary_op
 
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	if(!start) {
-		return VISITOR_CONTINUE;
-	}
-
-	// if the parent clause is MATCH or BINARY OPERATOR, validate children
+	// validate arguments:
 	// MATCH (s) WHERE s.name = undefVar RETURN 0
 	// MATCH (s) WHERE s.name = undefVar AND s.age = 10 RETURN 0
 	// RETURN reduce(sum=0, n in [1,2,3] | sum+x)
 	// RETURN a + 1
 	// WITH a + 2 AS c RETURN 0
-	if(vctx->clause == CYPHER_AST_MATCH ||
-	   vctx->clause == CYPHER_AST_BINARY_OPERATOR ||
-	   vctx->clause == CYPHER_AST_REDUCE ||
-	   vctx->clause == CYPHER_AST_WITH ||
-	   vctx->clause == CYPHER_AST_RETURN ||
-	   vctx->clause == CYPHER_AST_PROJECTION) {
-		cypher_astnode_type_t clause_backup = vctx->clause;
+	cypher_astnode_type_t clause_backup = vctx->clause;
 
-		const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(n);
-		const cypher_astnode_t *rhs = cypher_ast_binary_operator_get_argument2(n);
+	const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(n);
+	const cypher_astnode_t *rhs = cypher_ast_binary_operator_get_argument2(n);
 
-		vctx->clause = cypher_astnode_type(lhs);
-		AST_Visitor_visit(lhs, visitor);
-		if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
-		}
-
-		vctx->clause = cypher_astnode_type(rhs);
-		AST_Visitor_visit(rhs, visitor);
-		if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
-		}
-
-		vctx->clause = clause_backup;
+	vctx->clause = cypher_astnode_type(lhs);
+	AST_Visitor_visit(lhs, visitor);
+	if(ErrorCtx_EncounteredError()) {
+		return VISITOR_BREAK;
 	}
+
+	vctx->clause = cypher_astnode_type(rhs);
+	AST_Visitor_visit(rhs, visitor);
+	if(ErrorCtx_EncounteredError()) {
+		return VISITOR_BREAK;
+	}
+
+	vctx->clause = clause_backup;
 	return VISITOR_CONTINUE;
 }
 
