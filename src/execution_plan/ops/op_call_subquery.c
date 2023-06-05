@@ -161,7 +161,7 @@ static Record CallSubqueryConsumeEager
         // propagate reset to lhs, to release RediSearch index locks (if any)
         OpBase_PropagateReset(op->lhs);
     } else {
-        r = OpBase_CreateRecord(op->body);
+        r = OpBase_CreateRecord((OpBase *)op);
         array_append(op->records, r);
     }
 

@@ -411,13 +411,17 @@ static OpBase **_FindDeepestOps
 
 	// check root and its first child for a Join op
 	OpBase *join = _getJoin(deepest);
+
 	// if didn't find, check for a Join op in the first child of the first child
-	if(join == NULL                                       &&
-	   OpBase_ChildCount(deepest) > 0                     &&
-	   OpBase_ChildCount(OpBase_GetChild(deepest, 0)) > 0 &&
-	   (OpBase_Type(OpBase_GetChild(OpBase_GetChild(deepest, 0), 0)) ==
-		OPType_JOIN)) {
-			join = OpBase_GetChild(OpBase_GetChild(deepest, 0), 0);
+	if(join == NULL) {
+		join = OpBase_ChildCount(deepest) > 0 ?
+			OpBase_ChildCount(OpBase_GetChild(deepest, 0)) > 0 ?
+				OpBase_Type(OpBase_GetChild(OpBase_GetChild(deepest, 0), 0)) ==
+				OPType_JOIN ?
+					OpBase_GetChild(OpBase_GetChild(deepest, 0), 0) :
+					NULL :
+				NULL :
+			NULL;
 	}
 
 	if(join != NULL) {

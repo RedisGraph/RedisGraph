@@ -1463,8 +1463,10 @@ updating clause.")
         self.env.assertEquals(res.nodes_created, 1)
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(len(res.result_set[0]), 2)
-        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
-        self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
+        self.env.assertEquals(res.result_set[0][0], Node(label='N',
+            properties={'name': 'Raz'}))
+        self.env.assertEquals(res.result_set[0][1], Node(label='M',
+            properties={'name': 'Moshe'}))
 
         # nested eager & returning subquery
         query = """
@@ -1487,9 +1489,12 @@ updating clause.")
         self.env.assertEquals(res.nodes_created, 2)
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(len(res.result_set[0]), 3)
-        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
-        self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
-        self.env.assertEquals(res.result_set[0][2], Node(label='O', properties={'name': 'Omer'}))
+        self.env.assertEquals(res.result_set[0][0], Node(label='N',
+            properties={'name': 'Raz'}))
+        self.env.assertEquals(res.result_set[0][1], Node(label='M',
+            properties={'name': 'Moshe'}))
+        self.env.assertEquals(res.result_set[0][2], Node(label='O',
+            properties={'name': 'Omer'}))
 
         # highly nested eager & returning subquery
         query = """
@@ -1517,32 +1522,14 @@ updating clause.")
         self.env.assertEquals(res.nodes_created, 3)
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(len(res.result_set[0]), 4)
-        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
-        self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
-        self.env.assertEquals(res.result_set[0][2], Node(label='O', properties={'name': 'Omer'}))
-        self.env.assertEquals(res.result_set[0][3], Node(label='P', properties={'name': 'Pini'}))
-
-        # TODO: n2 is not recognized (debug). (separating `WITH` clause solves)
-        # non-returning updating subquery followed by matching clause, with no
-        # separating `WITH` clause
-        # query = """
-        # CALL {
-        #     CREATE (n:M {name: 'Raz'})
-        # }
-        # MATCH (n2:M)
-        # RETURN n2
-        # """
-
-        # res = graph.query(query)
-
-        # # assert results
-        # self.env.assertEquals(res.nodes_created, 1)
-        # self.env.assertEquals(len(res.result_set), 1)
-        # self.env.assertEquals(res.result_set[0][0],
-        #     Node(label='M', properties={'name': 'Raz'}))
-
-        # # delete created node
-        # graph.query("MATCH (m:M) DELETE m")
+        self.env.assertEquals(res.result_set[0][0], Node(label='N',
+            properties={'name': 'Raz'}))
+        self.env.assertEquals(res.result_set[0][1], Node(label='M',
+            properties={'name': 'Moshe'}))
+        self.env.assertEquals(res.result_set[0][2], Node(label='O',
+            properties={'name': 'Omer'}))
+        self.env.assertEquals(res.result_set[0][3], Node(label='P',
+            properties={'name': 'Pini'}))
 
         # multiple eager & returning subqueries sequentially
         query = """
@@ -1564,9 +1551,12 @@ updating clause.")
         self.env.assertEquals(res.nodes_created, 2)
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(len(res.result_set[0]), 3)
-        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
-        self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
-        self.env.assertEquals(res.result_set[0][2], Node(label='O', properties={'name': 'Omer'}))
+        self.env.assertEquals(res.result_set[0][0], Node(label='N',
+            properties={'name': 'Raz'}))
+        self.env.assertEquals(res.result_set[0][1], Node(label='M',
+            properties={'name': 'Moshe'}))
+        self.env.assertEquals(res.result_set[0][2], Node(label='O',
+            properties={'name': 'Omer'}))
 
         # nested eager & returning subquery in a non-(eager & returning)
         # subquery
@@ -1588,8 +1578,10 @@ updating clause.")
         self.env.assertEquals(res.nodes_created, 1)
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(len(res.result_set[0]), 2)
-        self.env.assertEquals(res.result_set[0][0], Node(label='N', properties={'name': 'Raz'}))
-        self.env.assertEquals(res.result_set[0][1], Node(label='M', properties={'name': 'Moshe'}))
+        self.env.assertEquals(res.result_set[0][0], Node(label='N',
+            properties={'name': 'Raz'}))
+        self.env.assertEquals(res.result_set[0][1], Node(label='M',
+            properties={'name': 'Moshe'}))
 
         # outer {} is not eager, inner is
         res = graph.query(
@@ -1718,23 +1710,24 @@ updating clause.")
         res = graph.query("MATCH (n) DELETE n")
         self.env.assertEquals(res.nodes_deleted, 1)
 
-        # # TODO: crash (n2 not found. Works with a separating `WITH`.)
-        # # same query, without a separating `WITH`, and without a `RETURN` clause
-        # res = graph.query(
-        #     """
-        #     CALL {
-        #         CREATE (n:N {name: 'Roi'})
-        #     }
-        #     MATCH (n2:N)
-        #     RETURN n2
-        #     """
-        # )
+        # same query, without a separating `WITH`, and without a `RETURN` clause
+        res = graph.query(
+            """
+            CALL {
+                CREATE (n:N {name: 'Roi'})
+            }
+            MATCH (n2:N)
+            RETURN n2
+            """
+        )
 
-        # # assert results
-        # self.env.assertEquals(len(res.result_set), 1)
-        # self.env.assertEquals(res.result_set[0][0], Node(label='N',
-        #     properties={'name': 'Roi'}))
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N',
+            properties={'name': 'Roi'}))
 
+    # TODO: Add support for rewriting star projections within call {} (after
+    # supporting an embedded query within call {})
     # def test28_rewrite_star_projections(self):
     #     """Tests that star projections within call {}are rewritten correctly"""
 
