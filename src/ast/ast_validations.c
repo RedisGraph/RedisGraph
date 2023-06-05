@@ -320,6 +320,7 @@ static AST_Validation _ValidateCreateRelation
 		const char *alias = cypher_ast_identifier_get_name(identifier);
 		if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias))
 				!= raxNotFound) {
+			// CREATE ()-[e:R]->()-[e]->()
 			ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", alias);
 			return AST_INVALID;
 		}
@@ -565,7 +566,7 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 
 		// introduce local identifier if it is not yet introduced
 		// if the identifier exists, it will be overwitten in scoped environment
-		// MATCH (a) RETURN [a=()-[]->() | 0];
+		// MATCH (a) RETURN [a=()-[]->() | 0]
 		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier,
 			strlen(identifier), (void *)BOUNDED_PATH, NULL);
 	}
@@ -584,6 +585,7 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 		AST_Visitor_visit(pattern, visitor);
 		vctx->clause = clause_backup;
 		if(ErrorCtx_EncounteredError()) {
+			// MATCH (a) RETURN [(b)-[b]->() | 0]
 			goto cleanup;
 		}
 	}
@@ -594,6 +596,7 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 	if(pred) {
 		AST_Visitor_visit(pred, visitor);
 		if(ErrorCtx_EncounteredError()) {
+			// MATCH (a) RETURN [(a)-[:R]->() WHERE u | 0]
 			goto cleanup;
 		}
 	}
@@ -603,6 +606,7 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 	if(eval) {
 		AST_Visitor_visit(eval, visitor);
 		if(ErrorCtx_EncounteredError()) {
+			// MATCH (a) RETURN [(a)-[:R]->() | u]
 			goto cleanup;
 		}
 	}
@@ -683,27 +687,16 @@ static VISITOR_STRATEGY _Validate_projection
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	cypher_astnode_type_t node_type = cypher_astnode_type(n);
+	// we enter ONLY when start=true, so no check is needed
 
-	if(node_type == CYPHER_AST_BINARY_OPERATOR) {
-
-		if(!start) {
-			return VISITOR_CONTINUE;
-		}
-
-		vctx->clause = node_type;
-		return VISITOR_RECURSE;
-	} else {
-
-		const cypher_astnode_t *exp = cypher_ast_projection_get_expression(n);
-		AST_Visitor_visit(exp, visitor);
-		if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
-		}
-
-		// do not traverse children
-		return VISITOR_CONTINUE;
+	const cypher_astnode_t *exp = cypher_ast_projection_get_expression(n);
+	AST_Visitor_visit(exp, visitor);
+	if(ErrorCtx_EncounteredError()) {
+		return VISITOR_BREAK;
 	}
+
+	// do not traverse children
+	return VISITOR_CONTINUE;
 }
 
 // validate a function-call
@@ -1034,9 +1027,10 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 			} else {
 				// we can't register an edge more than once
 				// following are all illegal examples
+				// MATCH (a) RETURN [(b)-[b]->() | 0]"
+				// CREATE ()-[e]->()-[e]->()
 				// WITH 1 AS x MATCH ()-[x]->()
 				// MATCH ()-[e]->()-[e]->()
-				// CREATE ()-[e]->()-[e]->()
 				// MATCH was validated by _Validate_MATCH_Entities()
 				if(vctx->clause != CYPHER_AST_MATCH) {
 					ErrorCtx_SetError("The alias '%s' is already defined.", alias);
@@ -1057,6 +1051,7 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 		// validate that each relation has exactly one type
 		uint reltype_count = cypher_ast_rel_pattern_nreltypes(n);
 		if(reltype_count != 1) {
+			// CREATE ()-[e]->()
 			ErrorCtx_SetError("Exactly one relationship type must be specified for CREATE");
 			return VISITOR_BREAK;
 		}

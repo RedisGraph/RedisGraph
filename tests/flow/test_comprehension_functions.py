@@ -475,3 +475,13 @@ class testComprehensionFunctions(FlowTestsBase):
         for query in queries:
             self._assert_exception(redis_graph, query, "not defined")
 
+    def test22_invalid_pattern_comprehension(self):
+        # test error detection of invalid pattern comprehension
+        queries_with_errors = [
+            ("MATCH (a) RETURN [(b)-[b]->() | 0]", "The alias 'b' is already defined"),
+            ("MATCH (a) RETURN [(a)-[:R]->() WHERE u | 0]", "u not defined"),
+            ("MATCH (a) RETURN [(a)-[:R]->() | u]", "u not defined"),
+        ]
+        for query, expected_error in queries_with_errors:
+            self._assert_exception(redis_graph, query, expected_error)
+
