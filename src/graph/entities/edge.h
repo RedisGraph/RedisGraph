@@ -14,19 +14,6 @@ typedef int RelationID;
 
 #define EDGE_LENGTH_INF UINT_MAX - 2
 
-// instantiate a new unpopulated edge
-#define GE_NEW_EDGE()                 \
-(Edge) {                              \
-	.entity = NULL,                   \
-	.id = INVALID_ENTITY_ID,          \
-	.relationship = NULL,             \
-	.relationID = GRAPH_NO_RELATION,  \
-	.src = NULL,                      \
-	.dest = NULL,                     \
-	.srcNodeID = INVALID_ENTITY_ID,   \
-	.destNodeID = INVALID_ENTITY_ID   \
-}
-
 // instantiate a new edge with relation data
 #define GE_NEW_LABELED_EDGE(r_str, r_id)    \
 (Edge) {                                    \

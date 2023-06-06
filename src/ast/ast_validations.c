@@ -288,12 +288,20 @@ static AST_Validation _ValidateMergeNode
 
 	const char *alias = cypher_ast_identifier_get_name(identifier);
 	// If the entity is unaliased or not previously bound, it cannot be redeclared
-	void *identifier_state = raxFind(defined_aliases, (unsigned char *)alias, strlen(alias));
-	if(identifier_state == raxNotFound) {
+	void *alias_type = raxFind(defined_aliases, (unsigned char *)alias, strlen(alias));
+	if(alias_type == raxNotFound) {
 		return AST_VALID;
-	} else if (identifier_state != NULL
-			&& identifier_state != (void *)BOUNDED_NODE) {
-		ErrorCtx_SetError("The alias '%s' can't be redeclared as node", alias);
+	} else if (alias_type != NULL
+			&& alias_type != (void *)BOUNDED_NODE) {
+		if(alias_type == (void *)BOUNDED_EDGE) {
+			// MATCH ()-[n]->() MERGE (n)-[:R]->()
+			ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
+				alias);
+		} else if (alias_type == (void *)BOUNDED_PATH) {
+			// MATCH n=() MERGE (n)-[:R]->()
+			ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
+				alias);
+		}
 		return AST_INVALID;
 	}
 
@@ -483,14 +491,28 @@ static VISITOR_STRATEGY _Validate_list_comprehension
 
 	// we enter ONLY when start=true, so no check is needed
 
-	const cypher_astnode_t *id = cypher_ast_list_comprehension_get_identifier(n);
-	const char *identifier = cypher_ast_identifier_get_name(id);
-	bool is_new = (raxFind(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier)) == raxNotFound);
+	// list comprehension example:
+	// RETURN [x IN range(1,5) WHERE x % 3 = 0 | x^2 ] AS r
+	// the identifier is: x
+	// the expression is: range(1,5)
+	// the predicate is:  x % 3 = 0
+	// the eval is:       x^2
 
-	// Introduce local identifier if it is not yet introduced
-	if(is_new) {
-		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
-	}
+	// build a new environment of bounded vars from the current one to be
+	// used in the traversal of the visitor in the pattern comprehension
+	// validation, because they are local to the pattern
+	rax *orig_env = vctx->defined_identifiers;
+	rax *scoped_env = raxClone(orig_env);
+	vctx->defined_identifiers = scoped_env;
+
+	const cypher_astnode_t *id =
+		cypher_ast_list_comprehension_get_identifier(n);
+	const char *identifier = cypher_ast_identifier_get_name(id);
+
+	// Introduce local identifier if it is not yet
+	// if the identifier exists, it will be overwritten in scoped environment
+	raxInsert(vctx->defined_identifiers, (unsigned char *)identifier,
+		strlen(identifier), NULL, NULL);
 
 	// Visit expression-children
 	// Visit expression
@@ -498,7 +520,7 @@ static VISITOR_STRATEGY _Validate_list_comprehension
 	if(exp) {
 		AST_Visitor_visit(exp, visitor);
 		if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
+			goto cleanup;
 		}
 	}
 
@@ -507,7 +529,7 @@ static VISITOR_STRATEGY _Validate_list_comprehension
 	if(pred) {
 		AST_Visitor_visit(pred, visitor);
 		if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
+			goto cleanup;
 		}
 	}
 
@@ -516,14 +538,18 @@ static VISITOR_STRATEGY _Validate_list_comprehension
 	if(eval) {
 		AST_Visitor_visit(eval, visitor);
 		if(ErrorCtx_EncounteredError()) {
-			return VISITOR_BREAK;
+			goto cleanup;
 		}
 	}
 
-	// list comprehension identifier is no longer bound, remove it from bound vars
-	// if it was introduced
-	if(is_new) {
-		raxRemove(vctx->defined_identifiers, (unsigned char *)identifier, strlen(identifier), NULL);
+cleanup:
+	// restore original environment of bounded vars
+	vctx->defined_identifiers = orig_env;
+	raxFree(scoped_env);
+
+	// check for errors
+	if(ErrorCtx_EncounteredError()) {
+		return VISITOR_BREAK;
 	}
 
 	// do not traverse children
@@ -547,8 +573,6 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 	// the pattern is:    (a)-[e]->(f)
 	// the predicate is:  e.v < 10
 	// the eval is:       f
-
-	bool is_new;
 	const char *identifier;
 
 	// build a new environment of bounded vars from the current one to be
@@ -565,7 +589,7 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 		identifier = cypher_ast_identifier_get_name(id);
 
 		// introduce local identifier if it is not yet introduced
-		// if the identifier exists, it will be overwitten in scoped environment
+		// if the identifier exists, it will be overwritten in scoped environment
 		// MATCH (a) RETURN [a=()-[]->() | 0]
 		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier,
 			strlen(identifier), (void *)BOUNDED_PATH, NULL);
@@ -957,14 +981,15 @@ static AST_Validation _ValidateInlinedProperties
 			const cypher_astnode_t *exp = cypher_ast_property_operator_get_expression(prop_val);
 			if(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER) {
 				const char *identifier_name = cypher_ast_identifier_get_name(exp);
+				uint len = strlen(identifier_name);
 
 				// emit an error if the property reference to a property of the same node
 				// CREATE (a {v:a.p})
 				// CREATE ()-[r {v:r.x}]->()
-				// if(clause != CYPHER_AST_MATCH && alias != NULL && strcmp(alias, identifier_name) == 0) {
-				// 	ErrorCtx_SetError("Attempted to access undefined attribute");
-				// 	return AST_INVALID;
-				// }
+				if(clause != CYPHER_AST_MATCH && alias != NULL && strcmp(alias, identifier_name) == 0) {
+					ErrorCtx_SetError("%.*s not defined", len, identifier_name);
+				 	return AST_INVALID;
+				}
 
 				// emit an error if the property references to an "intermediate" node or edge
 				// CREATE (a:A), (b:B {v:a.v})
@@ -1033,7 +1058,16 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 				// MATCH ()-[e]->()-[e]->()
 				// MATCH was validated by _Validate_MATCH_Entities()
 				if(vctx->clause != CYPHER_AST_MATCH) {
-					ErrorCtx_SetError("The alias '%s' is already defined.", alias);
+					if(alias_type == (void *)BOUNDED_EDGE) {
+						ErrorCtx_SetError("Cannot use the same relationship variable '%s'",
+							alias);
+					} else if(alias_type == (void *)BOUNDED_NODE) {
+						ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
+							alias);
+					} else if(alias_type == (void *)BOUNDED_PATH) {
+						ErrorCtx_SetError("The alias '%s' was specified for both a path and a relationship",
+							alias);
+					}
 					return VISITOR_BREAK;
 				}
 			}
@@ -1130,8 +1164,14 @@ static VISITOR_STRATEGY _Validate_node_pattern
 			if(alias_type  != raxNotFound          &&
 				alias_type != NULL                 &&
 				alias_type != (void *)BOUNDED_NODE) {
-				// MATCH ()-[n]->() CREATE (n)-[:R]->()
-					ErrorCtx_SetError("The alias '%s' can't be redeclared as node", alias);
+				if(alias_type == (void *)BOUNDED_EDGE) {
+					// MATCH ()-[n]->() CREATE (n)-[:R]->()
+					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
+						alias);
+				} else if (alias_type == (void *)BOUNDED_PATH) {
+					ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
+						alias);
+				}
 				return VISITOR_BREAK;
 			}
 		}
@@ -1235,7 +1275,7 @@ static VISITOR_STRATEGY _Validate_named_path
 	const cypher_astnode_t *alias_node = cypher_ast_named_path_get_identifier(n);
 	const char *alias = cypher_ast_identifier_get_name(alias_node);
 	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias),
-		   NULL, NULL);
+		   (void *)BOUNDED_PATH, NULL);
 
 	return VISITOR_RECURSE;
 }

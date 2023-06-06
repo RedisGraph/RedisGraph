@@ -32,6 +32,7 @@ SIValue *GraphEntity_GetProperty
 	Attribute_ID attr_id
 ) {
 	ASSERT(e);
+	ASSERT(e->attributes != NULL);
 
 	return AttributeSet_Get(*e->attributes, attr_id);
 }

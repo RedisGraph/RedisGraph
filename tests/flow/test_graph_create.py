@@ -303,17 +303,20 @@ class testGraphCreationFlow(FlowTestsBase):
             self.env.assertEquals(result.result_set, expected_result)
 
     def test12_redeclaring_matched_vars(self):
-        error_redeclare_node      = "The alias 'n' can't be redeclared as node"
+        error_node_relationship   = "The alias 'n' was specified for both a node and a relationship"
+        error_path_node           = "The alias 'n' was specified for both a path and a node"
         error_redeclare_in_merge  = "The bound variable 'n' can't be redeclared in a MERGE clause"
         error_redeclare_in_create = "The bound variable 'n' can't be redeclared in a CREATE clause"
         error_props_in_merge      = "The bound node 'n' can't be redeclared in a MERGE clause"
         error_props_in_create     = "The bound node 'n' can't be redeclared in a CREATE clause"
         queries = [
-            # Redeclare with a different type
-            ("MATCH ()-[n]->() CREATE (n)-[:R]->()", error_redeclare_node),
+            # Redeclare variable with a different type
+            ("MATCH ()-[n]->() CREATE (n)-[:R]->()", error_node_relationship),
             ("MATCH (n)-[:R]->() CREATE ()-[n:R]->()", error_redeclare_in_create),
-            ("MATCH ()-[n]->() MERGE (n)-[:R]->()", error_redeclare_node),
+            ("MATCH n=() CREATE (n)-[:R]->()", error_path_node),
+            ("MATCH ()-[n]->() MERGE (n)-[:R]->()", error_node_relationship),
             ("MATCH (n)-[:R]->() MERGE ()-[n:R]->()", error_redeclare_in_merge),
+            ("MATCH n=() MERGE (n)-[:R]->()", error_path_node),
             # Modify matched entity
             # ("MATCH (n)-[]->() CREATE (n:L)-[:R]->()", error_props_in_create),
             # ("MATCH (n)-[]->() CREATE (n {v:1})-[:R]->()", error_props_in_create),
