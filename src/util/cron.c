@@ -23,6 +23,7 @@ typedef struct {
 typedef struct {
 	bool alive;                   // indicates cron is active
 	heap_t *tasks;                // min heap of cron tasks
+	CRON_TASK * volatile current_task;      // current task being executed
 	pthread_mutex_t mutex;        // mutex control access to tasks
 	pthread_mutex_t condv_mutex;  // mutex control access to condv
 	pthread_cond_t condv;         // conditional variable
@@ -113,6 +114,18 @@ static bool CRON_RemoveTask
 	return res != NULL;
 }
 
+static bool CRON_RemoveCurrentTask
+(
+	const CRON_TASK *t
+) {
+	ASSERT(t != NULL);
+
+	pthread_mutex_lock(&cron->mutex);
+	cron->current_task = Heap_remove_item(cron->tasks, t);
+	pthread_mutex_unlock(&cron->mutex);
+	return cron->current_task != NULL;
+}
+
 static void CRON_InsertTask
 (
 	CRON_TASK *t
@@ -160,13 +173,14 @@ static void *Cron_Run
 		// execute due tasks
 		CRON_TASK *task = NULL;
 		while((task = CRON_Peek()) && CRON_TaskDue(task)) {
-			if(!CRON_RemoveTask(task)) {
+			if(!CRON_RemoveCurrentTask(task)) {
 				// task is aborted
 				continue;
 			}
 
 			// perform and free task
 			CRON_PerformTask(task);
+			cron->current_task = NULL;
 			CRON_FreeTask(task);
 		}
 
@@ -246,6 +260,8 @@ void Cron_AbortTask
 
 	// try remove the task
 	if(!CRON_RemoveTask(task)) {
+		// task is currently being performed, wait for it to finish
+		while (cron->current_task == task) { }
 		// task performed
 		return;
 	}
