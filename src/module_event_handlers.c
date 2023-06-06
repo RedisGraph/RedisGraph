@@ -38,14 +38,25 @@ uint aux_field_counter = 0 ;
 // holds the id of the Redis Main thread in order to figure out the context the fork is running on
 static pthread_t redis_main_thread_id;
 
-// this callback invokes once rename for a graph is done. Since the key value is a graph context
-// which saves the name of the graph for later key accesses, this data must be consistent with the key name,
-// otherwise, the graph context will remain with the previous graph name, and a key access to this name might
-// yield an empty key or wrong value. This method changes the graph name value at the graph context to be
+// this callback invokes once rename for a graph is done
+// since the key value is a graph context
+// which saves the name of the graph for later key accesses
+// this data must be consistent with the key name
+// otherwise the graph context will remain with the previous graph name
+// and a key access to this name might yield an empty key or wrong value
+// this method changes the graph name value at the graph context to be
 // consistent with the key name
-static int _RenameGraphHandler(RedisModuleCtx *ctx, int type, const char *event,
-							   RedisModuleString *key_name) {
-	if(type != REDISMODULE_NOTIFY_GENERIC) return REDISMODULE_OK;
+static int _GenericKeyspaceHandler
+(
+	RedisModuleCtx *ctx,
+	int type,
+	const char *event,
+	RedisModuleString *key_name
+) {
+	if(type != REDISMODULE_NOTIFY_GENERIC) {
+		return REDISMODULE_OK;
+	}
+
 	if(strcasecmp(event, "RENAME_TO") == 0) {
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, key_name, REDISMODULE_WRITE);
 		if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
@@ -56,6 +67,14 @@ static int _RenameGraphHandler(RedisModuleCtx *ctx, int type, const char *event,
 		}
 		RedisModule_CloseKey(key);
 	}
+
+	else if(strcasecmp(event, "DEL") == 0) {
+		// TODO: in Redis 7.2 we could use REDISMODULE_EVENT_KEY to register
+		// for a more convenient key event notification
+		const char *graph_name = RedisModule_StringPtrLen(key_name, NULL);
+		Globals_RemoveGraphByName(graph_name);
+	}
+
 	return REDISMODULE_OK;
 }
 
@@ -200,9 +219,10 @@ static void _CreateKeySpaceMetaKeys
 	GraphContext *gc = NULL;
 	Globals_ScanGraphs(&it);
 
-	while((gc = GraphIterator_Next(&it)) != NULL) _CreateGraphMetaKeys(ctx, gc);
-
-	GraphIterator_Free(&it);
+	while((gc = GraphIterator_Next(&it)) != NULL) {
+		_CreateGraphMetaKeys(ctx, gc);
+		GraphContext_DecreaseRefCount(gc);
+	}
 }
 
 // delete the meta keys for each graph in the keyspace
@@ -219,16 +239,24 @@ static void _ClearKeySpaceMetaKeys
 
 	while((gc = GraphIterator_Next(&it)) != NULL) {
 		_DeleteGraphMetaKeys(ctx, gc, decode);
+		GraphContext_DecreaseRefCount(gc);
 	}
-
-	GraphIterator_Free(&it);
 }
 
-static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
-							void *data) {
-	// reset `aux_field_counter` upon handeling FLUSH-ALL
-	if(eid.id == REDISMODULE_EVENT_FLUSHDB &&
-	   subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
+static void _FlushDBHandler
+(
+	RedisModuleCtx *ctx,
+	RedisModuleEvent eid,
+	uint64_t subevent,
+	void *data
+) {
+	ASSERT(eid.id == REDISMODULE_EVENT_FLUSHDB);
+
+	if(subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
+		// clear global graphs tracking
+		Globals_ClearGraphs();
+
+		// reset `aux_field_counter`
 		aux_field_counter = 0;
 	}
 }
@@ -265,15 +293,15 @@ static void _ReplicationRoleChangedEventHandler
 		// now master enable constraints
 		while((gc = GraphIterator_Next(&it)) != NULL) {
 			GraphContext_EnableConstrains(gc);
+			GraphContext_DecreaseRefCount(gc);
 		}
 	} else if (subevent == REDISMODULE_EVENT_REPLROLECHANGED_NOW_REPLICA) {
 		// now slave disable constraints
 		while((gc = GraphIterator_Next(&it)) != NULL) {
 			GraphContext_DisableConstrains(gc);
+			GraphContext_DecreaseRefCount(gc);
 		}
 	}
-
-	GraphIterator_Free(&it);
 }
 
 // server persistence event handler
@@ -362,24 +390,25 @@ static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 			_ShutdownEventHandler);
 	ASSERT(res == REDISMODULE_OK);
 
+	res = RedisModule_SubscribeToServerEvent(ctx,
+			RedisModuleEvent_Persistence,
+			_PersistenceEventHandler);
+	ASSERT(res == REDISMODULE_OK);
+
 	// TODO: try to use RedisModuleEvent_ModuleChange to start cron
 	//res = RedisModule_SubscribeToServerEvent(ctx,
 	//		RedisModuleEvent_ModuleChange,
 	//		_ModuleLoadedHandler);
 	//ASSERT(res == REDISMODULE_OK);
 
-	res = RedisModule_SubscribeToServerEvent(ctx,
-			RedisModuleEvent_Persistence,
-			_PersistenceEventHandler);
-	ASSERT(res == REDISMODULE_OK);
+	//	RedisModule_SubscribeToServerEvent(ctx,
+	//			RedisModuleEvent_ReplicationRoleChanged,
+	//			_ReplicationRoleChangedEventHandler);
 
 	RedisModule_SubscribeToKeyspaceEvents(ctx,
 			REDISMODULE_NOTIFY_GENERIC,
-			_RenameGraphHandler);
+			_GenericKeyspaceHandler);
 
-//	RedisModule_SubscribeToServerEvent(ctx,
-//			RedisModuleEvent_ReplicationRoleChanged,
-//			_ReplicationRoleChangedEventHandler);
 }
 
 //------------------------------------------------------------------------------
@@ -420,8 +449,9 @@ static void RG_ForkPrepare() {
 		// synchronize all matrices, make sure they're in a consistent state
 		// do not force-flush as this can take awhile
 		Graph_ApplyAllPending(g, false);
+
+		GraphContext_DecreaseRefCount(gc);
 	}
-	GraphIterator_Free(&it);
 }
 
 // after fork at parent
@@ -439,9 +469,8 @@ static void RG_AfterForkParent() {
 
 	while((gc = GraphIterator_Next(&it)) != NULL) {
 		Graph_ReleaseLock(gc->g);
+		GraphContext_DecreaseRefCount(gc);
 	}
-
-	GraphIterator_Free(&it);
 }
 
 // after fork at child
@@ -501,6 +530,6 @@ void ModuleEventHandler_AUXAfterKeyspaceEvent(void) {
 
 void RegisterEventHandlers(RedisModuleCtx *ctx) {
 	_RegisterForkHooks();       // set up hooks for forking logic to prevent bgsave deadlocks
-	_RegisterServerEvents(ctx); // set up hooks for rename and server events on Redis 6 and up
+	_RegisterServerEvents(ctx); // set up hooks for del/rename and server events
 }
 

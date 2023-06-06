@@ -49,6 +49,12 @@ void Globals_RemoveGraph
 	GraphContext *gc  // graph to remove
 );
 
+// remove a graph by its name
+void Globals_RemoveGraphByName
+(
+	const char *name  // graph name to remove
+);
+
 // initialize iterator over graphs in keyspace
 void Globals_ScanGraphs(GraphIterator *it);
 
@@ -67,9 +73,6 @@ GraphContext *GraphIterator_Next
 	GraphIterator *it  // iterator to advance
 );
 
-// free iterator
-void GraphIterator_Free
-(
-	GraphIterator *it  // iterator to free
-);
+// clear all tracked graphs
+void Globals_ClearGraphs(void);
 

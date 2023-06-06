@@ -173,88 +173,89 @@ void CronTask_streamFinishedQueries
 	}
 
 	// start stopwatch
-	double deadline = 2;  // 2ms
+	double deadline = 3;  // 3ms
 	simple_tic(ctx->stopwatch);
 
 	uint32_t max_query_count = 0;  // determine max number of queries to collect
 	Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_query_count);
 
+	GraphIterator it;
+	Globals_ScanGraphs(&it);
+
+	// pick up from where we've left
+	GraphIterator_Seek(&it, ctx->graph_idx);
+
 	GraphContext *gc = NULL;
 
 	// as long as we've got processing time
 	while(TIMER_GET_ELAPSED_MILLISECONDS(ctx->stopwatch) < deadline) {
-		// pick up from where we've left
-		// for each graph in the keyspace
-		GraphIterator it;
-		Globals_ScanGraphs(&it);
-		GraphIterator_Seek(&it, ctx->graph_idx++);
+		ctx->graph_idx++;  // prepare next iteration
+
+		// pull iterator
 		gc = GraphIterator_Next(&it);
 
 		// iterator depleted
 		if((gc) == NULL) {
-			GraphIterator_Free(&it);
 			break;
 		}
 
+		// get graph's queries log
 		QueriesLog queries_log = gc->queries_log;
 
-		// skip graph if there are no new finished queries
-		if(QueriesLog_GetQueriesCount(queries_log) == 0) {
-			GraphIterator_Free(&it);
-			continue;
-		}
-
-		RedisModuleString* keyname = RedisModule_CreateStringPrintf(NULL,
-				"telematics{%s}", GraphContext_GetName(gc));
-
-		GraphIterator_Free(&it);
-
-		// acquire GIL
-		// RedisModule_ThreadSafeContextLock(rm_ctx);
-
-		//----------------------------------------------------------------------
-		// try to acquire GIL
-		//----------------------------------------------------------------------
-
-		uint8_t attempts = 8;  // maximum number of attempts to acquire the GIL
-		bool gil_acquired = false;
-
-		while(attempts > 0 && !gil_acquired) {
-			attempts--;
-			gil_acquired =
-				RedisModule_ThreadSafeContextTryLock(rm_ctx) == REDISMODULE_OK;
-		}
-
-		if(gil_acquired == true) {
-			CircularBuffer queries = QueriesLog_ResetQueries(queries_log);
+		// process logged queries
+		if(QueriesLog_GetQueriesCount(queries_log) > 0) {
 
 			//------------------------------------------------------------------
-			// stream queries
+			// try to acquire GIL
 			//------------------------------------------------------------------
 
-			RedisModuleKey *key = RedisModule_OpenKey(rm_ctx, keyname,
-					REDISMODULE_WRITE);
+			uint8_t attempts  = 8;  // max number of attempts to acquire the GIL
+			bool gil_acquired = false;
 
-			// make sure key is of type stream
-			if(RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_STREAM) {
-				// TODO: decide how to handle this...	
+			while(attempts > 0 && !gil_acquired) {
+				attempts--;
+				gil_acquired =
+					RedisModule_ThreadSafeContextTryLock(rm_ctx) == REDISMODULE_OK;
 			}
 
-			// add queries to stream, free individual queries
-			_stream_queries(rm_ctx, key, queries);
+			if(gil_acquired == true) {
+				CircularBuffer queries = QueriesLog_ResetQueries(queries_log);
 
-			// cap stream
-			RedisModule_StreamTrimByLength(key,
-					REDISMODULE_STREAM_TRIM_APPROX, max_query_count);
+				//--------------------------------------------------------------
+				// stream queries
+				//--------------------------------------------------------------
 
-			// clean up
-			RedisModule_CloseKey(key);
+				RedisModuleString* keyname =
+					RedisModule_CreateStringPrintf(NULL, "telematics{%s}",
+							GraphContext_GetName(gc));
 
-			// release GIL
-			RedisModule_ThreadSafeContextUnlock(rm_ctx);
+				RedisModuleKey *key = RedisModule_OpenKey(rm_ctx, keyname,
+						REDISMODULE_WRITE);
+
+				// make sure key is of type stream
+				int key_type = RedisModule_KeyType(key);
+				if(key_type == REDISMODULE_KEYTYPE_STREAM ||
+				   key_type == REDISMODULE_KEYTYPE_EMPTY) {
+					// add queries to stream
+					_stream_queries(rm_ctx, key, queries);
+
+					// cap stream
+					RedisModule_StreamTrimByLength(key,
+							REDISMODULE_STREAM_TRIM_APPROX, max_query_count);
+				} else {
+					// TODO: decide how to handle this...
+				}
+
+				// clean up
+				RedisModule_CloseKey(key);
+				RedisModule_FreeString(rm_ctx, keyname);
+
+				// release GIL
+				RedisModule_ThreadSafeContextUnlock(rm_ctx);
+			}
 		}
 
-		RedisModule_FreeString(rm_ctx, keyname);
+		GraphContext_DecreaseRefCount(gc);
 	}
 
 	RedisModule_FreeThreadSafeContext(rm_ctx);
@@ -271,11 +272,11 @@ void CronTask_streamFinishedQueries
 
 	bool speed_up = (gc != NULL);
 	if(speed_up) {
-		// reduce delay, hard limit 10ms
-		_pdata->when = MAX(10, ctx->when - 1);
+		// reduce delay, lower limit: 250ms
+		_pdata->when = (250 + ctx->when) / 2;
 	} else {
-		// increase delay, hard limit 100ms
-		_pdata->when = MIN(100, ctx->when + 1);
+		// increase delay, upper limit: 1sec
+		_pdata->when = (1000 + ctx->when) / 2;
 	}
 
 	// re-add task to CRON

@@ -18,23 +18,24 @@ static void *_GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	GraphContext *gc = NULL;
 
 	if(encver > GRAPH_ENCODING_VERSION_LATEST) {
-		// Not forward compatible.
+		// not forward compatible
 		printf("Failed loading Graph, RedisGraph version (%d) is not forward compatible.\n",
 			   REDISGRAPH_MODULE_VERSION);
 		return NULL;
-		// Not backward compatible.
+		// not backward compatible
 	} else if(encver < GRAPHMETA_TYPE_DECODE_MIN_V) {
 		printf("Failed loading Graph, RedisGraph version (%d) is not backward compatible with encoder version %d.\n",
 			   REDISGRAPH_MODULE_VERSION, encver);
 		return NULL;
-		// Previous version.
+		// previous version
 	} else if(encver < GRAPH_ENCODING_VERSION_LATEST) {
 		gc = Decode_Previous(rdb, encver);
 	} else {
-		// Current version.
+		// current version
 		gc = RdbLoadGraph(rdb);
 	}
-	// Add GraphContext to global array of graphs.
+
+	// add GraphContext to global array of graphs
 	GraphContext_RegisterWithModule(gc);
 	return gc;
 }

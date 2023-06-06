@@ -65,9 +65,6 @@ inline void GraphContext_DecreaseRefCount
 		bool async_delete;
 		Config_Option_get(Config_ASYNC_DELETE, &async_delete);
 
-		// remove graph context from global `graphs_in_keyspace` array
-		Globals_RemoveGraph(gc);
-
 		if(async_delete) {
 			// Async delete
 			// add deletion task to pool using force mode
@@ -133,15 +130,16 @@ GraphContext *GraphContext_New
 	return gc;
 }
 
-/* _GraphContext_Create tries to get a graph context, and if it does not exists, create a new one.
- * The try-get-create flow is done when module global lock is acquired, to enforce consistency
- * while BGSave is called. */
+// _GraphContext_Create tries to get a graph context
+// and if it does not exists, create a new one
+// the try-get-create flow is done when module global lock is acquired
+// to enforce consistency while BGSave is called
 static GraphContext *_GraphContext_Create
 (
 	RedisModuleCtx *ctx,
 	const char *graph_name
 ) {
-	// Create and initialize a graph context.
+	// create and initialize a graph context
 	GraphContext *gc = GraphContext_New(graph_name);
 	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name,
 			strlen(graph_name));
@@ -712,14 +710,18 @@ int GraphContext_DeleteIndex
 //------------------------------------------------------------------------------
 
 // register a new GraphContext for module-level tracking
-void GraphContext_RegisterWithModule(GraphContext *gc) {
-
-	// increase graph context ref count
-	GraphContext_IncreaseRefCount(gc);
+void GraphContext_RegisterWithModule
+(
+	GraphContext *gc
+) {
 	Globals_AddGraph(gc);
 }
 
-GraphContext *GraphContext_GetRegisteredGraphContext
+// retrive GraphContext from the global array
+// graph isn't registered, NULL is returned
+// graph's references count isn't increased!
+// this is OK as long as only a single thread has access to the graph
+GraphContext *GraphContext_UnsafeGetGraphContext
 (
 	const char *graph_name
 ) {
@@ -729,12 +731,12 @@ GraphContext *GraphContext_GetRegisteredGraphContext
 	GraphContext *gc = NULL;
 
 	while((gc = GraphIterator_Next(&it)) != NULL) {
-		if(strcmp(gc->graph_name, graph_name) == 0) {
+		bool match = (strcmp(gc->graph_name, graph_name) == 0);
+		GraphContext_DecreaseRefCount(gc);
+		if(match == true) {
 			break;
 		}
 	}
-
-	GraphIterator_Free(&it);
 
 	return gc;
 }

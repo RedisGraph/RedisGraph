@@ -77,6 +77,8 @@ void Globals_AddGraph
 
 	if(registered == false) {
 		// append graph
+		// increase graph context ref count
+		GraphContext_IncreaseRefCount(gc);
 		array_append(_globals.graphs_in_keyspace, gc);
 	}
 
@@ -91,19 +93,82 @@ void Globals_RemoveGraph
 ) {
 	ASSERT(gc != NULL);
 
-	// acuire write lock
-	pthread_rwlock_wrlock(&_globals.lock);
+	uint64_t i = 0;
+	uint64_t n = array_len(_globals.graphs_in_keyspace);
+
+	// no graphs, early return
+	if(n == 0) {
+		return;
+	}
+
+	// acuire read lock
+	pthread_rwlock_rdlock(&_globals.lock);
 
 	// search for graph
-	uint64_t n = array_len(_globals.graphs_in_keyspace);
-	for(uint64_t i = 0; i < n; i++) {
+	for(; i < n; i++) {
 		if(_globals.graphs_in_keyspace[i] == gc) {
-			// graph located, remove it
-			array_del_fast(_globals.graphs_in_keyspace, i);
 			break;
 		}
 	}
-	
+
+	// release lock
+	pthread_rwlock_unlock(&_globals.lock);
+
+	if(i != n) {
+		// acuire write lock
+		pthread_rwlock_wrlock(&_globals.lock);
+
+		// graph located, remove it
+		array_del_fast(_globals.graphs_in_keyspace, i);
+
+		// release lock
+		pthread_rwlock_unlock(&_globals.lock);
+	}
+}
+
+// remove a graph by its name
+void Globals_RemoveGraphByName
+(
+	const char *name  // graph name to remove
+) {
+	ASSERT(name != NULL);
+
+	// acuire read lock
+	pthread_rwlock_rdlock(&_globals.lock);
+
+	// search for graph
+	uint64_t i = 0;
+	uint64_t n = array_len(_globals.graphs_in_keyspace);
+	for(; i < n; i++) {
+		GraphContext *gc = _globals.graphs_in_keyspace[i];
+		if(strcmp(name, GraphContext_GetName(gc)) == 0) {
+			break;
+		}
+	}
+
+	// release lock
+	pthread_rwlock_unlock(&_globals.lock);
+
+	if(i != n) {
+		// acuire write lock
+		pthread_rwlock_wrlock(&_globals.lock);
+
+		// graph located, remove it
+		array_del_fast(_globals.graphs_in_keyspace, i);
+
+		// release lock
+		pthread_rwlock_unlock(&_globals.lock);
+	}
+}
+
+// clear all tracked graphs
+void Globals_ClearGraphs(void) {
+	// acquire write lock
+	pthread_rwlock_wrlock(&_globals.lock);
+
+	// clear graph tracking
+	array_clear(_globals.graphs_in_keyspace);
+
 	// release lock
 	pthread_rwlock_unlock(&_globals.lock);
 }
@@ -122,10 +187,6 @@ void Globals_Free(void) {
 void Globals_ScanGraphs(GraphIterator *it) {
 	ASSERT(it != NULL);
 	it->idx = 0;
-
-	// acquire READ lock
-	// will be freed once the iterator is freed
-	pthread_rwlock_rdlock(&_globals.lock);
 }
 
 // seek iterator to index
@@ -148,22 +209,22 @@ GraphContext *GraphIterator_Next
 
 	GraphContext *gc = NULL;
 
+	pthread_rwlock_rdlock(&_globals.lock);
+
+	// NOTICE:
+	// if caller doesn't hold the GIL thoughout the iterator scan
+	// it is possible for the scanning thread to miss keys which are deleted
+	// consider the iterator is at position 4 and graph at position 0 is deleted
+	// in which case array_del_fast will move the last graph (say index 9) to
+	// index 0. in this case the iterator will miss that migrated graph
 	if(it->idx < array_len(_globals.graphs_in_keyspace)) {
 		// prepare next call
 		gc = _globals.graphs_in_keyspace[it->idx++];
+		GraphContext_IncreaseRefCount(gc);
 	}
 
-	return gc;
-}
-
-// free iterator
-void GraphIterator_Free
-(
-	GraphIterator *it  // iterator to free
-) {
-	ASSERT(it != NULL);
-
-	// release lock
 	pthread_rwlock_unlock(&_globals.lock);
+
+	return gc;
 }
 

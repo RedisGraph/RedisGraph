@@ -314,11 +314,13 @@ void GraphContext_RegisterWithModule
 	GraphContext *gc
 );
 
-// retrive GraphContext from the global array, by name
-// if no such graph is registered, NULL is returned
-GraphContext *GraphContext_GetRegisteredGraphContext
+// retrive GraphContext from the global array
+// graph isn't registered, NULL is returned
+// graph's references count isn't increased!
+// this is OK as long as only a single thread has access to the graph
+GraphContext *GraphContext_UnsafeGetGraphContext
 (
-	const char *graph_name
+	const char *graph_name  // graph name
 );
 
 //------------------------------------------------------------------------------

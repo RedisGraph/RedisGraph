@@ -33,9 +33,8 @@ int Graph_List
 		const char *name = GraphContext_GetName(gc);
 		RedisModule_ReplyWithStringBuffer(ctx, name, strlen(name));
 		n++;
+		GraphContext_DecreaseRefCount(gc);
 	}
-
-	GraphIterator_Free(&it);
 
 	RedisModule_ReplySetArrayLength(ctx, n);
 
