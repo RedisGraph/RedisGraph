@@ -518,6 +518,7 @@ static VISITOR_STRATEGY _Validate_list_comprehension
 	// Visit expression
 	const cypher_astnode_t *exp = cypher_ast_list_comprehension_get_expression(n);
 	if(exp) {
+		// RETURN [x IN range(1,u) WHERE x > 3 | x ]
 		AST_Visitor_visit(exp, visitor);
 		if(ErrorCtx_EncounteredError()) {
 			goto cleanup;
@@ -527,6 +528,7 @@ static VISITOR_STRATEGY _Validate_list_comprehension
 	// Visit predicate
 	const cypher_astnode_t *pred = cypher_ast_list_comprehension_get_predicate(n);
 	if(pred) {
+		// RETURN [x IN range(1,10) WHERE u > 3 | x ]
 		AST_Visitor_visit(pred, visitor);
 		if(ErrorCtx_EncounteredError()) {
 			goto cleanup;
@@ -536,6 +538,7 @@ static VISITOR_STRATEGY _Validate_list_comprehension
 	// Visit eval
 	const cypher_astnode_t *eval = cypher_ast_list_comprehension_get_eval(n);
 	if(eval) {
+		// RETURN [x IN range(1,10) WHERE x > 3 | u ]
 		AST_Visitor_visit(eval, visitor);
 		if(ErrorCtx_EncounteredError()) {
 			goto cleanup;
@@ -1054,9 +1057,8 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 				// following are all illegal examples
 				// MATCH (a) RETURN [(b)-[b]->() | 0]"
 				// CREATE ()-[e]->()-[e]->()
-				// WITH 1 AS x MATCH ()-[x]->()
-				// MATCH ()-[e]->()-[e]->()
-				// MATCH was validated by _Validate_MATCH_Entities()
+				// MATCH (a) RETURN [()-[b]->()-[b]->() | 0]
+				// CYPHER_AST_MATCH was validated by _Validate_MATCH_Entities()
 				if(vctx->clause != CYPHER_AST_MATCH) {
 					if(alias_type == (void *)BOUNDED_EDGE) {
 						ErrorCtx_SetError("Cannot use the same relationship variable '%s'",

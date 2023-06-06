@@ -483,7 +483,17 @@ class testComprehensionFunctions(FlowTestsBase):
             ("MATCH (a) RETURN [b=()-[]->(b) | 0]", "The alias 'b' was specified for both a path and a node"),
             ("MATCH (a) RETURN [(a)-[:R]->() WHERE u | 0]", "u not defined"),
             ("MATCH (a) RETURN [(a)-[:R]->() | u]", "u not defined"),
+            ("MATCH (a) RETURN [()-[b]->()-[b]->() | 0]", "Cannot use the same relationship variable 'b'"),
         ]
         for query, expected_error in queries_with_errors:
             self._assert_exception(redis_graph, query, expected_error)
 
+    def test23_invalid_list_comprehension(self):
+        # test error detection of invalid pattern comprehension
+        queries_with_errors =  [
+            ("RETURN [x IN range(1,u) WHERE x > 3 | x ]","u not defined"),
+            ("RETURN [x IN range(1,5) WHERE x > u | x ]","u not defined"),
+            ("RETURN [x IN range(1,5) WHERE x > 3 | u ]","u not defined"),
+        ]
+        for query, expected_error in queries_with_errors:
+            self._assert_exception(redis_graph, query, expected_error)
