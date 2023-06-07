@@ -40,6 +40,8 @@ static bool _clause_is_eager
 	if(type == CYPHER_AST_RETURN || type == CYPHER_AST_WITH) {
 		return AST_ClauseContainsAggregation(clause);
 	}
+
+	return false;
 }
 
 // returns true if the given node will result in an execution-plan that will
@@ -54,14 +56,18 @@ static bool _node_is_eager
 	cypher_astnode_type_t type = cypher_astnode_type(node);
 	if(type == CYPHER_AST_QUERY) {
 		n_clauses = cypher_ast_query_nclauses(node);
-		get_clause = cypher_ast_query_get_clause;
+		// get_clause = cypher_ast_query_get_clause;
 	} else {
-		n_clauses = cypher_ast_call_subquery_nclauses(node);
-		get_clause = cypher_ast_call_subquery_get_clause;
+		n_clauses = cypher_ast_query_nclauses(
+			cypher_ast_call_subquery_get_query(node));
+		// get_clause = cypher_ast_call_subquery_get_clause;
 	}
 
 	for(uint i = 0; i < n_clauses; i++) {
-		const cypher_astnode_t *curr_clause = get_clause(node, i);
+		const cypher_astnode_t *curr_clause = type == CYPHER_AST_QUERY ?
+			cypher_ast_query_get_clause(node, i) :
+			cypher_ast_query_get_clause(
+				cypher_ast_call_subquery_get_query(node), i);
 		if(_clause_is_eager(curr_clause)) {
 			return true;
 		}
@@ -108,8 +114,10 @@ static void _replace_with_clause
 	char **names,                    // original bound vars
 	char **inter_names               // internal representation of bound vars
 ) {
+
 	const cypher_astnode_t *clause =
-		cypher_ast_call_subquery_get_clause(callsubquery, clause_idx);
+		cypher_ast_query_get_clause(
+			cypher_ast_call_subquery_get_query(callsubquery), clause_idx);
 
 	uint existing_projections_count = cypher_ast_with_nprojections(clause);
 	uint n_projections = array_len(inter_names) + existing_projections_count;
@@ -217,7 +225,8 @@ static void _replace_with_clause
 								range);
 
 	// replace original clause with fully populated one
-	cypher_ast_call_subquery_replace_clauses(callsubquery, new_clause,
+	cypher_ast_query_replace_clauses(
+		cypher_ast_call_subquery_get_query(callsubquery), new_clause,
 		clause_idx, clause_idx);
 }
 
@@ -315,34 +324,36 @@ static void _add_first_clause
 	// replace original clause with fully populated one
 	// -------------------------------------------------------------------------
 
-	uint n_clauses = cypher_ast_call_subquery_nclauses(callsubquery);
+	cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(
+		callsubquery);
+
+	uint n_clauses = cypher_ast_query_nclauses(subquery);
 	cypher_astnode_t *clauses[n_clauses + 1];
 	for(uint i = 0; i < first_ind; i++) {
 		clauses[i] = (cypher_astnode_t *)cypher_ast_clone(
-			cypher_ast_call_subquery_get_clause(callsubquery, i));
+			cypher_ast_query_get_clause(subquery, i));
 	}
 	clauses[first_ind] = new_clause;
 	for(uint i = first_ind + 1; i < n_clauses + 1; i++) {
 		clauses[i] =(cypher_astnode_t *)cypher_ast_clone(
-			cypher_ast_call_subquery_get_clause(callsubquery, i-1));
+			cypher_ast_query_get_clause(subquery, i-1));
 	}
 
-	cypher_astnode_t *new_callsubquery = cypher_ast_call_subquery(clauses,
-		n_clauses + 1, clauses, n_clauses + 1, range);
+	cypher_astnode_t *q = cypher_ast_query(NULL, 0, clauses, n_clauses, clauses,
+		n_clauses, range);
+
+	cypher_astnode_t *new_callsubquery = cypher_ast_call_subquery(q, range);
 
 	// replace the old subquery with the new one
 	// TODO: Consider using replace_clause instead of set_clause (seal leaks)
 	cypher_astnode_type_t type = cypher_astnode_type(wrapping_clause);
 	if(type == CYPHER_AST_QUERY) {
-		// cypher_ast_query_set_clause(wrapping_clause, new_callsubquery,
-		//     callsubquery_ind);
 		cypher_ast_query_replace_clauses(wrapping_clause, new_callsubquery,
 			callsubquery_ind, callsubquery_ind);
 	} else if (type == CYPHER_AST_CALL_SUBQUERY){
-		// cypher_ast_call_subquery_set_clause(wrapping_clause, new_callsubquery,
-		//     callsubquery_ind);
-		cypher_ast_call_subquery_replace_clauses(wrapping_clause, new_callsubquery,
-			callsubquery_ind, callsubquery_ind);
+		cypher_ast_query_replace_clauses(
+			cypher_ast_call_subquery_get_query(wrapping_clause),
+			new_callsubquery, callsubquery_ind, callsubquery_ind);
 	} else {
 		// shouldn't get here
 		ASSERT(false);
@@ -359,10 +370,11 @@ static void _replace_intermediate_with_clauses
 	uint last_ind,                      // index of last relevant clause
 	char **inter_names                  // internal representation of bound vars
 ) {
+	cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(callsubquery);
 	for(uint i = first_ind + 1; i < last_ind; i++) {
 		cypher_astnode_t *clause =
-			(cypher_astnode_t *)cypher_ast_call_subquery_get_clause(
-				callsubquery, i);
+			(cypher_astnode_t *)cypher_ast_query_get_clause(
+				subquery, i);
 		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
 			_replace_with_clause(callsubquery, i, inter_names,
 				inter_names);
@@ -382,8 +394,8 @@ static void _replace_return_clause
 	// we know that the last clause in query is a RETURN clause, which we want
 	// to replace
 	cypher_astnode_t *clause =
-		(cypher_astnode_t *)cypher_ast_call_subquery_get_clause(callsubquery,
-			last_ind-1);
+		(cypher_astnode_t *)cypher_ast_query_get_clause(
+			cypher_ast_call_subquery_get_query(callsubquery), last_ind-1);
 
 	uint n_names = array_len(names);
 	uint n_inter_names = array_len(inter_names);
@@ -486,7 +498,8 @@ static void _replace_return_clause
 								range);
 
 	// replace original clause with fully populated one
-	cypher_ast_call_subquery_replace_clauses(callsubquery, new_clause,
+	cypher_ast_query_replace_clauses(
+		cypher_ast_call_subquery_get_query(callsubquery), new_clause,
 		last_ind - 1, last_ind - 1);
 }
 
@@ -526,9 +539,10 @@ static void _rewrite_projections
 	// -------------------------------------------------------------------------
 
 	// if there is a UNION clause in the subquery, each branch must be handled
+	cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(clause);
 	uint *union_indices = AST_SubqueryGetClauseIndices(clause,
 		CYPHER_AST_UNION);
-	uint clause_count = cypher_ast_call_subquery_nclauses(clause);
+	uint clause_count = cypher_ast_query_nclauses(subquery);
 	array_append(union_indices, clause_count);
 	uint n_union_branches = array_len(union_indices);
 
@@ -538,7 +552,7 @@ static void _rewrite_projections
 
 		// check if first clause is a WITH clause
 		const cypher_astnode_t *first_clause =
-			cypher_ast_call_subquery_get_clause(clause, first_ind);
+			cypher_ast_query_get_clause(subquery, first_ind);
 		bool first_is_with =
 			cypher_astnode_type(first_clause) == CYPHER_AST_WITH;
 		if(first_is_with) {
@@ -562,8 +576,10 @@ static void _rewrite_projections
 			clause = (cypher_astnode_t *)
 				(cypher_astnode_type(wrapping_clause) == CYPHER_AST_QUERY ?
 					cypher_ast_query_get_clause(wrapping_clause, clause_ind) :
-					cypher_ast_call_subquery_get_clause(wrapping_clause,
+					cypher_ast_query_get_clause(
+						cypher_ast_call_subquery_get_query(wrapping_clause),
 						clause_ind));
+			subquery = cypher_ast_call_subquery_get_query(clause);
 		}
 
 		// for every intermediate WITH clause (all but first one),
@@ -603,21 +619,19 @@ static bool _AST_RewriteCallSubqueryClause
 	uint wrapping_subclauses_count =
 		cypher_astnode_type(wrapping_clause) == CYPHER_AST_QUERY ?
 			cypher_ast_query_nclauses(wrapping_clause) :
-			cypher_ast_call_subquery_nclauses(wrapping_clause);
+			cypher_ast_query_nclauses(
+				cypher_ast_call_subquery_get_query(wrapping_clause));
 
-	uint subclauses_count = cypher_ast_call_subquery_nclauses(clause);
+	cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(clause);
+	uint subclauses_count = cypher_ast_query_nclauses(subquery);
 
 	// check if the subquery will result in an eager and returning
 	// execution-plan
 	const cypher_astnode_t *last_clause =
-		cypher_ast_call_subquery_get_clause(clause, subclauses_count - 1);
+		cypher_ast_query_get_clause(subquery, subclauses_count - 1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
 
 	bool is_eager = _node_is_eager(clause);
-	// bool is_eager = false;
-	// for(uint i = 0; i < subclauses_count && !is_eager; i ++) {
-	// 	is_eager |= _nodeIsEager(cypher_astnode_get_child(clause, i));
-	// }
 
 	if(is_eager && is_returning) {
 		_rewrite_projections(wrapping_clause, clause, clause_ind, start, end,
@@ -651,12 +665,12 @@ static void _AST_RewriteCallSubqueryClauses
 
 	uint nclauses;
 	const cypher_astnode_t *(*get_clause)(const cypher_astnode_t *, uint);
+
 	if(type == CYPHER_AST_QUERY) {
 		nclauses = cypher_ast_query_nclauses(wrapping_clause);
-		get_clause = cypher_ast_query_get_clause;
 	} else {
-		nclauses = cypher_ast_call_subquery_nclauses(wrapping_clause);
-		get_clause = cypher_ast_call_subquery_get_clause;
+		nclauses = cypher_ast_query_nclauses(
+			cypher_ast_call_subquery_get_query(wrapping_clause));
 	}
 
 	// go over clauses. Upon finding a Call {} clause, rewrite it recursively
@@ -664,8 +678,11 @@ static void _AST_RewriteCallSubqueryClauses
 	int orig_len = array_len(*outer_inter_names);
 
 	for(uint i = 0; i < nclauses; i++) {
-		cypher_astnode_t *clause = (cypher_astnode_t *)get_clause(
-			wrapping_clause, i);
+		cypher_astnode_t *clause = (cypher_astnode_t *)
+			(type == CYPHER_AST_QUERY ?
+				cypher_ast_query_get_clause(wrapping_clause, i) :
+				cypher_ast_query_get_clause(
+					cypher_ast_call_subquery_get_query(wrapping_clause), i));
 		if(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY) {
 			// if the subquery is returning & eager, rewrite its projections
 			bool clause_rewritten = _AST_RewriteCallSubqueryClause(
@@ -673,7 +690,12 @@ static void _AST_RewriteCallSubqueryClauses
 
 			// update clause, in case it was replaced
 			if(clause_rewritten) {
-				clause = (cypher_astnode_t *)get_clause(wrapping_clause, i);
+				cypher_astnode_t *clause = (cypher_astnode_t *)
+					(type == CYPHER_AST_QUERY ?
+						cypher_ast_query_get_clause(wrapping_clause, i) :
+						cypher_ast_query_get_clause(
+							cypher_ast_call_subquery_get_query(wrapping_clause),
+							i));
 			}
 
 			// `outer_inter_names` now contains the internal representation of

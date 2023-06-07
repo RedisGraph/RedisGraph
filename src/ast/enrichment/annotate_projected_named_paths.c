@@ -317,12 +317,13 @@ static void _annotate_callsubquery_clause_projected_named_path
 	rax *identifier_map = raxNew();
 
 	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, 1);
-	uint nclauses = cypher_ast_call_subquery_nclauses(callsubquery_clause);
+	const cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(
+		callsubquery_clause);
+	uint nclauses = cypher_ast_query_nclauses(subquery);
 
 	for(uint i = 0; i < nclauses; i++) {
 		array_append(clauses,
-			(cypher_astnode_t *)cypher_ast_call_subquery_get_clause(
-				callsubquery_clause, i));
+			(cypher_astnode_t *)cypher_ast_query_get_clause(subquery, i));
 	}
 	struct cypher_input_range range = {0};
 	cypher_astnode_t *query_node =

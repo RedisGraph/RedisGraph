@@ -281,11 +281,12 @@ uint *AST_SubqueryGetClauseIndices
 	cypher_astnode_type_t clause_type       // clause type
 ) {
 	uint *clause_indices = array_new(uint, 1);
-	uint clause_count = cypher_ast_call_subquery_nclauses(call_subquery);
+	const cypher_astnode_t *subquery =
+		cypher_ast_call_subquery_get_query(call_subquery);
+	uint clause_count = cypher_ast_query_nclauses(subquery);
 	for(uint i = 0; i < clause_count; i ++) {
-		if(cypher_astnode_type(
-			cypher_ast_call_subquery_get_clause(call_subquery, i)) ==
-			clause_type) {
+		if(cypher_astnode_type(cypher_ast_query_get_clause(subquery, i)) ==
+		   clause_type) {
 				array_append(clause_indices, i);
 		}
 	}

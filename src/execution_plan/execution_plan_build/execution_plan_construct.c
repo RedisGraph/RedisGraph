@@ -317,24 +317,7 @@ static AST *_CreateASTFromCallSubquery
 	// TODO: Make sure you need this.
 	subquery_ast->anot_ctx_collection = orig_ast->anot_ctx_collection;
 
-	// build the query, to be the root of the temporary AST
-	uint clause_count = cypher_astnode_nchildren(clause);
-	cypher_astnode_t *clauses[clause_count];
-
-	// explicitly collect all child nodes from the clause.
-	for(uint i = 0; i < clause_count; i ++) {
-		clauses[i] = (cypher_astnode_t *)cypher_astnode_get_child(clause, i);
-	}
-	struct cypher_input_range range = {0};
-
-	cypher_astnode_t *query = cypher_ast_query(NULL,
-								0,
-								clauses,
-								clause_count,
-								clauses,
-								clause_count,
-								range);
-	subquery_ast->root = query;
+	subquery_ast->root = cypher_ast_call_subquery_get_query(clause);
 
 	return subquery_ast;
 }
@@ -501,7 +484,9 @@ static void _add_empty_projections
 	const cypher_astnode_t *clause,  // call subquery clause
 	OpBase **deepest_ops             // deepest op in each of the UNION branches
 ) {
-	uint clause_count = cypher_ast_call_subquery_nclauses(clause);
+	const cypher_astnode_t *subquery =
+		cypher_ast_call_subquery_get_query(clause);
+	uint clause_count = cypher_ast_query_nclauses(subquery);
 	uint *union_indices = AST_GetClauseIndices(subquery_ast,
 		CYPHER_AST_UNION);
 	array_append(union_indices, clause_count);
@@ -512,7 +497,7 @@ static void _add_empty_projections
 
 	for(uint i = 0; i < n_union_branches; i++) {
 		// find first clause in the relevant branch
-		first_clause = cypher_ast_call_subquery_get_clause(clause, first_ind);
+		first_clause = cypher_ast_query_get_clause(subquery, first_ind);
 		if(cypher_astnode_type(first_clause) != CYPHER_AST_WITH) {
 			deepest = array_elem(deepest_ops, i);
 			*deepest = _AddEmptyProjection(*deepest);
