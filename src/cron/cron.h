@@ -40,7 +40,7 @@ CronTaskHandle Cron_AddTask
 );
 
 // aborts the CRON task passed (if found).
-// this function doesn't wait until the task is completed if it has
+// this function wait until the task is completed if it has
 // already started at the moment of invocation.
 bool Cron_AbortTask
 (

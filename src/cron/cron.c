@@ -29,12 +29,13 @@ typedef struct {
 
 // CRON object
 typedef struct {
-	bool alive;                   // indicates cron is active
-	heap_t *tasks;                // min heap of cron tasks
-	pthread_mutex_t mutex;        // mutex control access to tasks
-	pthread_mutex_t condv_mutex;  // mutex control access to condv
-	pthread_cond_t condv;         // conditional variable
-	pthread_t thread;             // thread running cron main loop
+	bool alive;                        // indicates cron is active
+	heap_t *tasks;                     // min heap of cron tasks
+	CRON_TASK* volatile current_task;  // current task being executed
+	pthread_mutex_t mutex;             // mutex control access to tasks
+	pthread_mutex_t condv_mutex;       // mutex control access to condv
+	pthread_cond_t condv;              // conditional variable
+	pthread_t thread;                  // thread running cron main loop
 } CRON;
 
 // single static CRON instance, initialized at CRON_Start
@@ -121,6 +122,18 @@ static bool CRON_RemoveTask
 	return res != NULL;
 }
 
+static bool CRON_RemoveCurrentTask
+(
+	const CRON_TASK *t  // task to remove
+) {
+	ASSERT(t != NULL);
+
+	pthread_mutex_lock(&cron->mutex);
+	cron->current_task = Heap_remove_item(cron->tasks, t);
+	pthread_mutex_unlock(&cron->mutex);
+	return cron->current_task != NULL;
+}
+
 static void CRON_InsertTask
 (
 	CRON_TASK *t
@@ -174,13 +187,14 @@ static void *Cron_Run
 		// execute due tasks
 		CRON_TASK *task = NULL;
 		while((task = CRON_Peek()) && CRON_TaskDue(task)) {
-			if(!CRON_RemoveTask(task)) {
+			if(!CRON_RemoveCurrentTask(task)) {
 				// task is aborted
 				continue;
 			}
 
 			// perform and free task
 			CRON_PerformTask(task);
+			cron->current_task = NULL;
 			CRON_FreeTask(task);
 		}
 
@@ -215,18 +229,21 @@ bool Cron_Start(void) {
 	return res;
 }
 
+// stops CRON
+// clears all tasks and waits for thread to terminate
 void Cron_Stop(void) {
 	ASSERT(cron != NULL);
 
-	// Stop cron main loop
+	// stop cron main loop
 	cron->alive = false;
 	CRON_WakeUp();
 
-	// Wait for thread to terminate
+	// wait for thread to terminate
 	pthread_join(cron->thread, NULL);
 
 	clear_tasks();
 
+	// free resources
 	Heap_free(cron->tasks);
 	pthread_mutex_destroy(&cron->mutex);
 	pthread_mutex_destroy(&cron->condv_mutex);
@@ -259,9 +276,11 @@ CronTaskHandle Cron_AddTask
 	return (uintptr_t)task;
 }
 
+// tries to abort given task
+// in case task is currently being executed, it will wait for it to finish
 bool Cron_AbortTask
 (
-	CronTaskHandle t
+	CronTaskHandle t  // task to abort
 ) {
 	ASSERT(cron != NULL);
 
@@ -269,13 +288,17 @@ bool Cron_AbortTask
 
 	// try remove the task
 	if(!CRON_RemoveTask(task)) {
-		// task performed
+		// in case task is currently being performed, wait for it to finish
+		while (cron->current_task == task) { }
+
+		// task wan't aborted
 		return false;
 	}
 	
 	// free task
 	CRON_FreeTask(task);
 
+	// managed to abort task
 	return true;
 }
 
