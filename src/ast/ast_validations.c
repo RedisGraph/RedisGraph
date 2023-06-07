@@ -26,6 +26,7 @@ typedef struct {
 	rax *defined_identifiers;      // identifiers environment
 	cypher_astnode_type_t clause;  // top-level clause type
 	is_union_all union_all;        // union type (regular or ALL)
+	rax *intermediate_identifiers; // identifiers which are in creation in the pattern
 } validations_ctx;
 
 typedef enum {
@@ -473,7 +474,7 @@ static AST_Validation _Validate_referred_identifier
 ) {
 	int len = strlen(identifier);
 	if(raxFind(defined_identifiers, (unsigned char *)identifier, len) == raxNotFound) {
-		ErrorCtx_SetError("%.*s not defined", len, identifier);
+		ErrorCtx_SetError("%.*s not defined ref", len, identifier);
 		return AST_INVALID;
 	}
 
@@ -919,7 +920,8 @@ static AST_Validation _ValidateInlinedProperties
 	const cypher_astnode_t *props, // ast-node representing the map
 	cypher_astnode_type_t clause,  // top-level clause type
 	const char *alias,             // alias of current node/edge
-	rax *defined_identifiers       // bound variables
+	rax *defined_identifiers,      // bound variables
+	rax *intermediate_identifiers  // variables that are in creation
 ) {
 	if(props == NULL) {
 		return AST_VALID;
@@ -953,15 +955,6 @@ static AST_Validation _ValidateInlinedProperties
 			const char *identifier_name = cypher_ast_identifier_get_name(prop_val);
 			uint len = strlen(identifier_name);
 
-			// emit an error if the property reference to the same node/edge
-			// that is under validation
-			// CREATE (a {v:a})
-			// CREATE ()-[r {v:r}]->()
-			// if(alias != NULL && strcmp(alias, identifier_name) == 0) {
-			// 		ErrorCtx_SetError("Attempted to access undefined node/edge");
-			// 		return AST_INVALID;
-			// }
-
 			// emit an error if the property value is of type node or edge
 			// CREATE (a:A) WITH a CREATE (b:B {v:a})
 			void *identifier_type = raxFind(defined_identifiers,
@@ -981,7 +974,8 @@ static AST_Validation _ValidateInlinedProperties
 				return AST_INVALID;
 			}
 		} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
-			const cypher_astnode_t *exp = cypher_ast_property_operator_get_expression(prop_val);
+			const cypher_astnode_t *exp =
+				cypher_ast_property_operator_get_expression(prop_val);
 			if(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER) {
 				const char *identifier_name = cypher_ast_identifier_get_name(exp);
 				uint len = strlen(identifier_name);
@@ -989,24 +983,27 @@ static AST_Validation _ValidateInlinedProperties
 				// emit an error if the property reference to a property of the same node
 				// CREATE (a {v:a.p})
 				// CREATE ()-[r {v:r.x}]->()
-				if(clause != CYPHER_AST_MATCH && alias != NULL && strcmp(alias, identifier_name) == 0) {
+				if(clause != CYPHER_AST_MATCH && alias != NULL &&
+					strcmp(alias, identifier_name) == 0) {
 					ErrorCtx_SetError("%.*s not defined", len, identifier_name);
 				 	return AST_INVALID;
 				}
 
 				// emit an error if the property references to an "intermediate" node or edge
 				// CREATE (a:A), (b:B {v:a.v})
-				// void *identifier_type = raxFind(defined_identifiers, (unsigned char *)identifier_name,
-				// 							strlen(identifier_name));
+				void *identifier_type = raxFind(intermediate_identifiers,
+					(unsigned char *)identifier_name, len);
 
-				// if(identifier_type != NULL &&
-				// 	(identifier_type == (void *)BOUNDED_NODE || identifier_type == (void *)BOUNDED_EDGE)) {
-				// 	ErrorCtx_SetError("Attempted to access undefined attribute");
-				// 	return AST_INVALID;
-				// }
+				if(identifier_type != NULL &&
+					(identifier_type == (void *)BOUNDED_NODE ||
+					identifier_type == (void *)BOUNDED_EDGE)) {
+					ErrorCtx_SetError("%.*s not defined", len, identifier_name);
+					return AST_INVALID;
+				}
 			}
 		} else if (type == CYPHER_AST_SUBSCRIPT_OPERATOR) {
-			const cypher_astnode_t *exp = cypher_ast_subscript_operator_get_expression(prop_val);
+			const cypher_astnode_t *exp =
+				cypher_ast_subscript_operator_get_expression(prop_val);
 			if(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER) {
 				const char *identifier_name = cypher_ast_identifier_get_name(exp);
 				uint len = strlen(identifier_name);
@@ -1025,6 +1022,26 @@ static AST_Validation _ValidateInlinedProperties
 	}
 
 	return AST_VALID;
+}
+
+// validate a pattern
+static VISITOR_STRATEGY _Validate_pattern
+(
+	const cypher_astnode_t *n,  // ast-node (rel-pattern)s
+	bool start,                 // first traversal
+	ast_visitor *visitor        // visitor
+) {
+	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
+
+	// Free intermediate identifiers because a new pattern will be validated
+	raxFree(vctx->intermediate_identifiers);
+	vctx->intermediate_identifiers = raxNew();
+
+	if(!start) {
+		return VISITOR_CONTINUE;
+	}
+
+	return VISITOR_RECURSE;
 }
 
 // validate a relation-pattern
@@ -1051,6 +1068,15 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 				// register edge under its alias
 				raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
 						strlen(alias), (void *)BOUNDED_EDGE, NULL);
+
+				// if it is a CREATE clause register edge as an intermediate
+				// identifier because it is under creation
+				if(vctx->clause == CYPHER_AST_CREATE) {
+					raxInsert(vctx->intermediate_identifiers,
+						(unsigned char *)alias, strlen(alias),
+						(void *)BOUNDED_EDGE, NULL);
+				}
+
 				return VISITOR_CONTINUE;
 			} else {
 				// we can't register an edge more than once
@@ -1106,7 +1132,8 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 	}
 
 	if(_ValidateInlinedProperties(cypher_ast_rel_pattern_get_properties(n),
-			vctx->clause, alias, vctx->defined_identifiers) == AST_INVALID) {
+			vctx->clause, alias, vctx->defined_identifiers,
+			vctx->intermediate_identifiers) == AST_INVALID) {
 		return VISITOR_BREAK;
 	}
 
@@ -1144,12 +1171,21 @@ static VISITOR_STRATEGY _Validate_node_pattern
 		if(alias != NULL) {
 			raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
 				strlen(alias), (void *)BOUNDED_NODE, NULL);
+
+			// if it is a CREATE clause register edge as an intermediate
+			// identifier because it is under creation
+			if(vctx->clause == CYPHER_AST_CREATE) {
+				raxInsert(vctx->intermediate_identifiers,
+					(unsigned char *)alias, strlen(alias),
+					(void *)BOUNDED_NODE, NULL);
+			}
 		}
 		return VISITOR_CONTINUE;
 	}
 
 	if(_ValidateInlinedProperties(cypher_ast_node_pattern_get_properties(n),
-			vctx->clause, alias, vctx->defined_identifiers) == AST_INVALID) {
+			vctx->clause, alias, vctx->defined_identifiers,
+			vctx->intermediate_identifiers) == AST_INVALID) {
 		return VISITOR_BREAK;
 	}
 
@@ -2152,6 +2188,7 @@ static AST_Validation _ValidateScopes
 	validations_ctx ctx;
 	ctx.union_all = NOT_DEFINED;
 	ctx.defined_identifiers = raxNew();
+	ctx.intermediate_identifiers = raxNew();
 
 	// create a visitor
 	ast_visitor visitor = {&ctx, validations_mapping};
@@ -2161,6 +2198,7 @@ static AST_Validation _ValidateScopes
 
 	// cleanup
 	raxFree(ctx.defined_identifiers);
+	raxFree(ctx.intermediate_identifiers);
 
 	return !ErrorCtx_EncounteredError() ? AST_VALID : AST_INVALID;
 }
@@ -2213,6 +2251,7 @@ bool AST_ValidationsMappingInit(void) {
 	validations_mapping[CYPHER_AST_ON_CREATE]                  = _Validate_ON_CREATE_Clause;
 	validations_mapping[CYPHER_AST_ON_MATCH]                   = _Validate_ON_MATCH_Clause;
 	validations_mapping[CYPHER_AST_BINARY_OPERATOR]            = _Validate_binary_op;
+	validations_mapping[CYPHER_AST_PATTERN]                    = _Validate_pattern;
 
 	//--------------------------------------------------------------------------
 	// register unsupported types
