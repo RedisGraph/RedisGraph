@@ -63,6 +63,9 @@ void Globals_AddGraph
 ) {
 	ASSERT(gc != NULL);
 
+	// increase ref count regardless if 'gc' is already tracked
+	GraphContext_IncreaseRefCount(gc);
+
 	// acuire write lock
 	pthread_rwlock_wrlock(&_globals.lock);
 
@@ -77,8 +80,6 @@ void Globals_AddGraph
 
 	if(registered == false) {
 		// append graph
-		// increase graph context ref count
-		GraphContext_IncreaseRefCount(gc);
 		array_append(_globals.graphs_in_keyspace, gc);
 	}
 
