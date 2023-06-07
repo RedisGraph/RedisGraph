@@ -35,9 +35,9 @@ CronTaskHandle Cron_AddTask
 	void *pdata     // private data to pass to callback
 );
 
-// aborts CRON task
-// waits for task to complete in-case it is already executing
-// otherwise marks task as aborted
+// aborts the CRON task passed (if found).
+// this function wait until the task is completed if it has
+// already started at the moment of invocation.
 void Cron_AbortTask
 (
 	CronTaskHandle t
