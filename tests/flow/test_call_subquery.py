@@ -1,5 +1,6 @@
 from common import *
 from collections import OrderedDict
+from index_utils import create_node_exact_match_index
 from execution_plan_util import locate_operation, count_operation
 
 graph = None
@@ -1298,8 +1299,7 @@ updating clause.")
         query = """UNWIND range(10,20) AS i
             CREATE (n:N {v:tostring(i)})-[:R]->(m:M {v:tostring(i+1)})"""
         graph.query(query)
-        query = """CREATE INDEX ON :N(v)"""
-        graph.query(query)
+        create_node_exact_match_index(graph, "N", "v", sync=True)
 
         # use the index in a scan as the lhs of a CallSubquery op, which
         # contains an eager operation
@@ -1312,7 +1312,6 @@ updating clause.")
         RETURN n.v
         """
 
-        # TODO: Why is this test flaky?
         # assert that we indeed utilize the index to find the node
         plan = graph.explain(query)
         index_scan = locate_operation(plan.structured_plan,
