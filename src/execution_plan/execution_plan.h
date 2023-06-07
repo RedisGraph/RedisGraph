@@ -25,7 +25,7 @@ struct ExecutionPlan {
 };
 
 /* Creates a new execution plan from AST */
-ExecutionPlan *NewExecutionPlan(void);
+ExecutionPlan *ExecutionPlan_FromTLS_AST(void);
 
 /* Prepare an execution plan for execution: optimize, initialize result set schema. */
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan);

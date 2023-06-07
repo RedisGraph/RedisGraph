@@ -282,7 +282,7 @@ void buildCallSubqueryPlan
 	//--------------------------------------------------------------------------
 
 	QueryCtx_SetAST(subquery_ast);
-	ExecutionPlan *embedded_plan = NewExecutionPlan();
+	ExecutionPlan *embedded_plan = ExecutionPlan_FromTLS_AST();
 	QueryCtx_SetAST(orig_ast);
 
 	// find the deepest ops, to which we will add the projections and feeders

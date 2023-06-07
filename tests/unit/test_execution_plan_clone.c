@@ -32,7 +32,7 @@ static void build_ast_and_plan
 	ctx->query_data.query_no_params = query;
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 	*ast = AST_Build(parse_result);
-	*plan = NewExecutionPlan();
+	*plan = ExecutionPlan_FromTLS_AST();
 }
 
 static void _fake_graph_context() {

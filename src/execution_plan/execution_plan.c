@@ -62,7 +62,7 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 		// Create an AST segment from which we will build an execution plan.
 		end_offset = union_indices[i];
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-		plans[i] = NewExecutionPlan();
+		plans[i] = ExecutionPlan_FromTLS_AST();
 		AST_Free(ast_segment); // Free the AST segment.
 
 		// Next segment starts where this one ends.
@@ -347,7 +347,7 @@ static inline void _implicit_result(ExecutionPlan *plan) {
 	}
 }
 
-ExecutionPlan *NewExecutionPlan(void) {
+ExecutionPlan *ExecutionPlan_FromTLS_AST(void) {
 	AST *ast = QueryCtx_GetAST();
 
 	// handle UNION if there are any
