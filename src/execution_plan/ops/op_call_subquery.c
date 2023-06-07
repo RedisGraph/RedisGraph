@@ -30,11 +30,11 @@ static void _append_connector
 
     if(call_subquery->is_eager) {
         ASSERT(OpBase_Type((const OpBase *)branch) == OPType_ARGUMENT_LIST);
-        array_append(call_subquery->connectors.argumentLists,
+        array_append(call_subquery->feeders.argumentLists,
             (ArgumentList *)branch);
     } else {
         ASSERT(OpBase_Type((const OpBase *)branch) == OPType_ARGUMENT);
-        array_append(call_subquery->connectors.arguments, (Argument *)branch);
+        array_append(call_subquery->feeders.arguments, (Argument *)branch);
     }
 }
 
@@ -43,12 +43,12 @@ static void _plant_records_ArgumentLists
 (
     OpCallSubquery *op  // CallSubquery operation
 ) {
-    int n_branches = (int)array_len(op->connectors.argumentLists);
+    int n_branches = (int)array_len(op->feeders.argumentLists);
     for(int i = 0; i < n_branches - 1; i++) {
         Record *records_clone;
         array_clone_with_cb(records_clone, op->records,
             OpBase_DeepCloneRecord);
-        ArgumentList_AddRecordList(op->connectors.argumentLists[i],
+        ArgumentList_AddRecordList(op->feeders.argumentLists[i],
             records_clone);
     }
 }
@@ -58,9 +58,9 @@ static void _plant_records_Arguments
 (
     OpCallSubquery *op  // CallSubquery operation
 ) {
-    uint n_branches = array_len(op->connectors.arguments);
+    uint n_branches = array_len(op->feeders.arguments);
     for(uint i = 0; i < n_branches; i++) {
-        Argument_AddRecord(op->connectors.arguments[i],
+        Argument_AddRecord(op->feeders.arguments[i],
             OpBase_DeepCloneRecord(op->r));
     }
 }
@@ -108,11 +108,11 @@ static OpResult CallSubqueryInit
 
     // search for the ArgumentList\Argument ops, depending if the op is eager
     if(op->is_eager) {
-        op->connectors.type = CONNECTOR_ARGUMENT_LIST;
-        op->connectors.argumentLists = array_new(ArgumentList *, 1);
+        op->feeders.type = CONNECTOR_ARGUMENT_LIST;
+        op->feeders.argumentLists = array_new(ArgumentList *, 1);
     } else {
-        op->connectors.type = CONNECTOR_ARGUMENT;
-        op->connectors.arguments = array_new(Argument *, 1);
+        op->feeders.type = CONNECTOR_ARGUMENT;
+        op->feeders.arguments = array_new(Argument *, 1);
     }
 
     // in the case the subquery contains a `UNION` or `UNION ALL` clause, we
@@ -202,11 +202,11 @@ static Record CallSubqueryConsumeEager
 
     _plant_records_ArgumentLists(op);
 
-    int n_branches = (int)array_len(op->connectors.argumentLists);
+    int n_branches = (int)array_len(op->feeders.argumentLists);
     if(op->is_returning) {
         // give the last branch the original records
         ArgumentList_AddRecordList(
-            op->connectors.argumentLists[n_branches - 1], op->records);
+            op->feeders.argumentLists[n_branches - 1], op->records);
 
         // responsibility for the records is passed to the argumentList op(s)
         op->records = NULL;
@@ -216,7 +216,7 @@ static Record CallSubqueryConsumeEager
         array_clone_with_cb(records_clone, op->records,
             OpBase_DeepCloneRecord);
         ArgumentList_AddRecordList(
-            op->connectors.argumentLists[n_branches - 1], records_clone);
+            op->feeders.argumentLists[n_branches - 1], records_clone);
     }
 
     if(!op->is_returning) {
@@ -377,15 +377,15 @@ static void CallSubqueryFree
 
     _free_records(_op);
 
-    if(_op->connectors.type != CONNECTOR_NONE) {
-        if(_op->connectors.type == CONNECTOR_ARGUMENT) {
-            ASSERT(_op->connectors.arguments != NULL);
-            array_free(_op->connectors.arguments);
-            _op->connectors.arguments = NULL;
-        } else if(_op->connectors.type == CONNECTOR_ARGUMENT_LIST) {
-            ASSERT(_op->connectors.argumentLists != NULL);
-            array_free(_op->connectors.argumentLists);
-            _op->connectors.argumentLists = NULL;
+    if(_op->feeders.type != CONNECTOR_NONE) {
+        if(_op->feeders.type == CONNECTOR_ARGUMENT) {
+            ASSERT(_op->feeders.arguments != NULL);
+            array_free(_op->feeders.arguments);
+            _op->feeders.arguments = NULL;
+        } else if(_op->feeders.type == CONNECTOR_ARGUMENT_LIST) {
+            ASSERT(_op->feeders.argumentLists != NULL);
+            array_free(_op->feeders.argumentLists);
+            _op->feeders.argumentLists = NULL;
         }
     }
 }

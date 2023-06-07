@@ -40,6 +40,8 @@ static bool _clause_is_eager
 	if(type == CYPHER_AST_RETURN || type == CYPHER_AST_WITH) {
 		return AST_ClauseContainsAggregation(clause);
 	}
+
+	return false;
 }
 
 // returns true if the given node will result in an execution-plan that will
