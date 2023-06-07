@@ -9,7 +9,7 @@
 #include "../util/rmalloc.h"
 #include "ast_rewrite_call_subquery.h"
 
-static bool _node_is_eager(const cypher_astnode_t *node);
+static bool _subquery_is_eager(const cypher_astnode_t *node);
 
 // returns true if the given ast-node will result in an eager operation
 static bool _clause_is_eager
@@ -31,7 +31,7 @@ static bool _clause_is_eager
 	}
 
 	if(type == CYPHER_AST_CALL_SUBQUERY) {
-		return _node_is_eager(clause);
+		return _subquery_is_eager(clause);
 	}
 
 	// -------------------------------------------------------------------------
@@ -46,27 +46,16 @@ static bool _clause_is_eager
 
 // returns true if the given node will result in an execution-plan that will
 // contain an eager operation
-static bool _node_is_eager
+static bool _subquery_is_eager
 (
 	const cypher_astnode_t *node  // ast-node
 ) {
-	uint n_clauses;
-	const cypher_astnode_t *(*get_clause)(const cypher_astnode_t *, uint);
-
-	cypher_astnode_type_t type = cypher_astnode_type(node);
-	if(type == CYPHER_AST_QUERY) {
-		n_clauses = cypher_ast_query_nclauses(node);
-		// get_clause = cypher_ast_query_get_clause;
-	} else {
-		n_clauses = cypher_ast_query_nclauses(
+	ASSERT(cypher_astnode_type(node) == CYPHER_AST_CALL_SUBQUERY);
+	uint n_clauses = cypher_ast_query_nclauses(
 			cypher_ast_call_subquery_get_query(node));
-		// get_clause = cypher_ast_call_subquery_get_clause;
-	}
 
 	for(uint i = 0; i < n_clauses; i++) {
-		const cypher_astnode_t *curr_clause = type == CYPHER_AST_QUERY ?
-			cypher_ast_query_get_clause(node, i) :
-			cypher_ast_query_get_clause(
+		const cypher_astnode_t *curr_clause = cypher_ast_query_get_clause(
 				cypher_ast_call_subquery_get_query(node), i);
 		if(_clause_is_eager(curr_clause)) {
 			return true;
@@ -574,11 +563,7 @@ static void _rewrite_projections
 
 			// update the query and call {} nodes
 			clause = (cypher_astnode_t *)
-				(cypher_astnode_type(wrapping_clause) == CYPHER_AST_QUERY ?
-					cypher_ast_query_get_clause(wrapping_clause, clause_ind) :
-					cypher_ast_query_get_clause(
-						cypher_ast_call_subquery_get_query(wrapping_clause),
-						clause_ind));
+				cypher_ast_query_get_clause(wrapping_clause, clause_ind);
 			subquery = cypher_ast_call_subquery_get_query(clause);
 		}
 
@@ -616,11 +601,9 @@ static bool _AST_RewriteCallSubqueryClause
 	uint end,                           // end ind until from which to collect bound vars
 	char ***inter_names                 // internal representation of bound vars
 ) {
-	uint wrapping_subclauses_count =
-		cypher_astnode_type(wrapping_clause) == CYPHER_AST_QUERY ?
-			cypher_ast_query_nclauses(wrapping_clause) :
-			cypher_ast_query_nclauses(
-				cypher_ast_call_subquery_get_query(wrapping_clause));
+	ASSERT(cypher_astnode_type(wrapping_clause) == CYPHER_AST_QUERY);
+	ASSERT(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY);
+	uint wrapping_subclauses_count = cypher_ast_query_nclauses(wrapping_clause);
 
 	cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(clause);
 	uint subclauses_count = cypher_ast_query_nclauses(subquery);
@@ -631,7 +614,7 @@ static bool _AST_RewriteCallSubqueryClause
 		cypher_ast_query_get_clause(subquery, subclauses_count - 1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
 
-	bool is_eager = _node_is_eager(clause);
+	bool is_eager = _subquery_is_eager(clause);
 
 	if(is_eager && is_returning) {
 		_rewrite_projections(wrapping_clause, clause, clause_ind, start, end,
@@ -662,16 +645,10 @@ static void _AST_RewriteCallSubqueryClauses
 	char ***outer_inter_names           // internal names of bound vars in outer-scope ('@n', '@m', etc.)
 ) {
 	cypher_astnode_type_t type = cypher_astnode_type(wrapping_clause);
+	ASSERT(type == CYPHER_AST_QUERY);
 
-	uint nclauses;
-	const cypher_astnode_t *(*get_clause)(const cypher_astnode_t *, uint);
-
-	if(type == CYPHER_AST_QUERY) {
-		nclauses = cypher_ast_query_nclauses(wrapping_clause);
-	} else {
-		nclauses = cypher_ast_query_nclauses(
-			cypher_ast_call_subquery_get_query(wrapping_clause));
-	}
+	uint nclauses = cypher_ast_query_nclauses(wrapping_clause);
+	nclauses = cypher_ast_query_nclauses(wrapping_clause);
 
 	// go over clauses. Upon finding a Call {} clause, rewrite it recursively
 	uint start_scope = 0;
@@ -679,23 +656,16 @@ static void _AST_RewriteCallSubqueryClauses
 
 	for(uint i = 0; i < nclauses; i++) {
 		cypher_astnode_t *clause = (cypher_astnode_t *)
-			(type == CYPHER_AST_QUERY ?
-				cypher_ast_query_get_clause(wrapping_clause, i) :
-				cypher_ast_query_get_clause(
-					cypher_ast_call_subquery_get_query(wrapping_clause), i));
-		if(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY) {
+			cypher_ast_query_get_clause(wrapping_clause, i);
+		cypher_astnode_type_t type = cypher_astnode_type(clause);
+		if(type == CYPHER_AST_CALL_SUBQUERY) {
 			// if the subquery is returning & eager, rewrite its projections
 			bool clause_rewritten = _AST_RewriteCallSubqueryClause(
 				wrapping_clause, clause, i, start_scope, i, outer_inter_names);
 
 			// update clause, in case it was replaced
 			if(clause_rewritten) {
-				cypher_astnode_t *clause = (cypher_astnode_t *)
-					(type == CYPHER_AST_QUERY ?
-						cypher_ast_query_get_clause(wrapping_clause, i) :
-						cypher_ast_query_get_clause(
-							cypher_ast_call_subquery_get_query(wrapping_clause),
-							i));
+				clause = (cypher_astnode_t *)cypher_ast_query_get_clause(wrapping_clause, i);
 			}
 
 			// `outer_inter_names` now contains the internal representation of
@@ -703,14 +673,14 @@ static void _AST_RewriteCallSubqueryClauses
 
 			// recursively rewrite embedded Call {} clauses, and update clause
 			// in case it was rewritten
-			_AST_RewriteCallSubqueryClauses(clause, outer_inter_names);
+			_AST_RewriteCallSubqueryClauses(cypher_ast_call_subquery_get_query(clause), outer_inter_names);
 
 			// restore `outer_inter_names` to its original state
 			_restore_outer_internal_names(outer_inter_names, orig_len);
 		}
 
 		// update start_scope if needed
-		cypher_astnode_type_t type = cypher_astnode_type(clause);
+
 		if(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN) {
 			start_scope = i;
 		}
@@ -728,18 +698,12 @@ void AST_RewriteCallSubquery
 (
 	const cypher_astnode_t *root  // root of AST
 ) {
-	bool rewritten = false;
-
-	if(cypher_astnode_type(root) != CYPHER_AST_STATEMENT) {
-		return;
-	}
+	ASSERT(cypher_astnode_type(root) == CYPHER_AST_STATEMENT);
 
 	// retrieve the root's body
 	cypher_astnode_t *query =
 		(cypher_astnode_t *)cypher_ast_statement_get_body(root);
-	if(cypher_astnode_type(query) != CYPHER_AST_QUERY) {
-		return;
-	}
+	ASSERT(cypher_astnode_type(query) == CYPHER_AST_QUERY);
 
 	char **inter_names = array_new(char *, 0);
 	_AST_RewriteCallSubqueryClauses(query, &inter_names);

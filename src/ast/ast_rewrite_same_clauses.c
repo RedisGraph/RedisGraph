@@ -280,7 +280,7 @@ static bool _compress_clauses
 		//----------------------------------------------------------------------
 
 		for (uint j = i; j < clause_count; j++) {
-			clause = get_clause(node, i);
+			clause = get_clause(node, j);
 			cypher_astnode_type_t t2 = cypher_astnode_type(clause);
 			if(t2 != t || !is_compressible(clause)) {
 				break;

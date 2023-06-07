@@ -316,22 +316,11 @@ static void _annotate_callsubquery_clause_projected_named_path
 ) {
 	rax *identifier_map = raxNew();
 
-	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, 1);
 	const cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(
 		callsubquery_clause);
-	uint nclauses = cypher_ast_query_nclauses(subquery);
-
-	for(uint i = 0; i < nclauses; i++) {
-		array_append(clauses,
-			(cypher_astnode_t *)cypher_ast_query_get_clause(subquery, i));
-	}
-	struct cypher_input_range range = {0};
-	cypher_astnode_t *query_node =
-		cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, nclauses,
-		clauses, nclauses, range);
 
 	AST subquery_clauses_ast = {
-		.root = query_node,
+		.root = subquery,
 		.anot_ctx_collection = ast->anot_ctx_collection,
 		.referenced_entities = ast->referenced_entities
 	};
@@ -343,13 +332,13 @@ static void _annotate_callsubquery_clause_projected_named_path
 		CYPHER_AST_UNION);
 	uint n_union_clauses = array_len(union_indices);
 	// handle first `UNION` branch
-	cypher_astnode_t *first_in_branch = clauses[0];
+	const cypher_astnode_t *first_in_branch = cypher_ast_query_get_clause(subquery, 0);
 	if(cypher_astnode_type(first_in_branch) == CYPHER_AST_WITH) {
 		_collect_projected_identifier(first_in_branch, identifier_map);
 	}
 	// handle rest of `UNION` branches
 	for(uint i = 0; i < n_union_clauses; i++) {
-		first_in_branch = clauses[union_indices[i] + 1];
+		first_in_branch = cypher_ast_query_get_clause(subquery, union_indices[i] + 1);
 		if(cypher_astnode_type(first_in_branch) == CYPHER_AST_WITH) {
 			_collect_projected_identifier(first_in_branch, identifier_map);
 		}
@@ -363,8 +352,6 @@ static void _annotate_callsubquery_clause_projected_named_path
 	// annotate named paths defined inside the body
 	_annotate_projected_named_path(&subquery_clauses_ast);
 	raxFreeWithCallback(identifier_map, array_free);
-	cypher_astnode_free(query_node);
-	array_free(clauses);
 }
 
 static void _annotate_projected_named_path(AST *ast) {

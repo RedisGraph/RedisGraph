@@ -1245,32 +1245,27 @@ static VISITOR_STRATEGY _Validate_call_subquery
 
 	// Verify that the RETURN clause and terminating clause do not violate scoping rules.
 	if(_ValidateQuerySequence(&ast) != AST_VALID) {
-		cypher_astnode_free(body);
 		return VISITOR_BREAK;
 	}
 
 	// Verify that the clause order in the scope is valid.
 	if(_ValidateClauseOrder(&ast) != AST_VALID) {
-		cypher_astnode_free(body);
 		return VISITOR_BREAK;
 	}
 
 	// Verify that the clauses surrounding UNION return the same column names.
 	if(_ValidateUnion_Clauses(&ast) != AST_VALID) {
-		cypher_astnode_free(body);
 		return VISITOR_BREAK;
 	}
 
 	// validate positions of allShortestPaths
 	if(!_ValidateAllShortestPaths(body)) {
-		cypher_astnode_free(body);
 		ErrorCtx_SetError("RedisGraph support allShortestPaths only in match clauses");
 		return VISITOR_BREAK;
 	}
 
 	if(!_ValidateShortestPaths(body)) {
 		ErrorCtx_SetError("RedisGraph currently only supports shortestPaths in WITH or RETURN clauses");
-		cypher_astnode_free(body);
 		return VISITOR_BREAK;
 	}
 

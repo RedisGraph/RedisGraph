@@ -312,7 +312,7 @@ static AST *_CreateASTFromCallSubquery
 	*ref_count = 1;
 
 	AST *subquery_ast = rm_calloc(1, sizeof(AST));
-	subquery_ast->free_root           = true;
+	subquery_ast->free_root           = false;
 	subquery_ast->ref_count           = ref_count;
 	// TODO: Make sure you need this.
 	subquery_ast->anot_ctx_collection = orig_ast->anot_ctx_collection;
@@ -539,7 +539,6 @@ static void _buildCallSubqueryPlan
 	// if no variables are imported, add an 'empty' projection so that the
 	// records within the subquery will not carry unnecessary entries
 	_add_empty_projections(subquery_ast, clause, deepest_ops);
-	AST_Free(subquery_ast);
 
 	// characterize whether the query is eager or not
 	OPType eager_types[] = {OPType_CREATE, OPType_UPDATE, OPType_FOREACH,
