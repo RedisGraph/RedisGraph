@@ -301,20 +301,20 @@ static OpBase *_getJoin
 // the CALL {} clause)
 static AST *_CreateASTFromCallSubquery
 (
-	cypher_astnode_t *clause,  // CALL {} ast-node
-	const AST *orig_ast,       // original AST with which to build new one
-	rax *outer_mapping         // mapping of outer-scope bound vars
+	const cypher_astnode_t *clause,  // CALL {} ast-node
+	const AST *orig_ast              // original AST with which to build new one
 ) {
+	ASSERT(orig_ast != NULL);
+	ASSERT(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY);
+
 	// create an AST from the body of the subquery
 	uint *ref_count = rm_malloc(sizeof(uint));
 	*ref_count = 1;
 
-	AST *subquery_ast = rm_malloc(sizeof(AST));
+	AST *subquery_ast = rm_calloc(1, sizeof(AST));
 	subquery_ast->free_root           = true;
 	subquery_ast->ref_count           = ref_count;
-	subquery_ast->parse_result        = NULL;
-	subquery_ast->params_parse_result = NULL;
-	subquery_ast->referenced_entities = NULL;
+	// TODO: Make sure you need this.
 	subquery_ast->anot_ctx_collection = orig_ast->anot_ctx_collection;
 
 	// build the query, to be the root of the temporary AST
@@ -401,11 +401,13 @@ static void _get_deepest
 	array_append(*deepest_ops, deepest);
 }
 
-// returns an array of with the deepest ops of an execution plan
+// returns an array with the deepest ops of an execution plan
 static OpBase **_FindDeepestOps
 (
 	const ExecutionPlan *plan
 ) {
+	ASSERT(plan != NULL);
+
 	OpBase *deepest = plan->root;
 	OpBase **deepest_ops = array_new(OpBase *, 1);
 
@@ -495,9 +497,9 @@ static void _BindReturningOpsToPlan
 // clause, in order to 'reset' the bound-vars environment
 static void _add_empty_projections
 (
-	AST *subquery_ast,         // subquery AST
-	cypher_astnode_t *clause,  // call subquery clause
-	OpBase **deepest_ops       // deepest op in each of the UNION branches
+	AST *subquery_ast,               // subquery AST
+	const cypher_astnode_t *clause,  // call subquery clause
+	OpBase **deepest_ops             // deepest op in each of the UNION branches
 ) {
 	uint clause_count = cypher_ast_call_subquery_nclauses(clause);
 	uint *union_indices = AST_GetClauseIndices(subquery_ast,
@@ -522,29 +524,31 @@ static void _add_empty_projections
 	array_free(union_indices);
 }
 
+// construct the execution-plan corresponding to a call {} clause
 static void _buildCallSubqueryPlan
 (
-	ExecutionPlan *plan,      // execution plan to add plan to
-	cypher_astnode_t *clause  // call subquery clause
+	ExecutionPlan *plan,            // execution plan to add plan to
+	const cypher_astnode_t *clause  // call subquery clause
 ) {
-	// -------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 	// build an AST from the subquery
-	// -------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
+
 	// save the original AST
 	AST *orig_ast = QueryCtx_GetAST();
 
 	// create an AST from the body of the subquery
-	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast,
-		plan->record_map);
+	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast);
 
-	// -------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
 	// build the embedded execution plan corresponding to the subquery
-	// -------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
+
 	QueryCtx_SetAST(subquery_ast);
 	ExecutionPlan *embedded_plan = NewExecutionPlan();
 	QueryCtx_SetAST(orig_ast);
 
-	// find the deepest ops, to which we will add the projections and connectors
+	// find the deepest ops, to which we will add the projections and feeders
 	OpBase **deepest_ops = _FindDeepestOps(embedded_plan);
 
 	// if no variables are imported, add an 'empty' projection so that the
@@ -643,7 +647,7 @@ void ExecutionPlanSegment_ConvertClause
 	} else if(t == CYPHER_AST_FOREACH) {
 		_buildForeachOp(plan, clause, gc);
 	} else if(t == CYPHER_AST_CALL_SUBQUERY) {
-		_buildCallSubqueryPlan(plan, (cypher_astnode_t *)clause);
+		_buildCallSubqueryPlan(plan, clause);
 	} else {
 		assert(false && "unhandeled clause");
 	}

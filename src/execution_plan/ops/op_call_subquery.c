@@ -184,6 +184,7 @@ static Record CallSubqueryConsumeEager
 
     op->first = false;
 
+    ASSERT(op->records == NULL);
     op->records = array_new(Record, 1);
     // eagerly consume all records from lhs if exists or create a
     // dummy-record, and place them\it in op->records
@@ -328,7 +329,7 @@ static Record CallSubqueryConsume
 }
 
 // frees CallSubquery internal data structures
-static void _freeInternals
+static void _free_records
 (
 	OpCallSubquery *op  // operation to free
 ) {
@@ -349,7 +350,8 @@ static OpResult CallSubqueryReset
 ) {
     OpCallSubquery *op = (OpCallSubquery *)opBase;
 
-    _freeInternals(op);
+    _free_records(op);
+    op->first = true;
 
 	return OP_OK;
 }
@@ -373,15 +375,15 @@ static void CallSubqueryFree
 ) {
 	OpCallSubquery *_op = (OpCallSubquery *) op;
 
-    _freeInternals(_op);
+    _free_records(_op);
 
     if(_op->connectors.type != CONNECTOR_NONE) {
-        if(_op->connectors.type == CONNECTOR_ARGUMENT &&
-           _op->connectors.arguments != NULL) {
+        if(_op->connectors.type == CONNECTOR_ARGUMENT) {
+            ASSERT(_op->connectors.arguments != NULL);
             array_free(_op->connectors.arguments);
             _op->connectors.arguments = NULL;
-        } else if(_op->connectors.type == CONNECTOR_ARGUMENT_LIST &&
-           _op->connectors.argumentLists != NULL) {
+        } else if(_op->connectors.type == CONNECTOR_ARGUMENT_LIST) {
+            ASSERT(_op->connectors.argumentLists != NULL);
             array_free(_op->connectors.argumentLists);
             _op->connectors.argumentLists = NULL;
         }
