@@ -313,15 +313,13 @@ class testGraphDeletionFlow(FlowTestsBase):
 
         # attempt to repeatedly delete edges
         query = """MATCH ()-[r]-() delete r delete r, r delete r, r"""
-        actual_result = redis_graph.query(query)
-        # 2 edges should be reported as deleted
-        self.env.assertEquals(actual_result.relationships_deleted, 2)
+        self._assert_exception(redis_graph, query,
+            "The bound variable 'r' can't be in DELETE clause because it was previously deleted.")
 
         # attempt to repeatedly delete nodes
         query = """MATCH (n) delete n delete n, n delete n, n"""
-        actual_result = redis_graph.query(query)
-        # 2 nodes should be reported as deleted
-        self.env.assertEquals(actual_result.nodes_deleted, 2)
+        self._assert_exception(redis_graph, query,
+            "The bound variable 'n' can't be in DELETE clause because it was previously deleted.")
 
     def test17_invalid_deletions(self):
         self.env.flush()
@@ -430,3 +428,15 @@ class testGraphDeletionFlow(FlowTestsBase):
 
         # validate that the nodes were deleted
         self.env.assertEquals(res.nodes_deleted, 2)
+
+    def test21_delete_deleted_entities(self):
+        # Queries that delete nodes/edges that were deleted previously should emit an error.
+
+        # tests using deleted nodes
+        queries = ["MERGE ()<-[x:A]-() DELETE x MERGE (:B)<-[:C]-() DELETE x",
+                   "MERGE ()<-[x:A]-() DELETE x CREATE (:B)<-[:C]-() DELETE x",
+                  ]
+        for query in queries:
+            self._assert_exception(redis_graph, query,
+                "The bound variable 'x' can't be in DELETE clause because it was previously deleted.")
+

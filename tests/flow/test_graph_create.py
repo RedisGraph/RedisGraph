@@ -188,9 +188,81 @@ class testGraphCreationFlow(FlowTestsBase):
         queries = ["MATCH (a:A)<-[r:R1|R2]-(b:B) RETURN count(r)",
                    "MATCH (a:A)-[r:R3]->(b:B) RETURN count(r)",
                    "MATCH (a:A)-[r:R3|R3]->(b:B) RETURN count(r)",
-                   "MATCH (a:A)-[r:R3|R3|R4|R4]->(b:B) RETURN count(r)",
-                   ]
+                   "MATCH (a:A)-[r:R3|R3|R4|R4]->(b:B) RETURN count(r)"]
         for query in queries:
             result = redis_graph.query(query)
             expected_result = [[0]]
             self.env.assertEquals(result.result_set, expected_result)
+
+    def test11_create_reuse_delete_var(self):
+        # Queries that reference nodes/edges that were deleted previously should emit an error.
+
+        # test reusing deleted nodes in CREATE
+        queries = ["MERGE (x) DELETE x CREATE (x)<-[:R]-()",
+                   "CREATE (x) DELETE x CREATE ()<-[:R]-(x)",
+                   "MERGE (a) WITH a AS x DELETE x CREATE ()<-[:R]-(x)",
+                   "CREATE (a) WITH a AS x DELETE x CREATE ()<-[:R]-(x)"]
+        for query in queries:
+            self._assert_exception(redis_graph, query,
+                "The bound variable 'x' can't be redeclared in a CREATE clause because it was deleted.")
+
+        # test reusing deleted nodes in MERGE
+        queries = ["MERGE (x) DELETE x MERGE (x)<-[:R]-()",
+                   "CREATE (x) DELETE x MERGE (x)<-[:R]-()",
+                   "MERGE (a) WITH a AS x DELETE x MERGE ()<-[:R]-(x)",
+                   "CREATE (a) WITH a AS x DELETE x MERGE ()<-[:R]-(x)"]
+        for query in queries:
+            self._assert_exception(redis_graph, query,
+                "The bound variable 'x' can't be redeclared in a MERGE clause because it was deleted.")
+
+        # test reusing deleted nodes in WITH
+        queries = ["MERGE ()-[:R1]->(x) DELETE x WITH x RETURN 0",
+                   "CREATE ()-[:R1]->(x) DELETE x WITH x RETURN 0",
+                   "MERGE ()<-[:R1]-(x) DELETE x WITH x AS y RETURN 0",
+                   "CREATE ()<-[:R1]-(x) DELETE x WITH x AS y RETURN 0"]
+        for query in queries:
+            self._assert_exception(redis_graph, query,
+                "The bound variable 'x' can't be used in a WITH clause because it was deleted.")
+
+        # test reusing deleted edges in CREATE
+        queries = ["MERGE ()-[r:R]->() WITH r AS e DELETE e CREATE (c)<-[e:R]-(d)",
+                   "CREATE ()-[r:R]->() WITH r AS e DELETE e CREATE ()<-[e:R]-()"]
+        for query in queries:
+            self._assert_exception(redis_graph, query,
+                "The bound variable 'e' can't be redeclared in a CREATE clause because it was deleted.")
+
+        # test reusing deleted edges in MERGE
+        queries = ["CREATE ()-[r:R]->() WITH r AS e DELETE e MERGE ()<-[e:R]-()",
+                   "MERGE ()-[r:R]->() WITH r AS e DELETE e MERGE (c)<-[e:R]-(d)"]
+        for query in queries:
+            self._assert_exception(redis_graph, query,
+                "The bound variable 'e' can't be redeclared in a MERGE clause because it was deleted.")
+
+        # test reusing deleted edges in WITH
+        queries = ["MERGE ()-[e:R1]->() DELETE e WITH e RETURN 0",
+                   "CREATE ()-[e:R1]->() DELETE e WITH e RETURN 0",
+                   "MERGE ()-[e:R1]->() DELETE e WITH e AS r RETURN 0",
+                   "CREATE ()-[e:R1]->() DELETE e WITH e AS r RETURN 0"]
+        for query in queries:
+            self._assert_exception(redis_graph, query,
+                "The bound variable 'e' can't be used in a WITH clause because it was deleted.")
+
+        # test reusing deleted nodes/edges in WITH *
+        queries = ["MERGE (x)-[:R]->() DELETE x WITH * RETURN 0",
+                   "CREATE ()-[:R]->(x) DELETE x WITH * RETURN 0",
+                   "MERGE (a)-[e:R]->(b) DELETE e WITH * RETURN 0",
+                   "CREATE (a)-[e:R]->(b) DELETE e WITH * RETURN 0"]
+        for query in queries:
+            self._assert_exception(redis_graph, query,
+                "The WITH * clause can't be used because at least one of the bound variables was deleted.")
+
+        # TODO: This currently returns the deleted entity
+        # test returning deleted nodes
+        # queries = ["MERGE (x) DELETE x RETURN x",
+        #            "CREATE (x) DELETE x RETURN x",
+        #            "MERGE (x)-[r:R]->() DELETE x RETURN x",
+        #            "CREATE (x)-[r:R]->() DELETE x RETURN x"]
+
+        # # test returning deleted edges
+        # queries = ["MERGE ()-[r:R]->() DELETE r RETURN r",
+        #            "CREATE ()-[r:R]->() DELETE r RETURN r"]

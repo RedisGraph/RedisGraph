@@ -26,7 +26,16 @@ typedef struct {
 	rax *defined_identifiers;      // identifiers environment
 	cypher_astnode_type_t clause;  // top-level clause type
 	is_union_all union_all;        // union type (regular or ALL)
+    bool contains_deleted;         // at least one of the identifier was deleted 
 } validations_ctx;
+
+// possible states of nodes/edge/paths during validation
+typedef enum {
+	BOUNDED_NODE = 0x2002,
+	BOUNDED_EDGE = 0x2004,
+	DELETED_NODE = 0x4002,
+	DELETED_EDGE = 0x4004,
+} identifier_state;
 
 // ast validation visitor mappings
 // number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
@@ -117,26 +126,71 @@ static bool _AST_GetWithAliases
 	// traverse the projections
 	uint num_with_projections = cypher_ast_with_nprojections(node);
 	for(uint i = 0; i < num_with_projections; i ++) {
-		const cypher_astnode_t *child = cypher_ast_with_get_projection(node, i);
-		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
-		const char *alias;
-		if(alias_node) {
-			// Retrieve "a" from "WITH [1, 2, 3] as a"
-			alias = cypher_ast_identifier_get_name(alias_node);
-		} else {
-			// Retrieve "a" from "WITH a"
-			const cypher_astnode_t *expr = cypher_ast_projection_get_expression(child);
-			if(cypher_astnode_type(expr) != CYPHER_AST_IDENTIFIER) {
-				ErrorCtx_SetError("WITH clause projections must be aliased");
-				raxFree(local_env);
-				return false;	
+		const cypher_astnode_t *proj = cypher_ast_with_get_projection(node, i);
+        const cypher_astnode_t *expr = 
+			cypher_ast_projection_get_expression(proj);
+		const cypher_astnode_t *ast_alias =
+            cypher_ast_projection_get_alias(proj);
+        const char *identifier_name;
+        void *identifier = NULL;
+
+        if(ast_alias) {
+            // Retrieve "a" from "WITH [1, 2, 3] as a"
+            identifier_name = cypher_ast_identifier_get_name(ast_alias);
+
+            if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
+                // Retrieve "x" from "WITH x AS a"
+                const char *current_identifier_name = cypher_ast_identifier_get_name(expr);
+                uint len = strlen(current_identifier_name);
+
+                identifier = raxFind(aliases, (unsigned char *)current_identifier_name, len);
+                if(identifier != raxNotFound && identifier != NULL) {
+                    // if the aliased projected identifier was deleted, emit error
+                    // MERGE (a)-[e:R]->(b) DELETE e WITH e AS r RETURN 0
+                    // MERGE (a)-[e:R]->(b) DELETE a WITH a AS x RETURN 0
+                    if((void*)identifier == (void *)DELETED_NODE || (void*)identifier == (void *)DELETED_EDGE) {
+                        ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
+                                len, current_identifier_name);
+                        raxFree(local_env);
+                        return false;
+                    }
+                }
 			}
-			alias = cypher_ast_identifier_get_name(expr);
-		}
-		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
+        } else {
+            // Retrieve "x" from "WITH x"
+            ast_alias = cypher_ast_projection_get_expression(proj);
+
+            if(cypher_astnode_type(ast_alias) != CYPHER_AST_IDENTIFIER) {
+                ErrorCtx_SetError("WITH clause projections must be aliased");
+                raxFree(local_env);
+                return false;	
+            }
+
+            if(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER) {
+                identifier_name = cypher_ast_identifier_get_name(ast_alias);
+                uint len = strlen(identifier_name);
+                identifier = raxFind(aliases, (unsigned char *)identifier_name, len);
+
+                if(identifier != raxNotFound && identifier != NULL) {
+                    // if the projected identifier was deleted, emit error
+                    // MERGE (a)-[e:R]->(b) DELETE e WITH e RETURN 0
+                    // MERGE (a)-[e:R]->(b) DELETE a WITH a RETURN 0
+                    if((void*)identifier == (void *)DELETED_NODE || (void*)identifier == (void *)DELETED_EDGE) {
+                        ErrorCtx_SetError("The bound variable '%.*s' can't be used in a WITH clause because it was deleted.",
+                            len, identifier_name);
+                        raxFree(local_env);
+                        return false;
+                    }
+                }
+			}
+        }
+
+		// project the aliased identifier
+        raxInsert(aliases, (unsigned char *)identifier_name,
+        	strlen(identifier_name), (void *)identifier, NULL);
 
 		// check for duplicate column names
-		if(raxTryInsert(local_env, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
+		if(raxTryInsert(local_env, (unsigned char *)identifier_name, strlen(identifier_name), NULL, NULL) == 0) {
 			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
 			raxFree(local_env);
 			return false;
@@ -219,13 +273,23 @@ static AST_Validation _ValidateMergeRelation
 		return AST_INVALID;
 	}
 
-	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(entity);
-	const char *alias = NULL;
-	if(identifier) {
-		alias = cypher_ast_identifier_get_name(identifier);
-		// Verify that we're not redeclaring a bound variable
-		if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
-			ErrorCtx_SetError("The bound variable %s' can't be redeclared in a MERGE clause", alias);
+	const cypher_astnode_t *current_identifier = cypher_ast_rel_pattern_get_identifier(entity);
+	if(current_identifier) {
+		const char* identifier_name = cypher_ast_identifier_get_name(current_identifier);
+        int len = strlen(identifier_name);
+
+        void* identifier = raxFind(defined_aliases, (unsigned char *)identifier_name, len);
+
+		if(identifier != raxNotFound) {
+            // if the identifier was previously deleted, it can't be re-created
+			// CREATE (x) DELETE x MERGE (x)<-[:R]-()
+            if(identifier != NULL && (identifier == (void *)DELETED_NODE) || identifier == (void *)DELETED_EDGE) {
+                ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a MERGE clause because it was deleted.", len, identifier_name);
+                return AST_INVALID;
+            }
+
+		    // Verify that we're not redeclaring a bound variable
+			ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a MERGE clause", identifier_name);
 			return AST_INVALID;
 		}
 	}
@@ -253,23 +317,32 @@ static AST_Validation _ValidateMergeNode
 		return AST_VALID;
 	}
 
-	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(entity);
-	if(!identifier) {
+	const cypher_astnode_t *current_identifier = cypher_ast_node_pattern_get_identifier(entity);
+	if(!current_identifier) {
 		return AST_VALID;
 	}
 
-	const char *alias = cypher_ast_identifier_get_name(identifier);
+	const char *identifier_name = cypher_ast_identifier_get_name(current_identifier);
+    int len = strlen(identifier_name);
+
+    void *identifier = raxFind(defined_aliases, (unsigned char *)identifier_name, len);
 	// If the entity is unaliased or not previously bound, it cannot be redeclared
-	if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) == raxNotFound) {
+	if(identifier == raxNotFound) {
 		return AST_VALID;
 	}
 
 	// If the entity is already bound, the MERGE pattern should not introduce labels or properties
 	if(cypher_ast_node_pattern_nlabels(entity) ||
 	   cypher_ast_node_pattern_get_properties(entity)) {
-		ErrorCtx_SetError("The bound node '%s' can't be redeclared in a MERGE clause", alias);
+		ErrorCtx_SetError("The bound node '%s' can't be redeclared in a MERGE clause", identifier_name);
 		return AST_INVALID;
 	}
+    
+    // if the identifier was deleted previously, it can't be re-created
+    if(identifier != NULL && (identifier == (void *)DELETED_NODE || identifier == (void *)DELETED_EDGE)) {
+        ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a MERGE clause because it was deleted.", len, identifier_name);
+        return AST_INVALID;
+    }
 
 	return AST_VALID;
 }
@@ -280,11 +353,15 @@ static AST_Validation _ValidateCreateRelation
 	const cypher_astnode_t *entity,  // ast-node
 	rax *defined_aliases             // bounded variables
 ) {
-	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(entity);
-	if(identifier) {
-		const char *alias = cypher_ast_identifier_get_name(identifier);
-		if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
-			ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", alias);
+	const cypher_astnode_t *current_identifier = cypher_ast_rel_pattern_get_identifier(entity);
+	if(current_identifier) {
+		const char *identifier_name = cypher_ast_identifier_get_name(current_identifier);
+        int len = strlen(identifier_name);
+
+        void *identifier = raxFind(defined_aliases, (unsigned char *)identifier_name, len);
+        if (identifier != raxNotFound) {
+			ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause",
+                    identifier_name);
 			return AST_INVALID;
 		}
 	}
@@ -299,16 +376,38 @@ static AST_Validation _Validate_CREATE_Entities
 	rax *defined_aliases           // bound vars
 ) {
 	uint nelems = cypher_ast_pattern_path_nelements(path);
-	 // Redeclaration of a node is not allowed only when the path is of length 0, as in: MATCH (a) CREATE (a).
-	 // Otherwise, using a defined alias of a node is allowed, as in: MATCH (a) CREATE (a)-[:E]->(:B)
-	if(nelems == 1) {
-		const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, 0);
-		const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(node);
-		if(identifier) {
-			const char *alias = cypher_ast_identifier_get_name(identifier);
-			if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
-				ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", alias);
-				return AST_INVALID;
+
+	for(uint i = 0 ; i < nelems; i++) {
+		const cypher_astnode_t *path_elem = cypher_ast_pattern_path_get_element(path, i);
+		const cypher_astnode_t *current_identifier = NULL;
+
+		if(i % 2 == 0) {
+			current_identifier = cypher_ast_node_pattern_get_identifier(path_elem);
+		} else {
+			current_identifier = cypher_ast_rel_pattern_get_identifier(path_elem);
+		}
+		
+		if(current_identifier) {
+			const char *identifier_name = cypher_ast_identifier_get_name(current_identifier);
+			int len = strlen(identifier_name);
+
+			void *identifier = raxFind(defined_aliases, (unsigned char *)identifier_name, len);
+
+			if(identifier != raxNotFound) {
+				// Redeclaration of a node is not allowed only when the path is of length 0, as in: MATCH (a) CREATE (a).
+				// Otherwise, using a defined alias of a node is allowed, as in: MATCH (a) CREATE (a)-[:E]->(:B)
+				if(nelems == 1) {
+					ErrorCtx_SetError("The bound variable '%s' can't be redeclared in a CREATE clause", identifier_name);
+					return AST_INVALID;
+				}
+
+				// if the identifier was previously deleted, it can't be re-created
+				// MERGE (x) DELETE x CREATE ()<-[:R]-(x)
+				// MERGE ()-[r:R]->() WITH r AS e DELETE e CREATE (c)<-[e:R]-(d)
+				if(identifier != NULL && (identifier == (void *)DELETED_NODE || identifier == (void *)DELETED_EDGE)) {
+					ErrorCtx_SetError("The bound variable '%.*s' can't be redeclared in a CREATE clause because it was deleted.", len, identifier_name);
+					return AST_INVALID;
+				}
 			}
 		}
 	}
@@ -467,9 +566,35 @@ static VISITOR_STRATEGY _Validate_identifier
 		return VISITOR_CONTINUE;
 	}
 
-	const char *identifier = cypher_ast_identifier_get_name(n);
-	if(_Validate_referred_identifier(vctx->defined_identifiers, identifier) == AST_INVALID) {
+	const char *identifier_name = cypher_ast_identifier_get_name(n);
+	int len = strlen(identifier_name);
+
+	void *identifier = raxFind(vctx->defined_identifiers, (unsigned char *)identifier_name, len);
+	if(identifier == raxNotFound) {
+		ErrorCtx_SetError("%.*s not defined", len, identifier_name);
 		return VISITOR_BREAK;
+	}
+
+	if(identifier != NULL) {
+		if(vctx->clause == CYPHER_AST_DELETE) {
+			// CREATE (a) DELETE a CREATE(b) DELETE a
+			// MERGE ()<-[e:R]-() DELETE e CREATE(b) DELETE e
+            if(identifier == (void *)DELETED_NODE || identifier == (void *)DELETED_EDGE) {
+                ErrorCtx_SetError(
+                        "The bound variable '%.*s' can't be in DELETE clause because it was previously deleted.",
+                        len, identifier_name);
+                return VISITOR_BREAK;
+            } else {
+                if(identifier == (void *)BOUNDED_NODE) {
+					identifier = (void *)DELETED_NODE;
+					vctx->contains_deleted = true;
+				} else if (identifier == (void *)BOUNDED_EDGE) {
+					identifier = (void *)DELETED_EDGE;
+					vctx->contains_deleted = true;
+				}
+				raxInsert(vctx->defined_identifiers, (unsigned char *)identifier_name, len, identifier, NULL);
+            }
+        }
 	}
 
 	return VISITOR_RECURSE;
@@ -799,20 +924,16 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 
 	if(alias_node) {
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
-		void *alias_type = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
-		if(alias_type == raxNotFound) {
-			raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)T_EDGE, NULL);
+		void *identifier = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
+		if(identifier == raxNotFound) {
+			raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)BOUNDED_EDGE, NULL);
 			return VISITOR_RECURSE;
 		}
-			
-		if(alias_type != (void *)T_EDGE && alias_type != NULL) {
-			ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
-			return VISITOR_BREAK;
-		}
 
-		if(vctx->clause == CYPHER_AST_MATCH && alias_type != NULL) {
-			ErrorCtx_SetError("Cannot use the same relationship variable '%s' for multiple patterns.", alias);
-			return VISITOR_BREAK;
+		// MATCH ()-[r]->(r) RETURN r
+		if(identifier != NULL && identifier != (void *)BOUNDED_EDGE) {
+				ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
+				return VISITOR_BREAK;
 		}
 	}
 
@@ -846,13 +967,13 @@ static VISITOR_STRATEGY _Validate_node_pattern
 			return VISITOR_BREAK;
 		}
 	} else {
-		void *alias_type = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
-		if(alias_type != raxNotFound && alias_type != NULL && alias_type != (void *)T_NODE) {
+		void *identifier = raxFind(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias));
+		if(identifier != raxNotFound && identifier != NULL && identifier != (void *)BOUNDED_NODE) {
 			ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.", alias);
 			return VISITOR_BREAK;
 		}
 	}
-	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)T_NODE, NULL);
+	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), (void *)BOUNDED_NODE, NULL);
 
 	return VISITOR_RECURSE;
 }
@@ -923,6 +1044,35 @@ static VISITOR_STRATEGY _Validate_pattern_path
 	if(!start) {
 		return VISITOR_CONTINUE;
 	}
+
+    // emit an error if the relation name is not unique in the pattern path
+    // MATCH (a)-[r]->()-[r]->(a) RETURN r
+    uint nelems = cypher_ast_pattern_path_nelements(n);
+
+    if (nelems > 3) {
+        rax *rax = raxNew();
+        for(uint i = 1 ; i < nelems; i = i + 2) {
+            const cypher_astnode_t *path_elem =
+                cypher_ast_pattern_path_get_element(n, i);
+            const cypher_astnode_t *current_identifier = 
+                cypher_ast_rel_pattern_get_identifier(path_elem);
+
+            if(current_identifier) {
+                const char *identifier_name =
+                    cypher_ast_identifier_get_name(current_identifier);
+                int len = strlen(identifier_name);
+
+                if(raxTryInsert(rax, (unsigned char *)identifier_name,
+                            len, NULL, NULL) == 0 ) {
+                    ErrorCtx_SetError("Cannot use the same relationship variable '%s' for multiple patterns.",
+                            identifier_name);
+                    raxFree(rax);
+                    return VISITOR_BREAK;
+                }
+            }
+        }
+        raxFree(rax);
+    }
 
 	if(vctx->clause == CYPHER_AST_CREATE &&
 		(_Validate_CREATE_Entities(n, vctx->defined_identifiers) == AST_INVALID)) {
@@ -1200,22 +1350,54 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 	// if one of the 'projections' is a star -> proceed with current env
 	// otherwise build a new environment using the new column names (aliases)
 	if(!cypher_ast_with_has_include_existing(n)) {
-		// free old env, set new one
-		raxFree(vctx->defined_identifiers);
-		vctx->defined_identifiers = raxNew();
+		rax *projected_identifiers = raxNew();
 
 		// introduce the WITH aliases to the bound vars context
 		for(uint i = 0; i < cypher_ast_with_nprojections(n); i++) {
 			const cypher_astnode_t *proj = cypher_ast_with_get_projection(n, i);
-			const cypher_astnode_t *ast_alias =
+			const cypher_astnode_t *expr = 
+				cypher_ast_projection_get_expression(proj);
+			const cypher_astnode_t *ast_alias = 
 				cypher_ast_projection_get_alias(proj);
-			if(!ast_alias) {
+			const char *identifier_name;
+			void *identifier = NULL;
+
+			if(ast_alias) {
+				// Retrieve "a" from "WITH x AS a" or "WITH [1, 2, 3] AS a"
+				identifier_name = cypher_ast_identifier_get_name(ast_alias);
+
+				if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
+					// Retrieve "x" from "WITH x AS a"
+					const char *current_identifier_name = cypher_ast_identifier_get_name(expr);
+					uint len = strlen(current_identifier_name);
+					identifier = raxFind(vctx->defined_identifiers, (unsigned char *)current_identifier_name, len);
+				}
+			} else {
+				// Retrieve "x" from "WITH x"
 				ast_alias = cypher_ast_projection_get_expression(proj);
+
+				if(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER) {
+					identifier_name = cypher_ast_identifier_get_name(ast_alias);
+					uint len = strlen(identifier_name);
+					identifier = raxFind(vctx->defined_identifiers, (unsigned char *)identifier_name, len);
+				}
 			}
-			const char *alias = cypher_ast_identifier_get_name(ast_alias);
-			raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
-				strlen(alias), NULL, NULL);
+
+			raxInsert(projected_identifiers, (unsigned char *)identifier_name,
+				strlen(identifier_name), identifier, NULL);
 		}
+
+		// free old env, set new one
+		raxFree(vctx->defined_identifiers);
+		vctx->defined_identifiers = projected_identifiers;
+
+	} else {
+		// if any of the identifiers was deleted, emit error
+		// CREATE ()-[:R]->(x) DELETE x WITH * RETURN 0
+        if(vctx->contains_deleted) {
+            ErrorCtx_SetError("The WITH * clause can't be used because at least one of the bound variables was deleted.");
+			return VISITOR_BREAK;
+        }
 	}
 
 	return VISITOR_CONTINUE;
@@ -1499,9 +1681,13 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 
 	// introduce bound vars
 	for(uint i = 0; i < num_return_projections; i ++) {
-		const cypher_astnode_t *child = cypher_ast_return_get_projection(n, i);
-		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
-		if(alias_node == NULL) {
+		const cypher_astnode_t *proj = cypher_ast_return_get_projection(n, i);
+        const cypher_astnode_t *expr =
+            cypher_ast_projection_get_expression(proj);
+		const cypher_astnode_t *alias_node =
+            cypher_ast_projection_get_alias(proj);
+
+        if(alias_node == NULL) {
 			continue;
 		}
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
@@ -1529,7 +1715,7 @@ static VISITOR_STRATEGY _Validate_MATCH_Clause
 	ast_visitor *visitor        // visitor
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
-	
+
 	if(!start) {
 		return VISITOR_CONTINUE;
 	}
@@ -1735,6 +1921,7 @@ static AST_Validation _ValidateScopes
 	validations_ctx ctx;
 	ctx.union_all = NOT_DEFINED;
 	ctx.defined_identifiers = raxNew();
+    ctx.contains_deleted = false;
 
 	// create a visitor
 	ast_visitor visitor = {&ctx, validations_mapping};
@@ -1999,6 +2186,7 @@ AST_Validation AST_Validate_QueryParams
 	validations_ctx ctx;
 	ctx.union_all = NOT_DEFINED;
 	ctx.defined_identifiers = raxNew();
+    ctx.contains_deleted = false;
 
 	// create a visitor
 	ast_visitor visitor = {&ctx, validations_mapping};
@@ -2043,3 +2231,4 @@ void AST_ReportErrors
 	ErrorCtx_SetError("errMsg: %s line: %u, column: %u, offset: %zu errCtx: %s errCtxOffset: %zu",
 					  errMsg, errPos.line, errPos.column, errPos.offset, errCtx, errCtxOffset);
 }
+
