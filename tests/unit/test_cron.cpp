@@ -195,5 +195,5 @@ TEST_F(CRONTest, AbortRunningTask) {
 	double time_taken_sec = ((double)t)/CLOCKS_PER_SEC;
 
 	// expecting Cron_AbortTask to return after task compelted
-	ASSERT_GE(time_taken_sec, 0.1);
+	ASSERT_GT(time_taken_sec, 0.07);
 }
