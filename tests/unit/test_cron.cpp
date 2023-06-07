@@ -177,7 +177,7 @@ TEST_F(CRONTest, AbortNoneExistingTask) {
 TEST_F(CRONTest, AbortRunningTask) {
 	// issue a long running task ~100ms
 	// issue abort 20ms into execution
-	// validate call to Cron_AbortTask returns in less than ~10 ms
+	// validate call to Cron_AbortTask returns after task compelted
 
 	// issue a long running task, task will sleep for 'sec' seconds
 	int ms = 100;
@@ -194,6 +194,6 @@ TEST_F(CRONTest, AbortRunningTask) {
 	t = clock() - t; // stop timer
 	double time_taken_sec = ((double)t)/CLOCKS_PER_SEC;
 
-	// expecting Cron_AbortTask to return before at-most 10 ms
-	ASSERT_LT(time_taken_sec, 0.01);
+	// expecting Cron_AbortTask to return after task compelted
+	ASSERT_GE(time_taken_sec, 0.1);
 }
