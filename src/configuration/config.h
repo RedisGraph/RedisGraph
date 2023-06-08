@@ -44,6 +44,7 @@ typedef void (*Config_on_change)(Config_Option_Field type);
 static const Config_Option_Field RUNTIME_CONFIGS[] = {
 	Config_TIMEOUT,
 	Config_TIMEOUT_MAX,
+	Config_ASYNC_DELETE,
 	Config_TIMEOUT_DEFAULT,
 	Config_RESULTSET_MAX_SIZE,
 	Config_MAX_QUEUED_QUERIES,

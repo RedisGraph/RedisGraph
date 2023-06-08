@@ -20,6 +20,9 @@
 #include <sys/param.h>
 #include <pthread.h>
 
+// telematics stream format
+#define TELEMATICS_FORMAT "telematics{%s}"
+
 extern uint aux_field_counter;
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
@@ -27,6 +30,7 @@ extern RedisModuleType *GraphContextRedisModuleType;
 // Forward declarations.
 static void _GraphContext_Free(void *arg);
 static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str);
+static void _DeleteTelematicsStream(RedisModuleCtx *ctx, const GraphContext *gc);
 
 static uint64_t _count_indices_from_schemas(const Schema** schemas) {
 	ASSERT(schemas);
@@ -110,6 +114,8 @@ GraphContext *GraphContext_New
 
 	gc->g = Graph_New(node_cap, edge_cap);
 	gc->graph_name = rm_strdup(graph_name);
+	gc->telematics_stream = RedisModule_CreateStringPrintf(NULL,
+			TELEMATICS_FORMAT, gc->graph_name);
 
 	// allocate the default space for schemas and indices
 	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
@@ -215,14 +221,66 @@ cleanup:
 	RedisModule_FreeString(ctx, graphID);
 }
 
-const char *GraphContext_GetName(const GraphContext *gc) {
+void GraphContext_LockForCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+) {
+	// aquire GIL
+	RedisModule_ThreadSafeContextLock(ctx);
+
+	// acquire graph write lock
+	Graph_AcquireWriteLock(gc->g);
+}
+
+void GraphContext_UnlockCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+) {
+	// release graph R/W lock
+	Graph_ReleaseLock(gc->g);
+
+	// unlock GIL
+	RedisModule_ThreadSafeContextUnlock(ctx);
+}
+
+const char *GraphContext_GetName
+(
+	const GraphContext *gc
+) {
 	ASSERT(gc != NULL);
 	return gc->graph_name;
 }
 
-void GraphContext_Rename(GraphContext *gc, const char *name) {
+// get graph context's telematics stream name
+const RedisModuleString *GraphContext_GetTelematicsStreamName
+(
+	const GraphContext *gc
+) {
+	ASSERT(gc != NULL);
+	ASSERT(gc->telematics_stream != NULL);
+
+	return gc->telematics_stream;
+}
+
+// rename a graph context
+void GraphContext_Rename
+(
+	RedisModuleCtx *ctx,  // redis module context
+	GraphContext *gc,     // graph context to rename
+	const char *name      // new name
+) {
 	rm_free(gc->graph_name);
 	gc->graph_name = rm_strdup(name);
+
+	// drop old telematics stream
+	_DeleteTelematicsStream(ctx, gc);
+
+	// recreate telematics stream name
+	RedisModule_FreeString(ctx, gc->telematics_stream);
+	gc->telematics_stream = RedisModule_CreateStringPrintf(NULL,
+			TELEMATICS_FORMAT, gc->graph_name);
 }
 
 XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
@@ -788,6 +846,21 @@ Cache *GraphContext_GetCache(const GraphContext *gc) {
 // Free routine
 //------------------------------------------------------------------------------
 
+// delete graph's telematics stream
+static void _DeleteTelematicsStream
+(
+	RedisModuleCtx *ctx,    // redis module context
+	const GraphContext *gc  // graph context
+) {
+	ASSERT(gc  != NULL);
+	ASSERT(ctx != NULL);
+
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, gc->telematics_stream,
+			REDISMODULE_WRITE);
+	RedisModule_DeleteKey(key);
+	RedisModule_CloseKey(key);
+}
+
 // Free all data associated with graph
 static void _GraphContext_Free(void *arg) {
 	GraphContext *gc = (GraphContext *)arg;
@@ -803,21 +876,23 @@ static void _GraphContext_Free(void *arg) {
 		Graph_PartialFree(gc->g);
 	}
 
-	bool async_delete;
-	Config_Option_get(Config_ASYNC_DELETE, &async_delete);
+	// Redis main thread is 0
+	bool main_thread = ThreadPools_GetThreadID() == 0;
+	RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
 
-	RedisModuleCtx *ctx = NULL;
-	if(async_delete) {
-		ctx = RedisModule_GetThreadSafeContext(NULL);
+	if(!main_thread) {
 		// GIL need to be acquire because RediSearch change Redis data structure
 		RedisModule_ThreadSafeContextLock(ctx);
 	}
 
 	//--------------------------------------------------------------------------
-	// free queries log
+	// delete graph telematics stream
 	//--------------------------------------------------------------------------
 
-	QueriesLog_Free(gc->queries_log);
+	if(gc->telematics_stream != NULL) {
+		_DeleteTelematicsStream(ctx, gc);
+		RedisModule_FreeString(ctx, gc->telematics_stream);
+	}
 
 	//--------------------------------------------------------------------------
 	// free node schemas
@@ -843,10 +918,16 @@ static void _GraphContext_Free(void *arg) {
 		array_free(gc->relation_schemas);
 	}
 
-	if(async_delete) {
+	if(!main_thread) {
 		RedisModule_ThreadSafeContextUnlock(ctx);
-		RedisModule_FreeThreadSafeContext(ctx);
 	}
+	RedisModule_FreeThreadSafeContext(ctx);
+
+	//--------------------------------------------------------------------------
+	// free queries log
+	//--------------------------------------------------------------------------
+
+	QueriesLog_Free(gc->queries_log);
 
 	//--------------------------------------------------------------------------
 	// free attribute mappings
@@ -877,29 +958,5 @@ static void _GraphContext_Free(void *arg) {
 	GraphDecodeContext_Free(gc->decoding_context);
 	rm_free(gc->graph_name);
 	rm_free(gc);
-}
-
-void GraphContext_LockForCommit
-(
-	RedisModuleCtx *ctx,
-	GraphContext *gc
-) {
-    // aquire GIL
-    RedisModule_ThreadSafeContextLock(ctx);
-
-	// acquire graph write lock
-	Graph_AcquireWriteLock(gc->g);
-}
-
-void GraphContext_UnlockCommit
-(
-	RedisModuleCtx *ctx,
-	GraphContext *gc
-) {
-	// release graph R/W lock
-	Graph_ReleaseLock(gc->g);
-
-	// unlock GIL
-	RedisModule_ThreadSafeContextUnlock(ctx);
 }
 

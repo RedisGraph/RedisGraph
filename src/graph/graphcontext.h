@@ -42,6 +42,7 @@ typedef struct {
 	GraphDecodeContext *decoding_context;  // decode context of the graph
 	Cache *cache;                          // global cache of execution plans
 	XXH32_hash_t version;                  // graph version
+	RedisModuleString *telematics_stream;  // telematics stream name
 } GraphContext;
 
 //------------------------------------------------------------------------------
@@ -83,8 +84,26 @@ void GraphContext_MarkWriter
 	GraphContext *gc
 );
 
+void GraphContext_LockForCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+);
+
+void GraphContext_UnlockCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+);
+
 // get graph name out of graph context
 const char *GraphContext_GetName
+(
+	const GraphContext *gc
+);
+
+// get graph context's telematics stream name
+const RedisModuleString *GraphContext_GetTelematicsStreamName
 (
 	const GraphContext *gc
 );
@@ -92,8 +111,9 @@ const char *GraphContext_GetName
 // rename a graph context
 void GraphContext_Rename
 (
-	GraphContext *gc,
-	const char *name
+	RedisModuleCtx *ctx,  // redis module context
+	GraphContext *gc,     // graph context to rename
+	const char *name      // new name
 );
 
 // Get graph context version
@@ -358,14 +378,3 @@ Cache *GraphContext_GetCache
 	const GraphContext *gc
 );
 
-void GraphContext_LockForCommit
-(
-	RedisModuleCtx *ctx,
-	GraphContext *gc
-);
-
-void GraphContext_UnlockCommit
-(
-	RedisModuleCtx *ctx,
-	GraphContext *gc
-);

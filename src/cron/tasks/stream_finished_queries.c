@@ -225,9 +225,8 @@ void CronTask_streamFinishedQueries
 				// stream queries
 				//--------------------------------------------------------------
 
-				RedisModuleString* keyname =
-					RedisModule_CreateStringPrintf(NULL, "telematics{%s}",
-							GraphContext_GetName(gc));
+				RedisModuleString *keyname =
+					(RedisModuleString*) GraphContext_GetTelematicsStreamName(gc);
 
 				RedisModuleKey *key = RedisModule_OpenKey(rm_ctx, keyname,
 						REDISMODULE_WRITE);
@@ -248,7 +247,6 @@ void CronTask_streamFinishedQueries
 
 				// clean up
 				RedisModule_CloseKey(key);
-				RedisModule_FreeString(rm_ctx, keyname);
 
 				// release GIL
 				RedisModule_ThreadSafeContextUnlock(rm_ctx);

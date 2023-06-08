@@ -469,6 +469,8 @@ bool Config_Contains_field
 		f = Config_DELTA_MAX_PENDING_CHANGES;
 	} else if(!(strcasecmp(field_str, NODE_CREATION_BUFFER))) {
 		f = Config_NODE_CREATION_BUFFER;
+	} else if(!(strcasecmp(field_str, ASYNC_DELETE))) {
+		f = Config_ASYNC_DELETE;
 	} else if(!(strcasecmp(field_str, CMD_INFO))) {
 		f = Config_CMD_INFO;
 	} else if(!(strcasecmp(field_str, CMD_INFO_MAX_QUERIES_COUNT_OPTION_NAME))) {

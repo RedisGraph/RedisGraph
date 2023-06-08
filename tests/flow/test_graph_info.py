@@ -63,36 +63,36 @@ class LoggedQuery:
     def UtilizedCache(self):
         return self.utilized_cache
 
+def StreamName(graph):
+    return f"telematics{{{graph.name}}}"
+
 class testGraphInfo(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
         self.conn = self.env.getConnection()
         self.graph = Graph(self.conn, GRAPH_ID)
 
-    @property
-    def StreamName(self):
-        return f"telematics{{{GRAPH_ID}}}"
-
-    def consumeStream(self):
+    def consumeStream(self, stream, drop=True):
         # wait for telematics stream to be created
         t = 'none' # type of stream_key
 
         start = time.time()
         deadline = 3000
         while t == 'none' and ((time.time() - start) * 1000) < deadline:
-            t = self.conn.type(self.StreamName)
+            t = self.conn.type(stream)
             time.sleep(0.1) # sleep for 100ms
 
         self.env.assertEquals(t, "stream")
 
         # consume entire stream
-        events = self.conn.xrevrange(self.StreamName, '+', '-')
+        events = self.conn.xrevrange(stream, '+', '-')
 
         # convert stream events to LoggedQueries
         logged_queries = [LoggedQuery(e[1]) for e in events]
 
         # drop stream
-        self.conn.delete(self.StreamName)
+        if drop:
+            self.conn.delete(stream)
 
         return logged_queries
 
@@ -115,7 +115,7 @@ class testGraphInfo(FlowTestsBase):
             self.graph.query(q)
 
         # read stream
-        logged_queries = self.consumeStream()
+        logged_queries = self.consumeStream(StreamName(self.graph))
 
         # validate events
         self.env.assertEquals(len(logged_queries), 3)
@@ -133,7 +133,7 @@ class testGraphInfo(FlowTestsBase):
                 self.graph.query(q)
 
         # read stream
-        logged_queries = self.consumeStream()
+        logged_queries = self.consumeStream(StreamName(self.graph))
 
         # validate events
         self.env.assertEquals(len(logged_queries), 6)
@@ -175,7 +175,7 @@ class testGraphInfo(FlowTestsBase):
             t.join()
 
         # read stream
-        logged_queries = self.consumeStream()
+        logged_queries = self.consumeStream(StreamName(self.graph))
 
         # make sure number of logged queries is capped
         self.env.assertLess(len(logged_queries), 1200)
@@ -191,7 +191,7 @@ class testGraphInfo(FlowTestsBase):
         self.graph.query(q)
 
         # read stream
-        logged_queries = self.consumeStream()
+        logged_queries = self.consumeStream(StreamName(self.graph), drop=False)
 
         logged_query = logged_queries[0]
 
@@ -199,7 +199,56 @@ class testGraphInfo(FlowTestsBase):
         self.env.assertTrue(logged_query.Query.endswith('...'))
         self.env.assertTrue(q.startswith(logged_query.Query[:-3]))
 
-    def test04_multiple_streams(self):
+    def test04_delete_graph(self):
+        """make sure reporting stream is deleted when graph is deleted"""
+
+        # validate that stream exists
+        stream_name = StreamName(self.graph)
+        self.env.assertEquals(self.conn.type(stream_name), "stream")
+
+        # make sure graph is deleted synchronously
+        self.graph.config("ASYNC_DELETE", "no", set=True)
+
+        # delete graph
+        self.graph.delete()
+
+        # validate that stream was deleted
+        self.env.assertEquals(self.conn.type(stream_name), "none")
+
+        # restore ASYNC_DELETE
+        self.graph.config("ASYNC_DELETE", "yes", set=True)
+
+    def test05_rename_graph(self):
+        """make sure reporting stream is renamed when graph is renamed"""
+
+        old_name = "old_graph"
+        new_name = "new_graph"
+        old_graph = Graph(self.conn, old_name)
+        new_graph = Graph(self.conn, new_name)
+
+        # issue query to create and populate stream
+        old_graph.query("RETURN 1")
+
+        # wait for stream to be created
+        logged_queries = self.consumeStream(StreamName(old_graph), drop=False)
+
+        # validate that stream exists
+        self.env.assertEquals(self.conn.type(StreamName(old_graph)), "stream")
+
+        # rename graph
+        self.conn.rename(old_name, new_name)
+
+        # issue query to create and populate stream
+        new_graph.query("RETURN 1")
+
+        # wait for stream to be created
+        logged_queries = self.consumeStream(StreamName(new_graph), drop=False)
+
+        # validate that stream was renamed
+        self.env.assertEquals(self.conn.type(StreamName(old_graph)), "none")
+        self.env.assertEquals(self.conn.type(StreamName(new_graph)), "stream")
+
+    def test06_multiple_streams(self):
         """test a more realistic example for how logged-queries streams
         will be processed"""
 

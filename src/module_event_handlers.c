@@ -58,12 +58,13 @@ static int _GenericKeyspaceHandler
 	}
 
 	if(strcasecmp(event, "RENAME_TO") == 0) {
-		RedisModuleKey *key = RedisModule_OpenKey(ctx, key_name, REDISMODULE_WRITE);
+		RedisModuleKey *key = RedisModule_OpenKey(ctx, key_name,
+				REDISMODULE_WRITE);
 		if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
 			GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
 			size_t len;
 			const char *new_name = RedisModule_StringPtrLen(key_name, &len);
-			GraphContext_Rename(gc, new_name);
+			GraphContext_Rename(ctx, gc, new_name);
 		}
 		RedisModule_CloseKey(key);
 	}
