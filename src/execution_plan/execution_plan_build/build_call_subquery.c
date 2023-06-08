@@ -138,6 +138,7 @@ static OpBase **_find_deepest_ops
 		}
 	}
 
+	// get the deepest op(s)
 	if(join != NULL) {
 		uint n_branches = OpBase_ChildCount(join);
 		for(uint i = 0; i < n_branches; i++) {

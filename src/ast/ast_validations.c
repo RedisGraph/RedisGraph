@@ -1194,10 +1194,15 @@ static bool _ValidateCallInitialWith
 		const cypher_astnode_type_t t = cypher_astnode_type(exp);
 
 		if (t == CYPHER_AST_IDENTIFIER ) {
+			const cypher_astnode_t *alias =
+				cypher_ast_projection_get_alias(curr_proj);
+			// if this is an internal representation of a variable, skip it
+			if(alias != NULL && cypher_ast_identifier_get_name(alias)[0] == '@') {
+				continue;
+			}
 			const char *identifier = cypher_ast_identifier_get_name(exp);
 			int len = strlen(identifier);
-			if(found_non_simple ||
-			   cypher_ast_projection_get_alias(curr_proj) != NULL) {
+			if(found_non_simple || alias != NULL) {
 				return false;
 			}
 			found_simple = true;
@@ -1211,7 +1216,6 @@ static bool _ValidateCallInitialWith
 			}
 			found_non_simple = true;
 		}
-
 	}
 
 	// order by, predicates, limit and skips are not valid

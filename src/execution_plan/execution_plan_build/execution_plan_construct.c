@@ -4,19 +4,14 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "RG.h"
 #include "../ops/ops.h"
-#include "../../errors.h"
 #include "../../query_ctx.h"
-#include "../execution_plan.h"
 #include "build_call_subquery.h"
 #include "execution_plan_modify.h"
 #include "execution_plan_construct.h"
 #include "../../util/rax_extensions.h"
-#include "../../ast/ast_build_filter_tree.h"
 #include "../../ast/ast_build_op_contexts.h"
 #include "../../arithmetic/arithmetic_expression_construct.h"
-#include "../../ast/enrichment/annotate_projected_named_paths.h"
 
 static inline void _PushDownPathFilters(ExecutionPlan *plan,
 										OpBase *path_filter_op) {
