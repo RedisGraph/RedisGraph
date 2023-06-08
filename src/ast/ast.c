@@ -274,25 +274,6 @@ uint *AST_GetClauseIndices
 	return clause_indices;
 }
 
-// return the indices of all clauses of the specified type in a CALL subquery
-uint *AST_SubqueryGetClauseIndices
-(
-	const cypher_astnode_t *call_subquery,  // call {} node
-	cypher_astnode_type_t clause_type       // clause type
-) {
-	uint *clause_indices = array_new(uint, 1);
-	const cypher_astnode_t *subquery =
-		cypher_ast_call_subquery_get_query(call_subquery);
-	uint clause_count = cypher_ast_query_nclauses(subquery);
-	for(uint i = 0; i < clause_count; i ++) {
-		if(cypher_astnode_type(cypher_ast_query_get_clause(subquery, i)) ==
-		   clause_type) {
-				array_append(clause_indices, i);
-		}
-	}
-	return clause_indices;
-}
-
 uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	uint num_found = 0;

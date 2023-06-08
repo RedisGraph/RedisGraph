@@ -223,7 +223,6 @@ static void _replace_with_clause
 // their internal representation (inter_names)
 static void _add_first_clause
 (
-	cypher_astnode_t *wrapping_clause,  // query ast-node
 	cypher_astnode_t *callsubquery,     // call subquery ast-node
 	uint callsubquery_ind,              // index of the call subquery node
 	uint first_ind,                     // index of the clause to replace
@@ -323,30 +322,16 @@ static void _add_first_clause
 			cypher_ast_query_get_clause(subquery, i));
 	}
 	clauses[first_ind] = new_clause;
-	for(uint i = first_ind + 1; i < n_clauses + 1; i++) {
-		clauses[i] =(cypher_astnode_t *)cypher_ast_clone(
-			cypher_ast_query_get_clause(subquery, i-1));
+	for(uint i = 0; i < n_clauses; i++) {
+		clauses[i + first_ind + 1] =(cypher_astnode_t *)cypher_ast_clone(
+			cypher_ast_query_get_clause(subquery, i + first_ind));
 	}
 
-	cypher_astnode_t *q = cypher_ast_query(NULL, 0, clauses, n_clauses, clauses,
-		n_clauses, range);
+	cypher_astnode_t *q = cypher_ast_query(NULL, 0, clauses, n_clauses + 1, clauses,
+		n_clauses + 1, range);
+	
+	cypher_ast_call_subquery_replace_query(callsubquery, q);
 
-	cypher_astnode_t *new_callsubquery = cypher_ast_call_subquery(q, range);
-
-	// replace the old subquery with the new one
-	// TODO: Consider using replace_clause instead of set_clause (seal leaks)
-	cypher_astnode_type_t type = cypher_astnode_type(wrapping_clause);
-	if(type == CYPHER_AST_QUERY) {
-		cypher_ast_query_replace_clauses(wrapping_clause, new_callsubquery,
-			callsubquery_ind, callsubquery_ind);
-	} else if (type == CYPHER_AST_CALL_SUBQUERY){
-		cypher_ast_query_replace_clauses(
-			cypher_ast_call_subquery_get_query(wrapping_clause),
-			new_callsubquery, callsubquery_ind, callsubquery_ind);
-	} else {
-		// shouldn't get here
-		ASSERT(false);
-	}
 }
 
 // replace all intermediate WITH clauses in the query with new WITH clauses,
@@ -529,8 +514,9 @@ static void _rewrite_projections
 
 	// if there is a UNION clause in the subquery, each branch must be handled
 	cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(clause);
-	uint *union_indices = AST_SubqueryGetClauseIndices(clause,
-		CYPHER_AST_UNION);
+	AST ast = {0};
+	ast.root = subquery;
+	uint *union_indices = AST_GetClauseIndices(&ast, CYPHER_AST_UNION);
 	uint clause_count = cypher_ast_query_nclauses(subquery);
 	array_append(union_indices, clause_count);
 	uint n_union_branches = array_len(union_indices);
@@ -552,19 +538,14 @@ static void _rewrite_projections
 		} else {
 			// add a leading WITH clause containing "n->@n" projections
 			// for all bound vars (in outer-scope context)
-			_add_first_clause(wrapping_clause, clause, clause_ind, first_ind,
-				names, *inter_names);
+			_add_first_clause(clause, clause_ind, first_ind, names,
+				*inter_names);
 
 			// update union indeces
 			for(uint j = i; j < n_union_branches; j++) {
 				union_indices[j]++;
 			}
 			last_ind++;
-
-			// update the query and call {} nodes
-			clause = (cypher_astnode_t *)
-				cypher_ast_query_get_clause(wrapping_clause, clause_ind);
-			subquery = cypher_ast_call_subquery_get_query(clause);
 		}
 
 		// for every intermediate WITH clause (all but first one),
