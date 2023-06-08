@@ -18,8 +18,9 @@
 
 // returns an AST containing the body of a subquery as its body (stripped from
 // the CALL {} clause)
-static AST *_CreateASTFromCallSubquery
+static void _create_ast_from_call_subquery
 (
+	AST *subquery_ast,               // target AST to populate
 	const cypher_astnode_t *clause,  // CALL {} ast-node
 	const AST *orig_ast              // original AST with which to build new one
 ) {
@@ -27,23 +28,14 @@ static AST *_CreateASTFromCallSubquery
 	ASSERT(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY);
 
 	// create an AST from the body of the subquery
-	uint *ref_count = rm_malloc(sizeof(uint));
-	*ref_count = 1;
-
-	AST *subquery_ast = rm_calloc(1, sizeof(AST));
+	subquery_ast->root                = cypher_ast_call_subquery_get_query(clause);
 	subquery_ast->free_root           = false;
-	subquery_ast->ref_count           = ref_count;
-	// TODO: Make sure you need this.
 	subquery_ast->anot_ctx_collection = orig_ast->anot_ctx_collection;
-
-	subquery_ast->root = cypher_ast_call_subquery_get_query(clause);
-
-	return subquery_ast;
 }
 
 // adds an empty projection as the child of parent, such that the records passed
 // to parent are "filtered" to contain no bound vars
-static OpBase *_AddEmptyProjection
+static OpBase *_add_empty_projection
 (
 	OpBase *parent
 ) {
@@ -61,7 +53,7 @@ static OpBase *_AddEmptyProjection
 }
 
 // returns true if op is effectively a deepest op (i.e., no lhs)
-static bool _is_deepest_call_foreach
+static inline bool _is_deepest_call_foreach
 (
 	OpBase *op  // op to check
 ) {
@@ -105,7 +97,7 @@ static void _get_deepest
 
 // looks for a Join operation at root or root->children[0] and returns it, or
 // NULL if not found
-static OpBase *_getJoin
+static OpBase *_get_join
 (
 	OpBase *root  // root op from which to look for the Join op
 ) {
@@ -121,7 +113,7 @@ static OpBase *_getJoin
 }
 
 // returns an array with the deepest ops of an execution plan
-static OpBase **_FindDeepestOps
+static OpBase **_find_deepest_ops
 (
 	const ExecutionPlan *plan
 ) {
@@ -131,18 +123,19 @@ static OpBase **_FindDeepestOps
 	OpBase **deepest_ops = array_new(OpBase *, 1);
 
 	// check root and its first child for a Join op
-	OpBase *join = _getJoin(deepest);
+	OpBase *join = _get_join(deepest);
 
 	// if didn't find, check for a Join op in the first child of the first child
 	if(join == NULL) {
-		join = OpBase_ChildCount(deepest) > 0 ?
-			OpBase_ChildCount(OpBase_GetChild(deepest, 0)) > 0 ?
-				OpBase_Type(OpBase_GetChild(OpBase_GetChild(deepest, 0), 0)) ==
-				OPType_JOIN ?
-					OpBase_GetChild(OpBase_GetChild(deepest, 0), 0) :
-					NULL :
-				NULL :
-			NULL;
+		if(OpBase_ChildCount(deepest) > 0) {
+			OpBase *child = OpBase_GetChild(deepest, 0);
+			if(OpBase_ChildCount(child) > 0) {
+				OpBase *grandchild = OpBase_GetChild(child, 0);
+				if(OpBase_Type(grandchild) == OPType_JOIN)  {
+					join = grandchild;
+				}
+			}
+		}
 	}
 
 	if(join != NULL) {
@@ -177,7 +170,7 @@ static void _bind_returning_op
 // binds the returning ops (effectively, all ops between the first
 // Project\Aggregate and CallSubquery in every branch, inclusive) in
 // embedded_plan to plan
-static void _BindReturningOpsToPlan
+static void _bind_returning_ops_to_plan
 (
 	ExecutionPlan *embedded_plan,  // plan containing the returning ops
 	ExecutionPlan *plan            // plan to bind the returning ops to
@@ -186,7 +179,7 @@ static void _BindReturningOpsToPlan
 
 	// check if there is a Join operation (from UNION or UNION ALL)
 	OpBase *root = embedded_plan->root;
-	OpBase *join_op = _getJoin(root);
+	OpBase *join_op = _get_join(root);
 
 	// if there is a Union operation, we need to look at all branches
 	if(join_op == NULL) {
@@ -224,8 +217,7 @@ static void _add_empty_projections
 	const cypher_astnode_t *subquery =
 		cypher_ast_call_subquery_get_query(clause);
 	uint clause_count = cypher_ast_query_nclauses(subquery);
-	uint *union_indices = AST_GetClauseIndices(subquery_ast,
-		CYPHER_AST_UNION);
+	uint *union_indices = AST_GetClauseIndices(subquery_ast, CYPHER_AST_UNION);
 	array_append(union_indices, clause_count);
 	uint n_union_branches = array_len(union_indices);
 	uint first_ind = 0;
@@ -237,7 +229,7 @@ static void _add_empty_projections
 		first_clause = cypher_ast_query_get_clause(subquery, first_ind);
 		if(cypher_astnode_type(first_clause) != CYPHER_AST_WITH) {
 			deepest = array_elem(deepest_ops, i);
-			*deepest = _AddEmptyProjection(*deepest);
+			*deepest = _add_empty_projection(*deepest);
 		}
 
 		first_ind = union_indices[i] + 1;
@@ -260,22 +252,23 @@ void buildCallSubqueryPlan
 	AST *orig_ast = QueryCtx_GetAST();
 
 	// create an AST from the body of the subquery
-	AST *subquery_ast = _CreateASTFromCallSubquery(clause, orig_ast);
+	AST subquery_ast= {0};
+	_create_ast_from_call_subquery(&subquery_ast, clause, orig_ast);
 
 	//--------------------------------------------------------------------------
 	// build the embedded execution plan corresponding to the subquery
 	//--------------------------------------------------------------------------
 
-	QueryCtx_SetAST(subquery_ast);
+	QueryCtx_SetAST(&subquery_ast);
 	ExecutionPlan *embedded_plan = ExecutionPlan_FromTLS_AST();
 	QueryCtx_SetAST(orig_ast);
 
 	// find the deepest ops, to which we will add the projections and feeders
-	OpBase **deepest_ops = _FindDeepestOps(embedded_plan);
+	OpBase **deepest_ops = _find_deepest_ops(embedded_plan);
 
 	// if no variables are imported, add an 'empty' projection so that the
 	// records within the subquery will not carry unnecessary entries
-	_add_empty_projections(subquery_ast, clause, deepest_ops);
+	_add_empty_projections(&subquery_ast, clause, deepest_ops);
 
 	// characterize whether the query is eager or not
 	OPType eager_types[] = {OPType_CREATE, OPType_UPDATE, OPType_FOREACH,
@@ -297,11 +290,11 @@ void buildCallSubqueryPlan
 		ExecutionPlan_RemoveOp(embedded_plan, embedded_plan->root);
 		OpBase_Free(results_op);
 
-		_BindReturningOpsToPlan(embedded_plan, plan);
+		_bind_returning_ops_to_plan(embedded_plan, plan);
 	}
 
 	// set Join op to not modify the ResultSet mapping
-	OpBase *join_op = _getJoin(embedded_plan->root);
+	OpBase *join_op = _get_join(embedded_plan->root);
 	if(join_op != NULL) {
 		JoinSetUpdateColumnMap(join_op, false);
 	}
