@@ -162,7 +162,8 @@ static bool _AST_GetWithAliases
 		}
 
 		// project the aliased identifier
-		raxInsert(aliases, (unsigned char *)alias, strlen(alias), (void *)identifier, NULL);
+		raxInsert(aliases, (unsigned char *)alias, strlen(alias),
+			(void *)identifier, NULL);
 
 		// check for duplicate column names
 		if(raxTryInsert(local_env, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
@@ -234,8 +235,9 @@ static AST_Validation _ValidateMultiHopTraversal
 	return AST_VALID;
 }
 
-// Verify that MERGE doesn't redeclare bound relations, that one reltype is specified for unbound relations,
-// and that the entity is not a variable length pattern
+// verify that MERGE doesn't redeclare bound relations, that one reltype is
+// specified for unbound relations, and that the entity is not a variable
+// length pattern
 static AST_Validation _ValidateMergeRelation
 (
 	const cypher_astnode_t *entity,  // ast-node (rel-pattern)
@@ -474,7 +476,7 @@ static AST_Validation _Validate_referred_identifier
 ) {
 	int len = strlen(identifier);
 	if(raxFind(defined_identifiers, (unsigned char *)identifier, len) == raxNotFound) {
-		ErrorCtx_SetError("%.*s not defined ref", len, identifier);
+		ErrorCtx_SetError("%.*s not defined", len, identifier);
 		return AST_INVALID;
 	}
 
@@ -839,7 +841,7 @@ static VISITOR_STRATEGY _Validate_reduce
 		// check if the variable has already been introduced
 		const char *var_str = cypher_ast_identifier_get_name(init_node);
 		if(raxFind(vctx->defined_identifiers, (unsigned char *)var_str, strlen(var_str)) == raxNotFound) {
-			ErrorCtx_SetError("%s not defined.", var_str);
+			ErrorCtx_SetError("%s not defined", var_str);
 			return VISITOR_BREAK;
 		}
 	}
@@ -980,7 +982,8 @@ static AST_Validation _ValidateInlinedProperties
 				const char *identifier_name = cypher_ast_identifier_get_name(exp);
 				uint len = strlen(identifier_name);
 
-				// emit an error if the property reference to a property of the same node
+				// emit an error if the property reference to a property of
+				// the same node:
 				// CREATE (a {v:a.p})
 				// CREATE ()-[r {v:r.x}]->()
 				if(clause != CYPHER_AST_MATCH && alias != NULL &&
@@ -989,7 +992,8 @@ static AST_Validation _ValidateInlinedProperties
 				 	return AST_INVALID;
 				}
 
-				// emit an error if the property references to an "intermediate" node or edge
+				// emit an error if the property references to an "intermediate"
+				// node or edge:
 				// CREATE (a:A), (b:B {v:a.v})
 				void *identifier_type = raxFind(intermediate_identifiers,
 					(unsigned char *)identifier_name, len);
