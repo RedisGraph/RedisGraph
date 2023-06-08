@@ -679,12 +679,16 @@ void AST_RewriteCallSubquery
 (
 	const cypher_astnode_t *root  // root of AST
 ) {
-	ASSERT(cypher_astnode_type(root) == CYPHER_AST_STATEMENT);
+	if(cypher_astnode_type(root) != CYPHER_AST_STATEMENT) {
+		return;
+	}
 
 	// retrieve the root's body
-	cypher_astnode_t *query =
+	cypher_astnode_t *query = 
 		(cypher_astnode_t *)cypher_ast_statement_get_body(root);
-	ASSERT(cypher_astnode_type(query) == CYPHER_AST_QUERY);
+	if(cypher_astnode_type(query) != CYPHER_AST_QUERY) {
+		return;
+	}
 
 	char **inter_names = array_new(char *, 0);
 	_AST_RewriteCallSubqueryClauses(query, &inter_names);
