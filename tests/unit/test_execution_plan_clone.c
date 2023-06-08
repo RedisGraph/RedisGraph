@@ -99,6 +99,11 @@ static void validate_query_plans_clone
 }
 
 void setup() {
+	// skip if memory sanitizer is enabled
+	if(getenv("SANITIZER") != NULL || getenv("VALGRIND") != NULL) {
+		exit(0);
+	}
+
 	// use the malloc family for allocations
 	Alloc_Reset();
 

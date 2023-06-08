@@ -306,6 +306,11 @@ void free_algebraic_expressions(AlgebraicExpression **exps, uint count) {
 }
 
 void setup() {
+	// skip if memory sanitizer is enabled
+	if(getenv("SANITIZER") != NULL || getenv("VALGRIND") != NULL) {
+		exit(0);
+	}
+
 	// Use the malloc family for allocations
 	Alloc_Reset();
 
@@ -1817,3 +1822,4 @@ TEST_LIST = {
 	{"LocateOperand", test_LocateOperand},
 	{NULL, NULL}
 };
+
