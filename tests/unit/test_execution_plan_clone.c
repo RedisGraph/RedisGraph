@@ -37,22 +37,20 @@ static void build_ast_and_plan
 }
 
 static void _fake_graph_context() {
-	GraphContext *gc = (GraphContext *)malloc(sizeof(GraphContext));
+	GraphContext *gc = (GraphContext *)calloc(1, sizeof(GraphContext));
 
 	gc->g = Graph_New(16, 16);
-	gc->ref_count = 1;
-	gc->index_count = 0;
-	gc->graph_name = strdup("G");
-	gc->attributes = raxNew();
-	pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
-	gc->string_mapping = (char **)array_new(char *, 64);
-	gc->node_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
-	gc->relation_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
-	gc->cache = NULL;
-	gc->slowlog = NULL;
-	gc->encoding_context = NULL;
-	gc->decoding_context = NULL;
-	gc->queries_log = QueriesLog_New();
+
+	gc->ref_count        = 1;
+	gc->index_count      = 0;
+	gc->graph_name       = strdup("G");
+	gc->attributes       = raxNew();
+	gc->string_mapping   = (char**)array_new(char*, 64);
+	gc->node_schemas     = (Schema**)array_new(Schema*, GRAPH_DEFAULT_LABEL_CAP);
+	gc->relation_schemas = (Schema**)array_new(Schema*, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+	gc->queries_log      = QueriesLog_New();
+
+	pthread_rwlock_init(&gc->_attribute_rwlock,  NULL);
 	QueryCtx_SetGraphCtx(gc);
 }
 
@@ -123,8 +121,8 @@ void setup() {
 
 void tearDown() {
 	TEST_ASSERT(GrB_finalize() == GrB_SUCCESS);
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	GraphContext_DecreaseRefCount(gc);
+//	GraphContext *gc = QueryCtx_GetGraphCtx();
+//	GraphContext_DecreaseRefCount(gc);
 	QueryCtx_Free();
 }
 
