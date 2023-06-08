@@ -239,33 +239,34 @@ static bool _compress_clauses
 ) {
 	bool rewritten = false;
 	
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+	if(type == CYPHER_AST_CALL_SUBQUERY) {
+		return _compress_clauses(cypher_ast_call_subquery_get_query(node));
+	}
 	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, 0);
 	// is the node representing a FOREACH clause
 	uint            clause_count  = 0;
 	replace_func    replace_func  = NULL;
 	get_clause_func get_clause    = NULL;
 	// use appropriate function to get a positioned clause
-	if(cypher_astnode_type(node) == CYPHER_AST_FOREACH) {
+	if(type == CYPHER_AST_FOREACH) {
 		get_clause   = cypher_ast_foreach_get_clause;
 		clause_count = cypher_ast_foreach_nclauses(node);
 		replace_func = cypher_ast_foreach_replace_clauses;
-	} else if(cypher_astnode_type(node) == CYPHER_AST_CALL_SUBQUERY) {
-		get_clause   = cypher_ast_call_subquery_get_clause;
-		clause_count = cypher_ast_call_subquery_nclauses(node);
-		replace_func = cypher_ast_call_subquery_replace_clauses;
 	} else {
 		get_clause   = cypher_ast_query_get_clause;
-		clause_count = cypher_ast_query_nclauses(node);
 		replace_func = cypher_ast_query_replace_clauses;
+		clause_count = cypher_ast_query_nclauses(node);
 	}
 
 	for(uint i = 0; i < clause_count; i++) {
-		const cypher_astnode_t *clause = get_clause(node, i);
+		const cypher_astnode_t *clause;
+		clause = get_clause(node, i);
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
 
 		// try compressing the inner-clauses of foreach clause and call subquery
 		if(t == CYPHER_AST_FOREACH || t == CYPHER_AST_CALL_SUBQUERY){
-			rewritten |= _compress_clauses(get_clause(node, i));
+			rewritten |= _compress_clauses(clause);
 			continue;
 		}
 

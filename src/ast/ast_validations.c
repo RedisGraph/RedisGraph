@@ -1236,15 +1236,8 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
 	// create a query astnode with the body of the subquery as its body
-	uint nclauses = cypher_ast_call_subquery_nclauses(n);
-	cypher_astnode_t *clauses[nclauses];
-	// Explicitly collect all child nodes from the clause.
-	for(uint i = 0; i < nclauses; i ++) {
-		clauses[i] = (cypher_astnode_t *)cypher_astnode_get_child(n, i);
-	}
-	struct cypher_input_range range = {0};
-	cypher_astnode_t *body = cypher_ast_query(NULL, 0, clauses, nclauses,
-		clauses, nclauses, range);
+	cypher_astnode_t *body = cypher_ast_call_subquery_get_query(n);
+	uint nclauses = cypher_ast_query_nclauses(body);
 
 	// Build an ast with the body of the subquery
 	AST ast;
@@ -1252,47 +1245,42 @@ static VISITOR_STRATEGY _Validate_call_subquery
 
 	// Verify that the RETURN clause and terminating clause do not violate scoping rules.
 	if(_ValidateQuerySequence(&ast) != AST_VALID) {
-		cypher_astnode_free(body);
 		return VISITOR_BREAK;
 	}
 
 	// Verify that the clause order in the scope is valid.
 	if(_ValidateClauseOrder(&ast) != AST_VALID) {
-		cypher_astnode_free(body);
 		return VISITOR_BREAK;
 	}
 
 	// Verify that the clauses surrounding UNION return the same column names.
 	if(_ValidateUnion_Clauses(&ast) != AST_VALID) {
-		cypher_astnode_free(body);
 		return VISITOR_BREAK;
 	}
 
 	// validate positions of allShortestPaths
 	if(!_ValidateAllShortestPaths(body)) {
-		cypher_astnode_free(body);
 		ErrorCtx_SetError("RedisGraph support allShortestPaths only in match clauses");
 		return VISITOR_BREAK;
 	}
 
 	if(!_ValidateShortestPaths(body)) {
 		ErrorCtx_SetError("RedisGraph currently only supports shortestPaths in WITH or RETURN clauses");
-		cypher_astnode_free(body);
 		return VISITOR_BREAK;
 	}
-
-	cypher_astnode_free(body);
 
 	// clone the bound vars context.
 	rax *in_env = raxClone(vctx->defined_identifiers);
 
 	// if there are no imports, set the env of bound-vars to the empty env
-	if(cypher_astnode_type(clauses[0]) != CYPHER_AST_WITH) {
+	const cypher_astnode_t *first_clause = cypher_ast_query_get_clause(body, 0);
+	if(cypher_astnode_type(first_clause) !=
+	   CYPHER_AST_WITH) {
 		raxFree(vctx->defined_identifiers);
 		vctx->defined_identifiers = raxNew();
 	} else {
 		// validate that the with imports (if exist) are simple, i.e., 'WITH a'
-		if(!_ValidateCallInitialWith(clauses[0], vctx)) {
+		if(!_ValidateCallInitialWith(first_clause, vctx)) {
 			raxFree(in_env);
 			ErrorCtx_SetError(
 				"WITH imports in CALL {} must consist of only simple references\
@@ -1303,9 +1291,9 @@ static VISITOR_STRATEGY _Validate_call_subquery
 
 	// visit the subquery clauses
 	bool last_is_union = false;
-	for(uint i = 0; i < cypher_ast_call_subquery_nclauses(n); i++) {
+	for(uint i = 0; i < nclauses; i++) {
 		const cypher_astnode_t *clause =
-			cypher_ast_call_subquery_get_clause(n, i);
+			cypher_ast_query_get_clause(body, i);
 
 		// if the current clause is a `UNION` clause, it has reset the bound
 		// vars env to the empty env. We compensate for that in case there is no
@@ -1343,8 +1331,8 @@ references to outside variables");
 	raxFree(vctx->defined_identifiers);
 	vctx->defined_identifiers = in_env;
 
-	const cypher_astnode_t *last_clause = cypher_ast_call_subquery_get_clause(n,
-										nclauses-1);
+	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(body,
+		nclauses-1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
 
 	if(is_returning) {
@@ -1352,7 +1340,7 @@ references to outside variables");
 		// make sure no returned aliases are bound
 
 		const cypher_astnode_t *return_clause
-			= cypher_ast_call_subquery_get_clause(n, nclauses-1);
+			= cypher_ast_query_get_clause(body, nclauses-1);
 		for(uint i = 0; i < cypher_ast_return_nprojections(return_clause); i++) {
 			const cypher_astnode_t *proj =
 				cypher_ast_return_get_projection(return_clause, i);
@@ -1858,8 +1846,10 @@ clause, an update clause, a procedure call or a non-returning subquery)",
 	// if the last clause is CALL {}, it must be non-returning
 	if(type == CYPHER_AST_CALL_SUBQUERY &&
 		cypher_astnode_type(
-			cypher_ast_call_subquery_get_clause(last_clause,
-				cypher_ast_call_subquery_nclauses(last_clause)-1)) ==
+			cypher_ast_query_get_clause(
+				cypher_ast_call_subquery_get_query(last_clause),
+				cypher_ast_query_nclauses(
+					cypher_ast_call_subquery_get_query(last_clause))-1)) ==
 				CYPHER_AST_RETURN) {
 		ErrorCtx_SetError("A query cannot conclude with a returning subquery \
 (must be a RETURN clause, an update clause, a procedure call or a non-returning\

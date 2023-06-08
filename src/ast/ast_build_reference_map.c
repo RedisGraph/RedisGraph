@@ -353,10 +353,12 @@ static void _AST_MapCallSubqueryReferences
 	AST *ast,                                    // AST
 	const cypher_astnode_t *callsubquery_clause  // clause
 ) {
-	uint n_clauses = cypher_ast_call_subquery_nclauses(callsubquery_clause);
+	const cypher_astnode_t *query = cypher_ast_call_subquery_get_query(
+			callsubquery_clause);
+	uint n_clauses = cypher_ast_query_nclauses(query);
 	for(uint i = 0; i < n_clauses; i++) {
 		const cypher_astnode_t *clause =
-			cypher_ast_call_subquery_get_clause(callsubquery_clause, i);
+			cypher_ast_query_get_clause(query, i);
 		_ASTClause_BuildReferenceMap(ast, clause);
 	}
 }

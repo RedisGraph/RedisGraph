@@ -341,9 +341,11 @@ static void _collect_call_subquery_projections
 	rax *identifiers
 ) {
 	// collect returned aliases from the subquery, if there are any
-	uint nclauses = cypher_ast_call_subquery_nclauses(clause);
+	const cypher_astnode_t *query =
+		cypher_ast_call_subquery_get_query(clause);
+	uint nclauses = cypher_ast_query_nclauses(query);
 	const cypher_astnode_t *last_clause =
-		cypher_ast_call_subquery_get_clause(clause, nclauses - 1);
+		cypher_ast_query_get_clause(query, nclauses - 1);
 	bool is_returning = (cypher_astnode_type(last_clause) == CYPHER_AST_RETURN);
 	if(!is_returning) {
 		return;
@@ -387,7 +389,8 @@ void collect_aliases_in_scope
 		const cypher_astnode_t *clause = cypher_astnode_type(root) ==
 										 CYPHER_AST_QUERY ?
 			cypher_ast_query_get_clause(root, i) :
-			cypher_ast_call_subquery_get_clause(root, i);
+			cypher_ast_query_get_clause(
+				cypher_ast_call_subquery_get_query(root), i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 
 		if(type == CYPHER_AST_WITH) {
