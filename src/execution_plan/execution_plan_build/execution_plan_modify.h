@@ -10,7 +10,7 @@
 typedef struct ExecutionPlan ExecutionPlan;
 
 //------------------------------------------------------------------------------
-// Helper functions to move and analyze operations in an ExecutionPlan.
+// Helper functions to modify execution plans.
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
@@ -109,10 +109,8 @@ OpBase **ExecutionPlan_CollectOps(OpBase *root, OPType type);
 void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers);
 
 // For all ops in the given tree, associate the provided ExecutionPlan.
-// This is for use for updating ops that have been built with a temporary
-// ExecutionPlan.
 // if qg is set, merge the query graphs of the temporary and main plans
-void ExecutionPlan_BindPlanToOps
+void ExecutionPlan_BindOpsToPlan
 (
 	ExecutionPlan *plan,  // plan to bind the operations to
 	OpBase *root,         // root operation
