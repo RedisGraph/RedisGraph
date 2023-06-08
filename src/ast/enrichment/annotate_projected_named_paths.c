@@ -332,13 +332,15 @@ static void _annotate_callsubquery_clause_projected_named_path
 		CYPHER_AST_UNION);
 	uint n_union_clauses = array_len(union_indices);
 	// handle first `UNION` branch
-	const cypher_astnode_t *first_in_branch = cypher_ast_query_get_clause(subquery, 0);
+	const cypher_astnode_t *first_in_branch =
+		cypher_ast_query_get_clause(subquery, 0);
 	if(cypher_astnode_type(first_in_branch) == CYPHER_AST_WITH) {
 		_collect_projected_identifier(first_in_branch, identifier_map);
 	}
 	// handle rest of `UNION` branches
 	for(uint i = 0; i < n_union_clauses; i++) {
-		first_in_branch = cypher_ast_query_get_clause(subquery, union_indices[i] + 1);
+		first_in_branch =
+			cypher_ast_query_get_clause(subquery, union_indices[i] + 1);
 		if(cypher_astnode_type(first_in_branch) == CYPHER_AST_WITH) {
 			_collect_projected_identifier(first_in_branch, identifier_map);
 		}
@@ -361,7 +363,8 @@ static void _annotate_projected_named_path(AST *ast) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i++) {
 		scope_end = i;
-		const cypher_astnode_t *child = cypher_ast_query_get_clause(ast->root, i);
+		const cypher_astnode_t *child =
+			cypher_ast_query_get_clause(ast->root, i);
 		if(cypher_astnode_type(child) == CYPHER_AST_WITH) {
 			_annotate_with_clause_projected_named_path(ast, child, scope_start,
 													   scope_end);

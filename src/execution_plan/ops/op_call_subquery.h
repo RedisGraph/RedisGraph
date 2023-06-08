@@ -20,36 +20,36 @@
 // is\isn't eager (non-eager -> Arguments, eager -> ArgumentLists).
 
 typedef enum {
-    CONNECTOR_NONE,          // non-initialized
-    CONNECTOR_ARGUMENT,      // Arguments
-    CONNECTOR_ARGUMENT_LIST  // ArgumentLists
+	CONNECTOR_NONE,          // non-initialized
+	CONNECTOR_ARGUMENT,      // Arguments
+	CONNECTOR_ARGUMENT_LIST  // ArgumentLists
 } ConnectorType;
 
 typedef struct Connector{
-    union {
-        Argument **arguments;
-        ArgumentList **argumentLists;
-    };
-    ConnectorType type;
+	union {
+		Argument **arguments;
+		ArgumentList **argumentLists;
+	};
+	ConnectorType type;
 } Connector;
 
 typedef struct {
-    OpBase op;
+	OpBase op;
 
-    bool first;         // is this the first call to consume
-    bool is_eager;      // is the op eager
-    bool is_returning;  // is the subquery returning or not
-    OpBase *body;       // first op in the embedded execution-plan
-    OpBase *lhs;        // op from which records are pulled
-    Record r;           // current record consumed from lhs
-    Record *records;    // records aggregated by the operation
-    Connector feeders;  // connectors to the body (Args/ArgLists)
+	bool first;         // is this the first call to consume
+	bool is_eager;      // is the op eager
+	bool is_returning;  // is the subquery returning or not
+	OpBase *body;       // first op in the embedded execution-plan
+	OpBase *lhs;        // op from which records are pulled
+	Record r;           // current record consumed from lhs
+	Record *records;    // records aggregated by the operation
+	Connector feeders;  // connectors to the body (Args/ArgLists)
 } OpCallSubquery;
 
 // creates a new CallSubquery operation
 OpBase *NewCallSubqueryOp
 (
 	const ExecutionPlan *plan,  // execution plan
-    bool is_eager,              // if an updating clause lies in the body, eagerly consume the records
-    bool is_returning           // is the subquery returning or unit
+	bool is_eager,              // if an updating clause lies in the body, eagerly consume the records
+	bool is_returning           // is the subquery returning or unit
 );

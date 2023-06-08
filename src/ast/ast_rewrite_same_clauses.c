@@ -260,8 +260,7 @@ static bool _compress_clauses
 	}
 
 	for(uint i = 0; i < clause_count; i++) {
-		const cypher_astnode_t *clause;
-		clause = get_clause(node, i);
+		const cypher_astnode_t *clause = get_clause(node, i);
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
 
 		// try compressing the inner-clauses of foreach clause and call subquery
