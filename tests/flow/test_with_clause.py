@@ -288,6 +288,7 @@ class testWithClause(FlowTestsBase):
             ("MATCH ()-[m]->() WITH m AS n MATCH (n)-[:R]->() RETURN 0", error_node_relationship),
             ("MATCH (m)-[:R]->() WITH m AS n MATCH ()-[n:R]->() RETURN 0", error_node_relationship),
             ("MATCH m=() WITH m AS n MATCH (n)-[:R]->() RETURN 0", error_path_node),
+            ("MATCH m=() WITH m AS n MATCH ()-[n:R]->() RETURN 0", error_path_relationship),
 
             # project a variable (without alias) and redeclare it with a different type
             ("MATCH ()-[n]->() WITH n CREATE (n)-[:R]->()", error_node_relationship),
@@ -299,6 +300,7 @@ class testWithClause(FlowTestsBase):
             ("MATCH ()-[n]->() WITH n MATCH (n)-[:R]->() RETURN 0", error_node_relationship),
             ("MATCH (n)-[:R]->() WITH n MATCH ()-[n:R]->() RETURN 0", error_node_relationship),
             ("MATCH n=() WITH n MATCH (n)-[:R]->() RETURN 0", error_path_node),
+            ("MATCH n=() WITH n MATCH ()-[n:R]->() RETURN 0", error_path_relationship),
 
             # project a variable (with alias) and redeclare it in the predicate with a different type
             ("MATCH ()-[m]->() WITH m AS n WHERE (n)-[:R]->() RETURN 0", error_node_relationship),

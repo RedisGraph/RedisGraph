@@ -158,7 +158,7 @@ static bool _AST_GetWithAliases
 				raxFree(local_env);
 				return false;
 			}
-            alias = cypher_ast_identifier_get_name(expr);
+			alias = cypher_ast_identifier_get_name(expr);
 		}
 
 		// check for duplicate column names
@@ -438,7 +438,7 @@ static AST_Validation _Validate_MATCH_Entities
 						ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
 							identifier_name);
 					} else if (identifier == (void *)T_PATH) {
-						ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
+						ErrorCtx_SetError("The alias '%s' was specified for both a path and a relationship",
 							identifier_name);
 					}
 					break;
@@ -966,7 +966,7 @@ static AST_Validation _ValidateInlinedProperties
 			// emit an error if the property value is of type node or edge
 			// CREATE (a:A) WITH a CREATE (b:B {v:a})
 			void *identifier_type = raxFind(vctx->defined_identifiers,
-								   		(unsigned char *)identifier_name, len);
+				(unsigned char *)identifier_name, len);
 
 			if(identifier_type == (void *)T_NODE ||
 			   identifier_type == (void *)T_EDGE) {
@@ -1294,10 +1294,10 @@ static VISITOR_STRATEGY _Validate_pattern_path
 	}
 
 	if(vctx->clause == CYPHER_AST_CREATE &&
-		_Validate_CREATE_Entities(n, vctx->defined_identifiers) == AST_INVALID){
+		_Validate_CREATE_Entities(n, vctx->defined_identifiers) == AST_INVALID) {
 		return VISITOR_BREAK;
 	} else if(vctx->clause == CYPHER_AST_MATCH &&
-		_Validate_MATCH_Entities(n, vctx->defined_identifiers) == AST_INVALID){
+		_Validate_MATCH_Entities(n, vctx->defined_identifiers) == AST_INVALID) {
 		return VISITOR_BREAK;
 	}
 
@@ -1976,8 +1976,28 @@ static VISITOR_STRATEGY _Validate_MATCH_Clause
 		return VISITOR_CONTINUE;
 	}
 
+	cypher_astnode_type_t backup_clause = vctx->clause;
+
+	// visit pattern
+	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(n);
+	vctx->clause = CYPHER_AST_MATCH;
+	AST_Visitor_visit(pattern, visitor);
+	if(ErrorCtx_EncounteredError()) {
+		return VISITOR_BREAK;
+	}
+
+	// visit predicate
+	vctx->clause = backup_clause;
+	const cypher_astnode_t *pred = cypher_ast_match_get_predicate(n);
+	if(pred) {
+		AST_Visitor_visit(pred, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			return VISITOR_BREAK;
+		}
+	}
+
 	vctx->clause = cypher_astnode_type(n);
-	return VISITOR_RECURSE;
+	return VISITOR_CONTINUE;
 }
 
 // validate index creation
@@ -2165,34 +2185,7 @@ static VISITOR_STRATEGY _Validate_binary_op
 		Error_UnsupportedASTOperator(op);
 		return VISITOR_BREAK;
 	}
-
-	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
-
-	// validate arguments:
-	// MATCH (s) WHERE s.name = undefVar RETURN 0
-	// MATCH (s) WHERE s.name = undefVar AND s.age = 10 RETURN 0
-	// RETURN reduce(sum=0, n in [1,2,3] | sum+x)
-	// RETURN a + 1
-	// WITH a + 2 AS c RETURN 0
-	cypher_astnode_type_t clause_backup = vctx->clause;
-
-	const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(n);
-	const cypher_astnode_t *rhs = cypher_ast_binary_operator_get_argument2(n);
-
-	vctx->clause = cypher_astnode_type(lhs);
-	AST_Visitor_visit(lhs, visitor);
-	if(ErrorCtx_EncounteredError()) {
-		return VISITOR_BREAK;
-	}
-
-	vctx->clause = cypher_astnode_type(rhs);
-	AST_Visitor_visit(rhs, visitor);
-	if(ErrorCtx_EncounteredError()) {
-		return VISITOR_BREAK;
-	}
-
-	vctx->clause = clause_backup;
-	return VISITOR_CONTINUE;
+	return VISITOR_RECURSE;
 }
 
 // validate a query
