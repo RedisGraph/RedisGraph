@@ -267,3 +267,52 @@ class testWithClause(FlowTestsBase):
         query = """WITH 1 AS x MATCH (a:label_a), (b:label_b) RETURN a.v, b.v"""
         actual_result = redis_graph.query(query)
         self.env.assertEqual(len(actual_result.result_set), 36)
+
+    def test13_projected_type_validation(self):
+        # verify the type of the projected vars are validated correctly
+
+        error_node_relationship   = "The alias 'n' was specified for both a node and a relationship"
+        error_path_relationship   = "The alias 'n' was specified for both a path and a relationship"
+        error_path_node           = "The alias 'n' was specified for both a path and a node"
+        error_redeclare_in_merge  = "The bound variable 'n' can't be redeclared in a MERGE clause"
+        error_redeclare_in_create = "The bound variable 'n' can't be redeclared in a CREATE clause"
+
+        queries = [
+            # project a variable (with alias) and redeclare it with a different type
+            ("MATCH ()-[m]->() WITH m AS n CREATE (n)-[:R]->()", error_node_relationship),
+            ("MATCH (m)-[:R]->() WITH m AS n CREATE ()-[n:R]->()", error_redeclare_in_create),
+            ("MATCH m=() WITH m AS n CREATE (n)-[:R]->()", error_path_node),
+            ("MATCH ()-[m]->() WITH m AS n MERGE (n)-[:R]->()", error_node_relationship),
+            ("MATCH (m)-[:R]->() WITH m AS n MERGE ()-[n:R]->()", error_redeclare_in_merge),
+            ("MATCH m=() WITH m AS n MERGE (n)-[:R]->()", error_path_node),
+            ("MATCH ()-[m]->() WITH m AS n MATCH (n)-[:R]->() RETURN 0", error_node_relationship),
+            ("MATCH (m)-[:R]->() WITH m AS n MATCH ()-[n:R]->() RETURN 0", error_node_relationship),
+            ("MATCH m=() WITH m AS n MATCH (n)-[:R]->() RETURN 0", error_path_node),
+
+            # project a variable (without alias) and redeclare it with a different type
+            ("MATCH ()-[n]->() WITH n CREATE (n)-[:R]->()", error_node_relationship),
+            ("MATCH (n)-[:R]->() WITH n CREATE ()-[n:R]->()", error_redeclare_in_create),
+            ("MATCH n=() WITH n CREATE (n)-[:R]->()", error_path_node),
+            ("MATCH ()-[n]->() WITH n MERGE (n)-[:R]->()", error_node_relationship),
+            ("MATCH (n)-[:R]->() WITH n MERGE ()-[n:R]->()", error_redeclare_in_merge),
+            ("MATCH n=() WITH n MERGE (n)-[:R]->()", error_path_node),
+            ("MATCH ()-[n]->() WITH n MATCH (n)-[:R]->() RETURN 0", error_node_relationship),
+            ("MATCH (n)-[:R]->() WITH n MATCH ()-[n:R]->() RETURN 0", error_node_relationship),
+            ("MATCH n=() WITH n MATCH (n)-[:R]->() RETURN 0", error_path_node),
+
+            # project a variable (with alias) and redeclare it in the predicate with a different type
+            ("MATCH ()-[m]->() WITH m AS n WHERE (n)-[:R]->() RETURN 0", error_node_relationship),
+            ("MATCH (m)-[:R]->() WITH m AS n WHERE ()-[n:R]->() RETURN 0", error_node_relationship),
+            ("MATCH m=() WITH m AS n WHERE (n)-[:R]->() RETURN 0", error_path_node),
+            ("MATCH m=() WITH m AS n WHERE ()-[n:R]->() RETURN 0", error_path_relationship),
+
+            # project a variable (without alias) and redeclare in the predicate it with a different type
+            ("MATCH ()-[n]->() WITH n WHERE (n)-[:R]->() RETURN 0", error_node_relationship),
+            ("MATCH (n)-[:R]->() WITH n WHERE ()-[n:R]->() RETURN 0", error_node_relationship),
+            ("MATCH n=() WITH n WHERE (n)-[:R]->() RETURN 0", error_path_node),
+            ("MATCH n=() WITH n WHERE ()-[n:R]->() RETURN 0", error_path_relationship),
+        ]
+
+        for query, error in queries:
+            self._assert_exception(redis_graph, query, error)
+

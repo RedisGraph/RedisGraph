@@ -29,12 +29,6 @@ typedef struct {
 	rax *intermediate_identifiers; // identifiers which are in creation in the pattern
 } validations_ctx;
 
-typedef enum {
-	BOUNDED_NODE = 0x2002,
-	BOUNDED_EDGE = 0x2004,
-	BOUNDED_PATH = 0x2008,
-} identifier_state;
-
 // ast validation visitor mappings
 // number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
 static visit validations_mapping[114];
@@ -134,18 +128,28 @@ static bool _AST_GetWithAliases
 		uint len = 0;
 
 		if(alias_node) {
-			// Retrieve "a" from "WITH [1, 2, 3] as a"
+			// retrieve "a" from "WITH [1, 2, 3] as a" or "x AS a"
 			alias = cypher_ast_identifier_get_name(alias_node);
 			len = strlen(alias);
 
 			if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
-                // Retrieve "x" from "WITH x AS a"
-                const char *current_identifier_name = cypher_ast_identifier_get_name(expr);
-                uint len = strlen(current_identifier_name);
+				// This is needed to validate queries where the predicate
+				// include projected variables:
+				// MATCH (n)-[x:T]->() WITH x AS edge WHERE (edge)-[]->()
+				// load "x" from rax and store it with the alias name "edge"
+				// with the same type stored previously.
+				const char *current_identifier_name =
+					cypher_ast_identifier_get_name(expr);
+				uint len = strlen(current_identifier_name);
 
 				// load current identifier state to project it
-                identifier = raxFind(aliases, (unsigned char *)current_identifier_name, len);
+				identifier = raxFind(aliases,
+					(unsigned char *)current_identifier_name, len);
 			}
+
+			// add the new alias to the bound vars
+			raxInsert(aliases, (unsigned char *)alias, strlen(alias),
+				(void *)identifier, NULL);
 		} else {
 			// Retrieve "a" from "WITH a"
 			const cypher_astnode_t *expr = cypher_ast_projection_get_expression(child);
@@ -153,17 +157,9 @@ static bool _AST_GetWithAliases
 				ErrorCtx_SetError("WITH clause projections must be aliased");
 				raxFree(local_env);
 				return false;
-			} else {
-				// load current identifier state to project it
-                alias = cypher_ast_identifier_get_name(expr);
-                len = strlen(alias);
-                identifier = raxFind(aliases, (unsigned char *)alias, len);
 			}
+            alias = cypher_ast_identifier_get_name(expr);
 		}
-
-		// project the aliased identifier
-		raxInsert(aliases, (unsigned char *)alias, strlen(alias),
-			(void *)identifier, NULL);
 
 		// check for duplicate column names
 		if(raxTryInsert(local_env, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
@@ -294,13 +290,12 @@ static AST_Validation _ValidateMergeNode
 	void *alias_type = raxFind(defined_aliases, (unsigned char *)alias, strlen(alias));
 	if(alias_type == raxNotFound) {
 		return AST_VALID;
-	} else if (alias_type != NULL
-			&& alias_type != (void *)BOUNDED_NODE) {
-		if(alias_type == (void *)BOUNDED_EDGE) {
+	} else if (alias_type != NULL && alias_type != (void *)T_NODE) {
+		if(alias_type == (void *)T_EDGE) {
 			// MATCH ()-[n]->() MERGE (n)-[:R]->()
 			ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
 				alias);
-		} else if (alias_type == (void *)BOUNDED_PATH) {
+		} else if (alias_type == (void *)T_PATH) {
 			// MATCH n=() MERGE (n)-[:R]->()
 			ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
 				alias);
@@ -400,9 +395,16 @@ static AST_Validation _Validate_MATCH_Entities
 
 				// MATCH ()-[r]->() MATCH(r) RETURN 0
 				if(identifier != raxNotFound && identifier != NULL
-					&& identifier != (void *)BOUNDED_NODE) {
-					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.",
-						identifier_name);
+					&& identifier != (void *)T_NODE) {
+					if(identifier == (void *)T_EDGE) {
+						// MATCH ()-[n]->() MATCH (n)-[:R]->()
+						ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
+							identifier_name);
+					} else if (identifier == (void *)T_PATH) {
+						// MATCH n=() MATCH (n)-[:R]->()
+						ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
+							identifier_name);
+					}
 					break;
 				}
 
@@ -412,9 +414,9 @@ static AST_Validation _Validate_MATCH_Entities
 
 				if(node_identifier == raxNotFound) {
 					raxInsert(local_env, (unsigned char *) identifier_name,
-						len, (void *)BOUNDED_NODE, NULL);
-				} else if(node_identifier != (void *)BOUNDED_NODE) {
-					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.",
+						len, (void *)T_NODE, NULL);
+				} else if(node_identifier != (void *)T_NODE) {
+					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
 						identifier_name);
 					break;
 				}
@@ -422,7 +424,7 @@ static AST_Validation _Validate_MATCH_Entities
 				// validate edges
 
 				// if the identifier was defined previously, out of this
-				// pattern, its type must be BOUNDED_EDGE or NULL.
+				// pattern, its type must be T_EDGE or NULL.
 				// These queries are valid:
 				// MATCH (a) WITH a MATCH (a:L)-[e]->(b) RETURN a
 				// WITH NULL AS e MATCH (a:L)-[e]->(b) RETURN e
@@ -431,9 +433,14 @@ static AST_Validation _Validate_MATCH_Entities
 				// TODO: This query is being accepted, but it is invalid:
 				// WITH 1 AS x MATCH ()-[x]->() RETURN 0
 				if(identifier != raxNotFound && identifier != NULL
-					&& identifier != (void *)BOUNDED_EDGE) {
-					ErrorCtx_SetError("The alias '%.*s' is not an edge",
-						len, identifier_name);
+					&& identifier != (void *)T_EDGE) {
+					if(identifier == (void *)T_NODE) {
+						ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
+							identifier_name);
+					} else if (identifier == (void *)T_PATH) {
+						ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
+							identifier_name);
+					}
 					break;
 				}
 
@@ -444,15 +451,15 @@ static AST_Validation _Validate_MATCH_Entities
 
 				if(edge_identifier == raxNotFound) {
 					raxInsert(local_env, (unsigned char *)identifier_name,
-						len, (void *)BOUNDED_EDGE, NULL);
-				} else if(edge_identifier == (void *)BOUNDED_EDGE) {
+						len, (void *)T_EDGE, NULL);
+				} else if(edge_identifier == (void *)T_EDGE) {
 					// the edge label must be unique inside the pattern path
 					// MATCH (a)-[r]->()-[r]->(a) RETURN 0
 					ErrorCtx_SetError("Cannot use the same relationship variable '%s'",
 						identifier_name);
 					break;
 				} else {
-					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship.",
+					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
 						identifier_name);
 					break;
 
@@ -598,7 +605,7 @@ static VISITOR_STRATEGY _Validate_pattern_comprehension
 		// if the identifier exists, it will be overwritten in scoped environment
 		// MATCH (a) RETURN [a=()-[]->() | 0]
 		raxInsert(vctx->defined_identifiers, (unsigned char *)identifier,
-			strlen(identifier), (void *)BOUNDED_PATH, NULL);
+			strlen(identifier), (void *)T_PATH, NULL);
 	}
 
 	// visit expression-children
@@ -920,14 +927,13 @@ static VISITOR_STRATEGY _Validate_reduce
 static AST_Validation _ValidateInlinedProperties
 (
 	const cypher_astnode_t *props, // ast-node representing the map
-	cypher_astnode_type_t clause,  // top-level clause type
 	const char *alias,             // alias of current node/edge
-	rax *defined_identifiers,      // bound variables
-	rax *intermediate_identifiers  // variables that are in creation
+	ast_visitor *visitor		   // visitor
 ) {
 	if(props == NULL) {
 		return AST_VALID;
 	}
+	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
 	// emit an error if the properties are not presented as a map, as in:
 	// MATCH (p {invalid_property_construction}) RETURN p
@@ -959,11 +965,11 @@ static AST_Validation _ValidateInlinedProperties
 
 			// emit an error if the property value is of type node or edge
 			// CREATE (a:A) WITH a CREATE (b:B {v:a})
-			void *identifier_type = raxFind(defined_identifiers,
+			void *identifier_type = raxFind(vctx->defined_identifiers,
 								   		(unsigned char *)identifier_name, len);
 
-			if(identifier_type == (void *)BOUNDED_NODE ||
-			   identifier_type == (void *)BOUNDED_EDGE) {
+			if(identifier_type == (void *)T_NODE ||
+			   identifier_type == (void *)T_EDGE) {
 				ErrorCtx_SetError("Property values can only be of primitive types or arrays of primitive types");
 				return AST_INVALID;
 			}
@@ -986,7 +992,7 @@ static AST_Validation _ValidateInlinedProperties
 				// the same node:
 				// CREATE (a {v:a.p})
 				// CREATE ()-[r {v:r.x}]->()
-				if(clause != CYPHER_AST_MATCH && alias != NULL &&
+				if(vctx->clause != CYPHER_AST_MATCH && alias != NULL &&
 					strcmp(alias, identifier_name) == 0) {
 					ErrorCtx_SetError("%.*s not defined", len, identifier_name);
 				 	return AST_INVALID;
@@ -995,12 +1001,12 @@ static AST_Validation _ValidateInlinedProperties
 				// emit an error if the property references to an "intermediate"
 				// node or edge:
 				// CREATE (a:A), (b:B {v:a.v})
-				void *identifier_type = raxFind(intermediate_identifiers,
+				void *identifier_type = raxFind(vctx->intermediate_identifiers,
 					(unsigned char *)identifier_name, len);
 
 				if(identifier_type != NULL &&
-					(identifier_type == (void *)BOUNDED_NODE ||
-					identifier_type == (void *)BOUNDED_EDGE)) {
+					(identifier_type == (void *)T_NODE ||
+					identifier_type == (void *)T_EDGE)) {
 					ErrorCtx_SetError("%.*s not defined", len, identifier_name);
 					return AST_INVALID;
 				}
@@ -1012,7 +1018,7 @@ static AST_Validation _ValidateInlinedProperties
 				const char *identifier_name = cypher_ast_identifier_get_name(exp);
 				uint len = strlen(identifier_name);
 
-				void *identifier_type = raxFind(defined_identifiers,
+				void *identifier_type = raxFind(vctx->defined_identifiers,
 					   		(unsigned char *)identifier_name, len);
 
 				// emit an error if the property is an undefined variable
@@ -1071,14 +1077,14 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 			if(alias_type == raxNotFound) {
 				// register edge under its alias
 				raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
-						strlen(alias), (void *)BOUNDED_EDGE, NULL);
+						strlen(alias), (void *)T_EDGE, NULL);
 
 				// if it is a CREATE clause register edge as an intermediate
 				// identifier because it is under creation
 				if(vctx->clause == CYPHER_AST_CREATE) {
 					raxInsert(vctx->intermediate_identifiers,
 						(unsigned char *)alias, strlen(alias),
-						(void *)BOUNDED_EDGE, NULL);
+						(void *)T_EDGE, NULL);
 				}
 
 				return VISITOR_CONTINUE;
@@ -1090,13 +1096,13 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 				// MATCH (a) RETURN [()-[b]->()-[b]->() | 0]
 				// CYPHER_AST_MATCH was validated by _Validate_MATCH_Entities()
 				if(vctx->clause != CYPHER_AST_MATCH) {
-					if(alias_type == (void *)BOUNDED_EDGE) {
+					if(alias_type == (void *)T_EDGE) {
 						ErrorCtx_SetError("Cannot use the same relationship variable '%s'",
 							alias);
-					} else if(alias_type == (void *)BOUNDED_NODE) {
+					} else if(alias_type == (void *)T_NODE) {
 						ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
 							alias);
-					} else if(alias_type == (void *)BOUNDED_PATH) {
+					} else if(alias_type == (void *)T_PATH) {
 						ErrorCtx_SetError("The alias '%s' was specified for both a path and a relationship",
 							alias);
 					}
@@ -1136,8 +1142,7 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 	}
 
 	if(_ValidateInlinedProperties(cypher_ast_rel_pattern_get_properties(n),
-			vctx->clause, alias, vctx->defined_identifiers,
-			vctx->intermediate_identifiers) == AST_INVALID) {
+			alias, visitor) == AST_INVALID) {
 		return VISITOR_BREAK;
 	}
 
@@ -1174,22 +1179,21 @@ static VISITOR_STRATEGY _Validate_node_pattern
 		// the sub tree spanned from this node is valid
 		if(alias != NULL) {
 			raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
-				strlen(alias), (void *)BOUNDED_NODE, NULL);
+				strlen(alias), (void *)T_NODE, NULL);
 
 			// if it is a CREATE clause register edge as an intermediate
 			// identifier because it is under creation
 			if(vctx->clause == CYPHER_AST_CREATE) {
 				raxInsert(vctx->intermediate_identifiers,
 					(unsigned char *)alias, strlen(alias),
-					(void *)BOUNDED_NODE, NULL);
+					(void *)T_NODE, NULL);
 			}
 		}
 		return VISITOR_CONTINUE;
 	}
 
 	if(_ValidateInlinedProperties(cypher_ast_node_pattern_get_properties(n),
-			vctx->clause, alias, vctx->defined_identifiers,
-			vctx->intermediate_identifiers) == AST_INVALID) {
+			alias, visitor) == AST_INVALID) {
 		return VISITOR_BREAK;
 	}
 
@@ -1205,12 +1209,12 @@ static VISITOR_STRATEGY _Validate_node_pattern
 
 			if(alias_type  != raxNotFound          &&
 				alias_type != NULL                 &&
-				alias_type != (void *)BOUNDED_NODE) {
-				if(alias_type == (void *)BOUNDED_EDGE) {
+				alias_type != (void *)T_NODE) {
+				if(alias_type == (void *)T_EDGE) {
 					// MATCH ()-[n]->() CREATE (n)-[:R]->()
 					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
 						alias);
-				} else if (alias_type == (void *)BOUNDED_PATH) {
+				} else if (alias_type == (void *)T_PATH) {
 					ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
 						alias);
 				}
@@ -1317,7 +1321,7 @@ static VISITOR_STRATEGY _Validate_named_path
 	const cypher_astnode_t *alias_node = cypher_ast_named_path_get_identifier(n);
 	const char *alias = cypher_ast_identifier_get_name(alias_node);
 	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias),
-		   (void *)BOUNDED_PATH, NULL);
+		   (void *)T_PATH, NULL);
 
 	return VISITOR_RECURSE;
 }
@@ -1588,6 +1592,14 @@ static VISITOR_STRATEGY _Validate_WITH_Clause
 
 				if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
 					// Retrieve "x" from "WITH x AS a"
+
+					// to detect invalid queries like this:
+					// MATCH (x) WITH x AS a MATCH ()-[a]->() RETURN 0
+					// we need to do the following:
+					// 1. retrieve "x" from the old environment with its
+					// correct type (node)
+					// 2. stored "a" in the new environment with the same
+					// type of "x"
 					const char *current_identifier_name =
 						cypher_ast_identifier_get_name(expr);
 					uint len = strlen(current_identifier_name);

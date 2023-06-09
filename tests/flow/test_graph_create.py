@@ -300,14 +300,19 @@ class testGraphCreationFlow(FlowTestsBase):
         error_redeclare_in_create = "The bound variable 'n' can't be redeclared in a CREATE clause"
         error_props_in_merge      = "The bound node 'n' can't be redeclared in a MERGE clause"
         error_props_in_create     = "The bound node 'n' can't be redeclared in a CREATE clause"
+
         queries = [
-            # Redeclare variable with a different type
+            # redeclare variable with a different type
             ("MATCH ()-[n]->() CREATE (n)-[:R]->()", error_node_relationship),
             ("MATCH (n)-[:R]->() CREATE ()-[n:R]->()", error_redeclare_in_create),
             ("MATCH n=() CREATE (n)-[:R]->()", error_path_node),
             ("MATCH ()-[n]->() MERGE (n)-[:R]->()", error_node_relationship),
             ("MATCH (n)-[:R]->() MERGE ()-[n:R]->()", error_redeclare_in_merge),
             ("MATCH n=() MERGE (n)-[:R]->()", error_path_node),
+            ("MATCH ()-[n]->() MATCH (n)-[:R]->() RETURN 0", error_node_relationship),
+            ("MATCH (n)-[:R]->() MATCH ()-[n:R]->() RETURN 0", error_node_relationship),
+            ("MATCH n=() MATCH (n)-[:R]->() RETURN 0", error_path_node),
+
             # Modify matched entity
             # ("MATCH (n)-[]->() CREATE (n:L)-[:R]->()", error_props_in_create),
             # ("MATCH (n)-[]->() CREATE (n {v:1})-[:R]->()", error_props_in_create),
