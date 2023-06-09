@@ -5,11 +5,13 @@
  */
 
 #include "globals.h"
+#include "util/thpool/pools.h"
 
 struct Globals {
 	pthread_rwlock_t lock;              // READ/WRITE lock
-	GraphContext **graphs_in_keyspace;	// list of graphs in keyspace
 	bool process_is_child;              // running process is a child process
+	CommandCtx **command_ctxs;          // list of CommandCtxs
+	GraphContext **graphs_in_keyspace;  // list of graphs in keyspace
 };
 
 struct Globals _globals = {0};
@@ -22,6 +24,9 @@ void Globals_Init(void) {
 	// initialize
 	_globals.process_is_child = false;
 	_globals.graphs_in_keyspace = array_new(GraphContext*, 1);
+	_globals.command_ctxs = rm_calloc(ThreadPools_ThreadCount() + 1,
+			sizeof(CommandCtx *));
+
 	int res = pthread_rwlock_init(&_globals.lock, NULL);
 	ASSERT(res == 0);
 }
@@ -174,8 +179,90 @@ void Globals_ClearGraphs(void) {
 	pthread_rwlock_unlock(&_globals.lock);
 }
 
+//------------------------------------------------------------------------------
+// Command context tracking
+//------------------------------------------------------------------------------
+
+// track CommandCtx
+void Globals_TrackCommandCtx
+(
+	CommandCtx *ctx  // CommandCtx to track
+) {
+	ASSERT(ctx != NULL);
+	ASSERT(_globals.command_ctxs != NULL);
+
+	int tid = ThreadPools_GetThreadID();
+
+	// acuire read lock
+	pthread_rwlock_rdlock(&_globals.lock);
+
+	ASSERT(_globals.command_ctxs[tid] == NULL);
+
+	// set ctx at the current thread entry
+	_globals.command_ctxs[tid] = ctx;
+
+	// release lock
+	pthread_rwlock_unlock(&_globals.lock);
+
+	// reset thread memory consumption to 0 (no memory consumed)
+	rm_reset_n_alloced();
+}
+
+// untrack CommandCtx
+void Globals_UntrackCommandCtx
+(
+	const CommandCtx *ctx  // CommandCtx to untrack
+) {
+	ASSERT(ctx != NULL);
+	ASSERT(_globals.command_ctxs != NULL);
+
+	int tid = ThreadPools_GetThreadID();
+
+	if(_globals.command_ctxs[tid] == NULL) return; // nothing to clean
+
+	// acuire read lock
+	pthread_rwlock_rdlock(&_globals.lock);
+
+	ASSERT(_globals.command_ctxs[tid] == ctx);
+
+	// clear ctx at the current thread entry
+	// CommandCtx_Free will free it eventually
+	_globals.command_ctxs[tid] = NULL;
+
+	// release lock
+	pthread_rwlock_unlock(&_globals.lock);
+}
+
+// get a copy of all tracked CommandCtxs
+// caller must free each CommandCtx and the array
+CommandCtx **Globals_GetCommandCtxs(void) {
+	ASSERT(_globals.command_ctxs != NULL);
+
+	// make a copy of the command contexts
+	uint32_t nthreads = ThreadPools_ThreadCount();
+	CommandCtx **commands = array_new(CommandCtx*, nthreads);
+
+	// acquire write lock
+	pthread_rwlock_wrlock(&_globals.lock);
+
+	// increase ref count of each CommandCtx
+	for(uint32_t i = 0; i < nthreads; i++) {
+		CommandCtx *cmd = _globals.command_ctxs[i];
+		if(cmd != NULL) {
+			 CommandCtx_Incref(cmd);
+			 array_append(commands, cmd);
+		}
+	}
+
+	// release lock
+	pthread_rwlock_unlock(&_globals.lock);
+
+	return commands;
+}
+
 // free globals
 void Globals_Free(void) {
+	rm_free(_globals.command_ctxs);
 	array_free(_globals.graphs_in_keyspace);
 	pthread_rwlock_destroy(&_globals.lock);
 }

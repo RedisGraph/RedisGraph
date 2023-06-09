@@ -1,21 +1,27 @@
-///*
-// * Copyright Redis Ltd. 2018 - present
-// * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
-// * the Server Side Public License v1 (SSPLv1).
-// */
-//
-//#include "RG.h"
+/*
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
+#include "RG.h"
 //#include "util/arr.h"
 //#include "query_ctx.h"
-//#include "redismodule.h"
-//#include "util/thpool/pools.h"
+#include "../globals.h"
+#include "redismodule.h"
+#include "cmd_context.h"
 //#include "graph/graphcontext.h"
 //#include "configuration/config.h"
-//
-//#include <ctype.h>
-//#include <stdlib.h>
-//
-//#define QUERY_KEY_NAME "Query"
+
+#include <ctype.h>
+#include <string.h>
+
+#define QUERY_KEY_NAME              "Query"
+#define GRAPH_NAME_KEY_NAME         "Graph name"
+#define TOTAL_DURATION_KEY_NAME     "Total duration"
+#define REPLICATION_KEY_NAME        "Replicated command"
+#define RECEIVED_TIMESTAMP_KEY_NAME "Received at"
+
 //#define STAGE_KEY_NAME "Stage"
 //#define ALL_GRAPH_KEYS_MASK "*"
 //#define QUERIES_KEY_NAME "Queries"
@@ -23,19 +29,15 @@
 //
 //#define INFO_QUERIES_PREV_ARG "PREV"
 //#define INFO_QUERIES_CURRENT_ARG "CURRENT"
-//
-//#define UTILIZED_CACHE "Utilized cache"
-//#define GRAPH_NAME_KEY_NAME "Graph name"
-//
+
+
 //#define SUBCOMMAND_NAME_STATS "STATS"
-//#define SUBCOMMAND_NAME_QUERIES "QUERIES"
-//
+#define SUBCOMMAND_NAME_QUERIES "QUERIES"
+
 //#define WAIT_DURATION_KEY_NAME "Wait duration"
-//#define TOTAL_DURATION_KEY_NAME "Total duration"
-//#define RECEIVED_TIMESTAMP_KEY_NAME "Received at"
 //#define REPORT_DURATION_KEY_NAME "Report duration"
 //#define UNIMPLEMENTED_ERROR_STRING "Unimplemented"
-//#define UNKNOWN_SUBCOMMAND_MESSAGE "Unknown subcommand."
+#define UNKNOWN_SUBCOMMAND_MESSAGE "Unknown subcommand."
 //#define EXECUTION_DURATION_KEY_NAME "Execution duration"
 //#define COMMAND_IS_DISABLED "Info tracking is disabled."
 //#define TOTAL_WAITING_QUERIES_COUNT_KEY_NAME "Total waiting queries count"
@@ -43,10 +45,7 @@
 //#define TOTAL_EXECUTING_QUERIES_COUNT_KEY_NAME "Total executing queries count"
 //#define TOTAL_REPORTING_QUERIES_COUNT_KEY_NAME "Total reporting queries count"
 //#define INVALID_COUNT_PARAMETER_FOR_PREV_MESSAGE "\"PREV\": Invalid value for the <count> parameter."
-//
-//// global array tracking all existing GraphContexts (defined in module.c)
-//extern GraphContext **graphs_in_keyspace;
-//
+
 //// global info - across all the graphs available in all the shards
 //typedef struct GlobalInfo {
 //    double max_query_wait_time;
@@ -79,46 +78,42 @@
 //    }
 //}
 //
-//// replies with the query information
-//// this is a part of the "GRAPH.INFO QUERIES" reply
-//static void _emit_query
-//(
-//    RedisModuleCtx *ctx,   // redis module context
-//    const QueryInfo *info  // query info to emit
-//) {
-//    const double total_spent_time = info->wait_duration      +
-//									info->execution_duration +
-//									info->report_duration;
-//
-//	RedisModule_ReplyWithArray(ctx, 9 * 2);
-//
-//	RedisModule_ReplyWithCString(ctx, RECEIVED_TIMESTAMP_KEY_NAME);
-//	RedisModule_ReplyWithLongLong(ctx, info->received_ts);
-//
-//	RedisModule_ReplyWithCString(ctx, STAGE_KEY_NAME);
-//	RedisModule_ReplyWithLongLong(ctx, info->stage);
-//
-//	RedisModule_ReplyWithCString(ctx, GRAPH_NAME_KEY_NAME);
-//	RedisModule_ReplyWithCString(ctx, info->graph_name);
-//
-//	RedisModule_ReplyWithCString(ctx, QUERY_KEY_NAME);
-//	RedisModule_ReplyWithCString(ctx, info->query_string);
-//
-//	RedisModule_ReplyWithCString(ctx, TOTAL_DURATION_KEY_NAME);
-//	RedisModule_ReplyWithLongLong(ctx, total_spent_time);
-//
-//	RedisModule_ReplyWithCString(ctx, WAIT_DURATION_KEY_NAME);
-//	RedisModule_ReplyWithLongLong(ctx, info->wait_duration);
-//
-//	RedisModule_ReplyWithCString(ctx, EXECUTION_DURATION_KEY_NAME);
-//	RedisModule_ReplyWithLongLong(ctx, info->execution_duration);
-//
-//	RedisModule_ReplyWithCString(ctx, REPORT_DURATION_KEY_NAME);
-//	RedisModule_ReplyWithLongLong(ctx, info->report_duration);
-//
-//	RedisModule_ReplyWithCString(ctx, UTILIZED_CACHE);
-//	RedisModule_ReplyWithLongLong(ctx, info->utilized_cache);
-//}
+
+// replies with query information
+static void _emit_query
+(
+    RedisModuleCtx *ctx,   // redis module context
+    const CommandCtx *cmd  // command context
+) {
+	ASSERT(ctx != NULL);
+	ASSERT(cmd != NULL);
+
+	// compute query execution time
+    const double total_time = TIMER_GET_ELAPSED_MILLISECONDS(cmd->timer);
+
+	RedisModule_ReplyWithArray(ctx, 5 * 2);
+
+	// emit query received timestamp
+	RedisModule_ReplyWithCString(ctx, RECEIVED_TIMESTAMP_KEY_NAME);
+	RedisModule_ReplyWithLongLong(ctx, cmd->received_ts);
+
+	// emit graph name
+	RedisModule_ReplyWithCString(ctx, GRAPH_NAME_KEY_NAME);
+	RedisModule_ReplyWithCString(ctx, GraphContext_GetName(cmd->graph_ctx));
+
+	// emit query
+	RedisModule_ReplyWithCString(ctx, QUERY_KEY_NAME);
+	RedisModule_ReplyWithCString(ctx, cmd->query);
+
+	// emit query execution duration
+	RedisModule_ReplyWithCString(ctx, TOTAL_DURATION_KEY_NAME);
+	RedisModule_ReplyWithLongLong(ctx, total_time);
+
+	// emit rather or not query was replicated
+	RedisModule_ReplyWithCString(ctx, REPLICATION_KEY_NAME);
+	RedisModule_ReplyWithLongLong(ctx, cmd->replicated_command);
+}
+
 //
 //// emit queries
 //static void _emit_queries
@@ -257,150 +252,93 @@
 //	}
 //	array_free(qs);
 //}
-//
-//// handels GRAPH.INFO QUERIES CURRENT
-//static void _info_queries_current
-//(
-//	RedisModuleCtx *ctx
-//) {
-//    ASSERT(graphs_in_keyspace != NULL);
-//
-//	// query stages we're interested in
-//    QueryStage stages = QueryStage_EXECUTING | QueryStage_REPORTING;
-//
-//	uint32_t n_threads = ThreadPools_ThreadCount();
-//	uint32_t n_graphs  = array_len(graphs_in_keyspace);
-//	QueryInfo **qs     = array_new(QueryInfo*, n_threads);
-//
-//	//--------------------------------------------------------------------------
-//	// collect queries
-//	//--------------------------------------------------------------------------
-//
-//    for (uint32_t i = 0; i < n_graphs && array_len(qs) < n_threads; i++) {
-//        GraphContext *gc = graphs_in_keyspace[i];
-//		ASSERT(gc != NULL);
-//		Info_GetQueries(gc->info, stages, &qs, n_threads);
-//	}
-//
-//	//--------------------------------------------------------------------------
-//	// emit queries
-//	//--------------------------------------------------------------------------
-//
-//	uint32_t n = array_len(qs);
-//	_emit_queries(ctx, qs, n);
-//
-//	//--------------------------------------------------------------------------
-//	// clean-up
-//	//--------------------------------------------------------------------------
-//
-//	for (uint32_t i = 0; i < n; i++) {
-//		QueryInfo_Free(qs[i]);
-//	}
-//	array_free(qs);
-//}
-//
-//// handles the "GRAPH.INFO QUERIES" subcommand
-//// "GRAPH.INFO QUERIES CURRENT"
-//// "GRAPH.INFO QUERIES PREV <count>"
-//static void _info_queries
-//(
-//    RedisModuleCtx *ctx,
-//    const RedisModuleString **argv,
-//    const int argc
-//) {
-//    // an example for a command and reply:
-//    // command:
-//    // GRAPH.INFO QUERIES CURRENT
-//    // reply:
-//    // "Queries"
-//    //     "Received at"
-//    //     "Stage"
-//    //     "Graph name"
-//    //     "Query"
-//    //     "Total duration"
-//    //     "Wait duration"
-//    //     "Execution duration"
-//    //     "Report duration"
-//
-//    ASSERT(ctx != NULL);
-//
-//	if(argc <= 0 || argc > 2) {
-//        RedisModule_WrongArity(ctx);
-//	}
-//
-//	// sub-command argument
-//	const char *arg = RedisModule_StringPtrLen(argv[0], NULL);
-//
-//	if(strcasecmp(arg, INFO_QUERIES_CURRENT_ARG) == 0) {
-//		// GRAPH.INFO QUERIES CURRENT
-//		_info_queries_current(ctx);
-//	} else if(strcasecmp(arg, INFO_QUERIES_PREV_ARG) == 0) {
-//		// GRAPH.INFO QUERIES PREV <count>
-//		// try parsing 'count'
-//		long long prev;
-//		if(argc != 2 ||
-//		   RedisModule_StringToLongLong(argv[1], &prev) != REDISMODULE_OK) {
-//			RedisModule_ReplyWithError(ctx,
-//					INVALID_COUNT_PARAMETER_FOR_PREV_MESSAGE);
-//			return;
-//		}
-//		_info_queries_prev(ctx, prev);
-//	} else {
-//		// unknown argument
-//		RedisModule_ReplyWithError(ctx, UNKNOWN_SUBCOMMAND_MESSAGE);
-//	}
-//}
-//
-//// attempts to find the specified subcommand of "GRAPH.INFO" and dispatch it
-//static void _handle_subcommand
-//(
-//    RedisModuleCtx *ctx,             // redis module context
-//    const RedisModuleString **argv,  // command arguments
-//    const int argc,                  // number of arguments
-//    const char *subcmd               // sub command
-//) {
-//    ASSERT(ctx    != NULL);
-//    ASSERT(argv   != NULL);
-//    ASSERT(subcmd != NULL);
-//
-//    if (!strcasecmp(subcmd, SUBCOMMAND_NAME_QUERIES)) {
-//		// GRAPH.INFO QUERIES
-//        _info_queries(ctx, argv, argc);
-//    } else if(!strcasecmp(subcmd, SUBCOMMAND_NAME_STATS)) {
-//		// GRAPH.INFO STATS
-//        _info_stats(ctx, argv, argc);
-//		// sub command either un-familiar or not supported
-//	} else {
-//        RedisModule_ReplyWithError(ctx, UNKNOWN_SUBCOMMAND_MESSAGE);
-//    }
-//}
-//
-//// graph.info command handler
-//// GRAPH.INFO QUERIES
-//// GRAPH.INFO QUERIES CURRENT
-//// GRAPH.INFO QUERIES PREV num
-//int Graph_Info
-//(
-//    RedisModuleCtx *ctx,
-//    const RedisModuleString **argv,
-//    const int argc
-//) {
-//    ASSERT(ctx != NULL);
-//
-//	// expecting at least two arguments
-//    if (argc < 2) {
-//        return RedisModule_WrongArity(ctx);
-//    }
-//
-//	// make sure info tracking is enabled
-//    if (_is_cmd_info_enabled() == false) {
-//        RedisModule_ReplyWithError(ctx, COMMAND_IS_DISABLED);
-//        return REDISMODULE_OK;
-//    }
-//
-//    const char *subcommand_name = RedisModule_StringPtrLen(argv[1], NULL);
-//    _handle_subcommand(ctx, argv + 2, argc - 2, subcommand_name);
-//
-//    return REDISMODULE_OK;
-//}
-//
+
+// handles the "GRAPH.INFO QUERIES" subcommand
+// "GRAPH.INFO QUERIES"
+static void _info_queries
+(
+    RedisModuleCtx *ctx,
+    const RedisModuleString **argv,
+    const int argc
+) {
+    // an example for a command and reply:
+    // command:
+    // GRAPH.INFO QUERIES
+    // reply:
+    // "Queries"
+	//     "Query id"
+    //     "Received at"
+    //     "Graph name"
+    //     "Query"
+    //     "Total duration"
+
+    ASSERT(ctx != NULL);
+
+	if(argc != 0) {
+		RedisModule_WrongArity(ctx);
+		return;
+	}
+
+	// get all currently executing commands
+	CommandCtx **commands = Globals_GetCommandCtxs();
+	uint32_t n = array_len(commands);
+
+	// emmit commands
+	RedisModule_ReplyWithArray(ctx, n);
+
+	for(uint32_t i = 0; i < n; i++) {
+		CommandCtx *cmd = commands[i];
+		ASSERT(cmd != NULL);
+
+		// emit the command
+		_emit_query(ctx, cmd);
+
+		// decrease the command's ref count
+		// free the command if it's no longer referenced
+		CommandCtx_Free(cmd);
+	}
+
+	array_free(commands);
+}
+
+// attempts to find the specified subcommand of "GRAPH.INFO" and dispatch it
+static void _handle_subcommand
+(
+    RedisModuleCtx *ctx,             // redis module context
+    const RedisModuleString **argv,  // command arguments
+    const int argc,                  // number of arguments
+    const char *subcmd               // sub command
+) {
+    ASSERT(ctx    != NULL);
+    ASSERT(argv   != NULL);
+    ASSERT(subcmd != NULL);
+
+    if (!strcasecmp(subcmd, SUBCOMMAND_NAME_QUERIES)) {
+		// GRAPH.INFO QUERIES
+        _info_queries(ctx, argv, argc);
+	} else {
+        RedisModule_ReplyWithError(ctx, UNKNOWN_SUBCOMMAND_MESSAGE);
+    }
+}
+
+// graph.info command handler
+// GRAPH.INFO QUERIES
+int Graph_Info
+(
+    RedisModuleCtx *ctx,
+    const RedisModuleString **argv,
+    const int argc
+) {
+    ASSERT(ctx != NULL);
+
+	// expecting at least two arguments
+    if (argc < 2) {
+        return RedisModule_WrongArity(ctx);
+    }
+
+    const char *subcmd = RedisModule_StringPtrLen(argv[1], NULL);
+    _handle_subcommand(ctx, argv + 2, argc - 2, subcmd);
+
+    return REDISMODULE_OK;
+}
+

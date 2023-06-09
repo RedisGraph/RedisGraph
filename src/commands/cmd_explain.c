@@ -6,17 +6,18 @@
 
 #include "../errors.h"
 #include "cmd_context.h"
+#include "../globals.h"
 #include "../query_ctx.h"
 #include "execution_ctx.h"
 #include "../index/index.h"
 #include "../util/rmalloc.h"
 #include "../execution_plan/execution_plan.h"
 
-/* Builds an execution plan but does not execute it
- * reports plan back to the client
- * Args:
- * argv[1] graph name
- * argv[2] query */
+// builds an execution plan but does not execute it
+// reports plan back to the client
+// Args:
+// argv[1] graph name
+// argv[2] query
 void Graph_Explain(void *args) {
 	bool lock_acquired = false;
 	CommandCtx     *command_ctx = (CommandCtx *)args;
@@ -26,11 +27,11 @@ void Graph_Explain(void *args) {
 	QueryCtx       *query_ctx   = QueryCtx_GetQueryCtx();
 
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
-	CommandCtx_TrackCtx(command_ctx);
+	Globals_TrackCommandCtx(command_ctx);
 
-	/* Retrieve the required execution items and information:
-	 * 1. Execution plan
-	 * 2. Whether these items were cached or not */
+	// retrieve the required execution items and information:
+	// 1. Execution plan
+	// 2. Whether these items were cached or not
 	bool           cached = false;
 	ExecutionPlan  *plan  = NULL;
 	exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query);

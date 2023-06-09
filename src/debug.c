@@ -9,10 +9,9 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include "RG.h"
+#include "globals.h"
 #include "util/thpool/pools.h"
 #include "commands/cmd_context.h"
-
-extern CommandCtx **command_ctxs;
 
 static struct sigaction old_act;
 
@@ -26,18 +25,28 @@ static void endCrashReport(void) {
 
 static void logCommands(void) {
 	// #readers + #writers + Redis main thread
-	int nthreads = ThreadPools_ThreadCount() + 1;
 
-	for(int i = 0; i < nthreads; i++) {
-		CommandCtx *cmd = command_ctxs[i];
-		if(cmd != NULL) {
-			RedisModule_Log(NULL, "warning", "%s %s", cmd->command_name,
-					cmd->query);
-		}
+	CommandCtx **commands = Globals_GetCommandCtxs();
+	uint32_t n = array_len(commands);
+
+	for(uint32_t i = 0; i < n; i++) {
+		CommandCtx *cmd = commands[i];
+		ASSERT(cmd != NULL);
+
+		RedisModule_Log(NULL, "warning", "%s %s", cmd->command_name,
+				cmd->query);
+
+		CommandCtx_Free(cmd);
 	}
+
+	array_free(commands);
 }
 
-void InfoFunc(RedisModuleInfoCtx *ctx, int for_crash_report) {
+void InfoFunc
+(
+	RedisModuleInfoCtx *ctx,
+	int for_crash_report
+) {
 	// make sure information is requested for crash report
 	if(!for_crash_report) return;
 
@@ -48,22 +57,32 @@ void InfoFunc(RedisModuleInfoCtx *ctx, int for_crash_report) {
 
 	char *command_desc = NULL;
 	// #readers + #writers + Redis main thread
-	int nthreads = ThreadPools_ThreadCount() + 1;
+	CommandCtx **command_ctxs = Globals_GetCommandCtxs();
+	uint32_t n = array_len(command_ctxs);
 
 	RedisModule_InfoAddSection(ctx, "executing commands");
 
-	for(int i = 0; i < nthreads; i++) {
+	for(int i = 0; i < n; i++) {
 		CommandCtx *cmd = command_ctxs[i];
-		if(cmd != NULL) {
-			int rc __attribute__((unused));
-			rc = asprintf(&command_desc, "%s %s", cmd->command_name, cmd->query);
-			RedisModule_InfoAddFieldCString(ctx, "command", command_desc);
-			free(command_desc);
-		}
+		ASSERT(cmd != NULL);
+
+		int rc __attribute__((unused));
+		rc = asprintf(&command_desc, "%s %s", cmd->command_name, cmd->query);
+		RedisModule_InfoAddFieldCString(ctx, "command", command_desc);
+
+		free(command_desc);
+		CommandCtx_Free(cmd);
 	}
+
+	array_free(command_ctxs);
 }
 
-void crashHandler(int sig, siginfo_t *info, void *ucontext) {
+void crashHandler
+(
+	int sig,
+	siginfo_t *info,
+	void *ucontext
+) {
 	// pause all working threads
 	// NOTE: pausing is an async operation
 	ThreadPools_Pause();
@@ -79,7 +98,10 @@ void crashHandler(int sig, siginfo_t *info, void *ucontext) {
 	(*old_act.sa_sigaction)(sig, info, ucontext);
 }
 
-void setupCrashHandlers(RedisModuleCtx *ctx) {
+void setupCrashHandlers
+(
+	RedisModuleCtx *ctx
+) {
 	// if RedisModule_RegisterInfoFunc is available use it
 	// to report RedisGraph additional information in case of a crash
 	// otherwise overwrite Redis signal handler

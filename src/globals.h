@@ -7,11 +7,7 @@
 #pragma once
 
 #include "graph/graphcontext.h"
-
-// graphs_in_keyspace iterator
-typedef struct GraphIterator {
-	uint64_t idx;       // current graph index
-} GraphIterator;
+#include "commands/cmd_context.h"
 
 // initialize global variables
 void Globals_Init(void);
@@ -27,9 +23,6 @@ void Globals_Set_ProcessIsChild
 
 // get direct access to 'graphs_in_keyspace'
 GraphContext **Globals_Get_GraphsInKeyspace(void);
-
-// free globals
-void Globals_Free(void);
 
 // add graph to global tracker
 void Globals_AddGraph
@@ -55,6 +48,41 @@ void Globals_RemoveGraphByName
 	const char *name  // graph name to remove
 );
 
+// clear all tracked graphs
+void Globals_ClearGraphs(void);
+
+//------------------------------------------------------------------------------
+// Command context tracking
+//------------------------------------------------------------------------------
+
+// track CommandCtx
+void Globals_TrackCommandCtx
+(
+	CommandCtx *ctx  // CommandCtx to track
+);
+
+// untrack CommandCtx
+void Globals_UntrackCommandCtx
+(
+	const CommandCtx *ctx  // CommandCtx to untrack
+);
+
+// get a copy of all tracked CommandCtxs
+// caller must free each CommandCtx and the array
+CommandCtx **Globals_GetCommandCtxs(void);
+
+// free globals
+void Globals_Free(void);
+
+//------------------------------------------------------------------------------
+// Graphs iterator
+//------------------------------------------------------------------------------
+
+// graphs_in_keyspace iterator
+typedef struct GraphIterator {
+	uint64_t idx;       // current graph index
+} GraphIterator;
+
 // initialize iterator over graphs in keyspace
 void Globals_ScanGraphs(GraphIterator *it);
 
@@ -72,7 +100,4 @@ GraphContext *GraphIterator_Next
 (
 	GraphIterator *it  // iterator to advance
 );
-
-// clear all tracked graphs
-void Globals_ClearGraphs(void);
 

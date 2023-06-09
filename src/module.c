@@ -30,18 +30,10 @@
 #include "serializers/graphcontext_type.h"
 #include "arithmetic/arithmetic_expression.h"
 
-//------------------------------------------------------------------------------
-// Minimal supported Redis version
-//------------------------------------------------------------------------------
+// minimal supported Redis version
 #define MIN_REDIS_VERION_MAJOR 6
 #define MIN_REDIS_VERION_MINOR 0
 #define MIN_REDIS_VERION_PATCH 0
-
-//------------------------------------------------------------------------------
-// Module-level global variables
-//------------------------------------------------------------------------------
-
-extern CommandCtx **command_ctxs;
 
 static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 	if(GraphContextType_Register(ctx) == REDISMODULE_ERR) {
@@ -129,9 +121,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	Proc_Register();     // register procedures
 	AR_RegisterFuncs();  // register arithmetic functions
 
-	// set up global lock and variables scoped to the entire module
-	Globals_Init();
-
 	// set up the module's configurable variables,
 	// using user-defined values where provided
 	// register for config updates
@@ -161,9 +150,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	// log configuration
 	_Print_Config(ctx);
-
-	// initialize array of command contexts
-	command_ctxs = calloc(ThreadPools_ThreadCount() + 1, sizeof(CommandCtx *));
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
@@ -222,15 +208,18 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-//	if(RedisModule_CreateCommand(ctx, "graph.INFO", Graph_Info, "readonly", 1, 1,
-//								1) == REDISMODULE_ERR) {
-//		return REDISMODULE_ERR;
-//	}
+	if(RedisModule_CreateCommand(ctx, "graph.INFO", Graph_Info, "readonly", 1, 1,
+				1) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
 
 	if(RedisModule_CreateCommand(ctx, "graph.EFFECT", Graph_Effect, "write", 1,
 				1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
+
+	// set up global variables scoped to the entire module
+	Globals_Init();
 
 	setupCrashHandlers(ctx);
 

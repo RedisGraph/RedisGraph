@@ -6,15 +6,13 @@
 
 #include "RG.h"
 #include "cmd_context.h"
+#include "../globals.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/pools.h"
 #include "../slow_log/slow_log.h"
 #include "../util/blocked_client.h"
 
-/* Array with one entry per worker thread
- * keeps track after currently executing commands
- * initialized at module.c accessed via cmd_* and debug.c */
-CommandCtx **command_ctxs = NULL;
+#include <stdatomic.h>
 
 // create a new command context
 CommandCtx *CommandCtx_New
@@ -40,6 +38,7 @@ CommandCtx *CommandCtx_New
 	context->thread             = thread;
 	context->compact            = compact;
 	context->timeout            = timeout;
+	context->ref_count          = 1;
 	context->graph_ctx          = graph_ctx;
 	context->timeout_rw         = timeout_rw;
 	context->received_ts        = received_ts;
@@ -63,106 +62,110 @@ CommandCtx *CommandCtx_New
 	return context;
 }
 
-// place given 'ctx' in 'command_ctxs' at position 'tid'
-// representing the current thread
-void CommandCtx_TrackCtx(CommandCtx *ctx) {
-	ASSERT(ctx != NULL);
-	ASSERT(command_ctxs != NULL);
-
-	int tid = ThreadPools_GetThreadID();
-	ASSERT(command_ctxs[tid] == NULL);
-
-	// set ctx at the current thread entry
-	// CommandCtx_Free will remove it eventually
-	command_ctxs[tid] = ctx;
-
-	// reset thread memory consumption to 0 (no memory consumed)
-	rm_reset_n_alloced();
-}
-
-void CommandCtx_UntrackCtx(CommandCtx *ctx) {
-	ASSERT(ctx != NULL);
-	ASSERT(command_ctxs != NULL);
-
-	int tid = ThreadPools_GetThreadID();
-	if(command_ctxs[tid] == NULL) return; // nothing to clean
-
-	ASSERT(command_ctxs[tid] == ctx);
-
-	// set ctx at the current thread entry
-	// CommandCtx_Free will remove it eventually
-	command_ctxs[tid] = NULL;
-}
-
-RedisModuleCtx *CommandCtx_GetRedisCtx(CommandCtx *command_ctx) {
+// increment command context reference count
+void CommandCtx_Incref
+(
+	CommandCtx *command_ctx
+) {
 	ASSERT(command_ctx != NULL);
-	// Either we already have a context or block client is set.
-	if(command_ctx->ctx) return command_ctx->ctx;
+
+	// atomicly increment reference count
+	command_ctx->ref_count++;
+}
+
+RedisModuleCtx *CommandCtx_GetRedisCtx
+(
+	CommandCtx *command_ctx
+) {
+	ASSERT(command_ctx != NULL);
+	// either we already have a context or block client is set
+	if(command_ctx->ctx) {
+		return command_ctx->ctx;
+	}
 
 	ASSERT(command_ctx->bc != NULL);
+
 	command_ctx->ctx = RedisModule_GetThreadSafeContext(command_ctx->bc);
 	return command_ctx->ctx;
 }
 
-RedisModuleBlockedClient *CommandCtx_GetBlockingClient(const CommandCtx *command_ctx) {
+RedisModuleBlockedClient *CommandCtx_GetBlockingClient
+(
+	const CommandCtx *command_ctx
+) {
 	ASSERT(command_ctx != NULL);
 	return command_ctx->bc;
 }
 
-GraphContext *CommandCtx_GetGraphContext(const CommandCtx *command_ctx) {
+GraphContext *CommandCtx_GetGraphContext
+(
+	const CommandCtx *command_ctx
+) {
 	ASSERT(command_ctx != NULL);
 	return command_ctx->graph_ctx;
 }
 
-const char *CommandCtx_GetCommandName(const CommandCtx *command_ctx) {
+const char *CommandCtx_GetCommandName
+(
+	const CommandCtx *command_ctx
+) {
 	ASSERT(command_ctx != NULL);
 	return command_ctx->command_name;
 }
 
-const char *CommandCtx_GetQuery(const CommandCtx *command_ctx) {
+const char *CommandCtx_GetQuery
+(
+	const CommandCtx *command_ctx
+) {
 	ASSERT(command_ctx != NULL);
 	return command_ctx->query;
 }
 
-void CommandCtx_ThreadSafeContextLock(const CommandCtx *command_ctx) {
-	/* Acquire lock only when working with a blocked client
-	 * otherwise we're running on Redis main thread,
-	 * no need to acquire lock. */
-	ASSERT(command_ctx != NULL && command_ctx->ctx != NULL);
-	if(command_ctx->bc) RedisModule_ThreadSafeContextLock(command_ctx->ctx);
-}
-
-void CommandCtx_ThreadSafeContextUnlock(const CommandCtx *command_ctx) {
-	/* Release lock only when working with a blocked client
-	 * otherwise we're running on Redis main thread,
-	 * no need to release lock. */
-	ASSERT(command_ctx != NULL && command_ctx->ctx != NULL);
-	if(command_ctx->bc) RedisModule_ThreadSafeContextUnlock(command_ctx->ctx);
-}
-
-// copy the stopwatch representing the time the command was received
-void CommandCtx_GetTimmer
+void CommandCtx_ThreadSafeContextLock
 (
-	const CommandCtx *command_ctx,
-	simple_timer_t timer
+	const CommandCtx *command_ctx
 ) {
-	ASSERT(command_ctx != NULL);
-
-	simple_timer_copy(command_ctx->timer, timer);
+	// acquire lock only when working with a blocked client
+	// otherwise we're running on Redis main thread
+	// no need to acquire lock
+	ASSERT(command_ctx != NULL && command_ctx->ctx != NULL);
+	if(command_ctx->bc) {
+		RedisModule_ThreadSafeContextLock(command_ctx->ctx);
+	}
 }
 
-void CommandCtx_Free(CommandCtx *command_ctx) {
+void CommandCtx_ThreadSafeContextUnlock
+(
+	const CommandCtx *command_ctx
+) {
+	// release lock only when working with a blocked client
+	// otherwise we're running on Redis main thread
+	// no need to release lock
+	ASSERT(command_ctx != NULL && command_ctx->ctx != NULL);
 	if(command_ctx->bc) {
-		RedisGraph_UnblockClient(command_ctx->bc);
-		if(command_ctx->ctx) {
-			RedisModule_FreeThreadSafeContext(command_ctx->ctx);
-		}
+		RedisModule_ThreadSafeContextUnlock(command_ctx->ctx);
 	}
+}
 
-	CommandCtx_UntrackCtx(command_ctx);
+void CommandCtx_Free
+(
+	CommandCtx *command_ctx
+) {
+	Globals_UntrackCommandCtx(command_ctx);
 
-	if(command_ctx->query) rm_free(command_ctx->query);
-	rm_free(command_ctx->command_name);
-	rm_free(command_ctx);
+	// decrement reference count
+	if(__atomic_sub_fetch(&command_ctx->ref_count, 1, __ATOMIC_RELAXED) == 0) {
+		// reference count is zero, free command context
+		if(command_ctx->bc) {
+			RedisGraph_UnblockClient(command_ctx->bc);
+			if(command_ctx->ctx) {
+				RedisModule_FreeThreadSafeContext(command_ctx->ctx);
+			}
+		}
+
+		if(command_ctx->query != NULL) rm_free(command_ctx->query);
+		rm_free(command_ctx->command_name);
+		rm_free(command_ctx);
+	}
 }
 

@@ -24,13 +24,14 @@ typedef struct {
 	RedisModuleCtx *ctx;           // redis module context
 	char *command_name;            // command to execute
 	GraphContext *graph_ctx;       // graph context
+	int ref_count;                 // reference count
 	RedisModuleBlockedClient *bc;  // blocked client
 	bool replicated_command;       // whether this instance was spawned by a replication command
 	bool compact;                  // whether this query was issued with the compact flag
 	ExecutorThread thread;         // which thread executes this command
 	long long timeout;             // the query timeout, if specified
 	bool timeout_rw;               // apply timeout on both read and write queries
-	uint64_t received_ts;          // command received at this  UNIX timestamp
+	uint64_t received_ts;          // command received at this UNIX timestamp
 	simple_timer_t timer;          // stopwatch started upon command received
 } CommandCtx;
 
@@ -51,17 +52,10 @@ CommandCtx *CommandCtx_New
 	simple_timer_t timer           // stopwatch started upon command received
 );
 
-// tracks given 'ctx' such that in case of a crash we will be able to report
-// back all of the currently running commands
-void CommandCtx_TrackCtx
+// increment command context reference count
+void CommandCtx_Incref
 (
-	CommandCtx *ctx
-);
-
-// remove the given CommandCtx from tracking
-void CommandCtx_UntrackCtx
-(
-	CommandCtx *ctx
+	CommandCtx *command_ctx
 );
 
 // get Redis module context
@@ -88,6 +82,7 @@ const char *CommandCtx_GetCommandName
 	const CommandCtx *command_ctx
 );
 
+// get query string
 const char *CommandCtx_GetQuery
 (
 	const CommandCtx *command_ctx
@@ -103,13 +98,6 @@ void CommandCtx_ThreadSafeContextLock
 void CommandCtx_ThreadSafeContextUnlock
 (
 	const CommandCtx *command_ctx
-);
-
-// copy the stopwatch representing the time the command was received
-void CommandCtx_GetTimmer
-(
-	const CommandCtx *command_ctx,
-	simple_timer_t timer
 );
 
 // free command context

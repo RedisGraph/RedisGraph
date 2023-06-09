@@ -10,6 +10,7 @@
 #include "cmd_context.h"
 #include "../util/arr.h"
 #include "cron/cron.h"
+#include "../globals.h"
 #include "../query_ctx.h"
 #include "execution_ctx.h"
 #include "../graph/graph.h"
@@ -303,7 +304,7 @@ static void _ExecuteQuery(void *args) {
 		// transition the query from waiting to executing
 		QueryCtx_AdvanceStage(query_ctx);
 		QueryCtx_SetTLS(query_ctx);
-		CommandCtx_TrackCtx(command_ctx);
+		Globals_TrackCommandCtx(command_ctx);
 	}
 
 	// instantiate the query ResultSet
@@ -444,7 +445,7 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 	QueryCtx_RemoveFromTLS();
 
 	// untrack the CommandCtx
-	CommandCtx_UntrackCtx(gq_ctx->command_ctx);
+	Globals_UntrackCommandCtx(gq_ctx->command_ctx);
 
 	// update execution thread to writer
 	gq_ctx->command_ctx->thread = EXEC_THREAD_WRITER;
@@ -468,7 +469,7 @@ void _query
 	GraphContext   *gc          = CommandCtx_GetGraphContext(command_ctx);
 	ExecutionCtx   *exec_ctx    = NULL;
 
-	CommandCtx_TrackCtx(command_ctx);
+	Globals_TrackCommandCtx(command_ctx);
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
 	// transition the query from waiting to executing
