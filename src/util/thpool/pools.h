@@ -26,37 +26,22 @@ int ThreadPools_CreatePools
 );
 
 // return number of threads in both the readers and writers pools
-uint ThreadPools_ThreadCount
-(
-	void
-);
+uint ThreadPools_ThreadCount(void);
 
 // return size of READERS thread-pool
-uint ThreadPools_ReadersCount
-(
-	void
-);
+uint ThreadPools_ReadersCount(void);
 
 // retrieve current thread id
 // 0         redis-main
 // 1..N + 1  readers
 // N + 2..   writers
-int ThreadPools_GetThreadID
-(
-	void
-);
+int ThreadPools_GetThreadID(void);
 
 // pause all thread pools
-void ThreadPools_Pause
-(
-	void
-);
+void ThreadPools_Pause(void);
 
 // resume all threads
-void ThreadPools_Resume
-(
-	void
-);
+void ThreadPools_Resume(void);
 
 // adds a read task
 int ThreadPools_AddWorkReader
@@ -80,8 +65,18 @@ void ThreadPools_SetMaxPendingWork
 	uint64_t val
 );
 
+// returns a list of queued tasks that match the given handler
+// caller must free the returned list
+void **ThreadPools_GetTasksByHandler
+(
+	void (*handler)(void *),  // task handler to match
+	void (*match)(void *),    // [optional] function to invoke on each match
+	uint32_t *n               // number of tasks returned
+);
+
 // destroies all threadpools, allows threads to exit gracefully
 void ThreadPools_Destroy
 (
 	void
 );
+

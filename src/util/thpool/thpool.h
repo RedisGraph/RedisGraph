@@ -218,7 +218,41 @@ bool thpool_queue_full(threadpool);
  * @param threadpool    the threadpool of interest
  * @param uint64_t      capacity of the queue
  */
-void thpool_set_jobqueue_cap(threadpool, uint64_t);
+void thpool_set_jobqueue_cap
+(
+	threadpool,
+	uint64_t
+);
+
+/**
+ * @brief Gets jobqueue capacity.
+ *
+ * @param threadpool    the threadpool of interest
+ */
+uint64_t thpool_get_jobqueue_cap
+(
+	threadpool
+);
+
+/**
+ * @brief Gets jobqueue length.
+ *
+ * @param threadpool    the threadpool of interest
+ */
+uint64_t thpool_get_jobqueue_len
+(
+	threadpool
+);
+
+// collects tasks matching given handler
+void thpool_get_tasks
+(
+	threadpool thpool_p,      // thread pool
+	void **tasks,             // array of tasks
+	uint32_t *num_tasks,      // number of tasks collected
+	void (*handler)(void *),  // handler function
+	void (*match)(void*)      // [optional] executed on every match task
+);
 
 #ifdef __cplusplus
 }

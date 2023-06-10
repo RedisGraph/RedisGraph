@@ -277,9 +277,75 @@ bool thpool_queue_full(thpool_* thpool_p) {
 	return (thpool_p->jobqueue.len >= thpool_p->jobqueue.cap);
 }
 
-void thpool_set_jobqueue_cap(thpool_* thpool_p, uint64_t val) {
+void thpool_set_jobqueue_cap
+(
+	thpool_* thpool_p,
+	uint64_t val
+) {
 	ASSERT(thpool_p);
 	thpool_p->jobqueue.cap = val;
+}
+
+uint64_t thpool_get_jobqueue_cap
+(
+	thpool_* thpool_p
+) {
+	ASSERT(thpool_p);
+	return thpool_p->jobqueue.cap;
+}
+
+uint64_t thpool_get_jobqueue_len
+(
+	thpool_* thpool_p
+) {
+	ASSERT(thpool_p);
+	return thpool_p->jobqueue.len;
+}
+
+// collects tasks matching given handler
+void thpool_get_tasks
+(
+	threadpool thpool_p,      // thread pool
+	void **tasks,             // array of tasks
+	uint32_t *num_tasks,      // number of tasks collected
+	void (*handler)(void *),  // handler function
+	void (*match)(void*)      // [optional] executed on every match task
+) {
+	// validations
+	ASSERT(tasks     != NULL);
+	ASSERT(handler   != NULL);
+	ASSERT(thpool_p  != NULL);
+	ASSERT(num_tasks != NULL);
+
+	jobqueue *jobqueue_p = &thpool_p->jobqueue;
+
+	// lock job queue
+	pthread_mutex_lock(&jobqueue_p->rwmutex);
+
+	job *job = jobqueue_p->front;
+
+	// iterate through job queue
+	uint32_t i = 0;
+	for(; i < jobqueue_p->len && i < *num_tasks; i++) {
+		// check if job matches given handler
+		if(job->function == handler) {
+			tasks[i] = job->arg;
+
+			// execute match function if given
+			if(match != NULL) {
+				match(job->arg);
+			}
+		}
+
+		// advance to next job
+		job = job->prev;
+	}
+
+	// release lock
+	pthread_mutex_unlock(&jobqueue_p->rwmutex);
+
+	// set number of tasks collected
+	*num_tasks = i;
 }
 
 /* ============================ THREAD ============================== */
