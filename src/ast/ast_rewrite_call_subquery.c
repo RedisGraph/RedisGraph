@@ -225,7 +225,7 @@ static void _add_first_clause
 (
 	cypher_astnode_t *callsubquery,     // call subquery ast-node
 	uint callsubquery_ind,              // index of the call subquery node
-	uint first_ind,                     // index of the clause to replace
+	uint first_ind,                     // the index in which to plant the clause
 	char **names,                       // original bound vars
 	char **inter_names                  // internal representation of bound vars
 ) {
@@ -322,9 +322,9 @@ static void _add_first_clause
 			cypher_ast_query_get_clause(subquery, i));
 	}
 	clauses[first_ind] = new_clause;
-	for(uint i = 0; i < n_clauses; i++) {
-		clauses[i + first_ind + 1] =(cypher_astnode_t *)cypher_ast_clone(
-			cypher_ast_query_get_clause(subquery, i + first_ind));
+	for(uint i = first_ind; i < n_clauses; i++) {
+		clauses[i + 1] =(cypher_astnode_t *)cypher_ast_clone(
+			cypher_ast_query_get_clause(subquery, i));
 	}
 
 	cypher_astnode_t *q = cypher_ast_query(NULL, 0, clauses, n_clauses + 1, clauses,
