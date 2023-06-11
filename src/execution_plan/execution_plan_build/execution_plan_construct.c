@@ -6,7 +6,9 @@
 
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
+#include "../../ast/ast_mock.h"
 #include "build_call_subquery.h"
+#include "execution_plan_util.h"
 #include "execution_plan_modify.h"
 #include "execution_plan_construct.h"
 #include "../../util/rax_extensions.h"
@@ -274,6 +276,58 @@ static void _buildForeachOp
 
 	// connect the embedded plan to the Foreach op
 	ExecutionPlan_AddOp(foreach, embedded_plan->root);
+}
+
+OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_vars,
+									   const cypher_astnode_t *node) {
+	// Initialize an ExecutionPlan that shares this plan's Record mapping.
+	ExecutionPlan *match_stream_plan = ExecutionPlan_NewEmptyExecutionPlan();
+	match_stream_plan->record_map = plan->record_map;
+
+	// If we have bound variables, build an Argument op that represents them.
+	if(bound_vars) match_stream_plan->root = NewArgumentOp(match_stream_plan,
+															   bound_vars);
+
+	AST *ast = QueryCtx_GetAST();
+	// Build a temporary AST holding a MATCH clause.
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+
+	/* The AST node we're building a mock MATCH clause for will be a path
+	 * if we're converting a MERGE clause or WHERE filter, and we must build
+	 * and later free a CYPHER_AST_PATTERN node to contain it.
+	 * If instead we're converting an OPTIONAL MATCH, the node is itself a MATCH clause,
+	 * and we will reuse its CYPHER_AST_PATTERN node rather than building a new one. */
+	bool node_is_path = (type == CYPHER_AST_PATTERN_PATH || type == CYPHER_AST_NAMED_PATH);
+	AST *match_stream_ast = AST_MockMatchClause(ast, (cypher_astnode_t *)node, node_is_path);
+
+	//--------------------------------------------------------------------------
+	// Build plan's query graph
+	//--------------------------------------------------------------------------
+
+	// Extract pattern from holistic query graph.
+	const cypher_astnode_t **match_clauses = AST_GetClauses(match_stream_ast, CYPHER_AST_MATCH);
+	ASSERT(array_len(match_clauses) == 1);
+	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[0]);
+	array_free(match_clauses);
+	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(plan->query_graph, &pattern, 1);
+	match_stream_plan->query_graph = sub_qg;
+
+	ExecutionPlan_PopulateExecutionPlan(match_stream_plan);
+
+	AST_MockFree(match_stream_ast, node_is_path);
+	QueryCtx_SetAST(ast); // Reset the AST.
+
+	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	OpBase *match_stream_root = match_stream_plan->root;
+	ExecutionPlan_BindOpsToPlan(plan, match_stream_root, true);
+
+	// NULL-set variables shared between the match_stream_plan and the overall plan.
+	match_stream_plan->root = NULL;
+	match_stream_plan->record_map = NULL;
+	// Free the temporary plan.
+	ExecutionPlan_Free(match_stream_plan);
+
+	return match_stream_root;
 }
 
 void ExecutionPlanSegment_ConvertClause

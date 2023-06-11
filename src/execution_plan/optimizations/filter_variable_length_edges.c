@@ -7,6 +7,7 @@
 #include "../../util/arr.h"
 #include "../ops/op_filter.h"
 #include "../ops/op_cond_var_len_traverse.h"
+#include "../execution_plan_build/execution_plan_util.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 /* The filterVariableLengthEdges optimization finds variable-length traversal ops

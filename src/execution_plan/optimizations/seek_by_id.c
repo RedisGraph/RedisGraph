@@ -11,6 +11,7 @@
 #include "../ops/op_node_by_label_scan.h"
 #include "../../util/range/numeric_range.h"
 #include "../../arithmetic/arithmetic_op.h"
+#include "../execution_plan_build/execution_plan_util.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 /* The seek by ID optimization searches for a SCAN operation on which

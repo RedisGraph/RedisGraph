@@ -9,6 +9,7 @@
 #include "../ops/op_filter.h"
 #include "../ops/op_cartesian_product.h"
 #include "../../util/rax_extensions.h"
+#include "../execution_plan_build/execution_plan_util.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 #include "../execution_plan_build/execution_plan_construct.h"
 

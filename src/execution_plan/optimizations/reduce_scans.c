@@ -5,11 +5,12 @@
  */
 
 #include "RG.h"
+#include "../../util/arr.h"
+#include "../../query_ctx.h"
 #include "../ops/op_filter.h"
 #include "../ops/op_node_by_label_scan.h"
 #include "../ops/op_conditional_traverse.h"
-#include "../../util/arr.h"
-#include "../../query_ctx.h"
+#include "../execution_plan_build/execution_plan_util.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 /* The reduce scans optimizer searches the execution plans for

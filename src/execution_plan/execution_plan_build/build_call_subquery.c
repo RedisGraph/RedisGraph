@@ -11,6 +11,7 @@
 #include "../execution_plan.h"
 #include "../ops/op_project.h"
 #include "../ops/op_argument.h"
+#include "execution_plan_util.h"
 #include "../ops/op_aggregate.h"
 #include "execution_plan_modify.h"
 #include "../ops/op_argument_list.h"

@@ -5,6 +5,7 @@
  */
 
 #include "op_apply_multiplexer.h"
+#include "../execution_plan_build/execution_plan_util.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 // Forward declerations.

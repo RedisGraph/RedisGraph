@@ -12,6 +12,7 @@
 #include "../../schema/schema.h"
 #include "../../util/rax_extensions.h"
 #include "../../arithmetic/arithmetic_expression.h"
+#include "../execution_plan_build/execution_plan_util.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 // forward declarations
