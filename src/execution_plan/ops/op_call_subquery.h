@@ -20,18 +20,18 @@
 // is\isn't eager (non-eager -> Arguments, eager -> ArgumentLists).
 
 typedef enum {
-	CONNECTOR_NONE,          // non-initialized
-	CONNECTOR_ARGUMENT,      // Arguments
-	CONNECTOR_ARGUMENT_LIST  // ArgumentLists
-} ConnectorType;
+	FEEDER_NONE,          // non-initialized
+	FEEDER_ARGUMENT,      // Arguments
+	FEEDER_ARGUMENT_LIST  // ArgumentLists
+} FeederType;
 
-typedef struct Connector{
+typedef struct Feeder{
 	union {
 		Argument **arguments;
 		ArgumentList **argumentLists;
 	};
-	ConnectorType type;
-} Connector;
+	FeederType type;
+} Feeder;
 
 typedef struct {
 	OpBase op;
@@ -43,7 +43,7 @@ typedef struct {
 	OpBase *lhs;        // op from which records are pulled
 	Record r;           // current record consumed from lhs
 	Record *records;    // records aggregated by the operation
-	Connector feeders;  // connectors to the body (Args/ArgLists)
+	Feeder feeders;     // feeders to the body (Args/ArgLists)
 } OpCallSubquery;
 
 // creates a new CallSubquery operation

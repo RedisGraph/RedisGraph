@@ -17,8 +17,9 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias
 
 	for(uint i = 0; i < count; i++) {
 		const char *resolved_alias = root->modifies[i];
-		/* NOTE - if this function is later used to modify the returned operation, we should return
-		 * the deepest operation that modifies the alias rather than the shallowest, as done here. */
+		// NOTE - if this function is later used to modify the returned
+		// operation, we should return the deepest operation that modifies the
+		// alias rather than the shallowest, as done here
 		if(strcmp(resolved_alias, alias) == 0) return root;
 	}
 
@@ -82,7 +83,6 @@ void ExecutionPlan_LocateOps
 OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 												   const OpBase *recurse_limit, const OPType *blacklisted_ops,
 												   int nblacklisted_ops, rax *refs_to_resolve) {
-
 	int dependency_count = 0;
 	bool blacklisted = false;
 	OpBase *resolving_op = NULL;
@@ -101,7 +101,10 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 			OpBase *tmp_op = ExecutionPlan_LocateReferencesExcludingOps(root->children[i],
 																		recurse_limit, blacklisted_ops, nblacklisted_ops, refs_to_resolve);
 
-			if(tmp_op) dependency_count ++; // Count how many children resolved references.
+			// Count how many children resolved references
+			if(tmp_op) {
+				dependency_count ++;
+			}
 			// If there is more than one child resolving an op, set the root as the resolver.
 			resolving_op = resolving_op ? root : tmp_op;
 			all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.

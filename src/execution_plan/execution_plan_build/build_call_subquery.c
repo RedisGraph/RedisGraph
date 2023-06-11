@@ -29,8 +29,7 @@ static void _create_ast_from_call_subquery
 	ASSERT(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY);
 
 	// create an AST from the body of the subquery
-	subquery_ast->root                = cypher_ast_call_subquery_get_query(clause);
-	subquery_ast->free_root           = false;
+	subquery_ast->root = cypher_ast_call_subquery_get_query(clause);
 	subquery_ast->anot_ctx_collection = orig_ast->anot_ctx_collection;
 }
 
@@ -164,7 +163,7 @@ static void _bind_returning_op
 		ProjectBindToPlan(op, plan);
 	} else if(type == OPType_AGGREGATE) {
 		AggregateBindToPlan(op, plan);
-	} else {
+	} else if(type != OPType_JOIN){
 		OpBase_UpdatePlan(op, plan);
 	}
 }
@@ -199,8 +198,6 @@ static void _bind_returning_ops_to_plan
 			OpBase *returning_op =
 				ExecutionPlan_LocateOpMatchingType(child, return_types, 2);
 			while(returning_op != NULL) {
-				OPType type = OpBase_Type(returning_op);
-
 				_bind_returning_op(returning_op, plan);
 				returning_op = returning_op->parent;
 			}

@@ -17,9 +17,9 @@ static Record CallSubqueryConsumeEager(OpBase *opBase);
 static OpBase *CallSubqueryClone(const ExecutionPlan *plan,
 	const OpBase *opBase);
 
-// find the deepest child of a root operation (connector), and append it to the
+// find the deepest child of a root operation (feeder), and append it to the
 // arguments/argumentLists array of the CallSubquery operation
-static void _append_connector
+static void _append_feeder
 (
 	OpCallSubquery *call_subquery,  // CallSubquery operation
 	OpBase *branch                  // root op of the branch
@@ -108,10 +108,10 @@ static OpResult CallSubqueryInit
 
 	// search for the ArgumentList\Argument ops, depending if the op is eager
 	if(op->is_eager) {
-		op->feeders.type = CONNECTOR_ARGUMENT_LIST;
+		op->feeders.type = FEEDER_ARGUMENT_LIST;
 		op->feeders.argumentLists = array_new(ArgumentList *, 1);
 	} else {
-		op->feeders.type = CONNECTOR_ARGUMENT;
+		op->feeders.type = FEEDER_ARGUMENT;
 		op->feeders.arguments = array_new(Argument *, 1);
 	}
 
@@ -137,11 +137,11 @@ static OpResult CallSubqueryInit
 
 		for(uint i = 0; i < n_branches; i++) {
 			OpBase *branch = OpBase_GetChild((OpBase *)op_join, i);
-			_append_connector(op, branch);
+			_append_feeder(op, branch);
 		}
 	} else {
 		OpBase *branch = op->body;
-		_append_connector(op, branch);
+		_append_feeder(op, branch);
 	}
 
 	return OP_OK;
@@ -377,12 +377,12 @@ static void CallSubqueryFree
 
 	_free_records(_op);
 
-	if(_op->feeders.type != CONNECTOR_NONE) {
-		if(_op->feeders.type == CONNECTOR_ARGUMENT) {
+	if(_op->feeders.type != FEEDER_NONE) {
+		if(_op->feeders.type == FEEDER_ARGUMENT) {
 			ASSERT(_op->feeders.arguments != NULL);
 			array_free(_op->feeders.arguments);
 			_op->feeders.arguments = NULL;
-		} else if(_op->feeders.type == CONNECTOR_ARGUMENT_LIST) {
+		} else if(_op->feeders.type == FEEDER_ARGUMENT_LIST) {
 			ASSERT(_op->feeders.argumentLists != NULL);
 			array_free(_op->feeders.argumentLists);
 			_op->feeders.argumentLists = NULL;

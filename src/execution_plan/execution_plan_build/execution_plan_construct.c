@@ -278,8 +278,12 @@ static void _buildForeachOp
 	ExecutionPlan_AddOp(foreach, embedded_plan->root);
 }
 
-OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_vars,
-									   const cypher_astnode_t *node) {
+OpBase *ExecutionPlan_BuildOpsFromPath
+(
+	ExecutionPlan *plan,
+	const char **bound_vars,
+	const cypher_astnode_t *node
+) {
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
 	ExecutionPlan *match_stream_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	match_stream_plan->record_map = plan->record_map;
