@@ -1725,9 +1725,46 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][0], Node(label='N',
             properties={'name': 'Roi'}))
 
+    def test28_reset(self):
+        """Tests that the resetting of a call {} operation is handled
+        correctly"""
+
+        # clean the db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create 2 nodes (:N {v: 2\4})
+        res = graph.query("UNWIND [2, 4] AS x CREATE (n:N {v: x})")
+
+        # in the following query, the inner call {} is reset (lhs of outer {})
+        res = graph.query(
+            """
+            UNWIND [1, 2 ,3, 4] AS x
+            CALL {
+                WITH x
+                CALL {
+                    WITH x
+                    MATCH (n {v: x})
+                    RETURN n
+                }
+            RETURN n
+            }
+            RETURN x, n
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0], 2)
+        self.env.assertEquals(res.result_set[0][1], Node(label='N',
+            properties={'v': 2}))
+        self.env.assertEquals(res.result_set[1][0], 4)
+        self.env.assertEquals(res.result_set[1][1], Node(label='N',
+            properties={'v': 4}))
+
     # TODO: Add support for rewriting star projections within call {} (after
     # supporting an embedded query within call {})
-    # def test28_rewrite_star_projections(self):
+    # def test29_rewrite_star_projections(self):
     #     """Tests that star projections within call {}are rewritten correctly"""
 
     #     # import data with *
