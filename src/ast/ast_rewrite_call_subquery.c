@@ -9,7 +9,7 @@
 #include "../util/rmalloc.h"
 #include "ast_rewrite_call_subquery.h"
 
-static bool _subquery_is_eager(const cypher_astnode_t *node);
+static bool _query_is_eager(const cypher_astnode_t *node);
 
 // returns true if the given ast-node will result in an eager operation
 static bool _clause_is_eager
@@ -20,18 +20,15 @@ static bool _clause_is_eager
 	// check if clause type is one of: CREATE, MERGE, SET or REMOVE
 	// -------------------------------------------------------------------------
 	cypher_astnode_type_t type = cypher_astnode_type(clause);
-	if(type == CYPHER_AST_CREATE_NODE_PROPS_INDEX     ||
-	   type == CYPHER_AST_CREATE_NODE_PROP_CONSTRAINT ||
-	   type == CYPHER_AST_CREATE_REL_PROP_CONSTRAINT  ||
-	   type == CYPHER_AST_CREATE                      ||
-	   type == CYPHER_AST_MERGE                       ||
-	   type == CYPHER_AST_SET                         ||
+	if(type == CYPHER_AST_CREATE ||
+	   type == CYPHER_AST_MERGE  ||
+	   type == CYPHER_AST_SET    ||
 	   type == CYPHER_AST_REMOVE) {
 		return true;
 	}
 
 	if(type == CYPHER_AST_CALL_SUBQUERY) {
-		return _subquery_is_eager(clause);
+		return _query_is_eager(cypher_ast_call_subquery_get_query(clause));
 	}
 
 	// -------------------------------------------------------------------------
@@ -46,18 +43,15 @@ static bool _clause_is_eager
 
 // returns true if the given node will result in an execution-plan that will
 // contain an eager operation
-static bool _subquery_is_eager
+static bool _query_is_eager
 (
 	const cypher_astnode_t *node  // ast-node
 ) {
-	ASSERT(cypher_astnode_type(node) == CYPHER_AST_CALL_SUBQUERY);
-	uint n_clauses = cypher_ast_query_nclauses(
-			cypher_ast_call_subquery_get_query(node));
+	ASSERT(cypher_astnode_type(node) == CYPHER_AST_QUERY);
+	uint n_clauses = cypher_ast_query_nclauses(node);
 
 	for(uint i = 0; i < n_clauses; i++) {
-		const cypher_astnode_t *curr_clause = cypher_ast_query_get_clause(
-				cypher_ast_call_subquery_get_query(node), i);
-		if(_clause_is_eager(curr_clause)) {
+		if(_clause_is_eager(cypher_ast_query_get_clause(node, i))) {
 			return true;
 		}
 	}
@@ -104,9 +98,8 @@ static void _replace_with_clause
 	char **inter_names               // internal representation of bound vars
 ) {
 
-	const cypher_astnode_t *clause =
-		cypher_ast_query_get_clause(
-			cypher_ast_call_subquery_get_query(callsubquery), clause_idx);
+	const cypher_astnode_t *clause = cypher_ast_query_get_clause(
+		cypher_ast_call_subquery_get_query(callsubquery), clause_idx);
 
 	uint existing_projections_count = cypher_ast_with_nprojections(clause);
 	uint n_projections = array_len(inter_names) + existing_projections_count;
@@ -129,10 +122,9 @@ static void _replace_with_clause
 		cypher_astnode_t *children[2];
 		children[0] = exp;
 		children[1] = alias;
-		uint nchildren = 2;
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-				nchildren, range);
+			2, range);
 	}
 
 	// -------------------------------------------------------------------------
@@ -149,10 +141,9 @@ static void _replace_with_clause
 		cypher_astnode_t *children[2];
 		children[0] = exp;
 		children[1] = alias;
-		uint nchildren = 2;
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-				nchildren, range);
+			2, range);
 	}
 
 	// -------------------------------------------------------------------------
@@ -175,43 +166,32 @@ static void _replace_with_clause
 	// -------------------------------------------------------------------------
 	// prepare additional arguments
 	//--------------------------------------------------------------------------
-	bool                    distinct   =  false ;
-	const cypher_astnode_t  *skip      =  NULL  ;
-	const cypher_astnode_t  *limit     =  NULL  ;
-	const cypher_astnode_t  *order_by  =  NULL  ;
-	const cypher_astnode_t  *predicate =  NULL  ;
+	bool                    distinct  =  false;
+	const cypher_astnode_t  *skip     =  NULL;
+	const cypher_astnode_t  *limit    =  NULL;
+	const cypher_astnode_t  *order_by =  NULL;
+	const cypher_astnode_t  *pred     =  NULL;
 
-	distinct      =  cypher_ast_with_is_distinct(clause);
-	skip          =  cypher_ast_with_get_skip(clause);
-	limit         =  cypher_ast_with_get_limit(clause);
-	order_by      =  cypher_ast_with_get_order_by(clause);
-	predicate     =  cypher_ast_with_get_predicate(clause);
+	distinct = cypher_ast_with_is_distinct(clause);
+	skip     = cypher_ast_with_get_skip(clause);
+	limit    = cypher_ast_with_get_limit(clause);
+	order_by = cypher_ast_with_get_order_by(clause);
+	pred     = cypher_ast_with_get_predicate(clause);
 
 	// clone any ORDER BY, SKIP, LIMIT, and WHERE modifiers to
 	// add to the children array and populate the new clause
 	uint nchildren = n_projections;
-	if(order_by)  order_by   = children[nchildren++] =
-		cypher_ast_clone(order_by);
-	if(skip)      skip       = children[nchildren++] = cypher_ast_clone(skip);
-	if(limit)     limit      = children[nchildren++] = cypher_ast_clone(limit);
-	if(predicate) predicate  = children[nchildren++] =
-		cypher_ast_clone(predicate);
+	if(order_by) order_by = children[nchildren++] = cypher_ast_clone(order_by);
+	if(skip)     skip     = children[nchildren++] = cypher_ast_clone(skip);
+	if(limit)    limit    = children[nchildren++] = cypher_ast_clone(limit);
+	if(pred)     pred     = children[nchildren++] = cypher_ast_clone(pred);
 
 	struct cypher_input_range range = cypher_astnode_range(clause);
 
 	// build the replacement clause
 	cypher_astnode_t *new_clause;
-	new_clause = cypher_ast_with(distinct,
-								false,
-								projections,
-								n_projections,
-								order_by,
-								skip,
-								limit,
-								predicate,
-								children,
-								nchildren,
-								range);
+	new_clause = cypher_ast_with(distinct, false, projections, n_projections,
+		order_by, skip, limit, pred, children, nchildren, range);
 
 	// replace original clause with fully populated one
 	cypher_ast_query_replace_clauses(
@@ -250,10 +230,9 @@ static void _add_first_clause
 		cypher_astnode_t *children[2];
 		children[0] = exp;
 		children[1] = alias;
-		uint nchildren = 2;
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-				nchildren, range);
+			2, range);
 	}
 
 	// -------------------------------------------------------------------------
@@ -270,65 +249,40 @@ static void _add_first_clause
 		cypher_astnode_t *children[2];
 		children[0] = exp;
 		children[1] = alias;
-		uint nchildren = 2;
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-				nchildren, range);
+			2, range);
 	}
 
 	// -------------------------------------------------------------------------
 	// prepare additional arguments
 	//--------------------------------------------------------------------------
-	bool                    distinct   =  false ;
-	const cypher_astnode_t  *skip      =  NULL  ;
-	const cypher_astnode_t  *limit     =  NULL  ;
-	const cypher_astnode_t  *order_by  =  NULL  ;
-	const cypher_astnode_t  *predicate =  NULL  ;
-
-	// copy projections to the children array
-	cypher_astnode_t *children[n_projections + 4];
-	for(uint i = 0; i < n_projections; i++) {
-		children[i] = projections[i];
-	}
 
 	struct cypher_input_range range = {0};
-	uint nchildren = n_projections;
 
 	// build the replacement clause
 	cypher_astnode_t *new_clause;
-	new_clause = cypher_ast_with(distinct,
-								false,
-								projections,
-								n_projections,
-								order_by,
-								skip,
-								limit,
-								predicate,
-								children,
-								nchildren,
-								range);
+	new_clause = cypher_ast_with(false, false, projections, n_projections,
+		NULL, NULL, NULL, NULL, projections, n_projections, range);
 
 	// -------------------------------------------------------------------------
 	// replace original clause with fully populated one
 	// -------------------------------------------------------------------------
 
-	cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(
-		callsubquery);
+	cypher_astnode_t *query = cypher_ast_call_subquery_get_query(callsubquery);
 
-	uint n_clauses = cypher_ast_query_nclauses(subquery);
+	uint n_clauses = cypher_ast_query_nclauses(query);
 	cypher_astnode_t *clauses[n_clauses + 1];
 	for(uint i = 0; i < first_ind; i++) {
-		clauses[i] = (cypher_astnode_t *)cypher_ast_clone(
-			cypher_ast_query_get_clause(subquery, i));
+		clauses[i] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
 	}
 	clauses[first_ind] = new_clause;
 	for(uint i = first_ind; i < n_clauses; i++) {
-		clauses[i + 1] =(cypher_astnode_t *)cypher_ast_clone(
-			cypher_ast_query_get_clause(subquery, i));
+		clauses[i + 1] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
 	}
 
-	cypher_astnode_t *q = cypher_ast_query(NULL, 0, clauses, n_clauses + 1, clauses,
-		n_clauses + 1, range);
+	cypher_astnode_t *q = cypher_ast_query(NULL, 0, clauses, n_clauses + 1,
+		clauses, n_clauses + 1, range);
 
 	cypher_ast_call_subquery_replace_query(callsubquery, q);
 }
@@ -343,14 +297,11 @@ static void _replace_intermediate_with_clauses
 	uint last_ind,                      // index of last relevant clause
 	char **inter_names                  // internal representation of bound vars
 ) {
-	cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(callsubquery);
+	cypher_astnode_t *query = cypher_ast_call_subquery_get_query(callsubquery);
 	for(uint i = first_ind + 1; i < last_ind; i++) {
-		cypher_astnode_t *clause =
-			(cypher_astnode_t *)cypher_ast_query_get_clause(
-				subquery, i);
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(query, i);
 		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
-			_replace_with_clause(callsubquery, i, inter_names,
-				inter_names);
+			_replace_with_clause(callsubquery, i, inter_names, inter_names);
 		}
 	}
 }
@@ -366,9 +317,8 @@ static void _replace_return_clause
 ) {
 	// we know that the last clause in query is a RETURN clause, which we want
 	// to replace
-	cypher_astnode_t *clause =
-		(cypher_astnode_t *)cypher_ast_query_get_clause(
-			cypher_ast_call_subquery_get_query(callsubquery), last_ind-1);
+	cypher_astnode_t *clause = (cypher_astnode_t *)cypher_ast_query_get_clause(
+		cypher_ast_call_subquery_get_query(callsubquery), last_ind-1);
 
 	uint n_names = array_len(names);
 	uint n_inter_names = array_len(inter_names);
@@ -392,10 +342,9 @@ static void _replace_return_clause
 		cypher_astnode_t *children[2];
 		children[0] = exp;
 		children[1] = alias;
-		uint nchildren = 2;
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-				nchildren, range);
+			2, range);
 	}
 
 	// -------------------------------------------------------------------------
@@ -412,10 +361,9 @@ static void _replace_return_clause
 		cypher_astnode_t *children[2];
 		children[0] = exp;
 		children[1] = alias;
-		uint nchildren = 2;
 
 		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-				nchildren, range);
+				2, range);
 	}
 
 	// -------------------------------------------------------------------------
@@ -442,18 +390,17 @@ static void _replace_return_clause
 	const cypher_astnode_t  *limit     =  NULL ;
 	const cypher_astnode_t  *order_by  =  NULL ;
 
-	distinct      =  cypher_ast_return_is_distinct(clause);
-	skip          =  cypher_ast_return_get_skip(clause);
-	limit         =  cypher_ast_return_get_limit(clause);
-	order_by      =  cypher_ast_return_get_order_by(clause);
+	distinct = cypher_ast_return_is_distinct(clause);
+	skip     = cypher_ast_return_get_skip(clause);
+	limit    = cypher_ast_return_get_limit(clause);
+	order_by = cypher_ast_return_get_order_by(clause);
 
 	// clone any ORDER BY, SKIP, LIMIT, and WHERE modifiers to
 	// add to the children array and populate the new clause
 	uint nchildren = n_projections;
-	if(order_by)  order_by   = children[nchildren++] =
-		cypher_ast_clone(order_by);
-	if(skip)      skip       = children[nchildren++] = cypher_ast_clone(skip);
-	if(limit)     limit      = children[nchildren++] = cypher_ast_clone(limit);
+	if(order_by) order_by = children[nchildren++] = cypher_ast_clone(order_by);
+	if(skip)     skip     = children[nchildren++] = cypher_ast_clone(skip);
+	if(limit)    limit    = children[nchildren++] = cypher_ast_clone(limit);
 
 	struct cypher_input_range range = cypher_astnode_range(clause);
 
@@ -484,15 +431,14 @@ static void _rewrite_projections
 	cypher_astnode_t *clause,           // call {} clause to rewrite
 	uint clause_ind,                    // index of call {} clause in query
 	uint start,                         // start ind of outer-scope bound vars
-	uint end,                           // end ind of outer-scope bound vars
 	char ***inter_names                 // internal representation of bound vars
 ) {
 	// -------------------------------------------------------------------------
 	// collect outer scope bound vars
 	// -------------------------------------------------------------------------
 	rax *outer_mapping = raxNew();
-	if(start != end) {
-		collect_aliases_in_scope(wrapping_clause, start, end, outer_mapping);
+	if(start != clause_ind) {
+		collect_aliases_in_scope(wrapping_clause, start, clause_ind, outer_mapping);
 	}
 
 	uint mapping_size = raxSize(outer_mapping);
@@ -527,13 +473,10 @@ static void _rewrite_projections
 		// check if first clause is a WITH clause
 		const cypher_astnode_t *first_clause =
 			cypher_ast_query_get_clause(subquery, first_ind);
-		bool first_is_with =
-			cypher_astnode_type(first_clause) == CYPHER_AST_WITH;
-		if(first_is_with) {
+		if(cypher_astnode_type(first_clause) == CYPHER_AST_WITH) {
 			// replace first clause (WITH) with a WITH clause containing
 			// "n->@n" projections for all bound vars in outer-scope context
-			_replace_with_clause(clause, first_ind,
-				names, *inter_names);
+			_replace_with_clause(clause, first_ind, names, *inter_names);
 		} else {
 			// add a leading WITH clause containing "n->@n" projections
 			// for all bound vars (in outer-scope context)
@@ -562,23 +505,18 @@ static void _rewrite_projections
 	array_free(union_indices);
 
 	// free the names and inter_names, and corresponding arrays
-	uint n_names = array_len(names);
-	for(uint i = 0; i < n_names; i++) {
-		rm_free(names[i]);
-	}
-	array_free(names);
+	array_free_cb(names, rm_free);
 }
 
 // rewrites the subquery to contain the projections needed in case of an
 // eager and returning execution-plan (see specification in main function), and
 // recursively rewrites embedded Call {} clauses in the subquery
-static bool _AST_RewriteCallSubqueryClause
+static bool rewrite_call_subquery_clause
 (
 	cypher_astnode_t *wrapping_clause,  // outer-context clause (query/call {})
 	cypher_astnode_t *clause,           // the clause to rewrite
 	uint clause_ind,                    // index of clause in query
 	uint start,                         // start ind from which to collect bound vars
-	uint end,                           // end ind until from which to collect bound vars
 	char ***inter_names                 // internal representation of bound vars
 ) {
 	ASSERT(cypher_astnode_type(wrapping_clause) == CYPHER_AST_QUERY);
@@ -594,10 +532,10 @@ static bool _AST_RewriteCallSubqueryClause
 		cypher_ast_query_get_clause(subquery, subclauses_count - 1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
 
-	bool is_eager = _subquery_is_eager(clause);
+	bool is_eager = _query_is_eager(subquery);
 
 	if(is_eager && is_returning) {
-		_rewrite_projections(wrapping_clause, clause, clause_ind, start, end,
+		_rewrite_projections(wrapping_clause, clause, clause_ind, start,
 			inter_names);
 		return true;
 	}
@@ -619,16 +557,14 @@ static void _restore_outer_internal_names
 	}
 }
 
-static void _AST_RewriteCallSubqueryClauses
+static void _rewrite_call_subquery_clauses
 (
 	cypher_astnode_t *wrapping_clause,  // clause (query/call {})
 	char ***outer_inter_names           // internal names of bound vars in outer-scope ('@n', '@m', etc.)
 ) {
-	cypher_astnode_type_t type = cypher_astnode_type(wrapping_clause);
-	ASSERT(type == CYPHER_AST_QUERY);
+	ASSERT(cypher_astnode_type(wrapping_clause) == CYPHER_AST_QUERY);
 
 	uint nclauses = cypher_ast_query_nclauses(wrapping_clause);
-	nclauses = cypher_ast_query_nclauses(wrapping_clause);
 
 	// go over clauses. Upon finding a Call {} clause, rewrite it recursively
 	uint start_scope = 0;
@@ -640,8 +576,8 @@ static void _AST_RewriteCallSubqueryClauses
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 		if(type == CYPHER_AST_CALL_SUBQUERY) {
 			// if the subquery is returning & eager, rewrite its projections
-			bool clause_rewritten = _AST_RewriteCallSubqueryClause(
-				wrapping_clause, clause, i, start_scope, i, outer_inter_names);
+			bool clause_rewritten = rewrite_call_subquery_clause(
+				wrapping_clause, clause, i, start_scope, outer_inter_names);
 
 			// update clause, in case it was replaced
 			if(clause_rewritten) {
@@ -653,7 +589,7 @@ static void _AST_RewriteCallSubqueryClauses
 
 			// recursively rewrite embedded Call {} clauses, and update clause
 			// in case it was rewritten
-			_AST_RewriteCallSubqueryClauses(cypher_ast_call_subquery_get_query(clause), outer_inter_names);
+			_rewrite_call_subquery_clauses(cypher_ast_call_subquery_get_query(clause), outer_inter_names);
 
 			// restore `outer_inter_names` to its original state
 			_restore_outer_internal_names(outer_inter_names, orig_len);
@@ -690,10 +626,7 @@ void AST_RewriteCallSubquery
 	}
 
 	char **inter_names = array_new(char *, 0);
-	_AST_RewriteCallSubqueryClauses(query, &inter_names);
+	_rewrite_call_subquery_clauses(query, &inter_names);
 	uint n_inter_names = array_len(inter_names);
-	for(uint i = 0; i < n_inter_names; i++) {
-		rm_free(inter_names[i]);
-	}
-	array_free(inter_names);
+	array_free_cb(inter_names, rm_free);
 }
