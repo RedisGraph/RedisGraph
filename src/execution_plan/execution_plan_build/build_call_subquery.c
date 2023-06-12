@@ -161,6 +161,23 @@ static void _bind_returning_op
 	}
 }
 
+// binds all ops from the returning operation under `op` (first
+// Aggregate/Project) and onwards (towards the parent) to `plan`
+static void _bind_ops_from_returning
+(
+	OpBase *op,                // leaf op to bind
+	const ExecutionPlan *plan  // plan to bind ops to
+) {
+	OPType return_types[] = {OPType_PROJECT, OPType_AGGREGATE};
+
+	OpBase *returning_op =
+				ExecutionPlan_LocateOpMatchingType(op, return_types, 2);
+	while(returning_op != NULL) {
+		_bind_returning_op(returning_op, plan);
+		returning_op = returning_op->parent;
+	}
+}
+
 // binds the returning ops (effectively, all ops between the first
 // Project\Aggregate and CallSubquery in every branch other than the Join op,
 // inclusive) in embedded_plan to plan
@@ -169,8 +186,6 @@ static void _bind_returning_ops_to_plan
 	const ExecutionPlan *embedded_plan,  // embedded plan
 	const ExecutionPlan *plan            // plan to migrate ops to
 ) {
-	OPType return_types[] = {OPType_PROJECT, OPType_AGGREGATE};
-
 	// check if there is a Join operation (from UNION or UNION ALL)
 	OpBase *root = embedded_plan->root;
 	OpBase *join_op = _get_join(root);
@@ -178,22 +193,12 @@ static void _bind_returning_ops_to_plan
 	// if there is a Union operation, we need to look at all branches
 	if(join_op == NULL) {
 		// only one returning projection/aggregation
-		OpBase *returning_op =
-			ExecutionPlan_LocateOpMatchingType(root, return_types, 2);
-		while(returning_op != NULL) {
-			_bind_returning_op(returning_op, plan);
-			returning_op = returning_op->parent;
-		}
+		_bind_ops_from_returning(root, plan);
 	} else {
 		// multiple returning projections/aggregations
 		for(uint i = 0; i < join_op->childCount; i++) {
 			OpBase *child = join_op->children[i];
-			OpBase *returning_op =
-				ExecutionPlan_LocateOpMatchingType(child, return_types, 2);
-			while(returning_op != NULL) {
-				_bind_returning_op(returning_op, plan);
-				returning_op = returning_op->parent;
-			}
+			_bind_ops_from_returning(child, plan);
 		}
 	}
 }
