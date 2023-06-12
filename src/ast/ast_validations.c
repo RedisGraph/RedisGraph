@@ -141,11 +141,14 @@ static bool _AST_GetWithAliases
 		}
 		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
 
-		// check for duplicate column names
-		if(raxTryInsert(local_env, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
-			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
-			raxFree(local_env);
-			return false;
+		// check for duplicate column names (other than internal representation
+		// of outer-context variables)
+		if(raxTryInsert(local_env, (unsigned char *)alias, strlen(alias), NULL,
+			NULL) == 0 &&
+			alias[0] != '@') {
+				ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+				raxFree(local_env);
+				return false;
 		}
 	}
 
@@ -1336,17 +1339,24 @@ references to outside variables");
 
 		const cypher_astnode_t *return_clause
 			= cypher_ast_query_get_clause(body, nclauses-1);
-		for(uint i = 0; i < cypher_ast_return_nprojections(return_clause); i++) {
+		uint n_projections = cypher_ast_return_nprojections(return_clause);
+		for(uint i = 0; i < n_projections; i++) {
 			const cypher_astnode_t *proj =
 				cypher_ast_return_get_projection(return_clause, i);
 			const char *var_name;
 			const cypher_astnode_t *identifier =
 				cypher_ast_projection_get_alias(proj);
+			const cypher_astnode_t *exp =
+					cypher_ast_projection_get_expression(proj);
 			if(identifier) {
 				var_name = cypher_ast_identifier_get_name(identifier);
+				if(exp &&
+				   cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER &&
+				   cypher_ast_identifier_get_name(exp)[0] == '@') {
+					// this is an artificial projection, skip it
+					continue;
+				}
 			} else {
-				const cypher_astnode_t *exp =
-					cypher_ast_projection_get_expression(proj);
 				var_name = cypher_ast_identifier_get_name(exp);
 			}
 

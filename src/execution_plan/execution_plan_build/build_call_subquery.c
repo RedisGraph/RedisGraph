@@ -120,22 +120,12 @@ static OpBase **_find_feeding_points
 ) {
 	ASSERT(plan != NULL);
 
-	// check root and its first child for a Join op. The join op's placement
-	// may vary depending on whether there is a `UNION` or `UNION ALL` clause
-	OpBase *join = _get_join(plan->root);
-
-	// if not found, check for a Join op in the first child of the first child
-	if(join == NULL) {
-		if(OpBase_ChildCount(plan->root) > 0) {
-			OpBase *child = OpBase_GetChild(plan->root, 0);
-			if(OpBase_ChildCount(child) > 0) {
-				OpBase *grandchild = OpBase_GetChild(child, 0);
-				if(OpBase_Type(grandchild) == OPType_JOIN)  {
-					join = grandchild;
-				}
-			}
-		}
-	}
+	// the root is a Results op if the subquery is returning.
+	// search for a Join op in its first child or its first child's first child
+	// (depending on whether there is a `UNION` or `UNION ALL` clause)
+	OpBase *join = (OpBase_ChildCount(plan->root) > 0) ?
+		_get_join(plan->root->children[0]) :
+		NULL;
 
 	// get the deepest op(s)
 	uint n_branches = 1;
