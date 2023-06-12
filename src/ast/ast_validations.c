@@ -291,16 +291,15 @@ static AST_Validation _ValidateMergeNode
 	void *alias_type = raxFind(defined_aliases, (unsigned char *)alias, strlen(alias));
 	if(alias_type == raxNotFound) {
 		return AST_VALID;
-	} else if (alias_type != NULL && alias_type != (void *)T_NODE) {
-		if(alias_type == (void *)T_EDGE) {
-			// MATCH ()-[n]->() MERGE (n)-[:R]->()
-			ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
-				alias);
-		} else if (alias_type == (void *)T_PATH) {
-			// MATCH n=() MERGE (n)-[:R]->()
-			ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
-				alias);
-		}
+	} else if(alias_type == (void *)T_EDGE) {
+		// MATCH ()-[n]->() MERGE (n)-[:R]->()
+		ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
+			alias);
+		return AST_INVALID;
+	} else if (alias_type == (void *)T_PATH) {
+		// MATCH n=() MERGE (n)-[:R]->()
+		ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
+			alias);
 		return AST_INVALID;
 	}
 
@@ -394,18 +393,15 @@ static AST_Validation _Validate_MATCH_Entities
 			if(i % 2 == 0) {
 				// validate nodes
 
-				// MATCH ()-[r]->() MATCH(r) RETURN 0
-				if(identifier != raxNotFound && identifier != NULL
-					&& identifier != (void *)T_NODE) {
-					if(identifier == (void *)T_EDGE) {
-						// MATCH ()-[n]->() MATCH (n)-[:R]->()
-						ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
-							identifier_name);
-					} else if (identifier == (void *)T_PATH) {
-						// MATCH n=() MATCH (n)-[:R]->()
-						ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
-							identifier_name);
-					}
+				if(identifier == (void *)T_EDGE) {
+					// MATCH ()-[r]->() MATCH(r)
+					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
+						identifier_name);
+					break;
+				} else if (identifier == (void *)T_PATH) {
+					// MATCH n=() MATCH (n)-[:R]->()
+					ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
+						identifier_name);
 					break;
 				}
 
@@ -433,15 +429,13 @@ static AST_Validation _Validate_MATCH_Entities
 				// MATCH (n) WITH n AS e MATCH (a:L)-[e]->(b) RETURN e
 				// TODO: This query is being accepted, but it is invalid:
 				// WITH 1 AS x MATCH ()-[x]->() RETURN 0
-				if(identifier != raxNotFound && identifier != NULL
-					&& identifier != (void *)T_EDGE) {
-					if(identifier == (void *)T_NODE) {
-						ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
-							identifier_name);
-					} else if (identifier == (void *)T_PATH) {
-						ErrorCtx_SetError("The alias '%s' was specified for both a path and a relationship",
-							identifier_name);
-					}
+				if(identifier == (void *)T_NODE) {
+					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
+						identifier_name);
+					break;
+				} else if (identifier == (void *)T_PATH) {
+					ErrorCtx_SetError("The alias '%s' was specified for both a path and a relationship",
+						identifier_name);
 					break;
 				}
 
@@ -1021,9 +1015,8 @@ static AST_Validation _ValidateInlinedProperties
 				void *identifier_type = raxFind(vctx->intermediate_identifiers,
 					(unsigned char *)identifier_name, len);
 
-				if(identifier_type != NULL &&
-					(identifier_type == (void *)T_NODE ||
-					identifier_type == (void *)T_EDGE)) {
+				if(identifier_type == (void *)T_NODE ||
+				   identifier_type == (void *)T_EDGE) {
 					ErrorCtx_SetError("'%.*s' not defined", len, identifier_name);
 					return AST_INVALID;
 				}
@@ -1136,42 +1129,45 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 		return VISITOR_BREAK;
 	}
 
-	if(alias_edge) {
-			void *alias_type = raxFind(vctx->defined_identifiers,
-					(unsigned char *)alias, strlen(alias));
-			if(alias_type == raxNotFound) {
-				// register edge under its alias
-				raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
-						strlen(alias), (void *)T_EDGE, NULL);
+	if(alias != NULL) {
+		void *alias_type = raxFind(vctx->defined_identifiers,
+				(unsigned char *)alias, strlen(alias));
 
-				// if it is a CREATE clause register edge as an intermediate
-				// identifier because it is under creation
-				if(vctx->clause == CYPHER_AST_CREATE) {
-					raxInsert(vctx->intermediate_identifiers,
-						(unsigned char *)alias, strlen(alias),
-						(void *)T_EDGE, NULL);
+		if(alias_type != raxNotFound) {
+			// we can't register an edge more than once
+			// following are all illegal examples
+			// MATCH (a) RETURN [(b)-[b]->() | 0]"
+			// CREATE ()-[e]->()-[e]->()
+			// MATCH (a) RETURN [()-[b]->()-[b]->() | 0]
+			// CYPHER_AST_MATCH was validated by _Validate_MATCH_Entities()
+			if(vctx->clause != CYPHER_AST_MATCH) {
+				if(alias_type == (void *)T_EDGE) {
+					ErrorCtx_SetError("Cannot use the same relationship variable '%s'",
+						alias);
+				} else if(alias_type == (void *)T_NODE) {
+					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
+						alias);
+				} else if(alias_type == (void *)T_PATH) {
+					ErrorCtx_SetError("The alias '%s' was specified for both a path and a relationship",
+						alias);
 				}
-			} else {
-				// we can't register an edge more than once
-				// following are all illegal examples
-				// MATCH (a) RETURN [(b)-[b]->() | 0]"
-				// CREATE ()-[e]->()-[e]->()
-				// MATCH (a) RETURN [()-[b]->()-[b]->() | 0]
-				// CYPHER_AST_MATCH was validated by _Validate_MATCH_Entities()
-				if(vctx->clause != CYPHER_AST_MATCH) {
-					if(alias_type == (void *)T_EDGE) {
-						ErrorCtx_SetError("Cannot use the same relationship variable '%s'",
-							alias);
-					} else if(alias_type == (void *)T_NODE) {
-						ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
-							alias);
-					} else if(alias_type == (void *)T_PATH) {
-						ErrorCtx_SetError("The alias '%s' was specified for both a path and a relationship",
-							alias);
-					}
-					return VISITOR_BREAK;
-				}
+
+				return VISITOR_BREAK;
 			}
+		} else {
+			// the edge is valid
+			// register edge under its alias
+			raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
+					strlen(alias), (void *)T_EDGE, NULL);
+
+			// if it is a CREATE clause register edge as an intermediate
+			// identifier because it is under creation
+			if(vctx->clause == CYPHER_AST_CREATE) {
+				raxInsert(vctx->intermediate_identifiers,
+					(unsigned char *)alias, strlen(alias),
+					(void *)T_EDGE, NULL);
+			}
+		}
 	}
 
 	// do not traverse children
@@ -1203,33 +1199,26 @@ static VISITOR_STRATEGY _Validate_node_pattern
 		if(_ValidateMergeNode(n, vctx->defined_identifiers) == AST_INVALID) {
 			return VISITOR_BREAK;
 		}
-	} else {
-		if(alias != NULL) {
-			void *alias_type =
-				raxFind(vctx->defined_identifiers, (unsigned char *)alias,
-						strlen(alias));
-
-			if(alias_type  != raxNotFound          &&
-				alias_type != NULL                 &&
-				alias_type != (void *)T_NODE) {
-				if(alias_type == (void *)T_EDGE) {
-					// MATCH ()-[n]->() CREATE (n)-[:R]->()
-					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
-						alias);
-				} else if (alias_type == (void *)T_PATH) {
-					ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
-						alias);
-				}
-				return VISITOR_BREAK;
-			}
-		}
 	}
 
-	// the sub tree spanned from this node is valid
 	if(alias != NULL) {
-		void *alias_type = raxFind(vctx->defined_identifiers,
-							 (unsigned char *)alias, strlen(alias));
 
+		void *alias_type =
+			raxFind(vctx->defined_identifiers, (unsigned char *)alias,
+					strlen(alias));
+
+		if(alias_type == (void *)T_EDGE) {
+			// MATCH ()-[n]->() CREATE (n)-[:R]->()
+			ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
+				alias);
+			return VISITOR_BREAK;
+		} else if (alias_type == (void *)T_PATH) {
+			ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
+				alias);
+			return VISITOR_BREAK;
+		}
+
+		// the sub tree spanned from this node is valid
 		raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
 			strlen(alias), (void *)T_NODE, NULL);
 
