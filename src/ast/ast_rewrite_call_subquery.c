@@ -77,10 +77,18 @@ static void _get_vars_inner_rep
 		if(it.key[0] == '@') {
 			continue;
 		}
-		char *curr = rm_strndup((const char *)it.key, it.key_len);
-		// think about working with sds
+
 		char *internal_rep = rm_malloc(it.key_len + 2);
 		sprintf(internal_rep, "@%.*s", (int)it.key_len, it.key);
+
+		// check if the internal representation already exists
+		if(raxFind(outer_mapping, (unsigned char *)internal_rep,
+				   strlen(internal_rep)) != raxNotFound) {
+			rm_free(internal_rep);
+			continue;
+		}
+
+		char *curr = rm_strndup((const char *)it.key, it.key_len);
 		// append original name
 		array_append(*names, curr);
 		// append internal (temporary) name
