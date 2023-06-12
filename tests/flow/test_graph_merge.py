@@ -565,7 +565,7 @@ class testGraphMergeFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            self.env.assertIn("a not defined", str(e))
+            self.env.assertIn("'a' not defined", str(e))
 
     def test28_merge_reset_label_scan(self):
         redis_con = self.env.getConnection()
@@ -675,3 +675,26 @@ class testGraphMergeFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             assert("can't be redeclared in a MERGE clause" in str(e))
+
+    def test32_inlined_properties_self_reference(self):
+        # test using inlined properties which reference nodes of the same pattern
+
+        redis_con = self.env.getConnection()
+        graph = Graph(redis_con, "inlined_props")
+
+        # test merge using function in inlined properties,
+        # the input argument to function toJSON is valid,
+        # the entity is evaluated as NULL, the returned value is an empty map
+        queries = [
+                "MERGE (a:NewNode {v:2})-[r:R {k:toJSON(a)}]->() RETURN r.k",
+                "MERGE (a:NewNode {v:2})-[:R]->(b {k:toJSON(a)}) RETURN b.k",
+        ]
+
+        for query in queries:
+            result = redis_graph.query(query)
+            self.env.assertEquals(result.nodes_created, 2, depth=1)
+            self.env.assertEquals(result.properties_set, 2, depth=1)
+            self.env.assertEquals(result.relationships_created, 1, depth=1)
+            self.env.assertContains("\"properties\": {}", result.result_set[0][0])
+
+

@@ -276,6 +276,7 @@ class testWithClause(FlowTestsBase):
         error_path_node           = "The alias 'n' was specified for both a path and a node"
         error_redeclare_in_merge  = "The bound variable 'n' can't be redeclared in a MERGE clause"
         error_redeclare_in_create = "The bound variable 'n' can't be redeclared in a CREATE clause"
+        error_primitive_type      = "Property values can only be of primitive types or arrays of primitive types"
 
         queries = [
             # project a variable (with alias) and redeclare it with a different type
@@ -313,6 +314,12 @@ class testWithClause(FlowTestsBase):
             ("MATCH (n)-[:R]->() WITH n WHERE ()-[n:R]->() RETURN 0", error_node_relationship),
             ("MATCH n=() WITH n WHERE (n)-[:R]->() RETURN 0", error_path_node),
             ("MATCH n=() WITH n WHERE ()-[n:R]->() RETURN 0", error_path_relationship),
+
+            # project a variable and use it later as invalid type
+            ("CREATE (a:A) WITH a CREATE (b {v:a})", error_primitive_type),
+            ("CREATE (a:A) WITH a CREATE (a)-[:R]->(b:B {v:a})", error_primitive_type),
+            ("CREATE (a)-[r:R]->(b) WITH r CREATE (b)-[:R {v:r}]->(c)", error_primitive_type),
+            ("CREATE (a)-[r:R]->(b) WITH r CREATE (b)-[:R]->(c {v:r})", error_primitive_type),
         ]
 
         for query, error in queries:

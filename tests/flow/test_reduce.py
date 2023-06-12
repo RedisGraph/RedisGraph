@@ -108,21 +108,21 @@ class testReduce():
         try:
             actual = self.graph.query(q).result_set
         except ResponseError as e:
-            self.env.assertIn("x not defined", str(e))
+            self.env.assertIn("'x' not defined", str(e))
         #-----------------------------------------------------------------------
 
         q = "RETURN reduce(sum=0, n in x | sum+n)"
         try:
             actual = self.graph.query(q).result_set
         except ResponseError as e:
-            self.env.assertIn("x not defined", str(e))
+            self.env.assertIn("'x' not defined", str(e))
         #-----------------------------------------------------------------------
 
         q = "RETURN reduce(sum=0, n in [1,2,3] | sum+x)"
         try:
             actual = self.graph.query(q).result_set
         except ResponseError as e:
-            self.env.assertIn("x not defined", str(e))
+            self.env.assertIn("'x' not defined", str(e))
 
     def test_nested_reduction(self):
         # sum = 1 + 1

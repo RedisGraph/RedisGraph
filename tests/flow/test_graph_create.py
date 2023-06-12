@@ -76,7 +76,7 @@ class testGraphCreationFlow(FlowTestsBase):
             redis_graph.query(query)
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
-            self.env.assertIn("a not defined", str(e))
+            self.env.assertIn("'a' not defined", str(e))
 
     def test06_create_project_volatile_value(self):
         # The path e is volatile; verify that it can be projected after entity creation.
@@ -200,42 +200,17 @@ class testGraphCreationFlow(FlowTestsBase):
     # test referencing entities defined previously in the same query
     # the "intermediate" entities and their properties will be evaluated as NULL
     def test11_use_intermediate_entities(self):
-        # test using function with valid arguments
-        # 'a' is an intermidate node, which doesn't have any attributes just yet
-
-        queries = [
-                "CREATE (a:A {v:0}), ()-[r:R {k:toJSON(a)}]->() RETURN r.k",
-                "CREATE (a:A {v:0}), ()-[:R]->(c {k:toJSON(a)}) RETURN c.k",
-        ]
-
-        for query in queries:
-            result = redis_graph.query(query)
-            self.env.assertEquals(result.nodes_created, 3, depth=1)
-            self.env.assertEquals(result.properties_set, 2, depth=1)
-            self.env.assertEquals(result.relationships_created, 1, depth=1)
-            self.env.assertContains("\"properties\": {}", result.result_set[0][0])
-
-        queries = [
-                "MERGE (a:A {v:2})-[r:R {k:toJSON(a)}]->() RETURN r.k",
-                "MERGE (a:A {v:2})-[:R]->(b {k:toJSON(a)}) RETURN b.k",
-        ]
-
-        for query in queries:
-            result = redis_graph.query(query)
-            self.env.assertEquals(result.nodes_created, 2, depth=1)
-            self.env.assertEquals(result.properties_set, 2, depth=1)
-            self.env.assertEquals(result.relationships_created, 1, depth=1)
-            self.env.assertContains("\"properties\": {}", result.result_set[0][0])
 
         # test using functions with invalid arguments
         queries = [
             # invalid argument to predicate functions, which expect a list,
-            # but the function properties() returns a Map
-            "CREATE (a), (b)-[:R]->(c {k:any(x IN properties(a) WHERE x = 0)})",
-            "CREATE (a), (b)-[:R]->(c {k:none(x IN properties(a) WHERE x = 0)})",
-            "CREATE (a), (b)-[:R {k:single(x IN properties(a) WHERE x = 0)}]->()",
+            # but is being called with an empty map
+            "CREATE (a), (b)-[:R]->(c {k:any(x IN {} WHERE x = 0)})",
+            "CREATE (a), (b)-[:R]->(c {k:none(x IN {} WHERE x = 0)})",
+            "CREATE (a), (b)-[:R {k:single(x IN {} WHERE x = 0)}]->()",
+            "CREATE (a), (b)-[:R {k:single(x IN {} WHERE x = 0)}]->()",
             # invalid argument to function floor(), which expects an Integer,
-            # Float, or Null but any() returns Boolean
+            # Float, or Null but is called with a boolean
             "CREATE (a:A {v:floor(true)})"
         ]
 
@@ -255,19 +230,18 @@ class testGraphCreationFlow(FlowTestsBase):
 
         queries_with_errors = [
             # reference to intermediate node
-            ("MERGE (a:A {v:a})", error_not_defined),
             ("CREATE (a:A {v:a})", error_not_defined),
             ("MERGE (a:A {v:a})", error_not_defined),
-            ("CREATE (a:A {v:1}), (b {v:a})", error_primitive_type),
+            ("CREATE (a:A)-[:R]->(b:B {v:a})", error_not_defined),
             ("MERGE (a:A)-[:R]->(b:B {v:a})", error_primitive_type),
-            ("CREATE (a:A)-[:R]->(b:B {v:a})", error_primitive_type),
+            ("CREATE (a:A {v:1}), (b {v:a})", error_not_defined),
 
             # reference to intermediate edge
             ("MERGE ()-[r:R {v:r}]->()", error_not_defined),
             ("CREATE ()-[r:R {v:r}]->()", error_not_defined),
             ("MERGE ()-[r:R]->(b:B {v:r})", error_primitive_type),
-            ("CREATE ()-[r:R]->(b:B {v:r})", error_primitive_type),
-            ("CREATE ()-[r:R1]->(), ()-[:R2]->({v:r})", error_primitive_type),
+            ("CREATE ()-[r:R]->(b:B {v:r})", error_not_defined),
+            ("CREATE ()-[r:R1]->(), ()-[:R2]->({v:r})", error_not_defined),
 
             # assign path pattern to property
             ("MATCH ({v:()}) RETURN 0", error_invalid_input),
@@ -288,6 +262,10 @@ class testGraphCreationFlow(FlowTestsBase):
             # reference to property of intermediate edge
             ("CREATE ()-[r:R {v:2}]->(b:B {v:r.v})", error_not_defined),
             ("CREATE ()-[r:R {v:1}]->(), (a {v:r.v})", error_not_defined),
+
+            # intermediate entities as function arguments
+            ("CREATE (a {v:0}), ()-[:R {k:toJSON(a)}]->()", error_not_defined),
+            ("CREATE (a {v:0}), ()-[:R]->({k:toJSON(a)})", error_not_defined),
         ]
 
         for query, error in queries_with_errors:
