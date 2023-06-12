@@ -89,6 +89,112 @@ static void _get_vars_inner_rep
 	}
 }
 
+// adds projections from names to inter_names to `projections` array
+static uint _add_projection_names_to_inter
+(
+	cypher_astnode_t *projections[],  // array of projections
+	uint proj_idx,                    // index to start adding projections
+	char **names,                     // bound vars
+	char **inter_names                // internal representation of bound vars
+) {
+	uint n_names = array_len(names);
+	uint n_inter_names = array_len(inter_names);
+	for(uint i = 0; i < n_names; i++) {
+		// create a projection for the bound var
+		struct cypher_input_range range = {0};
+		cypher_astnode_t *exp = cypher_ast_identifier(names[i],
+			strlen(names[i]), range);
+		int ind = n_inter_names - n_names + i;
+		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[ind],
+			strlen(inter_names[ind]), range);
+		cypher_astnode_t *children[2];
+		children[0] = exp;
+		children[1] = alias;
+
+		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
+			2, range);
+	}
+
+	return proj_idx;
+}
+
+// adds projections from `inter_names` to `names` to `projections` array
+static uint _add_projection_inter_to_names
+(
+	cypher_astnode_t *projections[],  // array of projections
+	uint proj_idx,                    // index to start adding projections
+	char **names,                     // bound vars
+	char **inter_names                // internal representation of bound vars
+) {
+	uint n_names = array_len(names);
+	uint n_inter_names = array_len(inter_names);
+	for(uint i = 0; i < n_names; i++) {
+		// create a projection for the bound var
+		struct cypher_input_range range = {0};
+		int ind = n_inter_names - n_names + i;
+		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[ind],
+			strlen(inter_names[ind]), range);
+		cypher_astnode_t *alias = cypher_ast_identifier(names[i],
+			strlen(names[i]), range);
+		cypher_astnode_t *children[2];
+		children[0] = exp;
+		children[1] = alias;
+
+		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
+			2, range);
+	}
+
+	return proj_idx;
+}
+
+// add projections to projections array, corresponding to the bound vars (names)
+// and their internal representation (inter_names)
+// if `direction` is 0 (false), projections from `names` to `inter_names` are added.
+// if `directions` is 1, projections from `inter_names` to `names` are added.
+// if `directions` is 2, projections from `inter_names` to `inter_names` are
+// added.
+// returns the new value of `proj_idx`
+static uint _add_projections
+(
+	cypher_astnode_t *projections[],  // array of projections
+	uint proj_idx,                    // index to start adding projections
+	char **names,                     // bound vars
+	char **inter_names,               // internal representation of bound vars
+	bool in_direction                 // direction of projections
+) {
+	uint n_names = array_len(names);
+	uint n_inter_names = array_len(inter_names);
+
+	if(in_direction) {
+		proj_idx = _add_projection_names_to_inter(projections, proj_idx, names,
+			inter_names);
+	} else {
+		proj_idx = _add_projection_inter_to_names(projections, proj_idx, names,
+			inter_names);
+	}
+
+	// -------------------------------------------------------------------------
+	// create projections for bound vars from outer context
+	// -------------------------------------------------------------------------
+	uint n_outer_names = n_inter_names - n_names;
+	for(uint i = 0; i < n_outer_names; i++) {
+		// create a projection for the bound var
+		struct cypher_input_range range = {0};
+		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[i],
+			strlen(inter_names[i]), range);
+		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
+			strlen(inter_names[i]), range);
+		cypher_astnode_t *children[2];
+		children[0] = exp;
+		children[1] = alias;
+
+		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
+			2, range);
+	}
+
+	return proj_idx;
+}
+
 // replaces a `WITH` clause, placed in clause_idx within `callsubquery`, with a
 // new `WITH` clause containing projections of `names` to `inter_names`
 static void _replace_with_clause
@@ -111,42 +217,8 @@ static void _replace_with_clause
 	// -------------------------------------------------------------------------
 	// create projections for bound vars
 	// -------------------------------------------------------------------------
-	uint n_names = array_len(names);
-	uint n_inter_names = array_len(inter_names);
-	for(uint i = 0; i < n_names; i++) {
-		// create a projection for the bound var
-		struct cypher_input_range range = {0};
-		cypher_astnode_t *exp = cypher_ast_identifier(names[i],
-			strlen(names[i]), range);
-		int ind = n_inter_names - n_names + i;
-		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[ind],
-			strlen(inter_names[ind]), range);
-		cypher_astnode_t *children[2];
-		children[0] = exp;
-		children[1] = alias;
-
-		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-			2, range);
-	}
-
-	// -------------------------------------------------------------------------
-	// create projections for bound vars from outer context
-	// -------------------------------------------------------------------------
-	uint n_outer_names = n_inter_names - n_names;
-	for(uint i = 0; i < n_outer_names; i++) {
-		// create a projection for the bound var
-		struct cypher_input_range range = {0};
-		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[i],
-			strlen(inter_names[i]), range);
-		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
-			strlen(inter_names[i]), range);
-		cypher_astnode_t *children[2];
-		children[0] = exp;
-		children[1] = alias;
-
-		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-			2, range);
-	}
+	proj_idx = _add_projections(projections, proj_idx, names, inter_names,
+		true);
 
 	// -------------------------------------------------------------------------
 	// introduce explicit projections
@@ -220,40 +292,8 @@ static void _add_first_clause
 	// -------------------------------------------------------------------------
 	// create projections for bound vars
 	// -------------------------------------------------------------------------
-	for(uint i = 0; i < n_names; i++) {
-		// create a projection for the bound var
-		struct cypher_input_range range = {0};
-		cypher_astnode_t *exp = cypher_ast_identifier(names[i],
-			strlen(names[i]), range);
-		int ind = n_inter_names - n_names + i;
-		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[ind],
-			strlen(inter_names[ind]), range);
-		cypher_astnode_t *children[2];
-		children[0] = exp;
-		children[1] = alias;
-
-		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-			2, range);
-	}
-
-	// -------------------------------------------------------------------------
-	// create projections for bound vars from outer context
-	// -------------------------------------------------------------------------
-	uint n_outer_names = n_inter_names - n_names;
-	for(uint i = 0; i < n_outer_names; i++) {
-		// create a projection for the bound var
-		struct cypher_input_range range = {0};
-		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[i],
-			strlen(inter_names[i]), range);
-		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
-			strlen(inter_names[i]), range);
-		cypher_astnode_t *children[2];
-		children[0] = exp;
-		children[1] = alias;
-
-		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-			2, range);
-	}
+	proj_idx = _add_projections(projections, proj_idx, names, inter_names,
+		true);
 
 	// -------------------------------------------------------------------------
 	// prepare additional arguments
@@ -334,40 +374,8 @@ static void _replace_return_clause
 	// -------------------------------------------------------------------------
 	// create projections for bound vars
 	// -------------------------------------------------------------------------
-	for(uint i = 0; i < n_names; i++) {
-		// create a projection for the bound var
-		struct cypher_input_range range = {0};
-		int ind = n_inter_names - n_names + i;
-		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[ind],
-			strlen(inter_names[ind]), range);
-		cypher_astnode_t *alias = cypher_ast_identifier(names[i],
-			strlen(names[i]), range);
-		cypher_astnode_t *children[2];
-		children[0] = exp;
-		children[1] = alias;
-
-		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-			2, range);
-	}
-
-	// -------------------------------------------------------------------------
-	// create projections for bound vars from outer context
-	// -------------------------------------------------------------------------
-	uint n_outer_names = n_inter_names - n_names;
-	for(uint i = 0; i < n_outer_names; i++) {
-		// create a projection for the bound var
-		struct cypher_input_range range = {0};
-		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[i],
-			strlen(inter_names[i]), range);
-		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
-			strlen(inter_names[i]), range);
-		cypher_astnode_t *children[2];
-		children[0] = exp;
-		children[1] = alias;
-
-		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-				2, range);
-	}
+	proj_idx = _add_projections(projections, proj_idx, names, inter_names,
+		false);
 
 	// -------------------------------------------------------------------------
 	// introduce explicit projections
