@@ -17,7 +17,14 @@ NodeID Edge_GetSrcNodeID
 	const Edge *edge
 ) {
 	ASSERT(edge);
-	return edge->srcNodeID;
+	if(edge->src_id == INVALID_ENTITY_ID) {
+		return INVALID_ENTITY_ID;
+	}
+	if(edge->src_id & MSB_MASK) {
+		NodeID *id = (NodeID *)(CLEAR_MSB(edge->src_id));
+		return *id;
+	}
+	return edge->src_id;
 }
 
 NodeID Edge_GetDestNodeID
@@ -25,7 +32,14 @@ NodeID Edge_GetDestNodeID
 	const Edge *edge
 ) {
 	ASSERT(edge);
-	return edge->destNodeID;
+	if(edge->dest_id == INVALID_ENTITY_ID) {
+		return INVALID_ENTITY_ID;
+	}
+	if(edge->dest_id & MSB_MASK) {
+		NodeID *id = (NodeID *)(CLEAR_MSB(edge->dest_id));
+		return *id;
+	}
+	return edge->dest_id;
 }
 
 int Edge_GetRelationID
@@ -36,30 +50,13 @@ int Edge_GetRelationID
 	return edge->relationID;
 }
 
-Node *Edge_GetSrcNode
-(
-	Edge *e
-) {
-	ASSERT(e);
-	return e->src;
-}
-
-Node *Edge_GetDestNode
-(
-	Edge *e
-) {
-	ASSERT(e);
-	return e->dest;
-}
-
 void Edge_SetSrcNode
 (
 	Edge *e,
 	Node *src
 ) {
 	ASSERT(e && src);
-	e->src = src;
-	e->srcNodeID = ENTITY_GET_ID(src);
+	e->src_id = (NodeID)SET_MSB(&ENTITY_GET_ID(src));
 }
 
 void Edge_SetDestNode
@@ -68,8 +65,7 @@ void Edge_SetDestNode
 	Node *dest
 ) {
 	ASSERT(e && dest);
-	e->dest = dest;
-	e->destNodeID = ENTITY_GET_ID(dest);
+	e->dest_id = (NodeID)SET_MSB(&ENTITY_GET_ID(dest));
 }
 
 void Edge_SetRelationID

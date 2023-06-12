@@ -106,9 +106,9 @@ static void _CollectEdgesFromEntry
 ) {
 	Edge e = {0};
 
-	e.relationID  =  r;
-	e.srcNodeID   =  src;
-	e.destNodeID  =  dest;
+	e.src_id     =  src;
+	e.dest_id    =  dest;
+	e.relationID =  r;
 
 	if(SINGLE_EDGE(edgeId)) {
 		e.id          =  edgeId;
@@ -577,18 +577,17 @@ RelationID Graph_GetEdgeRelation
 	ASSERT(e);
 
 	GrB_Info info;
-	RelationID rel        = GRAPH_NO_RELATION;
-	EdgeID     id         = ENTITY_GET_ID(e);
-	NodeID     srcNodeID  = Edge_GetSrcNodeID(e);
-	NodeID     destNodeID = Edge_GetDestNodeID(e);
+	RelationID rel     = GRAPH_NO_RELATION;
+	EdgeID     id      = ENTITY_GET_ID(e);
+	NodeID     src_id  = Edge_GetSrcNodeID(e);
+	NodeID     dest_id = Edge_GetDestNodeID(e);
 
 	// search for relation mapping matrix M, where M[dest,src] == edge ID
 	uint n = array_len(g->relations);
 	for(uint i = 0; i < n; i++) {
 		EdgeID edgeId = 0;
 		RG_Matrix M = Graph_GetRelationMatrix(g, i, false);
-		info = RG_Matrix_extractElement_UINT64(&edgeId, M, srcNodeID,
-											   destNodeID);
+		info = RG_Matrix_extractElement_UINT64(&edgeId, M, src_id, dest_id);
 		if(info != GrB_SUCCESS) continue;
 
 		if(SINGLE_EDGE(edgeId)) {
@@ -816,9 +815,9 @@ void Graph_CreateEdge
 	*set = NULL;
 
 	e->id         = id;
+	e->src_id     = src;
+	e->dest_id    = dest;
 	e->attributes = set;
-	e->srcNodeID  = src;
-	e->destNodeID = dest;
 	e->relationID = r;
 
 	Graph_FormConnection(g, src, dest, id, r);
