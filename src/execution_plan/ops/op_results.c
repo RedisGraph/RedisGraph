@@ -12,7 +12,6 @@
 #include "../../configuration/config.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../execution_plan_build/execution_plan_util.h"
-#include "../execution_plan_build/execution_plan_modify.h"
 
 /* Forward declarations. */
 static Record ResultsConsume(OpBase *opBase);
