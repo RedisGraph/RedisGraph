@@ -22,9 +22,9 @@ static inline void _PushDownPathFilters(ExecutionPlan *plan,
 	while(relocate_to->parent && relocate_to->parent->type == OPType_FILTER) {
 		relocate_to = relocate_to->parent;
 	}
-	/* If the filter op is part of a chain of filter ops, migrate it
-	 * to be the topmost. This ensures that cheaper filters will be
-	 * applied first. */
+	// If the filter op is part of a chain of filter ops, migrate it
+	// to be the topmost. This ensures that cheaper filters will be
+	// applied first
 	if(relocate_to != path_filter_op) {
 		ExecutionPlan_RemoveOp(plan, path_filter_op);
 		ExecutionPlan_PushBelow(relocate_to, path_filter_op);
@@ -75,8 +75,8 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	uint64_t references_count = raxSize(references);
 
 	if(references_count > 0) {
-		/* Scan execution plan, locate the earliest position where all
-		 * references been resolved. */
+		// Scan execution plan, locate the earliest position where all
+		// references been resolved
 		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound, upper_bound, FILTER_RECURSE_BLACKLIST,
 														BLACKLIST_OP_COUNT, references);
 		if(!op) {
@@ -86,10 +86,10 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 			return;
 		}
 	} else {
-		/* The filter tree does not contain references, like:
-		 * WHERE 1=1
-		 * Place the op directly below the first projection if there is one,
-		 * otherwise update the ExecutionPlan root. */
+		// The filter tree does not contain references, like:
+		// WHERE 1=1
+		// Place the op directly below the first projection if there is one,
+		// otherwise update the ExecutionPlan root
 		op = plan->root;
 		while(op && op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
 			op = op->children[0];
@@ -113,9 +113,9 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 		ExecutionPlan_PushBelow(op, (OpBase *)filter);
 	}
 
-	/* Filter may have migrated a segment, update the filter segment
-	 * and check if the segment root needs to be updated.
-	 * The filter should be associated with the op's segment. */
+	// Filter may have migrated a segment, update the filter segment
+	// and check if the segment root needs to be updated.
+	// The filter should be associated with the op's segment
 	filter->plan = op->plan;
 	// Re-set the segment root if needed.
 	if(op == op->plan->root) {
@@ -128,12 +128,12 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 
 void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBase *recurse_limit,
 								  FT_FilterNode *ft) {
-	/* Decompose the filter tree into an array of the smallest possible subtrees
-	 * that do not violate the rules of AND/OR combinations. */
+	// Decompose the filter tree into an array of the smallest possible subtrees
+	// that do not violate the rules of AND/OR combinations
 	const FT_FilterNode **sub_trees = FilterTree_SubTrees(ft);
 
-	/* For each filter tree, find the earliest position in the op tree
-	 * after which the filter tree can be applied. */
+	// For each filter tree, find the earliest position in the op tree
+	// after which the filter tree can be applied
 	uint nfilters = array_len(sub_trees);
 	for(uint i = 0; i < nfilters; i++) {
 		FT_FilterNode *tree = FilterTree_Clone(sub_trees[i]);

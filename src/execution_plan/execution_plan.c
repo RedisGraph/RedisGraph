@@ -54,8 +54,8 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	int union_count = array_len(union_indices);
 	ASSERT(union_count > 1);
 
-	/* Placeholder for each execution plan, these all will be joined
-	 * via a single UNION operation. */
+	// Placeholder for each execution plan, these all will be joined
+	// via a single UNION operation
 	ExecutionPlan *plans[union_count];
 
 	for(int i = 0; i < union_count; i++) {
@@ -163,9 +163,9 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	// bound segments
 	//--------------------------------------------------------------------------
 
-	/* retrieve the indices of each WITH clause to properly set
-	 * the segment's bounds.
-	 * Every WITH clause demarcates the beginning of a new segment. */
+	// retrieve the indices of each WITH clause to properly set
+	// the segment's bounds.
+	// Every WITH clause demarcates the beginning of a new segment
 	segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
 	// last segment
@@ -407,8 +407,8 @@ void ExecutionPlan_ReturnRecord(const ExecutionPlan *plan, Record r) {
 
 static inline void _ExecutionPlan_InitRecordPool(ExecutionPlan *plan) {
 	if(plan->record_pool) return;
-	/* Initialize record pool.
-	 * Determine Record size to inform ObjectPool allocation. */
+	// Initialize record pool.
+	// Determine Record size to inform ObjectPool allocation
 	uint entries_count = raxSize(plan->record_map);
 	uint rec_size = sizeof(_Record) + (sizeof(Entry) * entries_count);
 
@@ -435,9 +435,9 @@ void ExecutionPlan_Init(ExecutionPlan *plan) {
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	ASSERT(plan->prepared)
-	/* Set an exception-handling breakpoint to capture run-time errors.
-	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
-	 * a downstream exception returns us to this breakpoint. */
+	// Set an exception-handling breakpoint to capture run-time errors.
+	// encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
+	// a downstream exception returns us to this breakpoint
 	int encountered_error = SET_EXCEPTION_HANDLER();
 
 	// Encountered a run-time error - return immediately.

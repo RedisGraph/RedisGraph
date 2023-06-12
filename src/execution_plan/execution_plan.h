@@ -24,49 +24,48 @@ struct ExecutionPlan {
 	bool prepared;                      // Indicates if the execution plan is ready for execute.
 };
 
-/* Creates a new execution plan from AST */
+// Creates a new execution plan from AST
 ExecutionPlan *ExecutionPlan_FromTLS_AST(void);
 
-/* Prepare an execution plan for execution: optimize, initialize result set schema. */
+// Prepare an execution plan for execution: optimize, initialize result set schema.
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan);
 
-/* Allocate a new ExecutionPlan segment. */
+// Allocate a new ExecutionPlan segment.
 ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void);
 
-/* Build a tree of operations that performs all the work required by the clauses of the current AST. */
+// Build a tree of operations that performs all the work required by the clauses of the current AST.
 void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan);
 
-/* Re position filter op. */
+// Re position filter op.
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 									  const OpBase *upper_bound, OpBase *filter);
 
-/* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
+// Retrieve the map of aliases to Record offsets in this ExecutionPlan segment.
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
 
-/* Retrieves a Record from the ExecutionPlan's Record pool. */
+// Retrieves a Record from the ExecutionPlan's Record pool.
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan);
 
-/* Free Record contents and return it to the Record pool. */
+// Free Record contents and return it to the Record pool.
 void ExecutionPlan_ReturnRecord(const ExecutionPlan *plan, Record r);
 
-/* Prints execution plan. */
+// Prints execution plan.
 void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);
 
-/* Initialize all operations in an ExecutionPlan. */
+// Initialize all operations in an ExecutionPlan.
 void ExecutionPlan_Init(ExecutionPlan *plan);
 
-/* Executes plan */
+// Executes plan
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);
 
-/* Checks if execution plan been drained */
+// Checks if execution plan been drained
 bool ExecutionPlan_Drained(ExecutionPlan *plan);
 
-/* Drains execution plan */
+// Drains execution plan
 void ExecutionPlan_Drain(ExecutionPlan *plan);
 
-/* Profile executes plan */
+// Profile executes plan
 ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
 
-/* Free execution plan */
+// Free execution plan
 void ExecutionPlan_Free(ExecutionPlan *plan);
-

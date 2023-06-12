@@ -208,10 +208,10 @@ void ExecutionPlan_BoundVariables
 		}
 	}
 
-	/* Project and Aggregate operations demarcate variable scopes,
-	 * collect their projections but do not recurse into their children.
-	 * Note that future optimizations which operate across scopes will require different logic
-	 * than this for application. */
+	// Project and Aggregate operations demarcate variable scopes,
+	// collect their projections but do not recurse into their children.
+	// Note that future optimizations which operate across scopes will require different logic
+	// than this for application
 	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return;
 
 	for(int i = 0; i < op->childCount; i++) {

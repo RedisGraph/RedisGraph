@@ -15,8 +15,8 @@
 // For performing existence checks and looking up individual operations in tree.
 //------------------------------------------------------------------------------
 
-/* Traverse upwards until an operation that resolves the given alias is found.
- * Returns NULL if alias is not resolved. */
+// Traverse upwards until an operation that resolves the given alias is found.
+// Returns NULL if alias is not resolved
 OpBase *ExecutionPlan_LocateOpResolvingAlias
 (
     OpBase *root,
@@ -32,9 +32,9 @@ OpBase *ExecutionPlan_LocateOpMatchingType
     uint type_count
 );
 
-/* Convenience wrapper around ExecutionPlan_LocateOpMatchingType for lookups of a single type.
- * Locate the first operation of a given type within execution plan by performing DFS.
- * Returns NULL if operation wasn't found. */
+// Convenience wrapper around ExecutionPlan_LocateOpMatchingType for lookups of a single type.
+// Locate the first operation of a given type within execution plan by performing DFS.
+// Returns NULL if operation wasn't found
 OpBase *ExecutionPlan_LocateOp
 (
     OpBase *root,
@@ -49,8 +49,8 @@ void ExecutionPlan_LocateOps
 	OPType type       // operation type to search
 );
 
-/* Find the earliest operation above the provided recurse_limit, if any,
- * at which all references are resolved. */
+// Find the earliest operation above the provided recurse_limit, if any,
+// at which all references are resolved
 OpBase *ExecutionPlan_LocateReferences
 (
     OpBase *root,
@@ -58,8 +58,9 @@ OpBase *ExecutionPlan_LocateReferences
     rax *references_to_resolve
 );
 
-/* Find the earliest operation at which all references are resolved, if any,
- * both above the provided recurse_limit and without recursing past a blacklisted op. */
+// Find the earliest operation at which all references are resolved, if any,
+// both above the provided recurse_limit and without recursing past a
+// blacklisted op
 OpBase *ExecutionPlan_LocateReferencesExcludingOps
 (
     OpBase *root,
@@ -74,8 +75,8 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps
 // For collecting all matching operations in tree.
 //------------------------------------------------------------------------------
 
-/* Collect all operations matching the given types in the op tree.
- * Returns an array of operations. */
+// Collect all operations matching the given types in the op tree.
+// Returns an array of operations
 OpBase **ExecutionPlan_CollectOpsMatchingType
 (
     OpBase *root,
@@ -83,9 +84,9 @@ OpBase **ExecutionPlan_CollectOpsMatchingType
     uint type_count
 );
 
-/* Convenience wrapper around ExecutionPlan_LocateOpMatchingType for
- * collecting all operations of a given type within the op tree.
- * Returns an array of operations. */
+// Convenience wrapper around ExecutionPlan_LocateOpMatchingType for
+// collecting all operations of a given type within the op tree.
+// Returns an array of operations
 OpBase **ExecutionPlan_CollectOps
 (
     OpBase *root,
@@ -96,11 +97,11 @@ OpBase **ExecutionPlan_CollectOps
 // API for building and relocating operations in transient ExecutionPlans.
 //------------------------------------------------------------------------------
 
-/* Populate a rax with all aliases that have been resolved by the given operation
- * and its children. These are the bound variables at this point in execution, and
- * subsequent operations should not introduce them as new entities. For example, in the query:
- * MATCH (a:A) CREATE (a)-[:E]->(b:B)
- * The Create operation should never introduce a new node 'a'. */
+// Populate a rax with all aliases that have been resolved by the given operation
+// and its children. These are the bound variables at this point in execution, and
+// subsequent operations should not introduce them as new entities. For example, in the query:
+// MATCH (a:A) CREATE (a)-[:E]->(b:B)
+// The Create operation should never introduce a new node 'a'
 void ExecutionPlan_BoundVariables
 (
     const OpBase *op,
