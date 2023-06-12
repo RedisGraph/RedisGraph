@@ -99,8 +99,8 @@ static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase) {
 
 void ProjectBindToPlan
 (
-	OpBase *opBase,      // op to bind
-	ExecutionPlan *plan  // plan to bind the op to
+	OpBase *opBase,            // op to bind
+	const ExecutionPlan *plan  // plan to bind the op to
 ) {
 	OpProject *op = (OpProject *)opBase;
 	opBase->plan = plan;

@@ -371,8 +371,8 @@ static OpBase *AggregateClone
 // bind the Aggregate operation to the execution plan
 void AggregateBindToPlan
 (
-	OpBase *opBase,      // op to bind
-	ExecutionPlan *plan  // plan to bind the op to
+	OpBase *opBase,            // op to bind
+	const ExecutionPlan *plan  // plan to bind the op to
 ) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	opBase->plan = plan;
