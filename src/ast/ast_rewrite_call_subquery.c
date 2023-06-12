@@ -97,9 +97,10 @@ static void _replace_with_clause
 	char **names,                    // original bound vars
 	char **inter_names               // internal representation of bound vars
 ) {
-
-	const cypher_astnode_t *clause = cypher_ast_query_get_clause(
-		cypher_ast_call_subquery_get_query(callsubquery), clause_idx);
+	cypher_astnode_t *query =
+		cypher_ast_call_subquery_get_query(callsubquery);
+	const cypher_astnode_t *clause = cypher_ast_query_get_clause(query,
+		clause_idx);
 
 	uint existing_projections_count = cypher_ast_with_nprojections(clause);
 	uint n_projections = array_len(inter_names) + existing_projections_count;
@@ -194,9 +195,8 @@ static void _replace_with_clause
 		order_by, skip, limit, pred, children, nchildren, range);
 
 	// replace original clause with fully populated one
-	cypher_ast_query_replace_clauses(
-		cypher_ast_call_subquery_get_query(callsubquery), new_clause,
-		clause_idx, clause_idx);
+	cypher_ast_query_replace_clauses(query, new_clause, clause_idx,
+		clause_idx);
 }
 
 // adds a leading WITH clause to the query, projecting all bound vars (names) to
@@ -315,10 +315,12 @@ static void _replace_return_clause
 	char **names,                    // original bound vars
 	char **inter_names               // internal representation of bound vars
 ) {
+	cypher_astnode_t *query = cypher_ast_call_subquery_get_query(
+		callsubquery);
 	// we know that the last clause in query is a RETURN clause, which we want
 	// to replace
 	cypher_astnode_t *clause = (cypher_astnode_t *)cypher_ast_query_get_clause(
-		cypher_ast_call_subquery_get_query(callsubquery), last_ind-1);
+		query, last_ind-1);
 
 	uint n_names = array_len(names);
 	uint n_inter_names = array_len(inter_names);
@@ -418,9 +420,8 @@ static void _replace_return_clause
 								range);
 
 	// replace original clause with fully populated one
-	cypher_ast_query_replace_clauses(
-		cypher_ast_call_subquery_get_query(callsubquery), new_clause,
-		last_ind - 1, last_ind - 1);
+	cypher_ast_query_replace_clauses(query, new_clause, last_ind - 1,
+		last_ind - 1);
 }
 
 // rewrites the projections of a Call {} clause to contain the wanted
@@ -576,13 +577,8 @@ static void _rewrite_call_subquery_clauses
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 		if(type == CYPHER_AST_CALL_SUBQUERY) {
 			// if the subquery is returning & eager, rewrite its projections
-			bool clause_rewritten = rewrite_call_subquery_clause(
-				wrapping_clause, clause, i, start_scope, outer_inter_names);
-
-			// update clause, in case it was replaced
-			if(clause_rewritten) {
-				clause = (cypher_astnode_t *)cypher_ast_query_get_clause(wrapping_clause, i);
-			}
+			rewrite_call_subquery_clause(wrapping_clause, clause, i,
+				start_scope, outer_inter_names);
 
 			// `outer_inter_names` now contains the internal representation of
 			// the current context as well
