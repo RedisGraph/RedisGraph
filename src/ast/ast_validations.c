@@ -164,7 +164,7 @@ static bool _AST_GetWithAliases
 
 		// check for duplicate column names
 		if(raxTryInsert(local_env, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
-			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported");
 			raxFree(local_env);
 			return false;
 		}
@@ -225,7 +225,7 @@ static AST_Validation _ValidateMultiHopTraversal
 
 	// Validate specified range
 	if(start > end) {
-		ErrorCtx_SetError("Variable length path, maximum number of hops must be greater or equal to minimum number of hops.");
+		ErrorCtx_SetError("Variable length path, maximum number of hops must be greater or equal to minimum number of hops");
 		return AST_INVALID;
 	}
 
@@ -261,7 +261,7 @@ static AST_Validation _ValidateMergeRelation
 	// Exactly one reltype should be specified for the introduced edge
 	uint reltype_count = cypher_ast_rel_pattern_nreltypes(entity);
 	if(reltype_count != 1) {
-		ErrorCtx_SetError("Exactly one relationship type must be specified for each relation in a MERGE pattern.");
+		ErrorCtx_SetError("Exactly one relationship type must be specified for each relation in a MERGE pattern");
 		return AST_INVALID;
 	}
 
@@ -946,7 +946,7 @@ static AST_Validation _ValidateInlinedProperties
 	// emit an error if the properties are not presented as a map, as in:
 	// MATCH (p {invalid_property_construction}) RETURN p
 	if(cypher_astnode_type(props) != CYPHER_AST_MAP) {
-		ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
+		ErrorCtx_SetError("Encountered unhandled type in inlined properties");
 		return AST_INVALID;
 	}
 
@@ -964,7 +964,7 @@ static AST_Validation _ValidateInlinedProperties
 		if (type == CYPHER_AST_PATTERN_PATH) {
 			// encountered query of the form:
 			// MATCH (a {prop: ()-[]->()}) RETURN a
-			ErrorCtx_SetError("Encountered unhandled type in inlined properties.");
+			ErrorCtx_SetError("Encountered unhandled type in inlined properties");
 			return AST_INVALID;
 		} else if(type == CYPHER_AST_IDENTIFIER) {
 			const char *identifier_name = cypher_ast_identifier_get_name(prop_val);
@@ -1398,7 +1398,7 @@ static AST_Validation _ValidateUnion_Clauses
 
 	// We should have one more RETURN clauses than we have UNION clauses.
 	if(return_clause_count != union_clause_count + 1) {
-		ErrorCtx_SetError("Found %d UNION clauses but only %d RETURN clauses.", union_clause_count,
+		ErrorCtx_SetError("Found %d UNION clauses but only %d RETURN clauses", union_clause_count,
 						  return_clause_count);
 		array_free(return_indices);
 		return AST_INVALID;
@@ -1423,7 +1423,7 @@ static AST_Validation _ValidateUnion_Clauses
 	for(uint i = 1; i < return_clause_count; i++) {
 		return_clause = cypher_ast_query_get_clause(ast->root, return_indices[i]);
 		if(proj_count != cypher_ast_return_nprojections(return_clause)) {
-			ErrorCtx_SetError("All sub queries in a UNION must have the same column names.");
+			ErrorCtx_SetError("All sub queries in a UNION must have the same column names");
 			res = AST_INVALID;
 			goto cleanup;
 		}
@@ -1438,7 +1438,7 @@ static AST_Validation _ValidateUnion_Clauses
 			}
 			const char *alias = cypher_ast_identifier_get_name(alias_node);
 			if(strcmp(projections[j], alias) != 0) {
-				ErrorCtx_SetError("All sub queries in a UNION must have the same column names.");
+				ErrorCtx_SetError("All sub queries in a UNION must have the same column names");
 				res = AST_INVALID;
 				goto cleanup;
 			}
@@ -1741,7 +1741,7 @@ static VISITOR_STRATEGY _Validate_UNION_Clause
 	if(vctx->union_all == NOT_DEFINED) {
 		vctx->union_all = cypher_ast_union_has_all(n);
 	} else if(vctx->union_all != cypher_ast_union_has_all(n)) {
-		ErrorCtx_SetError("Invalid combination of UNION and UNION ALL.");
+		ErrorCtx_SetError("Invalid combination of UNION and UNION ALL");
 		return VISITOR_BREAK;
 	}
 
@@ -1941,7 +1941,7 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 		for (uint i = 0; i < column_count; i++) {
 			// column with same name is invalid
 			if(raxTryInsert(rax, (unsigned char *)columns[i], strlen(columns[i]), NULL, NULL) == 0) {
-				ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+				ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported");
 				break;
 			}
 		}
@@ -2118,14 +2118,14 @@ static AST_Validation _ValidateQuerySequence
 	const cypher_astnode_t *start_clause = cypher_ast_query_get_clause(ast->root, 0);
 	if(cypher_astnode_type(start_clause) == CYPHER_AST_WITH &&
 	   cypher_ast_with_has_include_existing(start_clause)) {
-		ErrorCtx_SetError("Query cannot begin with 'WITH *'.");
+		ErrorCtx_SetError("Query cannot begin with 'WITH *'");
 		return AST_INVALID;
 	}
 
 	// The query cannot begin with a "RETURN *" projection.
 	if(cypher_astnode_type(start_clause) == CYPHER_AST_RETURN &&
 	   cypher_ast_return_has_include_existing(start_clause)) {
-		ErrorCtx_SetError("Query cannot begin with 'RETURN *'.");
+		ErrorCtx_SetError("Query cannot begin with 'RETURN *'");
 		return AST_INVALID;
 	}
 
@@ -2157,7 +2157,7 @@ static AST_Validation _ValidateClauseOrder
 		if(encountered_updating_clause && (type == CYPHER_AST_MATCH  ||
 										   type == CYPHER_AST_UNWIND ||
 										   type == CYPHER_AST_CALL)) {
-			ErrorCtx_SetError("A WITH clause is required to introduce %s after an updating clause.",
+			ErrorCtx_SetError("A WITH clause is required to introduce %s after an updating clause",
 							  cypher_astnode_typestr(type));
 			return AST_INVALID;
 		}
@@ -2167,7 +2167,7 @@ static AST_Validation _ValidateClauseOrder
 			bool current_clause_is_optional = cypher_ast_match_is_optional(clause);
 			// If the current clause is non-optional but we have already encountered an optional match, emit an error.
 			if(!current_clause_is_optional && encountered_optional_match) {
-				ErrorCtx_SetError("A WITH clause is required to introduce a MATCH clause after an OPTIONAL MATCH.");
+				ErrorCtx_SetError("A WITH clause is required to introduce a MATCH clause after an OPTIONAL MATCH");
 				return AST_INVALID;
 			}
 			encountered_optional_match |= current_clause_is_optional;
@@ -2360,7 +2360,7 @@ AST_Validation AST_Validate_ParseResultRoot
 
 	// query with no roots like ';'
 	if(nroots == 0) {
-		ErrorCtx_SetError("Error: empty query.");
+		ErrorCtx_SetError("Error: empty query");
 	}
 
 	return AST_INVALID;
