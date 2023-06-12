@@ -716,6 +716,7 @@ cypher_parse_result_t *parse_query
 	// e.g. MATCH (m) CALL { CREATE (n:N) RETURN n } RETURN n
 	// will be rewritten as:
 	// MATCH (m) CALL { WITH m AS @m CREATE (n:N) RETURN n, @m AS m } RETURN n
+	// rerun_validation |= AST_RewriteCallSubquery(root);
 	AST_RewriteCallSubquery(root);
 
 	// only perform validations again if there's been a rewrite
