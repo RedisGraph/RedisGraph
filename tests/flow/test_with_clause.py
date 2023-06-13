@@ -329,6 +329,8 @@ class testWithClause(FlowTestsBase):
         queries = [
             "MATCH (n)-[:R]->() WITH n CREATE ()-[n:R]->()",
             "MATCH (m)-[:R]->() WITH m AS n CREATE ()-[n:R]->()",
+            "MATCH n=() WITH n CREATE (n)",
+            "MATCH p=() WITH p AS n CREATE (n)",
         ]
         expected_error = "The bound variable 'n' can't be redeclared in a CREATE clause"
         for query in queries:
@@ -340,6 +342,8 @@ class testWithClause(FlowTestsBase):
             "CREATE (a) WITH a CREATE (a)-[:R]->(b {v:a})",
             "CREATE ()-[r:R]->() WITH r CREATE ()-[:R {v:r}]->()",
             "CREATE ()-[r:R]->() WITH r CREATE ()-[:R]->({v:r})",
+            "CREATE p=() WITH p CREATE ({v:p})",
+            "CREATE p=() WITH p CREATE ()-[:R {v:p}]->()",
         ]
         expected_error = "Property values can only be of primitive types or arrays of primitive types"
         for query in queries:

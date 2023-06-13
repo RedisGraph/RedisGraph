@@ -985,7 +985,8 @@ static AST_Validation _ValidateInlinedProperties
 			// emit an error if the property value is of type node or edge
 			// CREATE (a:A) WITH a CREATE (b:B {v:a})
 			if(identifier_type == (void *)T_NODE ||
-			   identifier_type == (void *)T_EDGE) {
+			   identifier_type == (void *)T_EDGE ||
+			   identifier_type == (void *)T_PATH ) {
 				ErrorCtx_SetError("Property values can only be of primitive types or arrays of primitive types");
 				return AST_INVALID;
 			}
