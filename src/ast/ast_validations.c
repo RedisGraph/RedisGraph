@@ -457,7 +457,6 @@ static AST_Validation _Validate_MATCH_Entities
 					ErrorCtx_SetError("The alias '%s' was specified for both a node and a relationship",
 						identifier_name);
 					break;
-
 				}
 			}
 		}
