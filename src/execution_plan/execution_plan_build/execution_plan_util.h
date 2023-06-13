@@ -25,7 +25,7 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias
 
 // Locate the first operation matching one of the given types in the op tree by
 // performing DFS. Returns NULL if no matching operation was found
-OpBase *ExecutionPlan_LocateOpMatchingType
+OpBase *ExecutionPlan_LocateOpMatchingTypes
 (
     OpBase *root,
     const OPType *types,
@@ -77,7 +77,7 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps
 
 // Collect all operations matching the given types in the op tree.
 // Returns an array of operations
-OpBase **ExecutionPlan_CollectOpsMatchingType
+OpBase **ExecutionPlan_CollectOpsMatchingTypes
 (
     OpBase *root,
     const OPType *types,
@@ -91,6 +91,15 @@ OpBase **ExecutionPlan_CollectOps
 (
     OpBase *root,
     OPType type
+);
+
+// fills `ops` with all operations from `op` an upward (towards parent) in the
+// execution plan
+// returns the amount of ops collected
+uint ExecutionPlan_CollectUpwards
+(
+    OpBase *ops[],
+    OpBase *op
 );
 
 //------------------------------------------------------------------------------

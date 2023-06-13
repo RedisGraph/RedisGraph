@@ -6,13 +6,15 @@
 
 #include "op.h"
 #include "RG.h"
+#include "op_project.h"
+#include "op_aggregate.h"
 #include "../../util/rmalloc.h"
 #include "../../util/simple_timer.h"
 
 // forward declarations
 Record ExecutionPlan_BorrowRecord(struct ExecutionPlan *plan);
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
-void ExecutionPlan_ReturnRecord(struct ExecutionPlan *plan, Record r);
+void ExecutionPlan_ReturnRecord(const struct ExecutionPlan *plan, Record r);
 
 void OpBase_Init
 (
@@ -215,13 +217,21 @@ void OpBase_UpdateConsume
 }
 
 // updates the plan of an operation
-void OpBase_UpdatePlan
+void OpBase_bindOpToPlan
 (
 	OpBase *op,
 	const struct ExecutionPlan *plan
 ) {
 	ASSERT(op != NULL);
-	op->plan = plan;
+
+	OPType type = OpBase_Type(op);
+	if(type == OPType_PROJECT) {
+		ProjectBindToPlan(op, plan);
+	} else if(type == OPType_AGGREGATE) {
+		AggregateBindToPlan(op, plan);
+	} else {
+		op->plan = plan;
+	}
 }
 
 inline Record OpBase_CreateRecord

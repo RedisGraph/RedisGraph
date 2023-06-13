@@ -34,8 +34,7 @@ static OpResult ResultsInit(OpBase *opBase) {
 	Config_Option_get(Config_RESULTSET_MAX_SIZE, &op->result_set_size_limit);
 
 	// map resultset columns to record entries
-	OpBase *join = ExecutionPlan_LocateOp(opBase, OPType_JOIN);
-	if(op->result_set != NULL && (join == NULL || !JoinGetUpdateColumnMap(join))) {
+	if(op->result_set != NULL) {
 		rax *mapping = ExecutionPlan_GetMappings(opBase->plan);
 		ResultSet_MapProjection(op->result_set, mapping);
 	}

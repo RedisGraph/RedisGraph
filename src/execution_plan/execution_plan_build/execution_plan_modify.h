@@ -59,9 +59,10 @@ void ExecutionPlan_BindOpsToPlan
 	bool qg               // whether to merge QueryGraphs or not
 );
 
-// bind an operation to a plan
-void ExecutionPlan_bindOpToPlan
+// binds all ops in `ops` to `plan`
+void ExecutionPlan_MigrateOps
 (
-	OpBase *op,          // operation to bind
-	ExecutionPlan *plan  // plan to bind the op to
+	OpBase * ops[],             // array of ops to bind
+	uint op_count,              // number of ops in the array
+	const ExecutionPlan * plan  // plan to bind the ops to
 );

@@ -45,7 +45,7 @@ static void _removeRedundantTraversal(ExecutionPlan *plan, OpCondTraverse *trave
  * are already resolved, in which case replace traversal operation
  * with expand-into op. */
 void reduceTraversal(ExecutionPlan *plan) {
-	OpBase **traversals = ExecutionPlan_CollectOpsMatchingType(plan->root, TRAVERSE_OPS,
+	OpBase **traversals = ExecutionPlan_CollectOpsMatchingTypes(plan->root, TRAVERSE_OPS,
 															   TRAVERSE_OP_COUNT);
 	uint traversals_count = array_len(traversals);
 

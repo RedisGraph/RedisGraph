@@ -112,7 +112,7 @@ void optimizeLabelScan(ExecutionPlan *plan) {
 
 	// collect all label scan operations
 	OPType t = OPType_NODE_BY_LABEL_SCAN;
-	OpBase **label_scan_ops = ExecutionPlan_CollectOpsMatchingType(plan->root,
+	OpBase **label_scan_ops = ExecutionPlan_CollectOpsMatchingTypes(plan->root,
 			&t ,1);
 
 	// for each label scan operation try to optimize scanned label

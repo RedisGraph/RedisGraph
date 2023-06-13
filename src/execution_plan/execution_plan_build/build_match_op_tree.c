@@ -202,7 +202,7 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 
 	// only add at most one set of traversals per plan
 	// TODO Revisit and improve this logic
-	if(plan->root && ExecutionPlan_LocateOpMatchingType(plan->root, SCAN_OPS, SCAN_OP_COUNT)) {
+	if(plan->root && ExecutionPlan_LocateOpMatchingTypes(plan->root, SCAN_OPS, SCAN_OP_COUNT)) {
 		return;
 	}
 

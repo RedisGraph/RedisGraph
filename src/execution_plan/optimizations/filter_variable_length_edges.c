@@ -109,7 +109,7 @@ void filterVariableLengthEdges(ExecutionPlan *plan) {
 							OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO
 						   };
 
-	var_len_traverse_ops = ExecutionPlan_CollectOpsMatchingType(plan->root,
+	var_len_traverse_ops = ExecutionPlan_CollectOpsMatchingTypes(plan->root,
 																types, 2);
 
 	uint count = array_len(var_len_traverse_ops);

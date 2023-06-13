@@ -57,7 +57,7 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 
 void reduceScans(ExecutionPlan *plan) {
 	// Collect all SCAN operations within the execution plan.
-	OpBase **scans = ExecutionPlan_CollectOpsMatchingType(plan->root, SCAN_OPS, SCAN_OP_COUNT);
+	OpBase **scans = ExecutionPlan_CollectOpsMatchingTypes(plan->root, SCAN_OPS, SCAN_OP_COUNT);
 	uint scan_count = array_len(scans);
 	for(uint i = 0; i < scan_count; i++) {
 		_reduceScans(plan, scans[i]);

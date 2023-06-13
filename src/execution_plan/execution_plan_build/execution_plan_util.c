@@ -33,7 +33,7 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias
 
 // Locate the first operation matching one of the given types in the op tree by
 // performing DFS. Returns NULL if no matching operation was found
-OpBase *ExecutionPlan_LocateOpMatchingType
+OpBase *ExecutionPlan_LocateOpMatchingTypes
 (
     OpBase *root,
     const OPType *types,
@@ -46,7 +46,7 @@ OpBase *ExecutionPlan_LocateOpMatchingType
 
 	for(int i = 0; i < root->childCount; i++) {
 		// Recursively visit children.
-		OpBase *op = ExecutionPlan_LocateOpMatchingType(root->children[i], types, type_count);
+		OpBase *op = ExecutionPlan_LocateOpMatchingTypes(root->children[i], types, type_count);
 		if(op) return op;
 	}
 
@@ -61,7 +61,7 @@ OpBase *ExecutionPlan_LocateOp
 	if(!root) return NULL;
 
 	const OPType type_arr[1] = {type};
-	return ExecutionPlan_LocateOpMatchingType(root, type_arr, 1);
+	return ExecutionPlan_LocateOpMatchingTypes(root, type_arr, 1);
 }
 
 // returns all operations of a certain type in a execution plan
@@ -171,7 +171,7 @@ static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *ty
 	}
 }
 
-OpBase **ExecutionPlan_CollectOpsMatchingType
+OpBase **ExecutionPlan_CollectOpsMatchingTypes
 (
     OpBase *root,
     const OPType *types,
@@ -191,6 +191,27 @@ OpBase **ExecutionPlan_CollectOps
 	const OPType type_arr[1] = {type};
 	_ExecutionPlan_CollectOpsMatchingType(root, type_arr, 1, &ops);
 	return ops;
+}
+
+// fills `ops` with all operations from `op` an upward (towards parent) in the
+// execution plan
+// returns the amount of ops collected
+uint ExecutionPlan_CollectUpwards
+(
+    OpBase *ops[],
+    OpBase *op
+) {
+	ASSERT(op != NULL);
+	ASSERT(ops != NULL);
+
+	uint i = 0;
+	while(op != NULL) {
+		ops[i] = op;
+		op = op->parent;
+		i++;
+	}
+
+	return i;
 }
 
 // Collect all aliases that have been resolved by the given tree of operations.

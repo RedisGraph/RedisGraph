@@ -22,9 +22,6 @@ OpBase *NewJoinOp(const ExecutionPlan *plan) {
 	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", JoinInit, JoinConsume, 
 		JoinReset, NULL, JoinClone, NULL, false, plan);
 
-	// default behavior is to update resultset mapping
-	op->update_column_map = true;
-
 	return (OpBase *)op;
 }
 
@@ -36,8 +33,18 @@ static OpResult JoinInit(OpBase *opBase) {
 
 	// map first stream resultset mapping
 	ResultSet *result_set = QueryCtx_GetResultSet();
-	// Note: Init should be called after `update_column_map` is externally set if
-	// non-default behavior is desired
+
+	// if the Join op is not placed directly under a Results op (or as second
+	// descendent in case of `UNION ALL`), don't update the result set mapping
+	op->update_column_map = true;
+	OpBase *parent = op->op.parent;
+	if(parent != NULL && parent->type != OPType_RESULTS) {
+		parent = parent->parent;
+		if(parent != NULL && parent->type != OPType_RESULTS) {
+			op->update_column_map = false;
+		}
+	}
+
 	if(result_set != NULL && op->update_column_map) {
 		OpBase *child = op->stream;
 		rax *mapping = ExecutionPlan_GetMappings(child->plan);
@@ -103,15 +110,6 @@ static OpResult JoinReset
 	}
 
 	return OP_OK;
-}
-
-void JoinSetUpdateColumnMap
-(
-	OpBase *op,
-	bool update_column_map
-) {
-	ASSERT(op->type == OPType_JOIN);
-	((OpJoin *)op)->update_column_map = update_column_map;
 }
 
 bool JoinGetUpdateColumnMap

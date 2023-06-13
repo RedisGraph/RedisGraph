@@ -129,53 +129,20 @@ static OpBase **_find_feeding_points
 
 	// get the deepest op(s)
 	uint n_branches = 1;
-	OpBase **deepest_ops = array_new(OpBase *, n_branches);
+	OpBase **feeding_points = array_new(OpBase *, n_branches);
 
 	if(join != NULL) {
 		n_branches = OpBase_ChildCount(join);
 		for(uint i = 0; i < n_branches; i++) {
 			OpBase *branch = OpBase_GetChild(join, i);
-			_get_deepest(branch, &deepest_ops);
+			_get_deepest(branch, &feeding_points);
 		}
 	} else {
-		_get_deepest(plan->root, &deepest_ops);
+		_get_deepest(plan->root, &feeding_points);
 	}
 
-	ASSERT(array_len(deepest_ops) == n_branches);
-	return deepest_ops;
-}
-
-// binds op to plan
-static void _bind_returning_op
-(
-	OpBase *op,          // op to bind
-	const ExecutionPlan *plan  // plan to bind op to
-) {
-	OPType type = OpBase_Type(op);
-	if(type == OPType_PROJECT) {
-		ProjectBindToPlan(op, plan);
-	} else if(type == OPType_AGGREGATE) {
-		AggregateBindToPlan(op, plan);
-	} else if(type != OPType_JOIN){
-		OpBase_UpdatePlan(op, plan);
-	}
-}
-
-// binds all ops from the returning operation under `op` (first
-// Aggregate/Project) and onwards (towards the parent) to `plan`
-static void _bind_ops_from_returning
-(
-	OpBase *op,                // leaf op to bind
-	const ExecutionPlan *plan  // plan to bind ops to
-) {
-	OPType return_types[] = {OPType_PROJECT, OPType_AGGREGATE};
-
-	OpBase *returning_op =
-				ExecutionPlan_LocateOpMatchingType(op, return_types, 2);
-	while(returning_op != NULL) {
-		_bind_returning_op(returning_op, plan);
-		returning_op = returning_op->parent;
-	}
+	ASSERT(array_len(feeding_points) == n_branches);
+	return feeding_points;
 }
 
 // binds the returning ops (effectively, all ops between the first
@@ -190,15 +157,26 @@ static void _bind_returning_ops_to_plan
 	OpBase *root = embedded_plan->root;
 	OpBase *join_op = _get_join(root);
 
-	// if there is a Union operation, we need to look at all branches
+	// 5 place-holders are allocated for a maximum of 5 operations between the
+	// returning op (Project/Aggregate) and the CallSubquery op
+	// (Sort, Join, Distinct, Skip, Limit)
+	OpBase *ops[5];
+	OPType return_types[] = {OPType_PROJECT, OPType_AGGREGATE};
+
 	if(join_op == NULL) {
 		// only one returning projection/aggregation
-		_bind_ops_from_returning(root, plan);
+		OpBase *returning_op =
+			ExecutionPlan_LocateOpMatchingTypes(root, return_types, 2);
+		uint n_ops = ExecutionPlan_CollectUpwards(ops, returning_op);
+		ExecutionPlan_MigrateOps(ops, n_ops, plan);
 	} else {
-		// multiple returning projections/aggregations
+		// if there is a Union operation, we need to look at all of its branches
 		for(uint i = 0; i < join_op->childCount; i++) {
 			OpBase *child = join_op->children[i];
-			_bind_ops_from_returning(child, plan);
+			OpBase *returning_op =
+				ExecutionPlan_LocateOpMatchingTypes(child, return_types, 2);
+			uint n_ops = ExecutionPlan_CollectUpwards(ops, child);
+			ExecutionPlan_MigrateOps(ops, n_ops, plan);
 		}
 	}
 }
@@ -207,14 +185,12 @@ static void _bind_returning_ops_to_plan
 // clause, in order to 'reset' the bound-vars environment
 static void _add_empty_projections
 (
-	AST *subquery_ast,               // subquery AST
-	const cypher_astnode_t *clause,  // call subquery clause
-	OpBase **deepest_ops             // deepest op in each of the UNION branches
+	OpBase **feeding_points  // deepest op in each of the UNION branches
 ) {
-	uint n_branches = array_len(deepest_ops);
+	uint n_branches = array_len(feeding_points);
 	for(uint i = 0; i < n_branches; i++) {
-		if(OpBase_Type(deepest_ops[i]) != OPType_PROJECT) {
-			deepest_ops[i] = _add_empty_projection(deepest_ops[i]);
+		if(OpBase_Type(feeding_points[i]) != OPType_PROJECT) {
+			feeding_points[i] = _add_empty_projection(feeding_points[i]);
 		}
 	}
 }
@@ -249,63 +225,59 @@ void buildCallSubqueryPlan
 					  OPType_MERGE, OPType_SORT, OPType_AGGREGATE};
 
 	bool is_eager =
-	  ExecutionPlan_LocateOpMatchingType(embedded_plan->root, eager_types, 6)
+	  ExecutionPlan_LocateOpMatchingTypes(embedded_plan->root, eager_types, 6)
 		!= NULL;
 
 	bool is_returning = (OpBase_Type(embedded_plan->root) == OPType_RESULTS);
 
-	// find the deepest ops, to which we will add the projections and feeders
-	OpBase **deepest_ops = _find_feeding_points(embedded_plan);
+	// find the feeding points, to which we will add the projections and feeders
+	OpBase **feeding_points = _find_feeding_points(embedded_plan);
 
 	// if no variables are imported, add an 'empty' projection so that the
 	// records within the subquery will be cleared from the outer-context
-	_add_empty_projections(&subquery_ast, clause, deepest_ops);
+	_add_empty_projections(feeding_points);
 
 	//--------------------------------------------------------------------------
 	// Bind returning projection(s)\aggregation(s) to the outer plan
 	//--------------------------------------------------------------------------
 
 	if(is_returning) {
-		// remove the Results op from the execution-plan
+		// remove the Results op from the embedded execution-plan
 		OpBase *results_op = embedded_plan->root;
 		ASSERT(OpBase_Type(results_op) == OPType_RESULTS);
 		ExecutionPlan_RemoveOp(embedded_plan, embedded_plan->root);
 		OpBase_Free(results_op);
 
+		// bind the returning ops to the outer plan
 		_bind_returning_ops_to_plan(embedded_plan, plan);
 	}
 
-	// set Join op to not modify the ResultSet mapping
-	OpBase *join_op = _get_join(embedded_plan->root);
-	if(join_op != NULL) {
-		JoinSetUpdateColumnMap(join_op, false);
-	}
+	//--------------------------------------------------------------------------
+	// plant feeders
+	//--------------------------------------------------------------------------
 
-	// -------------------------------------------------------------------------
-	// create an ArgumentList\Argument op according to the eagerness of the op,
-	// and plant it as the deepest child of the embedded plan
-	// -------------------------------------------------------------------------
-	uint n_deepest_ops = array_len(deepest_ops);
+	uint n_feeding_points = array_len(feeding_points);
 	if(is_eager) {
-		for(uint i = 0; i < n_deepest_ops; i++) {
+		for(uint i = 0; i < n_feeding_points; i++) {
 			OpBase *argument_list = NewArgumentListOp(plan);
-			ExecutionPlan_AddOp(deepest_ops[i], argument_list);
+			ExecutionPlan_AddOp(feeding_points[i], argument_list);
 		}
 	} else {
-		for(uint i = 0; i < n_deepest_ops; i++) {
+		for(uint i = 0; i < n_feeding_points; i++) {
 			OpBase *argument = NewArgumentOp(plan, NULL);
-			ExecutionPlan_AddOp(deepest_ops[i], argument);
+			ExecutionPlan_AddOp(feeding_points[i], argument);
 		}
 	}
 
-	array_free(deepest_ops);
+	array_free(feeding_points);
 
-	// -------------------------------------------------------------------------
-	// create a CallSubquery op, set it to be the root of the main plan
-	// -------------------------------------------------------------------------
+	//--------------------------------------------------------------------------
+	// introduce a Call-Subquery op
+	//--------------------------------------------------------------------------
+
 	OpBase *call_op = NewCallSubqueryOp(plan, is_eager, is_returning);
 	ExecutionPlan_UpdateRoot(plan, call_op);
 
-	// bind the embedded plan to be the rhs branch of the Call-Subquery op
+	// add the embedded plan as a child of the Call-Subquery op
 	ExecutionPlan_AddOp(call_op, embedded_plan->root);
 }

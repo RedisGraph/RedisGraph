@@ -201,11 +201,16 @@ void ExecutionPlan_BindOpsToPlan
 	}
 }
 
-// bind an operation to a plan
-void ExecutionPlan_bindOpToPlan
+// binds all ops in `ops` to `plan`
+void ExecutionPlan_MigrateOps
 (
-	OpBase *op,          // operation to bind
-	ExecutionPlan *plan  // plan to bind the op to
+	OpBase * ops[],             // array of ops to bind
+	uint op_count,              // number of ops in the array
+	const ExecutionPlan * plan  // plan to bind the ops to
 ) {
-	op->plan = plan;
+	for(uint i = 0; i < op_count; i++) {
+		if(ops[i]->type != OPType_JOIN) {
+			OpBase_bindOpToPlan(ops[i], (ExecutionPlan *)plan);
+		}
+	}
 }

@@ -263,7 +263,7 @@ void OpBase_UpdateConsume
 );
 
 // updates the plan of an operation
-void OpBase_UpdatePlan
+void OpBase_bindOpToPlan
 (
 	OpBase *op,
 	const struct ExecutionPlan *plan

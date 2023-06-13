@@ -19,5 +19,3 @@ typedef struct {
 OpBase *NewJoinOp(const ExecutionPlan *plan);
 
 bool JoinGetUpdateColumnMap(const OpBase *op);
-
-void JoinSetUpdateColumnMap(OpBase *op, bool update_column_map);
