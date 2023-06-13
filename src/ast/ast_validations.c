@@ -1331,7 +1331,24 @@ static VISITOR_STRATEGY _Validate_named_path
 	// introduce identifiers to bound variables environment
 	const cypher_astnode_t *alias_node = cypher_ast_named_path_get_identifier(n);
 	const char *alias = cypher_ast_identifier_get_name(alias_node);
-	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias),
+	uint len = strlen(alias);
+
+	void *alias_type =
+		raxFind(vctx->defined_identifiers, (unsigned char *)alias, len);
+
+	if(alias_type == (void *)T_EDGE) {
+		// MATCH m=() WITH m AS n MATCH ()-[n:R]->()
+		ErrorCtx_SetError("The alias '%s' was specified for both a path and a relationship",
+			alias);
+		return VISITOR_BREAK;
+	} else if (alias_type == (void *)T_NODE) {
+		// MATCH m=() WITH m AS n MATCH (n)-[:R]->()
+		ErrorCtx_SetError("The alias '%s' was specified for both a path and a node",
+			alias);
+		return VISITOR_BREAK;
+	}
+
+	raxInsert(vctx->defined_identifiers, (unsigned char *)alias, len,
 		   (void *)T_PATH, NULL);
 
 	return VISITOR_RECURSE;

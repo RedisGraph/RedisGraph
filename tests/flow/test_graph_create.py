@@ -273,6 +273,7 @@ class testGraphCreationFlow(FlowTestsBase):
 
     def test12_redeclaring_matched_vars(self):
         error_node_relationship   = "The alias 'n' was specified for both a node and a relationship"
+        error_path_relationship   = "The alias 'n' was specified for both a path and a relationship"
         error_path_node           = "The alias 'n' was specified for both a path and a node"
         error_redeclare_in_merge  = "The bound variable 'n' can't be redeclared in a MERGE clause"
         error_redeclare_in_create = "The bound variable 'n' can't be redeclared in a CREATE clause"
@@ -290,6 +291,8 @@ class testGraphCreationFlow(FlowTestsBase):
             ("MATCH ()-[n]->() MATCH (n)-[:R]->() RETURN 0", error_node_relationship),
             ("MATCH (n)-[:R]->() MATCH ()-[n:R]->() RETURN 0", error_node_relationship),
             ("MATCH n=() MATCH (n)-[:R]->() RETURN 0", error_path_node),
+            ("MATCH (n)-[:R]->() MATCH n=() RETURN 0", error_path_node),
+            ("MATCH ()-[n]->() MATCH n=() RETURN 0", error_path_relationship),
 
             # Modify matched entity
             # ("MATCH (n)-[]->() CREATE (n:L)-[:R]->()", error_props_in_create),
