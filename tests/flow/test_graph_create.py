@@ -231,15 +231,6 @@ class testGraphCreationFlow(FlowTestsBase):
         for query in queries:
             self._assert_exception(redis_graph, query, expected_error)
 
-        # not primitive types as property value
-        queries = [
-            "MERGE (a:A)-[:R]->(b:B {v:a})",
-            "MERGE ()-[r:R]->(b:B {v:r})",
-        ]
-        expected_error = "Property values can only be of primitive types or arrays of primitive types"
-        for query in queries:
-            self._assert_exception(redis_graph, query, expected_error)
-
         # pattern path as a property value
         queries = [
             "MATCH (a {v:()-[]->()}) RETURN a",
@@ -250,40 +241,37 @@ class testGraphCreationFlow(FlowTestsBase):
         for query in queries:
             self._assert_exception(redis_graph, query, expected_error)
 
-        # merge node using null property value
-        queries = [
-            "MERGE (a {v:3})-[:R]->(b:B {v:a.v})",
-            "MERGE ()-[r:R {v:2}]->(b:B {v:r.v})",
-        ]
-        expected_error = "Cannot merge node using null property value"
-        for query in queries:
-            self._assert_exception(redis_graph, query, expected_error)
-
         # using a not defined entity
         queries = [
             # reference to intermediate node
             "MERGE (a:A {v:a})",
             "CREATE (a:A {v:a})",
-            "CREATE (a:A)-[:R]->(b:B {v:a})",
             "CREATE (a:A {v:1}), (b {v:a})",
+            "CREATE (a:A)-[:R]->(b {v:a})",
+            "MERGE (a:A)-[:R]->(b {v:a})",
 
             # reference to intermediate edge
             "MERGE ()-[r:R {v:r}]->()",
+            "MERGE ()-[r:R]->({v:r})",
             "CREATE ()-[r:R {v:r}]->()",
-            "CREATE ()-[r:R]->(b:B {v:r})",
+            "CREATE ()-[r:R]->({v:r})",
             "CREATE ()-[r:R1]->(), ()-[:R2]->({v:r})",
 
             # reference to property of intermediate node
             "CREATE (a {v:1}), (b {v:a.v})",
-            "CREATE (a {v:0})-[:R]->(b:B {v:a.v})",
+            "CREATE (a {v:0})-[:R]->(b {v:a.v})",
+            "MERGE (a {v:3})-[:R]->(b {v:a.v})",
 
             # reference to property of intermediate edge
             "CREATE ()-[r:R {v:2}]->(b:B {v:r.v})",
             "CREATE ()-[r:R {v:1}]->(), (a {v:r.v})",
+            "MERGE ()-[r:R {v:2}]->(b:B {v:r.v})",
 
             # intermediate entities as function arguments
             "CREATE (a {v:0}), ()-[:R {k:toJSON(a)}]->()",
             "CREATE (a {v:0}), ()-[:R]->({k:toJSON(a)})",
+            "MERGE (a:NewNode)-[r:R {k:toJSON(a)}]->()",
+            "MERGE (a:NewNode)-[:R]->(b {k:toJSON(a)})",
         ]
         expected_error = "not defined"
         for query in queries:

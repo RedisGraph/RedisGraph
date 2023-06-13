@@ -1157,9 +1157,10 @@ static VISITOR_STRATEGY _Validate_rel_pattern
 			raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
 					strlen(alias), (void *)T_EDGE, NULL);
 
-			// if it is a CREATE clause register edge as an intermediate
-			// identifier because it is under creation
-			if(vctx->clause == CYPHER_AST_CREATE) {
+			// in case of CREATE or MERGE clause, register the edge as an
+			// intermediate identifier because it is under creation
+			if(vctx->clause == CYPHER_AST_CREATE ||
+				vctx->clause == CYPHER_AST_MERGE) {
 				raxInsert(vctx->intermediate_identifiers,
 					(unsigned char *)alias, strlen(alias),
 					(void *)T_EDGE, NULL);
@@ -1220,9 +1221,10 @@ static VISITOR_STRATEGY _Validate_node_pattern
 			strlen(alias), (void *)T_NODE, NULL);
 
 		if(alias_type == raxNotFound) {
-			// if it is a CREATE clause register edge as an intermediate
-			// identifier because it is under creation
-			if(vctx->clause == CYPHER_AST_CREATE) {
+			// in case of CREATE or MERGE clause, register the node as an
+			// intermediate identifier because it is under creation
+			if(vctx->clause == CYPHER_AST_CREATE ||
+				vctx->clause == CYPHER_AST_MERGE) {
 				raxInsert(vctx->intermediate_identifiers,
 					(unsigned char *)alias, strlen(alias),
 					(void *)T_NODE, NULL);
@@ -1298,6 +1300,13 @@ static VISITOR_STRATEGY _Validate_pattern_path
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
 	if(!start) {
+		if(vctx->clause == CYPHER_AST_MERGE) {
+			// the first child of the MERGE is the pattern path, then
+			// free intermediate_identifiers because the validation of the
+			// current pattern path has finished
+			raxFree(vctx->intermediate_identifiers);
+			vctx->intermediate_identifiers = raxNew();
+		}
 		return VISITOR_CONTINUE;
 	}
 
