@@ -806,9 +806,7 @@ static VISITOR_STRATEGY _Validate_apply_operator
 	// Collect the function name.
 	const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(n);
 	const char *func_name = cypher_ast_function_name_get_value(func);
-	// MATCH (m:P)--(y:P) WITH m.age AS age, count(y.age) AS cnt ORDER BY m.age + count(y.age) RETURN age
 	if(_ValidateFunctionCall(func_name, (vctx->clause == CYPHER_AST_WITH ||
-										vctx->clause == CYPHER_AST_APPLY_OPERATOR ||
 										vctx->clause == CYPHER_AST_RETURN)) == AST_INVALID) {
 		return VISITOR_BREAK;
 	}
