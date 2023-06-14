@@ -217,9 +217,9 @@ bool AST_RewriteStarProjections
 ) {
 	bool rewritten = false;
 
-	// retrieve the root query node from the statement
-	root = cypher_ast_statement_get_body(root);
-	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) return rewritten;
+	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) {
+		return false;
+	}
 
 	// rewrite all WITH * / RETURN * clauses to include all aliases
 	uint scope_start  = 0;
@@ -228,7 +228,17 @@ bool AST_RewriteStarProjections
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
-		if(t != CYPHER_AST_WITH && t != CYPHER_AST_RETURN) continue;
+
+		if(t == CYPHER_AST_CALL_SUBQUERY) {
+			cypher_astnode_t *subquery =
+				cypher_ast_call_subquery_get_query(clause);
+			AST_RewriteStarProjections(subquery);
+			continue;
+		}
+
+		if(t != CYPHER_AST_WITH && t != CYPHER_AST_RETURN) {
+			continue;
+		}
 
 		bool has_include_existing = (t == CYPHER_AST_WITH) ?
 									cypher_ast_with_has_include_existing(clause) :

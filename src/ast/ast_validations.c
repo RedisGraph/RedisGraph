@@ -1336,9 +1336,12 @@ references to outside variables");
 	if(is_returning) {
 		// merge projected aliases from in_env into vctx->defined_identifiers
 		// make sure no returned aliases are bound
+		// notice: this can be done only once for the last branch of a UNION
+		// since the returned aliases are always the same
 
 		const cypher_astnode_t *return_clause
 			= cypher_ast_query_get_clause(body, nclauses-1);
+
 		uint n_projections = cypher_ast_return_nprojections(return_clause);
 		for(uint i = 0; i < n_projections; i++) {
 			const cypher_astnode_t *proj =
@@ -1362,7 +1365,9 @@ references to outside variables");
 
 			if(!raxTryInsert(vctx->defined_identifiers,
 				(unsigned char *)var_name, strlen(var_name), NULL, NULL)) {
-					ErrorCtx_SetError("Variable `%s` already declared in outer scope", var_name);
+					ErrorCtx_SetError(
+						"Variable `%s` already declared in outer scope",
+						var_name);
 					return VISITOR_BREAK;
 			}
 		}

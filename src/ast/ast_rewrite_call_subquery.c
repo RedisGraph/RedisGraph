@@ -616,6 +616,133 @@ static bool _rewrite_call_subquery_clauses
 	return rewritten;
 }
 
+// add a star projection (i.e., `WITH *`) to a call {} clause at a given index
+static void _call_subquery_add_star_projection
+(
+	cypher_astnode_t *call_subquery,  // call {} node to add the projection to
+	uint ind                          // index in which to plant the projection
+) {
+	ASSERT(cypher_astnode_type(call_subquery) == CYPHER_AST_CALL_SUBQUERY);
+
+	cypher_astnode_t *query = cypher_ast_call_subquery_get_query(call_subquery);
+	uint nclauses = cypher_ast_query_nclauses(query);
+
+	// create a star projection
+	struct cypher_input_range range = {0};
+	cypher_astnode_t *star_projection = cypher_ast_with(false, true, NULL, 0,
+		NULL, NULL, NULL, NULL, NULL, 0, range);
+
+	cypher_astnode_t *clauses[nclauses + 1];
+	for(uint i = 0; i < ind; i++) {
+		clauses[i] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
+	}
+	clauses[ind] = star_projection;
+	for(uint i = ind; i < nclauses; i++) {
+		clauses[i + 1] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
+	}
+
+	cypher_astnode_t *new_query = cypher_ast_query(NULL, 0, clauses,
+		nclauses + 1, clauses, nclauses + 1, range);
+
+	cypher_ast_call_subquery_replace_query(call_subquery, new_query);
+}
+
+// add a star projection (i.e., `WITH *`) to a statement clause at a given index
+static void _statement_replace_add_star_projection
+(
+	cypher_astnode_t *statement,  // call {} node to add the projection to
+	uint ind                      // index in which to plant the projection
+) {
+	ASSERT(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
+
+	cypher_astnode_t *query = (cypher_astnode_t *)
+		cypher_ast_statement_get_body(statement);
+	uint nclauses = cypher_ast_query_nclauses(query);
+
+	// create a star projection
+	struct cypher_input_range range = {0};
+	cypher_astnode_t *star_projection = cypher_ast_with(false, true, NULL, 0,
+		NULL, NULL, NULL, NULL, NULL, 0, range);
+
+	cypher_astnode_t *clauses[nclauses + 1];
+	for(uint i = 0; i < ind; i++) {
+		clauses[i] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
+	}
+	clauses[ind] = star_projection;
+	for(uint i = ind; i < nclauses; i++) {
+		clauses[i + 1] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
+	}
+
+	cypher_astnode_t *new_query = cypher_ast_query(NULL, 0, clauses,
+		nclauses + 1, clauses, nclauses + 1, range);
+
+	// TODO: replace instead of set? Probably not.
+	cypher_ast_statement_set_body(statement, new_query);
+}
+
+// adds a star projection (i.e., `WITH *`) before every call {} clause in the
+// body of a call {} ast node
+static void _call_subquery_add_star_projections
+(
+	cypher_astnode_t *call_subquery  // call {} ast node
+) {
+	ASSERT(cypher_astnode_type(call_subquery) == CYPHER_AST_CALL_SUBQUERY);
+
+	cypher_astnode_t *query = cypher_ast_call_subquery_get_query(call_subquery);
+	uint nclauses = cypher_ast_query_nclauses(query);
+	for(uint i = 1; i < nclauses; i++) {
+		cypher_astnode_t *clause = (cypher_astnode_t *)
+			cypher_ast_query_get_clause(query, i);
+		if(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY) {
+			_call_subquery_add_star_projection(call_subquery, i);
+
+			// update `query` and `nclauses` to reflect the new query
+			query = cypher_ast_call_subquery_get_query(call_subquery);
+			i++;
+			cypher_astnode_t *clause = (cypher_astnode_t *)
+				cypher_ast_query_get_clause(query, i);
+			nclauses++;
+
+			_call_subquery_add_star_projections(clause);
+
+		}
+	}
+}
+
+// adds a star projection (i.e., `WITH *`) before every call {} clause in the
+// ast embedded in a statement ast node
+static void _statement_add_star_projections
+(
+	cypher_astnode_t *statement  // statement of ast to rewrite
+) {
+	ASSERT(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
+
+	cypher_astnode_t *query = (cypher_astnode_t *)
+		cypher_ast_statement_get_body(statement);
+	uint nclauses = cypher_ast_query_nclauses(query);
+
+	// add a star projection before every call {} clause, discluding the first
+	// clause
+	for(uint i = 1; i < nclauses; i++) {
+		cypher_astnode_t *clause = (cypher_astnode_t *)
+			cypher_ast_query_get_clause(query, i);
+		if(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY) {
+			_statement_replace_add_star_projection(statement, i);
+
+			// update `query` and `nclauses` to reflect the new query
+			query = (cypher_astnode_t *)
+				cypher_ast_statement_get_body(statement);
+			i++;
+			cypher_astnode_t *clause = (cypher_astnode_t *)
+				cypher_ast_query_get_clause(query, i);
+			nclauses++;
+
+			_call_subquery_add_star_projections(clause);
+
+		}
+	}
+}
+
 // if the subquery will result in an eager and returning execution-plan
 // rewrites it to contain the projections needed:
 // 1. "n"  -> "@n" in the initial WITH clause if exists. Otherwise, creates it.
@@ -642,6 +769,9 @@ bool AST_RewriteCallSubquery
 	bool rewritten = _rewrite_call_subquery_clauses(query, &inter_names);
 	uint n_inter_names = array_len(inter_names);
 	array_free_cb(inter_names, rm_free);
+
+	// add a `WITH *` clause before every call {} clause
+	_statement_add_star_projections((cypher_astnode_t *)root);
 
 	return rewritten;
 }

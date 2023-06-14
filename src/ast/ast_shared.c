@@ -236,6 +236,17 @@ static void _collect_aliases_in_path
 	const cypher_astnode_t *path,
 	rax *identifiers
 ) {
+	// collect path name if, if exists
+	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
+		const cypher_astnode_t *ast_alias =
+			cypher_ast_named_path_get_identifier(path);
+		if(ast_alias != NULL) {
+			const char *identifier = cypher_ast_identifier_get_name(ast_alias);
+			raxTryInsert(identifiers, (unsigned char *)identifier,
+				strlen(identifier), (void *)ast_alias, NULL);
+		}
+	}
+
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 	// every even offset corresponds to a node
 	for(uint i = 0; i < path_len; i += 2) {

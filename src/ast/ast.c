@@ -700,23 +700,26 @@ cypher_parse_result_t *parse_query
 		return NULL;
 	}
 
-	// rewrite '*' projections
-	// e.g. MATCH (a), (b) RETURN *
-	// will be rewritten as:
-	//  MATCH (a), (b) RETURN a, b
-	bool rerun_validation = AST_RewriteStarProjections(root);
-
 	// compress clauses
 	// e.g. MATCH (a:N) MATCH (b:N) RETURN a,b
 	// will be rewritten as:
 	// MATCH (a:N), (b:N) RETURN a,b
-	rerun_validation |= AST_RewriteSameClauses(root);
+	bool rerun_validation = AST_RewriteSameClauses(root);
 
 	// rewrite eager & resulting Call {} clauses
 	// e.g. MATCH (m) CALL { CREATE (n:N) RETURN n } RETURN n
 	// will be rewritten as:
 	// MATCH (m) CALL { WITH m AS @m CREATE (n:N) RETURN n, @m AS m } RETURN n
+	// note: we rewrite the ast for sure here, so we need to re-validate it
+	// TODO: remove all boolean return-vals from rewriting functions
 	rerun_validation |= AST_RewriteCallSubquery(root);
+
+	// rewrite '*' projections
+	// e.g. MATCH (a), (b) RETURN *
+	// will be rewritten as:
+	//  MATCH (a), (b) RETURN a, b
+	rerun_validation |= AST_RewriteStarProjections(
+		cypher_ast_statement_get_body(root));
 
 	// only perform validations again if there's been a rewrite
 	if(rerun_validation && AST_Validate_Query(root) != AST_VALID) {
