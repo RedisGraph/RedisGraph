@@ -477,23 +477,39 @@ class testComprehensionFunctions(FlowTestsBase):
 
     def test22_invalid_pattern_comprehension(self):
         # test error detection of invalid pattern comprehension
-        queries_with_errors = [
-            ("MATCH (a) RETURN [(b)-[b]->() | 0]", "The alias 'b' was specified for both a node and a relationship"),
-            ("MATCH (a) RETURN [b=()-[b]->() | 0]", "The alias 'b' was specified for both a path and a relationship"),
-            ("MATCH (a) RETURN [b=()-[]->(b) | 0]", "The alias 'b' was specified for both a path and a node"),
-            ("MATCH (a) RETURN [(a)-[:R]->() WHERE u | 0]", "'u' not defined"),
-            ("MATCH (a) RETURN [(a)-[:R]->() | u]", "'u' not defined"),
-            ("MATCH (a) RETURN [()-[b]->()-[b]->() | 0]", "Cannot use the same relationship variable 'b'"),
+
+        query = "MATCH (a) RETURN [(b)-[b]->() | 0]"
+        expected_error = "The alias 'b' was specified for both a node and a relationship"
+        self._assert_exception(redis_graph, query, expected_error)
+
+        query = "MATCH (a) RETURN [b=()-[b]->() | 0]"
+        expected_error = "The alias 'b' was specified for both a path and a relationship"
+        self._assert_exception(redis_graph, query, expected_error)
+
+        query = "MATCH (a) RETURN [b=()-[]->(b) | 0]"
+        expected_error = "The alias 'b' was specified for both a path and a node"
+        self._assert_exception(redis_graph, query, expected_error)
+
+        query = "MATCH (a) RETURN [()-[b]->()-[b]->() | 0]"
+        expected_error = "Cannot use the same relationship variable 'b'"
+        self._assert_exception(redis_graph, query, expected_error)
+
+        queries = [
+            "MATCH (a) RETURN [(a)-[:R]->() WHERE u | 0]",
+            "MATCH (a) RETURN [(a)-[:R]->() | u]",
         ]
-        for query, expected_error in queries_with_errors:
+        expected_error = "'u' not defined"
+        for query in queries:
             self._assert_exception(redis_graph, query, expected_error)
 
     def test23_invalid_list_comprehension(self):
         # test error detection of invalid pattern comprehension
-        queries_with_errors =  [
-            ("RETURN [x IN range(1,u) WHERE x > 3 | x ]","'u' not defined"),
-            ("RETURN [x IN range(1,5) WHERE x > u | x ]","'u' not defined"),
-            ("RETURN [x IN range(1,5) WHERE x > 3 | u ]","'u' not defined"),
+
+        queries = [
+            "RETURN [x IN range(1, u) WHERE x > 3 | x ]",
+            "RETURN [x IN range(1, 5) WHERE x > u | x ]",
+            "RETURN [x IN range(1, 5) WHERE x > 3 | u ]",
         ]
-        for query, expected_error in queries_with_errors:
+        expected_error = "'u' not defined"
+        for query in queries:
             self._assert_exception(redis_graph, query, expected_error)
