@@ -64,6 +64,37 @@ OpBase *ExecutionPlan_LocateOp
 	return ExecutionPlan_LocateOpMatchingTypes(root, type_arr, 1);
 }
 
+// searches for an operation of a given type, up to the given depth in the
+// execution-plan
+OpBase *ExecutionPlan_LocateOpDepth
+(
+    OpBase *root,
+    OPType type,
+    uint depth
+) {
+	if(root == NULL) {
+		return NULL;
+	}
+
+	if(root->type == type) {
+		return root;
+	}
+
+	if(depth == 0) {
+		return NULL;
+	}
+
+	for(int i = 0; i < root->childCount; i++) {
+		OpBase *op = ExecutionPlan_LocateOpDepth(root->children[i], type,
+			depth - 1);
+		if(op) {
+			return op;
+		}
+	}
+
+	return NULL;
+}
+
 // returns all operations of a certain type in a execution plan
 void ExecutionPlan_LocateOps
 (

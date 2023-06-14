@@ -22,6 +22,10 @@ OpBase *NewJoinOp(const ExecutionPlan *plan) {
 	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", JoinInit, JoinConsume, 
 		JoinReset, NULL, JoinClone, NULL, false, plan);
 
+	// if the Join op is not placed directly under a Results op (or as second
+	// descendent in case of `UNION ALL`), don't update the result set mapping
+	op->update_column_map = true;
+
 	return (OpBase *)op;
 }
 
@@ -34,9 +38,6 @@ static OpResult JoinInit(OpBase *opBase) {
 	// map first stream resultset mapping
 	ResultSet *result_set = QueryCtx_GetResultSet();
 
-	// if the Join op is not placed directly under a Results op (or as second
-	// descendent in case of `UNION ALL`), don't update the result set mapping
-	op->update_column_map = true;
 	OpBase *parent = op->op.parent;
 	if(parent != NULL && parent->type != OPType_RESULTS) {
 		parent = parent->parent;

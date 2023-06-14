@@ -41,6 +41,15 @@ OpBase *ExecutionPlan_LocateOp
     OPType type
 );
 
+// searches for an operation of a given type, up to the given depth in the
+// execution-plan
+OpBase *ExecutionPlan_LocateOpDepth
+(
+    OpBase *root,
+    OPType type,
+    uint depth
+);
+
 // returns all operations of a certain type in a execution plan
 void ExecutionPlan_LocateOps
 (

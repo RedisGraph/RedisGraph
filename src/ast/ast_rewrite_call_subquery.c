@@ -699,9 +699,8 @@ static void _call_subquery_add_star_projections
 			// update `query` and `nclauses` to reflect the new query
 			query = cypher_ast_call_subquery_get_query(call_subquery);
 			i++;
-			cypher_astnode_t *clause = (cypher_astnode_t *)
-				cypher_ast_query_get_clause(query, i);
 			nclauses++;
+			clause = (cypher_astnode_t *)cypher_ast_query_get_clause(query, i);
 
 			_call_subquery_add_star_projections(clause);
 
@@ -721,7 +720,7 @@ static void _statement_add_star_projections
 		cypher_ast_statement_get_body(statement);
 	uint nclauses = cypher_ast_query_nclauses(query);
 
-	// add a star projection before every call {} clause, discluding the first
+	// add a star projection before every call {} clause, excluding the first
 	// clause
 	for(uint i = 1; i < nclauses; i++) {
 		cypher_astnode_t *clause = (cypher_astnode_t *)
@@ -733,12 +732,10 @@ static void _statement_add_star_projections
 			query = (cypher_astnode_t *)
 				cypher_ast_statement_get_body(statement);
 			i++;
-			cypher_astnode_t *clause = (cypher_astnode_t *)
-				cypher_ast_query_get_clause(query, i);
 			nclauses++;
+			clause = (cypher_astnode_t *)cypher_ast_query_get_clause(query, i);
 
 			_call_subquery_add_star_projections(clause);
-
 		}
 	}
 }

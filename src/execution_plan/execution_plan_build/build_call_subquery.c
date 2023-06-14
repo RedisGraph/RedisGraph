@@ -168,7 +168,8 @@ static void _bind_returning_ops_to_plan
 		OpBase *returning_op =
 			ExecutionPlan_LocateOpMatchingTypes(root, return_types, 2);
 		uint n_ops = ExecutionPlan_CollectUpwards(ops, returning_op);
-		ExecutionPlan_MigrateOps(ops, n_ops, plan);
+		ExecutionPlan_MigrateOps_exclude_type(ops, OPType_JOIN, n_ops,
+			plan);
 	} else {
 		// if there is a Union operation, we need to look at all of its branches
 		for(uint i = 0; i < join_op->childCount; i++) {
@@ -176,7 +177,8 @@ static void _bind_returning_ops_to_plan
 			OpBase *returning_op =
 				ExecutionPlan_LocateOpMatchingTypes(child, return_types, 2);
 			uint n_ops = ExecutionPlan_CollectUpwards(ops, child);
-			ExecutionPlan_MigrateOps(ops, n_ops, plan);
+			ExecutionPlan_MigrateOps_exclude_type(ops, OPType_JOIN, n_ops,
+				plan);
 		}
 	}
 }

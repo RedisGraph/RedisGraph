@@ -59,10 +59,11 @@ void ExecutionPlan_BindOpsToPlan
 	bool qg               // whether to merge QueryGraphs or not
 );
 
-// binds all ops in `ops` to `plan`
-void ExecutionPlan_MigrateOps
+// binds all ops in `ops` to `plan`, except for ops of type `exclude_type`
+void ExecutionPlan_MigrateOps_exclude_type
 (
 	OpBase * ops[],             // array of ops to bind
+	OPType exclude_type,        // type of ops to exclude
 	uint op_count,              // number of ops in the array
-	const ExecutionPlan * plan  // plan to bind the ops to
+	const ExecutionPlan *plan   // plan to bind the ops to
 );

@@ -1342,6 +1342,11 @@ references to outside variables");
 		const cypher_astnode_t *return_clause
 			= cypher_ast_query_get_clause(body, nclauses-1);
 
+		// TODO: If the return clause has a `*` projection, return all
+		// bound vars from the subquery (discluding the initial with clause if
+		// it imports data from outer scope).
+		// AST_CollectAliases(aliases, )
+
 		uint n_projections = cypher_ast_return_nprojections(return_clause);
 		for(uint i = 0; i < n_projections; i++) {
 			const cypher_astnode_t *proj =
