@@ -240,9 +240,9 @@ static bool _compress_clauses
 	bool rewritten = false;
 	
 	cypher_astnode_type_t type = cypher_astnode_type(node);
-	if(type == CYPHER_AST_CALL_SUBQUERY) {
-		return _compress_clauses(cypher_ast_call_subquery_get_query(node));
-	}
+
+	ASSERT(type == CYPHER_AST_QUERY || type == CYPHER_AST_FOREACH);
+
 	cypher_astnode_t **clauses = array_new(cypher_astnode_t *, 0);
 	// is the node representing a FOREACH clause
 	uint            clause_count  = 0;
@@ -264,8 +264,12 @@ static bool _compress_clauses
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
 
 		// try compressing the inner-clauses of foreach clause and call subquery
-		if(t == CYPHER_AST_FOREACH || t == CYPHER_AST_CALL_SUBQUERY){
+		if(t == CYPHER_AST_FOREACH) {
 			rewritten |= _compress_clauses(clause);
+			continue;
+		} else if(t == CYPHER_AST_CALL_SUBQUERY) {
+			rewritten |=
+				_compress_clauses(cypher_ast_call_subquery_get_query(clause));
 			continue;
 		}
 
@@ -320,7 +324,6 @@ static bool _compress_clauses
 	array_free(clauses);
 	return rewritten;
 }
-
 
 // returns true if AST clause type is compressible
 static inline bool is_compressible

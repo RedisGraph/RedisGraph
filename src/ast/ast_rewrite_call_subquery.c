@@ -607,7 +607,6 @@ static bool _rewrite_call_subquery_clauses
 		}
 
 		// update start_scope if needed
-
 		if(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN) {
 			start_scope = i;
 		}

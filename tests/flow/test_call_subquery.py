@@ -7,9 +7,8 @@ graph = None
 GRAPH_ID = "call_subquery"
 
 def _assert_subquery_contains_single(plan: ExecutionPlan, operation_name: str, env):
-    """Asserts that the plan contains a single CallSubquery operation and a
-    single operation with the given name.
-    Assumes the plan has a single CallSubquery operation"""
+    """Asserts that the plan contains a single single operation with the given
+    name. Assumes the plan has a single CallSubquery operation"""
 
     callsubquery = locate_operation(plan.structured_plan, "CallSubquery")
     env.assertIsNotNone(callsubquery)
@@ -1823,3 +1822,48 @@ updating clause.")
     #     self.env.assertEquals(len(res.result_set[0]), 3)
     #     for i in range(3):
     #         self.env.assertEquals(res.result_set[0][i], i + 1)
+
+    def test30_surrounding_matches(self):
+        """Tests that in case the call {} is surrounded by matches, the
+        following match does not affect the input records to the call {} op"""
+
+        # clean the db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create two nodes with label N, and one with label I with increasing v
+        # property values for the N nodes
+        res = graph.query("CREATE (:N {v: 1}), (:N {v: 2}), (:I)")
+
+        # query with a surrounding match clauses, such that the right-most match
+        # is prioritized (less nodes with its label in the graph)
+        query = """
+            MATCH (n:N)
+            CALL {
+                RETURN 1 AS x
+            }
+            MATCH (i:I)
+            RETURN n, i, x ORDER BY n.v ASC
+            """
+
+        # assert that (i:I) was not scanned and inserted to the call {} op
+        plan = graph.explain(query)
+        # make sure that CREATE is called only once
+        label_scan = locate_operation(plan.structured_plan, "Node By Label Scan")
+        self.env.assertIsNotNone(label_scan)
+        cartesian = locate_operation(plan.structured_plan, "CartesianProduct")
+        self.env.assertIsNone(cartesian)
+
+        res = graph.query(query)
+        # assert results
+        n1 = Node(label='N', properties={'v': 1})
+        n2 = Node(label='N', properties={'v': 2})
+        n3 = Node(label='I')
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(len(res.result_set[0]), 3)
+        self.env.assertEquals(res.result_set[0][0], n1)
+        self.env.assertEquals(res.result_set[0][1], n3)
+        self.env.assertEquals(res.result_set[0][2], 1)
+        self.env.assertEquals(res.result_set[1][0], n2)
+        self.env.assertEquals(res.result_set[1][1], n3)
+        self.env.assertEquals(res.result_set[1][2], 1)
