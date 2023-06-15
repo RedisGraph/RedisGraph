@@ -125,6 +125,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r, GraphContext *gc) {
 
 		// create a new node
 		Node newNode = GE_NEW_NODE();
+		Graph_ReserveNode(gc->g, &newNode);
 
 		// add new node to Record and save a reference to it
 		Node *node_ref = Record_AddNode(r, n->node_idx, newNode);
@@ -168,8 +169,8 @@ static bool _CreateEntities(OpMergeCreate *op, Record r, GraphContext *gc) {
 		// create the actual edge
 		Edge newEdge = {0};
 		newEdge.relationship = e->relation;
-		Edge_SetSrcNode(&newEdge, src_node);
-		Edge_SetDestNode(&newEdge, dest_node);
+		Edge_SetSrcNodeID(&newEdge, ENTITY_GET_ID(src_node));
+		Edge_SetDestNodeID(&newEdge, ENTITY_GET_ID(dest_node));
 
 		Edge *edge_ref = Record_AddEdge(r, e->edge_idx, newEdge);
 

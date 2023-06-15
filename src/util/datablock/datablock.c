@@ -165,6 +165,17 @@ void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 	return ITEM_DATA(item_header);
 }
 
+uint64_t DataBlock_GetReservedIdx(const DataBlock *dataBlock, uint64_t n) {
+	ASSERT(dataBlock != NULL);
+
+	uint deleted = DataBlock_DeletedItemsCount(dataBlock);
+	if(n < deleted) {
+		return dataBlock->deletedIdx[deleted - n - 1];
+	} 
+	
+	return DataBlock_ItemCount(dataBlock) + n;
+}
+
 void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
 	// make sure we've got room for items
 	if(dataBlock->itemCount >= dataBlock->itemCap) {

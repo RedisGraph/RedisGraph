@@ -23,6 +23,7 @@ static Graph *BuildGraph() {
 	Graph *g = Graph_New(nodeCount, nodeCount);
 	int relation = Graph_AddRelationType(g);
 	for(int i = 0; i < 4; i++) {
+		n = GE_NEW_NODE();
 		Graph_CreateNode(g, &n, NULL, 0);
 	}
 
@@ -91,16 +92,16 @@ void tearDown() {
 void test_noPaths() {
 	Graph *g = BuildGraph();
 
-	NodeID srcNodeID = 0;
+	NodeID       src_id = 0;
 	unsigned int minLen = 999;
 	unsigned int maxLen = minLen + 1;
 
 	Node src;
-	Graph_GetNode(g, srcNodeID, &src);
+	Graph_GetNode(g, src_id, &src);
 
 	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen, NULL, NULL, 0, false);
+	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1,
+		GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen, NULL, NULL, 0, false);
 	Path *p = AllPathsCtx_NextPath(ctx);
 
 	TEST_ASSERT(p == NULL);
@@ -112,15 +113,15 @@ void test_noPaths() {
 void test_longest_Paths() {
 	Graph *g = BuildGraph();
 
-	NodeID srcNodeID = 0;
+	NodeID src_id = 0;
 	Node src;
-	Graph_GetNode(g, srcNodeID, &src);
+	Graph_GetNode(g, src_id, &src);
 
 	unsigned int minLen = 0;
 	unsigned int maxLen = UINT_MAX - 2;
 	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen, NULL, NULL, 0, false);
+	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1,
+		GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen, NULL, NULL, 0, false);
 	Path *path;
 
 	unsigned int longestPath = 0;
@@ -139,17 +140,17 @@ void test_longest_Paths() {
 void test_upToThreeLegsPaths() {
 	Graph *g = BuildGraph();
 
-	NodeID srcNodeID = 0;
+	NodeID src_id = 0;
 	Node src;
-	Graph_GetNode(g, srcNodeID, &src);
+	Graph_GetNode(g, src_id, &src);
 
 	Path *path = NULL;
 	unsigned int minLen = 0;
 	unsigned int maxLen = 3;
 	uint pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen, NULL, NULL, 0, false);
+	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1,
+		GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen, NULL, NULL, 0, false);
 
 	/* Connections:
 	 * 0 -> 1
@@ -216,16 +217,16 @@ void test_upToThreeLegsPaths() {
 void test_twoLegPaths() {
 	Graph *g = BuildGraph();
 
-	NodeID srcNodeID = 0;
+	NodeID src_id = 0;
 	Node src;
 	Path *path = NULL;
-	Graph_GetNode(g, srcNodeID, &src);
+	Graph_GetNode(g, src_id, &src);
 	unsigned int minLen = 2;
 	unsigned int maxLen = 2;
 	unsigned int pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
-									   maxLen, NULL, NULL, 0, false);
+	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1,
+		GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen, NULL, NULL, 0, false);
 	/* Connections:
 	 * 0 -> 1
 	 * 0 -> 2
@@ -279,16 +280,16 @@ void test_destinationSpecificPaths() {
 
 	Graph *g = BuildGraph();
 
-	NodeID srcNodeID = 0;
+	NodeID src_id = 0;
 	Node src;
 	Path *path = NULL;
-	Graph_GetNode(g, srcNodeID, &src);
+	Graph_GetNode(g, src_id, &src);
 	unsigned int minLen = 0;
 	unsigned int maxLen = UINT_MAX - 2;
 	unsigned int pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsCtx_New(&src, &src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING,
-									   minLen, maxLen, NULL, NULL, 0, false);
+	AllPathsCtx *ctx = AllPathsCtx_New(&src, &src, g, relationships, 1,
+		GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen, NULL, NULL, 0, false);
 
 	while((path = AllPathsCtx_NextPath(ctx))) {
 		TEST_ASSERT(pathsCount < 5);
