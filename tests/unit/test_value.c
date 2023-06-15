@@ -359,8 +359,8 @@ void test_path() {
 		ns[i].id = i;
 				
 		es[i].id = i;
-		es[i].srcNodeID = i;
-		es[i].destNodeID = i + 1;
+		es[i].src_id = i;
+		es[i].dest_id = i + 1;
 	}
 	ns[2].id = 2;
 

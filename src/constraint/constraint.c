@@ -554,8 +554,8 @@ void Constraint_EnforceEdges
 
 		do {
 			Edge e;
-			e.srcNodeID  = src_id;
-			e.destNodeID = dest_id;
+			e.src_id     = src_id;
+			e.dest_id    = dest_id;
 			e.relationID = schema_id;
 
 			if(SINGLE_EDGE(edge_id)) {

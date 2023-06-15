@@ -59,9 +59,9 @@ struct UndoDeleteNodeOp {
 typedef struct UndoDeleteEdgeOp UndoDeleteEdgeOp;
 struct UndoDeleteEdgeOp {
 	EntityID id;
-	int relationID;             // Relation ID
-	NodeID srcNodeID;           // Source node ID
-	NodeID destNodeID;          // Destination node ID
+	int relationID;          // Relation ID
+	NodeID src_id;           // Source node ID
+	NodeID dest_id;          // Destination node ID
 	AttributeSet set;
 };
 

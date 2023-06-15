@@ -7,17 +7,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "RG.h"
 #include "edge.h"
 #include "graph_entity.h"
-#include "../graphcontext.h"
-#include "../../query_ctx.h"
 
 NodeID Edge_GetSrcNodeID
 (
 	const Edge *edge
 ) {
 	ASSERT(edge);
-	return edge->srcNodeID;
+	return edge->src_id;
 }
 
 NodeID Edge_GetDestNodeID
@@ -25,7 +24,7 @@ NodeID Edge_GetDestNodeID
 	const Edge *edge
 ) {
 	ASSERT(edge);
-	return edge->destNodeID;
+	return edge->dest_id;
 }
 
 int Edge_GetRelationID
@@ -36,40 +35,22 @@ int Edge_GetRelationID
 	return edge->relationID;
 }
 
-Node *Edge_GetSrcNode
-(
-	Edge *e
-) {
-	ASSERT(e);
-	return e->src;
-}
-
-Node *Edge_GetDestNode
-(
-	Edge *e
-) {
-	ASSERT(e);
-	return e->dest;
-}
-
-void Edge_SetSrcNode
+void Edge_SetSrcNodeID
 (
 	Edge *e,
-	Node *src
+	NodeID id
 ) {
-	ASSERT(e && src);
-	e->src = src;
-	e->srcNodeID = ENTITY_GET_ID(src);
+	ASSERT(e);
+	e->src_id = id;
 }
 
-void Edge_SetDestNode
+void Edge_SetDestNodeID
 (
 	Edge *e,
-	Node *dest
+	NodeID id
 ) {
-	ASSERT(e && dest);
-	e->dest = dest;
-	e->destNodeID = ENTITY_GET_ID(dest);
+	ASSERT(e);
+	e->dest_id = id;
 }
 
 void Edge_SetRelationID
