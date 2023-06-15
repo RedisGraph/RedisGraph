@@ -226,7 +226,7 @@ static int _BulkInsert_ProcessNodeFile
     //--------------------------------------------------------------------------
 
 	while (data_idx < data_len) {
-		Node n;
+		Node n = GE_NEW_NODE();
 		GraphEntity* ge;
 		Graph_ReserveNode(gc->g, &n);
 		Graph_CreateNode(gc->g, &n, label_ids, label_count);

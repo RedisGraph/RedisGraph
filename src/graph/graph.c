@@ -652,20 +652,24 @@ void Graph_GetEdgesConnectingNodes
 	}
 }
 
+void Graph_ResetReservedNode
+(
+	Graph *g
+) {
+	ASSERT(g != NULL);
+	g->reserved_node_count = 0;
+}
+
 void Graph_ReserveNode
 (
 	Graph *g,               // graph for which nodes will be added
 	Node *n                 // node to reserve
 ) {
-	NodeID id;
-	uint deleted = DataBlock_DeletedItemsCount(g->nodes);
-	if(g->reserved_node_count < deleted) {
-		id = g->nodes->deletedIdx[deleted - ++g->reserved_node_count];
-	} else {
-		id = DataBlock_ItemCount(g->nodes) + g->reserved_node_count++;
-	}
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
+	ASSERT(n->id == INVALID_ENTITY_ID);
 
-	n->id = id;
+	n->id = DataBlock_GetReservedIdx(g->nodes, g->reserved_node_count++);
 }
 
 void Graph_CreateNode

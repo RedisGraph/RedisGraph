@@ -100,7 +100,7 @@ static void ApplyCreateNode
 	// create node
 	//--------------------------------------------------------------------------
 
-	Node n;
+	Node n = GE_NEW_NODE();
 	Graph_ReserveNode(gc->g, &n);
 	CreateNode(gc, &n, labels, lbl_count, attr_set, false);
 }

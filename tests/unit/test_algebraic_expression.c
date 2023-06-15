@@ -107,11 +107,13 @@ static void _build_graph() {
 	Graph_AllocateNodes(g, node_count);
 
 	for(int i = 0; i < person_count; i++) {
+		n = GE_NEW_NODE();
 		Graph_ReserveNode(gc->g, &n);
 		Graph_CreateNode(g, &n, person_label, 1);
 	}
 
 	for(int i = 0; i < city_count; i++) {
+		n = GE_NEW_NODE();
 		Graph_ReserveNode(gc->g, &n);
 		Graph_CreateNode(g, &n, city_label, 1);
 	}

@@ -185,6 +185,11 @@ void Graph_AllocateEdges
 	size_t n                // number of edges to create
 );
 
+void Graph_ResetReservedNode
+(
+	Graph *g
+);
+
 void Graph_ReserveNode
 (
 	Graph *g,               // graph for which nodes will be added

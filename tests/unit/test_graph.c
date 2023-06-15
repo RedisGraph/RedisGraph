@@ -40,6 +40,7 @@ void _test_node_creation(Graph *g, size_t node_count) {
 	// Create nodes.
 	Node n;
 	for(uint i = 0; i < node_count; i++) {
+		n = GE_NEW_NODE();
 		Graph_ReserveNode(g, &n);
 		Graph_CreateNode(g, &n, NULL, 0);
 	}
@@ -82,6 +83,7 @@ void benchmark_node_creation_with_labels() {
 	for(int i = 0; i < samples; i++) {
 		simple_tic(tic);
 		for(unsigned int j = 0; j < n; j++) {
+			node = GE_NEW_NODE();
 			Graph_ReserveNode(g, &node);
 			Graph_CreateNode(g, &node, NULL, 0);
 		}
@@ -122,6 +124,7 @@ void benchmark_node_creation_no_labels() {
 		// Create N nodes, don't use labels.
 		simple_tic(tic);
 		for(int j = 0; j < n; j++) {
+			node = GE_NEW_NODE();
 			Graph_ReserveNode(g, &node);
 			Graph_CreateNode(g, &node, NULL, 0);
 		}
@@ -161,6 +164,7 @@ void benchmark_edge_creation_with_relationships() {
 	// Introduce relations types.
 	for(int i = 0; i < relation_count; i++) Graph_AddRelationType(g);
 	for(int i = 0; i < node_count; i++) {
+		node = GE_NEW_NODE();
 		Graph_ReserveNode(g, &node);
 		Graph_CreateNode(g, &node, NULL, 0);
 	}
@@ -268,6 +272,7 @@ void test_removeNodes() {
 	Edge edge;
 
 	for(int i = 0; i < 3; i++) {
+		node = GE_NEW_NODE();
 		Graph_ReserveNode(g, &node);
 		Graph_CreateNode(g, &node, NULL, 0);
 	}
@@ -335,6 +340,7 @@ void test_getNode() {
 	Graph_AcquireWriteLock(g);
 	{
 		for(int i = 0 ; i < nodeCount; i++) {
+			n = GE_NEW_NODE();
 			Graph_ReserveNode(g, &n);
 			Graph_CreateNode(g, &n, NULL, 0);
 		}
@@ -368,6 +374,7 @@ void test_getEdge() {
 	Graph *g = Graph_New(nodeCount, nodeCount);
 	Graph_AcquireWriteLock(g);
 	for(int i = 0; i < nodeCount; i++) {
+		n = GE_NEW_NODE();
 		Graph_ReserveNode(g, &n);
 		Graph_CreateNode(g, &n, NULL, 0);
 	}

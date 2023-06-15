@@ -248,7 +248,7 @@ static void _UndoLog_Rollback_Delete_Node
 ) {
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
-		Node n;
+		Node n = GE_NEW_NODE();
 		UndoOp *op = undo_list + i;
 		UndoDeleteNodeOp *delete_op = &(op->delete_node_op);
 
@@ -550,7 +550,7 @@ void UndoLog_Rollback
 	QueryCtx *ctx  = QueryCtx_GetQueryCtx();
 	uint64_t count = array_len(log);
 
-	ctx->gc->g->reserved_node_count = 0;
+	Graph_ResetReservedNode(ctx->gc->g);
 
 	if(count == 0) return;
 
