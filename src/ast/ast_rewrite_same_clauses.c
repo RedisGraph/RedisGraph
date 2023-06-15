@@ -13,7 +13,8 @@
 #include "../procedures/procedure.h"
 
 // forward declarations
-static inline bool is_compressible(const cypher_astnode_t *clause);
+static inline bool is_compressible(const cypher_astnode_t *clause,
+	cypher_astnode_type_t type);
 static bool _compress_clauses(const cypher_astnode_t *node);
 
 typedef void (*replace_func)(cypher_astnode_t *, cypher_astnode_t *, unsigned int, unsigned int);
@@ -274,7 +275,7 @@ static bool _compress_clauses
 		}
 
 		// check compressibility, move on if not compressible
-		if(!is_compressible(clause)) {
+		if(!is_compressible(clause, t)) {
 			continue;
 		}
 
@@ -285,7 +286,7 @@ static bool _compress_clauses
 		for (uint j = i; j < clause_count; j++) {
 			clause = get_clause(node, j);
 			cypher_astnode_type_t t2 = cypher_astnode_type(clause);
-			if(t2 != t || !is_compressible(clause)) {
+			if(t2 != t || !is_compressible(clause, t2)) {
 				break;
 			}
 			array_append(clauses, (cypher_astnode_t *)clause);
@@ -328,7 +329,8 @@ static bool _compress_clauses
 // returns true if AST clause type is compressible
 static inline bool is_compressible
 (
-	const cypher_astnode_t *clause
+	const cypher_astnode_t *clause,  // clause to check
+	cypher_astnode_type_t type       // type of clause
 ) {
 	// compressible clauses:
 	// 1. Non-OPTIONAL MATCH
@@ -336,13 +338,12 @@ static inline bool is_compressible
 	// 3. SET
 	// 4. DELETE
 	// 5. REMOVE
-	cypher_astnode_type_t t = cypher_astnode_type(clause);
-	return ( (t == CYPHER_AST_MATCH &&
+	return ((type == CYPHER_AST_MATCH &&
 			  !cypher_ast_match_is_optional(clause)) ||
-			  t == CYPHER_AST_CREATE                 ||
-			  t == CYPHER_AST_SET                    ||
-			  t == CYPHER_AST_DELETE                 ||
-			  t == CYPHER_AST_REMOVE);
+			  type == CYPHER_AST_CREATE              ||
+			  type == CYPHER_AST_SET                 ||
+			  type == CYPHER_AST_DELETE              ||
+			  type == CYPHER_AST_REMOVE);
 }
 
 // rewrite result by compressing consecutive clauses of the same type
