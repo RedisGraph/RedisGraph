@@ -24,7 +24,6 @@ static Graph *BuildGraph() {
 	int relation = Graph_AddRelationType(g);
 	for(int i = 0; i < 4; i++) {
 		n = GE_NEW_NODE();
-		Graph_ReserveNode(g, &n);
 		Graph_CreateNode(g, &n, NULL, 0);
 	}
 

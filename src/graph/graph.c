@@ -682,13 +682,12 @@ void Graph_CreateNode
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);
 	ASSERT(label_count == 0 || (label_count > 0 && labels != NULL));
-	ASSERT(n->id != INVALID_ENTITY_ID);
 
-	NodeID id;
-	n->attributes = DataBlock_AllocateItem(g->nodes, &id);
+	NodeID id = n->id;
+	n->attributes = DataBlock_AllocateItem(g->nodes, &n->id);
+	ASSERT(id == INVALID_ENTITY_ID || id == n->id);
 	*n->attributes = NULL;
-	
-	ASSERT(id == n->id);
+
 	g->reserved_node_count--;
 
 	if(label_count > 0) {

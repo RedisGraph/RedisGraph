@@ -41,7 +41,6 @@ void _test_node_creation(Graph *g, size_t node_count) {
 	Node n;
 	for(uint i = 0; i < node_count; i++) {
 		n = GE_NEW_NODE();
-		Graph_ReserveNode(g, &n);
 		Graph_CreateNode(g, &n, NULL, 0);
 	}
 
@@ -84,7 +83,6 @@ void benchmark_node_creation_with_labels() {
 		simple_tic(tic);
 		for(unsigned int j = 0; j < n; j++) {
 			node = GE_NEW_NODE();
-			Graph_ReserveNode(g, &node);
 			Graph_CreateNode(g, &node, NULL, 0);
 		}
 		timings[i] = simple_toc(tic);
@@ -125,7 +123,6 @@ void benchmark_node_creation_no_labels() {
 		simple_tic(tic);
 		for(int j = 0; j < n; j++) {
 			node = GE_NEW_NODE();
-			Graph_ReserveNode(g, &node);
 			Graph_CreateNode(g, &node, NULL, 0);
 		}
 		timings[i] = simple_toc(tic);
@@ -165,7 +162,6 @@ void benchmark_edge_creation_with_relationships() {
 	for(int i = 0; i < relation_count; i++) Graph_AddRelationType(g);
 	for(int i = 0; i < node_count; i++) {
 		node = GE_NEW_NODE();
-		Graph_ReserveNode(g, &node);
 		Graph_CreateNode(g, &node, NULL, 0);
 	}
 	for(int i = 0; i < samples; i++) {
@@ -273,7 +269,6 @@ void test_removeNodes() {
 
 	for(int i = 0; i < 3; i++) {
 		node = GE_NEW_NODE();
-		Graph_ReserveNode(g, &node);
 		Graph_CreateNode(g, &node, NULL, 0);
 	}
 	int r = Graph_AddRelationType(g);
@@ -341,7 +336,6 @@ void test_getNode() {
 	{
 		for(int i = 0 ; i < nodeCount; i++) {
 			n = GE_NEW_NODE();
-			Graph_ReserveNode(g, &n);
 			Graph_CreateNode(g, &n, NULL, 0);
 		}
 	}
@@ -375,7 +369,6 @@ void test_getEdge() {
 	Graph_AcquireWriteLock(g);
 	for(int i = 0; i < nodeCount; i++) {
 		n = GE_NEW_NODE();
-		Graph_ReserveNode(g, &n);
 		Graph_CreateNode(g, &n, NULL, 0);
 	}
 	for(int i = 0; i < relationCount; i++) relations[i] = Graph_AddRelationType(g);
