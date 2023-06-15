@@ -648,7 +648,7 @@ static void _call_subquery_add_star_projection
 }
 
 // add a star projection (i.e., `WITH *`) to a statement clause at a given index
-static void _statement_replace_add_star_projection
+static void _statement_add_star_projection
 (
 	cypher_astnode_t *statement,  // call {} node to add the projection to
 	uint ind                      // index in which to plant the projection
@@ -726,7 +726,7 @@ static void _statement_add_star_projections
 		cypher_astnode_t *clause = (cypher_astnode_t *)
 			cypher_ast_query_get_clause(query, i);
 		if(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY) {
-			_statement_replace_add_star_projection(statement, i);
+			_statement_add_star_projection(statement, i);
 
 			// update `query` and `nclauses` to reflect the new query
 			query = (cypher_astnode_t *)
@@ -758,6 +758,7 @@ bool AST_RewriteCallSubquery
 	// retrieve the root's body
 	cypher_astnode_t *query =
 		(cypher_astnode_t *)cypher_ast_statement_get_body(root);
+
 	if(cypher_astnode_type(query) != CYPHER_AST_QUERY) {
 		return false;
 	}
