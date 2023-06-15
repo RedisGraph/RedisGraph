@@ -23,6 +23,7 @@ static Graph *BuildGraph() {
 	Graph *g = Graph_New(nodeCount, nodeCount);
 	int relation = Graph_AddRelationType(g);
 	for(int i = 0; i < 4; i++) {
+		Graph_ReserveNode(g, &n);
 		Graph_CreateNode(g, &n, NULL, 0);
 	}
 

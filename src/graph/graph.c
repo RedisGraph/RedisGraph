@@ -652,6 +652,22 @@ void Graph_GetEdgesConnectingNodes
 	}
 }
 
+void Graph_ReserveNode
+(
+	Graph *g,               // graph for which nodes will be added
+	Node *n                 // node to reserve
+) {
+	NodeID id;
+	uint deleted = DataBlock_DeletedItemsCount(g->nodes);
+	if(g->reserved_node_count < deleted) {
+		id = g->nodes->deletedIdx[deleted - ++g->reserved_node_count];
+	} else {
+		id = DataBlock_ItemCount(g->nodes) + g->reserved_node_count++;
+	}
+
+	n->id = id;
+}
+
 void Graph_CreateNode
 (
 	Graph *g,
@@ -662,13 +678,14 @@ void Graph_CreateNode
 	ASSERT(g != NULL);
 	ASSERT(n != NULL);
 	ASSERT(label_count == 0 || (label_count > 0 && labels != NULL));
+	ASSERT(n->id != INVALID_ENTITY_ID);
 
 	NodeID id;
-	AttributeSet *set = DataBlock_AllocateItem(g->nodes, &id);
-	*set = NULL;
-
-	n->id         = id;
-	n->attributes = set;
+	n->attributes = DataBlock_AllocateItem(g->nodes, &id);
+	*n->attributes = NULL;
+	
+	ASSERT(id == n->id);
+	g->reserved_node_count--;
 
 	if(label_count > 0) {
 		Graph_LabelNode(g, ENTITY_GET_ID(n), labels, label_count);

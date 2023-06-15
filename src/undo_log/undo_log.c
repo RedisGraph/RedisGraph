@@ -252,6 +252,7 @@ static void _UndoLog_Rollback_Delete_Node
 		UndoOp *op = undo_list + i;
 		UndoDeleteNodeOp *delete_op = &(op->delete_node_op);
 
+		Graph_ReserveNode(ctx->gc->g, &n);
 		Graph_CreateNode(ctx->gc->g, &n, delete_op->labels,
 				delete_op->label_count);
 		*n.attributes = delete_op->set;
@@ -548,6 +549,8 @@ void UndoLog_Rollback
 
 	QueryCtx *ctx  = QueryCtx_GetQueryCtx();
 	uint64_t count = array_len(log);
+
+	ctx->gc->g->reserved_node_count = 0;
 
 	if(count == 0) return;
 

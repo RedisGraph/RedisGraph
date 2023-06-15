@@ -7,23 +7,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "RG.h"
 #include "edge.h"
 #include "graph_entity.h"
-#include "../graphcontext.h"
-#include "../../query_ctx.h"
 
 NodeID Edge_GetSrcNodeID
 (
 	const Edge *edge
 ) {
 	ASSERT(edge);
-	if(edge->src_id == INVALID_ENTITY_ID) {
-		return INVALID_ENTITY_ID;
-	}
-	if(edge->src_id & MSB_MASK) {
-		NodeID *id = (NodeID *)(CLEAR_MSB(edge->src_id));
-		return *id;
-	}
 	return edge->src_id;
 }
 
@@ -32,13 +24,6 @@ NodeID Edge_GetDestNodeID
 	const Edge *edge
 ) {
 	ASSERT(edge);
-	if(edge->dest_id == INVALID_ENTITY_ID) {
-		return INVALID_ENTITY_ID;
-	}
-	if(edge->dest_id & MSB_MASK) {
-		NodeID *id = (NodeID *)(CLEAR_MSB(edge->dest_id));
-		return *id;
-	}
 	return edge->dest_id;
 }
 
@@ -50,22 +35,22 @@ int Edge_GetRelationID
 	return edge->relationID;
 }
 
-void Edge_SetSrcNode
+void Edge_SetSrcNodeID
 (
 	Edge *e,
-	Node *src
+	NodeID id
 ) {
-	ASSERT(e && src);
-	e->src_id = (NodeID)SET_MSB(&ENTITY_GET_ID(src));
+	ASSERT(e);
+	e->src_id = id;
 }
 
-void Edge_SetDestNode
+void Edge_SetDestNodeID
 (
 	Edge *e,
-	Node *dest
+	NodeID id
 ) {
-	ASSERT(e && dest);
-	e->dest_id = (NodeID)SET_MSB(&ENTITY_GET_ID(dest));
+	ASSERT(e);
+	e->dest_id = id;
 }
 
 void Edge_SetRelationID

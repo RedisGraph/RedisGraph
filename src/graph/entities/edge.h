@@ -66,17 +66,17 @@ int Edge_GetRelationID
 );
 
 // sets edge source node
-void Edge_SetSrcNode
+void Edge_SetSrcNodeID
 (
 	Edge *e,
-	Node *src
+	NodeID id
 );
 
 // sets edge destination node
-void Edge_SetDestNode
+void Edge_SetDestNodeID
 (
 	Edge *e,
-	Node *dest
+	NodeID id
 );
 
 // sets edge relation type
