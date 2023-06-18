@@ -265,6 +265,25 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][0], 2)
         self.env.assertEquals(res.result_set[1][1], 1)
 
+        # more than one component in the outer loop
+        res = graph.query(
+            """
+            UNWIND [1, 2, 3, 4] AS x
+            CALL {
+                UNWIND [1, 2] AS y
+                RETURN y
+            }
+            RETURN x, y
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 8)
+        for i in range(0, 4):
+            for j in range(0, 2):
+                self.env.assertEquals(res.result_set[i * 2 + j][0], i + 1)
+                self.env.assertEquals(res.result_set[i * 2 + j][1], j + 1)
+
     def test07_optional_match(self):
         """Tests that OPTIONAL MATCH within the subquery works appropriately,
         i.e., passes records with empty columns in case no match was found"""

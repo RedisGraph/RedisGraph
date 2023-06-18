@@ -230,6 +230,8 @@ bool AST_RewriteStarProjections
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
 
 		if(t == CYPHER_AST_CALL_SUBQUERY) {
+			// TODO: Manually check if the first clause of the subquery is a
+			// `WITH *` clause, and if it is, rewrite it with the currently bound vars
 			cypher_astnode_t *subquery =
 				cypher_ast_call_subquery_get_query(clause);
 			AST_RewriteStarProjections(subquery);
