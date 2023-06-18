@@ -191,7 +191,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		EdgeTraverseCtx_SetEdge(op->edge_ctx, op->r);
 	}
 
-	return OpBase_CloneRecord(op->r);
+	return OpBase_DeepCloneRecord(op->r);
 }
 
 static OpResult CondTraverseReset(OpBase *ctx) {
