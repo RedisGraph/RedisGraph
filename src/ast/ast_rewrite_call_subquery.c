@@ -442,7 +442,6 @@ static void _replace_return_clause
 static void _rewrite_projections
 (
 	cypher_astnode_t *wrapping_clause,  // outer-context clause (query/call {})
-	cypher_astnode_t *clause,           // call {} clause to rewrite
 	uint clause_ind,                    // index of call {} clause in query
 	uint start,                         // start ind of outer-scope bound vars
 	char ***inter_names                 // internal representation of bound vars
@@ -453,7 +452,8 @@ static void _rewrite_projections
 
 	rax *outer_mapping = raxNew();
 	if(start != clause_ind) {
-		collect_aliases_in_scope(wrapping_clause, start, clause_ind, outer_mapping);
+		collect_aliases_in_scope(wrapping_clause, start, clause_ind,
+			outer_mapping);
 	}
 
 	uint mapping_size = raxSize(outer_mapping);
@@ -473,6 +473,8 @@ static void _rewrite_projections
 	//--------------------------------------------------------------------------
 
 	// if there is a UNION clause in the subquery, each branch must be handled
+	cypher_astnode_t *clause = (cypher_astnode_t *)
+		cypher_ast_query_get_clause(wrapping_clause, clause_ind);
 	cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(clause);
 	AST ast = {0};
 	ast.root = subquery;
@@ -530,12 +532,14 @@ static void _rewrite_projections
 static bool rewrite_call_subquery_clause
 (
 	cypher_astnode_t *wrapping_clause,  // outer-context clause (query/call {})
-	cypher_astnode_t *clause,           // the clause to rewrite
-	uint clause_idx,                    // index of clause in query
+	uint clause_idx,                    // index of the call {} clause in query
 	uint start,                         // start ind from which to collect bound vars
 	char ***inter_names                 // internal representation of bound vars
 ) {
 	ASSERT(cypher_astnode_type(wrapping_clause) == CYPHER_AST_QUERY);
+
+	cypher_astnode_t *clause = (cypher_astnode_t *)
+		cypher_ast_query_get_clause(wrapping_clause, clause_idx);
 	ASSERT(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY);
 
 	cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(clause);
@@ -550,8 +554,7 @@ static bool rewrite_call_subquery_clause
 	bool is_eager = _query_is_eager(subquery);
 
 	if(is_eager && is_returning) {
-		_rewrite_projections(wrapping_clause, clause, clause_idx, start,
-			inter_names);
+		_rewrite_projections(wrapping_clause, clause_idx, start, inter_names);
 		return true;
 	}
 
@@ -594,14 +597,14 @@ static bool _rewrite_call_subquery_clauses
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 		if(type == CYPHER_AST_CALL_SUBQUERY) {
 			// if the subquery is returning & eager, rewrite its projections
-			rewritten |= rewrite_call_subquery_clause(wrapping_clause, clause,
+			rewritten |= rewrite_call_subquery_clause(wrapping_clause,
 				i, start_scope, outer_inter_names);
 
 			// `outer_inter_names` now contains the internal representation of
 			// the current context as well
 
-			// recursively rewrite embedded Call {} clauses, and update clause
-			// in case it was rewritten
+			// recursively rewrite embedded Call {} clauses, taking the
+			// potentially updated query
 			rewritten |= _rewrite_call_subquery_clauses(
 				cypher_ast_call_subquery_get_query(clause), outer_inter_names);
 
@@ -705,7 +708,6 @@ static void _call_subquery_add_star_projections
 			clause = (cypher_astnode_t *)cypher_ast_query_get_clause(query, i);
 
 			_call_subquery_add_star_projections(clause);
-
 		}
 	}
 }

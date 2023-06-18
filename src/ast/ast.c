@@ -707,9 +707,9 @@ cypher_parse_result_t *parse_query
 	bool rerun_validation = AST_RewriteSameClauses(root);
 
 	// rewrite eager & resulting Call {} clauses
-	// e.g. MATCH (m) CALL { CREATE (n:N) RETURN n } RETURN n
+	// e.g. MATCH (m) CALL { CREATE (n:N) RETURN n } RETURN n, m
 	// will be rewritten as:
-	// MATCH (m) CALL { WITH m AS @m CREATE (n:N) RETURN n, @m AS m } RETURN n
+	// MATCH (m) CALL { WITH m AS @m CREATE (n:N) RETURN n, @m AS m } RETURN n, m
 	// note: we rewrite the ast for sure here, so we need to re-validate it
 	// TODO: remove all boolean return-vals from rewriting functions
 	rerun_validation |= AST_RewriteCallSubquery(root);
