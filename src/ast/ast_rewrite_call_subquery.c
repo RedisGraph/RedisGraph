@@ -198,19 +198,19 @@ static void _replace_with_clause
 	const cypher_astnode_t  *order_by = NULL;
 	const cypher_astnode_t  *pred     = NULL;
 
-	distinct = cypher_ast_with_is_distinct(clause);
 	skip     = cypher_ast_with_get_skip(clause);
 	limit    = cypher_ast_with_get_limit(clause);
+	distinct = cypher_ast_with_is_distinct(clause);
 	order_by = cypher_ast_with_get_order_by(clause);
 	pred     = cypher_ast_with_get_predicate(clause);
 
 	// clone any ORDER BY, SKIP, LIMIT, and WHERE modifiers to
 	// add to the children array and populate the new clause
 	uint nchildren = n_projections;
-	if(order_by) order_by = children[nchildren++] = cypher_ast_clone(order_by);
 	if(skip)     skip     = children[nchildren++] = cypher_ast_clone(skip);
-	if(limit)    limit    = children[nchildren++] = cypher_ast_clone(limit);
 	if(pred)     pred     = children[nchildren++] = cypher_ast_clone(pred);
+	if(limit)    limit    = children[nchildren++] = cypher_ast_clone(limit);
+	if(order_by) order_by = children[nchildren++] = cypher_ast_clone(order_by);
 
 	struct cypher_input_range range = cypher_astnode_range(clause);
 
@@ -350,22 +350,22 @@ static void _replace_return_clause
 	// -------------------------------------------------------------------------
 	// prepare additional arguments
 	//--------------------------------------------------------------------------
-	bool                    distinct   =  false;
-	const cypher_astnode_t  *skip      =  NULL ;
-	const cypher_astnode_t  *limit     =  NULL ;
-	const cypher_astnode_t  *order_by  =  NULL ;
+	bool                    distinct   = false;
+	const cypher_astnode_t  *skip      = NULL;
+	const cypher_astnode_t  *limit     = NULL;
+	const cypher_astnode_t  *order_by  = NULL;
 
-	distinct = cypher_ast_return_is_distinct(clause);
 	skip     = cypher_ast_return_get_skip(clause);
 	limit    = cypher_ast_return_get_limit(clause);
+	distinct = cypher_ast_return_is_distinct(clause);
 	order_by = cypher_ast_return_get_order_by(clause);
 
 	// clone any ORDER BY, SKIP, LIMIT, and WHERE modifiers to
 	// add to the children array and populate the new clause
 	uint nchildren = n_projections;
-	if(order_by) order_by = children[nchildren++] = cypher_ast_clone(order_by);
 	if(skip)     skip     = children[nchildren++] = cypher_ast_clone(skip);
 	if(limit)    limit    = children[nchildren++] = cypher_ast_clone(limit);
+	if(order_by) order_by = children[nchildren++] = cypher_ast_clone(order_by);
 
 	struct cypher_input_range range = cypher_astnode_range(clause);
 
