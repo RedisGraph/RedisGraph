@@ -186,6 +186,53 @@ bool AST_ReadOnly
 	return true;
 }
 
+// returns true if the given ast-node will result in an eager operation
+static bool _clause_is_eager
+(
+	const cypher_astnode_t *clause
+) {
+	// -------------------------------------------------------------------------
+	// check if clause type is one of: CREATE, MERGE, SET or REMOVE
+	// -------------------------------------------------------------------------
+	cypher_astnode_type_t type = cypher_astnode_type(clause);
+	if(type == CYPHER_AST_CREATE ||
+	   type == CYPHER_AST_MERGE  ||
+	   type == CYPHER_AST_SET    ||
+	   type == CYPHER_AST_REMOVE) {
+		return true;
+	}
+
+	if(type == CYPHER_AST_CALL_SUBQUERY) {
+		return AST_IsEager(cypher_ast_call_subquery_get_query(clause));
+	}
+
+	// -------------------------------------------------------------------------
+	// check if clause is a WITH or RETURN clause with an aggregation
+	// -------------------------------------------------------------------------
+	if(type == CYPHER_AST_RETURN || type == CYPHER_AST_WITH) {
+		return AST_ClauseContainsAggregation(clause);
+	}
+
+	return false;
+}
+
+// checks if a query contains an ast-node corresponding to an eager operation
+bool AST_IsEager
+(
+	const cypher_astnode_t *root
+) {
+	ASSERT(cypher_astnode_type(root) == CYPHER_AST_QUERY);
+	uint n_clauses = cypher_ast_query_nclauses(root);
+
+	for(uint i = 0; i < n_clauses; i++) {
+		if(_clause_is_eager(cypher_ast_query_get_clause(root, i))) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 inline bool AST_ContainsClause
 (
 	const AST *ast,

@@ -223,13 +223,9 @@ void buildCallSubqueryPlan
 	QueryCtx_SetAST(orig_ast);
 
 	// characterize whether the query is eager or not
-	OPType eager_types[] = {OPType_CREATE, OPType_UPDATE, OPType_FOREACH,
-					  OPType_MERGE, OPType_SORT, OPType_AGGREGATE};
+	bool is_eager = ExecutionPlan_isEager(embedded_plan->root);
 
-	bool is_eager =
-	  ExecutionPlan_LocateOpMatchingTypes(embedded_plan->root, eager_types, 6)
-		!= NULL;
-
+	// characterize whether the query is returning or not
 	bool is_returning = (OpBase_Type(embedded_plan->root) == OPType_RESULTS);
 
 	// find the feeding points, to which we will add the projections and feeders

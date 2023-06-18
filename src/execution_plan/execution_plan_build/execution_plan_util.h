@@ -10,6 +10,12 @@
 #include "../execution_plan.h"
 #include "../../util/rax_extensions.h"
 
+// returns true if an operation in the op-tree rooted at `root` is eager
+bool ExecutionPlan_isEager
+(
+    OpBase *root
+);
+
 //------------------------------------------------------------------------------
 // ExecutionPlan_Locate API:
 // For performing existence checks and looking up individual operations in tree.

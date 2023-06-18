@@ -9,56 +9,6 @@
 #include "../util/rmalloc.h"
 #include "ast_rewrite_call_subquery.h"
 
-static bool _query_is_eager(const cypher_astnode_t *node);
-
-// returns true if the given ast-node will result in an eager operation
-static bool _clause_is_eager
-(
-	const cypher_astnode_t *clause
-) {
-	// -------------------------------------------------------------------------
-	// check if clause type is one of: CREATE, MERGE, SET or REMOVE
-	// -------------------------------------------------------------------------
-	cypher_astnode_type_t type = cypher_astnode_type(clause);
-	if(type == CYPHER_AST_CREATE ||
-	   type == CYPHER_AST_MERGE  ||
-	   type == CYPHER_AST_SET    ||
-	   type == CYPHER_AST_REMOVE) {
-		return true;
-	}
-
-	if(type == CYPHER_AST_CALL_SUBQUERY) {
-		return _query_is_eager(cypher_ast_call_subquery_get_query(clause));
-	}
-
-	// -------------------------------------------------------------------------
-	// check if clause is a WITH or RETURN clause with an aggregation
-	// -------------------------------------------------------------------------
-	if(type == CYPHER_AST_RETURN || type == CYPHER_AST_WITH) {
-		return AST_ClauseContainsAggregation(clause);
-	}
-
-	return false;
-}
-
-// returns true if the given node will result in an execution-plan that will
-// contain an eager operation
-static bool _query_is_eager
-(
-	const cypher_astnode_t *node  // ast-node
-) {
-	ASSERT(cypher_astnode_type(node) == CYPHER_AST_QUERY);
-	uint n_clauses = cypher_ast_query_nclauses(node);
-
-	for(uint i = 0; i < n_clauses; i++) {
-		if(_clause_is_eager(cypher_ast_query_get_clause(node, i))) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
 // fill `names` and `inner_names` with the bound vars and their internal
 // representation, respectively
 static void _get_vars_inner_rep
@@ -551,7 +501,7 @@ static bool rewrite_call_subquery_clause
 		cypher_ast_query_get_clause(subquery, subclauses_count - 1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
 
-	bool is_eager = _query_is_eager(subquery);
+	bool is_eager = AST_IsEager(subquery);
 
 	if(is_eager && is_returning) {
 		_rewrite_projections(wrapping_clause, clause_idx, start, inter_names);

@@ -6,6 +6,17 @@
 
 #include "execution_plan_util.h"
 
+// returns true if an operation in the op-tree rooted at `root` is eager
+bool ExecutionPlan_isEager
+(
+    OpBase *root
+) {
+	OPType eager_types[] = {OPType_CREATE, OPType_UPDATE, OPType_FOREACH,
+					  OPType_MERGE, OPType_SORT, OPType_AGGREGATE};
+
+	return ExecutionPlan_LocateOpMatchingTypes(root, eager_types, 6) != NULL;
+}
+
 OpBase *ExecutionPlan_LocateOpResolvingAlias
 (
     OpBase *root,
