@@ -1263,6 +1263,8 @@ static VISITOR_STRATEGY _Validate_call_subquery
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
+	vctx->clause = cypher_astnode_type(n);
+
 	// create a query astnode with the body of the subquery as its body
 	cypher_astnode_t *body = cypher_ast_call_subquery_get_query(n);
 	uint nclauses = cypher_ast_query_nclauses(body);
@@ -1292,11 +1294,12 @@ static VISITOR_STRATEGY _Validate_call_subquery
 	for(uint i = 0; i < nclauses; i++) {
 		const cypher_astnode_t *clause =
 			cypher_ast_query_get_clause(body, i);
+		cypher_astnode_type_t type = cypher_astnode_type(clause);
 
 		// if the current clause is a `UNION` clause, it has reset the bound
 		// vars env to the empty env. We compensate for that in case there is no
 		// initial `WITH` clause
-		if(last_is_union && cypher_astnode_type(clause) == CYPHER_AST_WITH) {
+		if(last_is_union && type == CYPHER_AST_WITH) {
 			// set the env of bound-vars to the input env
 			raxFree(vctx->defined_identifiers);
 			vctx->defined_identifiers = raxClone(in_env);
@@ -1318,7 +1321,7 @@ references to outside variables");
 			return VISITOR_BREAK;
 		}
 
-		if(cypher_astnode_type(clause) == CYPHER_AST_UNION) {
+		if(type == CYPHER_AST_UNION) {
 			last_is_union = true;
 		} else {
 			last_is_union = false;

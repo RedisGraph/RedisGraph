@@ -664,7 +664,7 @@ static void _call_subquery_add_star_projections
 
 // adds a star projection (i.e., `WITH *`) before every call {} clause in the
 // ast embedded in a statement ast node
-static void _statement_add_star_projections
+static bool _statement_add_star_projections
 (
 	cypher_astnode_t *statement  // statement of ast to rewrite
 ) {
@@ -676,10 +676,13 @@ static void _statement_add_star_projections
 
 	// add a star projection before every call {} clause, excluding the first
 	// clause
+	bool rewritten = false;
 	for(uint i = 1; i < nclauses; i++) {
 		cypher_astnode_t *clause = (cypher_astnode_t *)
 			cypher_ast_query_get_clause(query, i);
 		if(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY) {
+			rewritten = true;
+
 			_statement_add_star_projection(statement, i);
 
 			// update `query` and `nclauses` to reflect the new query
@@ -692,6 +695,8 @@ static void _statement_add_star_projections
 			_call_subquery_add_star_projections(clause);
 		}
 	}
+
+	return rewritten;
 }
 
 // if the subquery will result in an eager and returning execution-plan
@@ -723,7 +728,7 @@ bool AST_RewriteCallSubquery
 	array_free_cb(inter_names, rm_free);
 
 	// add a `WITH *` clause before every call {} clause
-	_statement_add_star_projections((cypher_astnode_t *)root);
+	rewritten |= _statement_add_star_projections((cypher_astnode_t *)root);
 
 	return rewritten;
 }

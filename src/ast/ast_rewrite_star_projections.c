@@ -234,7 +234,7 @@ bool AST_RewriteStarProjections
 			// `WITH *` clause, and if it is, rewrite it with the currently bound vars
 			cypher_astnode_t *subquery =
 				cypher_ast_call_subquery_get_query(clause);
-			AST_RewriteStarProjections(subquery);
+			rewritten |= AST_RewriteStarProjections(subquery);
 			continue;
 		}
 
