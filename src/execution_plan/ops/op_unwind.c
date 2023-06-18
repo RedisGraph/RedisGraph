@@ -148,11 +148,6 @@ static OpResult UnwindReset
 ) {
 	OpUnwind *op = (OpUnwind *)ctx;
 
-	if(op->currentRecord != NULL) {
-		OpBase_DeleteRecord(op->currentRecord);
-		op->currentRecord = NULL;
-	}
-
 	op->listIdx = 0;
 	op->list = SI_NullVal();
 	op->listLen = 0;
