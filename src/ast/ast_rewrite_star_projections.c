@@ -286,6 +286,8 @@ static bool _rewrite_call_subquery_star_projections
 		}
 	}
 
+	array_free(union_indeces);
+
 	//--------------------------------------------------------------------------
 	// rewrite intermediate and return star projections
 	//--------------------------------------------------------------------------
@@ -330,6 +332,8 @@ static bool _rewrite_call_subquery_star_projections
 			first_in_scope = i + 1;
 		}
 	}
+
+	raxFree(bound_vars);
 
 	//--------------------------------------------------------------------------
 	// recursively rewrite star projections in subqueries

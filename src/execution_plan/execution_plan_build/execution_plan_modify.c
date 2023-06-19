@@ -211,7 +211,7 @@ void ExecutionPlan_MigrateOps_exclude_type
 ) {
 	for(uint i = 0; i < op_count; i++) {
 		if(ops[i]->type != exclude_type) {
-			OpBase_bindOpToPlan(ops[i], (ExecutionPlan *)plan);
+			OpBase_BindOpToPlan(ops[i], (ExecutionPlan *)plan);
 		}
 	}
 }
