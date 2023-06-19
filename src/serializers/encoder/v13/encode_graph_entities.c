@@ -264,8 +264,8 @@ static void _RdbSaveMultipleEdges
 	while(i < edgeCount && encoded_edges_count < edges_to_encode) {
 		Edge e;
 		EdgeID edgeID = multiple_edges_array[i++];
-		e.srcNodeID = src;
-		e.destNodeID = dest;
+		e.src_id  = src;
+		e.dest_id = dest;
 		Graph_GetEdge(gc->g, edgeID, &e);
 		_RdbSaveEdge(rdb, gc->g, &e, r);
 		encoded_edges_count++;
@@ -366,8 +366,8 @@ void RdbSaveEdges_v13
 		
 		ASSERT(info == GrB_SUCCESS);
 
-		e.srcNodeID = src;
-		e.destNodeID = dest;
+		e.src_id = src;
+		e.dest_id = dest;
 		if(SINGLE_EDGE(edgeID)) {
 			Graph_GetEdge(gc->g, edgeID, &e);
 			_RdbSaveEdge(rdb, gc->g, &e, r);

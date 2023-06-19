@@ -83,6 +83,9 @@ DataBlockIterator *DataBlock_FullScan(const DataBlock *dataBlock);
 // Get item at position idx
 void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx);
 
+// Get reserved item id after 'n' items
+uint64_t DataBlock_GetReservedIdx(const DataBlock *dataBlock, uint64_t n);
+
 // Allocate a new item within given dataBlock,
 // if idx is not NULL, idx will contain item position
 // return a pointer to the newly allocated item.

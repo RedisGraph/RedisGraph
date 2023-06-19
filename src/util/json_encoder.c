@@ -76,13 +76,13 @@ static sds _JsonEncoder_Edge(Edge *e, sds s) {
 	s = sdscat(s, ", \"start\": {");
 	// Retrieve source node data.
 	Node src;
-	Graph_GetNode(gc->g, e->srcNodeID, &src);
+	Graph_GetNode(gc->g, e->src_id, &src);
 	s = _JsonEncoder_Node(&src, s);
 
 	s = sdscat(s, "}, \"end\": {");
 	// Retrieve dest node data.
 	Node dest;
-	Graph_GetNode(gc->g, e->destNodeID, &dest);
+	Graph_GetNode(gc->g, e->dest_id, &dest);
 	s = _JsonEncoder_Node(&dest, s);
 
 	s = sdscat(s, "}");
