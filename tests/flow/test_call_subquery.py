@@ -1839,6 +1839,58 @@ updating clause.")
         for i in range(3):
             self.env.assertEquals(res.result_set[0][i], i + 1)
 
+        # using union
+        res = graph.query(
+            """
+            WITH 1 AS a
+            CALL {
+                WITH *
+                RETURN a AS num
+                UNION
+                WITH *
+                RETURN a + 1 AS num
+            }
+            RETURN a, num order by a, num
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(len(res.result_set[0]), 2)
+        self.env.assertEquals(len(res.result_set[1]), 2)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[0][1], 1)
+        self.env.assertEquals(res.result_set[1][0], 1)
+        self.env.assertEquals(res.result_set[1][1], 2)
+
+        # embedded call {}
+        res = graph.query(
+            """
+            WITH 1 AS a
+            CALL {
+                WITH *
+                CALL {
+                    WITH *
+                    RETURN a AS num
+                    UNION
+                    WITH *
+                    RETURN a + 1 AS num
+                }
+                RETURN *
+            }
+            RETURN a, num order by a, num
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(len(res.result_set[0]), 2)
+        self.env.assertEquals(len(res.result_set[1]), 2)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[0][1], 1)
+        self.env.assertEquals(res.result_set[1][0], 1)
+        self.env.assertEquals(res.result_set[1][1], 2)
+
     def test30_surrounding_matches(self):
         """Tests that in case the call {} is surrounded by matches, the
         following match does not affect the input records to the call {} op"""

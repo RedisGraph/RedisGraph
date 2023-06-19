@@ -12,6 +12,11 @@
 #include "../util/sds/sds.h"
 #include "../procedures/procedure.h"
 
+bool AST_RewriteStarProjections(const cypher_astnode_t *root);
+
+// replaces a `WITH` clause containing a star projection with explicit
+// projections.
+// if `identifiers` is NULL, it will be populated with all identifiers in scope
 static void replace_clause
 (
 	cypher_astnode_t *root,    // ast root
@@ -214,53 +219,117 @@ static void replace_clause
 	cypher_ast_query_set_clause(root, new_clause, scope_end);
 }
 
-// rewrites the star projections in importing `WITH` clauses of a subquery
-static bool _rewrite_call_import_star
+// rewrites star projections in a CALL {} clause
+static bool _rewrite_call_subquery_star_projections
 (
 	const cypher_astnode_t *wrapping_clause,  // wrapping clause
-	uint start_scope,                         // start scope in wrapping clause
+	uint scope_start,                         // start scope in wrapping clause
 	uint ind                                  // index of the call subquery
 ) {
+	bool rewritten = false;
+
+	// get the call subquery clause
 	cypher_astnode_t *call_subquery = (cypher_astnode_t *)
 		cypher_ast_query_get_clause(wrapping_clause, ind);
-	cypher_astnode_t *query = cypher_ast_call_subquery_get_query(call_subquery);
-	uint nclauses = cypher_ast_query_nclauses(query);
+	// get the query node
+	cypher_astnode_t *query = (cypher_astnode_t *)
+		cypher_ast_call_subquery_get_query(call_subquery);
 
-	bool rewritten = false;
-	AST ast = {.root = query};
+	uint n_clauses = cypher_ast_query_nclauses(query);
+
+	// collect bound vars from outer scope
+	rax *bound_vars = raxNew();
+	if(scope_start != ind) {
+		collect_aliases_in_scope(wrapping_clause, scope_start, ind, bound_vars);
+	}
+
+	// rewrite star projections in the subquery in the following manner:
+		// import star projections import all outer scope vars.
+		// intermediate star projections are replaced with all bound vars.
+		// return star projections are replaced with all bound vars, except
+		// for imported outer scope vars.
+
+	//--------------------------------------------------------------------------
+	// rewrite import star projections
+	//--------------------------------------------------------------------------
+
+	// get union indeces
+	AST ast = { .root = query };
 	uint *union_indeces = AST_GetClauseIndices(&ast, CYPHER_AST_UNION);
 	uint n_branches = array_len(union_indeces) + 1;
 
-	rax *identifiers = NULL;
-
-	// handle first branch
+	// rewrite first branch
 	cypher_astnode_t *first_clause = (cypher_astnode_t *)
 		cypher_ast_query_get_clause(query, 0);
 	if(cypher_astnode_type(first_clause) == CYPHER_AST_WITH &&
 	   cypher_ast_with_has_include_existing(first_clause)) {
-		identifiers = raxNew();
-		collect_aliases_in_scope(wrapping_clause, start_scope, ind,
+		rax *identifiers = raxNew();
+		collect_aliases_in_scope(wrapping_clause, scope_start, ind,
 			identifiers);
 		replace_clause(query, first_clause, 0, 0, identifiers);
 		rewritten = true;
 	}
 
-	// handle remaining branches
+	// rewrite remaining branches
 	for(uint i = 0; i < n_branches - 1; i++) {
 		uint first_ind = union_indeces[i] + 1;
 		first_clause = (cypher_astnode_t *)
 			cypher_ast_query_get_clause(query, first_ind);
 		if(cypher_astnode_type(first_clause) == CYPHER_AST_WITH &&
 		cypher_ast_with_has_include_existing(first_clause)) {
-			if(identifiers == NULL) {
-				identifiers = raxNew();
-				collect_aliases_in_scope(wrapping_clause, start_scope, ind,
-					identifiers);
-			}
+			rax *identifiers = raxNew();
+			collect_aliases_in_scope(wrapping_clause, scope_start, ind,
+				identifiers);
 			replace_clause(query, first_clause, 0, first_ind, identifiers);
 			rewritten = true;
 		}
 	}
+
+	//--------------------------------------------------------------------------
+	// rewrite intermediate and return star projections
+	//--------------------------------------------------------------------------
+
+	uint first_in_scope = 0;
+	for(uint i = 0; i < n_clauses; i++) {
+		cypher_astnode_t *clause = (cypher_astnode_t *)
+			cypher_ast_query_get_clause(query, i);
+		cypher_astnode_type_t t = cypher_astnode_type(clause);
+
+		if(t == CYPHER_AST_WITH &&
+			cypher_ast_with_has_include_existing(clause)) {
+				replace_clause(query, clause, first_in_scope, i, NULL);
+			first_in_scope = i;
+		} else if(t == CYPHER_AST_RETURN &&
+				  cypher_ast_return_has_include_existing(clause)) {
+					// populate a rax with all bound vars, except for imported
+					// outer scope vars
+					rax *inner_identifiers = raxNew();
+					collect_aliases_in_scope(query, first_in_scope, i,
+						inner_identifiers);
+
+					raxIterator it;
+					raxStart(&it, inner_identifiers);
+					// Iterate over all keys in the rax.
+					raxSeek(&it, "^", NULL, 0);
+					while(raxNext(&it)) {
+						if(raxFind(bound_vars, (unsigned char *)it.key, it.key_len) != raxNotFound)
+							raxRemove(inner_identifiers, (unsigned char *)it.key, it.key_len, NULL);
+					}
+					raxStop(&it);
+
+					replace_clause(query, clause, first_in_scope, i, inner_identifiers);
+					first_in_scope = i;
+		} else if(t == CYPHER_AST_UNION) {
+			first_in_scope = i + 1;
+		}
+	}
+
+	//--------------------------------------------------------------------------
+	// recursively rewrite star projections in subqueries
+	//--------------------------------------------------------------------------
+	cypher_astnode_t *inner_query =
+		cypher_ast_call_subquery_get_query(call_subquery);
+	rewritten |= AST_RewriteStarProjections(inner_query);
 
 	return rewritten;
 }
@@ -284,10 +353,8 @@ bool AST_RewriteStarProjections
 		cypher_astnode_type_t t = cypher_astnode_type(clause);
 
 		if(t == CYPHER_AST_CALL_SUBQUERY) {
-			rewritten |= _rewrite_call_import_star(root, scope_start, i);
-			cypher_astnode_t *subquery =
-				cypher_ast_call_subquery_get_query(clause);
-			rewritten |= AST_RewriteStarProjections(subquery);
+			rewritten |=
+				_rewrite_call_subquery_star_projections(root, scope_start, i);
 			continue;
 		}
 
