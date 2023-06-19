@@ -294,24 +294,18 @@ void UpdateEdgeProperty
 	Attribute_ID attr_id,         // attribute ID
 	SIValue v                     // new attribute value
 ) {
-	Edge e;                // edge to delete
-	Node s;                // edge src node
-	Node t;                // edge dest node
+	Edge e; // edge to delete
 
 	// get src node, dest node and edge from the graph
 	int res;
 	UNUSED(res);
 
-	res = Graph_GetNode(gc->g, src_id, &s);
-	ASSERT(res != 0);
-	res = Graph_GetNode(gc->g, dest_id, &t);
-	ASSERT(res != 0);
 	res = Graph_GetEdge(gc->g, id, &e);
 	ASSERT(res != 0);
 
 	// set edge relation, src and destination node
-	Edge_SetSrcNode(&e, &s);
-	Edge_SetDestNode(&e, &t);
+	Edge_SetSrcNodeID(&e, src_id);
+	Edge_SetDestNodeID(&e, dest_id);
 	Edge_SetRelationID(&e, r_id);
 
 	if(attr_id == ATTRIBUTE_ID_ALL) {
