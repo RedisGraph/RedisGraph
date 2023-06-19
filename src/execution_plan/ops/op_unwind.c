@@ -149,6 +149,7 @@ static OpResult UnwindReset
 	OpUnwind *op = (OpUnwind *)ctx;
 
 	op->listIdx = 0;
+	SIValue_Free(op->list);
 	op->list = SI_NullVal();
 	op->listLen = 0;
 

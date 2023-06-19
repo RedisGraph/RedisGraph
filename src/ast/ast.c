@@ -198,7 +198,8 @@ static bool _clause_is_eager
 	if(type == CYPHER_AST_CREATE ||
 	   type == CYPHER_AST_MERGE  ||
 	   type == CYPHER_AST_SET    ||
-	   type == CYPHER_AST_REMOVE) {
+	   type == CYPHER_AST_REMOVE ||
+	   type == CYPHER_AST_FOREACH) {
 		return true;
 	}
 

@@ -22,14 +22,6 @@ typedef struct {
 
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps);
 
-// adds projections to a Project operation
-void ProjectAddProjections
-(
-	OpBase *opBase,     // operations to add the projections to
-	char **names,       // variable names
-	char **alias_names  // projected names
-);
-
 // binds a Project op to an ExecutionPlan
 void ProjectBindToPlan
 (

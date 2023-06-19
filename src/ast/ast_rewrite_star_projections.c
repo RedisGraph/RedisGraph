@@ -10,6 +10,7 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/sds/sds.h"
+#include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
 
 bool AST_RewriteStarProjections(const cypher_astnode_t *root);
@@ -303,21 +304,27 @@ static bool _rewrite_call_subquery_star_projections
 				  cypher_ast_return_has_include_existing(clause)) {
 					// populate a rax with all bound vars, except for imported
 					// outer scope vars
-					rax *inner_identifiers = raxNew();
+					rax *identifiers = raxNew();
 					collect_aliases_in_scope(query, first_in_scope, i,
-						inner_identifiers);
+						identifiers);
+					rax *inner_identifiers = raxClone(identifiers);
 
 					raxIterator it;
-					raxStart(&it, inner_identifiers);
+					raxStart(&it, identifiers);
 					// Iterate over all keys in the rax.
 					raxSeek(&it, "^", NULL, 0);
 					while(raxNext(&it)) {
-						if(raxFind(bound_vars, (unsigned char *)it.key, it.key_len) != raxNotFound)
-							raxRemove(inner_identifiers, (unsigned char *)it.key, it.key_len, NULL);
+						if(raxFind(bound_vars, (unsigned char *)it.key,
+							it.key_len) != raxNotFound) {
+								raxRemove(inner_identifiers,
+									(unsigned char *)it.key, it.key_len, NULL);
+						}
 					}
 					raxStop(&it);
+					raxFree(identifiers);
 
-					replace_clause(query, clause, first_in_scope, i, inner_identifiers);
+					replace_clause(query, clause, first_in_scope, i,
+						inner_identifiers);
 					first_in_scope = i;
 		} else if(t == CYPHER_AST_UNION) {
 			first_in_scope = i + 1;
