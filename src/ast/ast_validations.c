@@ -27,6 +27,7 @@ typedef struct {
 	rax *defined_identifiers;      // identifiers environment
 	cypher_astnode_type_t clause;  // top-level clause type
 	is_union_all union_all;        // union type (regular or ALL)
+	bool ignore_identifiers;       // ignore identifiers
 } validations_ctx;
 
 // ast validation visitor mappings
@@ -472,7 +473,7 @@ static VISITOR_STRATEGY _Validate_identifier
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	if(!start) {
+	if(!start || vctx->ignore_identifiers) {
 		return VISITOR_CONTINUE;
 	}
 
@@ -1323,6 +1324,10 @@ references to outside variables");
 
 		if(type == CYPHER_AST_UNION) {
 			last_is_union = true;
+		} else if(type == CYPHER_AST_RETURN &&
+			cypher_ast_return_has_include_existing(clause)){
+				vctx->ignore_identifiers = true;
+				last_is_union = false;
 		} else {
 			last_is_union = false;
 		}
@@ -2019,9 +2024,11 @@ static AST_Validation _ValidateScopes
 	AST *ast  // ast
 ) {
 	// create a context for the traversal
-	validations_ctx ctx;
-	ctx.union_all = NOT_DEFINED;
-	ctx.defined_identifiers = raxNew();
+	validations_ctx ctx = {
+		.union_all = NOT_DEFINED,
+		.defined_identifiers = raxNew(),
+		.ignore_identifiers = false
+	};
 
 	// create a visitor
 	ast_visitor visitor = {&ctx, validations_mapping};
@@ -2284,9 +2291,11 @@ AST_Validation AST_Validate_QueryParams
 	}
 
 	// create a context for the traversal
-	validations_ctx ctx;
-	ctx.union_all = NOT_DEFINED;
-	ctx.defined_identifiers = raxNew();
+	validations_ctx ctx = {
+		.union_all = NOT_DEFINED,
+		.defined_identifiers = raxNew(),
+		.ignore_identifiers = false
+	};
 
 	// create a visitor
 	ast_visitor visitor = {&ctx, validations_mapping};

@@ -1782,64 +1782,62 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][1], Node(label='N',
             properties={'v': 4}))
 
-    # TODO: Add support for rewriting star projections within call {} (after
-    # supporting an embedded query within call {})
-    # def test29_rewrite_star_projections(self):
-    #     """Tests that star projections within call {}are rewritten correctly"""
+    def test29_rewrite_star_projections(self):
+        """Tests that star projections within call {}are rewritten correctly"""
 
-    #     # import data with *
-    #     res = graph.query(
-    #         """
-    #         WITH a AS 1, b AS 2
-    #         CALL {
-    #             WITH *
-    #             RETURN a + b AS c
-    #         }
-    #         RETURN a, b, c
-    #         """
-    #     )
+        # import data with *
+        res = graph.query(
+            """
+            WITH 1 AS a, 2 AS b
+            CALL {
+                WITH *
+                RETURN a + b AS c
+            }
+            RETURN a, b, c
+            """
+        )
 
-    #     # assert results
-    #     self.env.assertEquals(len(res.result_set), 1)
-    #     self.env.assertEquals(len(res.result_set[0]), 3)
-    #     for i in range(3):
-    #         self.env.assertEquals(res.result_set[0][i], i + 1)
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 3)
+        for i in range(3):
+            self.env.assertEquals(res.result_set[0][i], i + 1)
 
-    #     # return with *
-    #     res = graph.query(
-    #         """
-    #         CALL {
-    #             WITH 1 AS a, 2 AS b
-    #             RETURN *
-    #         }
-    #         RETURN a, b
-    #         """
-    #     )
+        # return with *
+        res = graph.query(
+            """
+            CALL {
+                WITH 1 AS a, 2 AS b
+                RETURN *
+            }
+            RETURN a, b
+            """
+        )
 
-    #     # assert results
-    #     self.env.assertEquals(len(res.result_set), 1)
-    #     self.env.assertEquals(len(res.result_set[0]), 2)
-    #     for i in range(2):
-    #         self.env.assertEquals(res.result_set[0][i], i + 1)
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 2)
+        for i in range(2):
+            self.env.assertEquals(res.result_set[0][i], i + 1)
 
-    #     # both import with * and return with *
-    #     res = graph.query(
-    #         """
-    #         WITH 1 AS a, 2 AS b
-    #         CALL {
-    #             WITH *
-    #             WITH a + b AS c
-    #             RETURN *
-    #         }
-    #         RETURN a, b, c
-    #         """
-    #     )
+        # both import with * and return with *
+        res = graph.query(
+            """
+            WITH 1 AS a, 2 AS b
+            CALL {
+                WITH *
+                WITH a + b AS c
+                RETURN *
+            }
+            RETURN a, b, c
+            """
+        )
 
-    #     # assert results
-    #     self.env.assertEquals(len(res.result_set), 1)
-    #     self.env.assertEquals(len(res.result_set[0]), 3)
-    #     for i in range(3):
-    #         self.env.assertEquals(res.result_set[0][i], i + 1)
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 3)
+        for i in range(3):
+            self.env.assertEquals(res.result_set[0][i], i + 1)
 
     def test30_surrounding_matches(self):
         """Tests that in case the call {} is surrounded by matches, the
