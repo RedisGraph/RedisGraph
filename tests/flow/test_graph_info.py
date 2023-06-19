@@ -65,7 +65,7 @@ class LoggedQuery:
         return self.utilized_cache
 
 def StreamName(graph):
-    return f"telematics{{{graph.name}}}"
+    return f"telemetry{{{graph.name}}}"
 
 class testGraphInfo(FlowTestsBase):
     def __init__(self):
@@ -74,7 +74,7 @@ class testGraphInfo(FlowTestsBase):
         self.graph = Graph(self.conn, GRAPH_ID)
 
     def consumeStream(self, stream, drop=True):
-        # wait for telematics stream to be created
+        # wait for telemetry stream to be created
         t = 'none' # type of stream_key
 
         start = time.time()
@@ -104,7 +104,7 @@ class testGraphInfo(FlowTestsBase):
 
     def test01_read_logged_queries(self):
         """issue a number of queries
-           make sure they show up within the telematics stream"""
+           make sure they show up within the telemetry stream"""
 
         q0 = "RETURN 1"
         q1 = "CREATE ()"
@@ -259,7 +259,7 @@ class testGraphInfo(FlowTestsBase):
         # streams consumer thread
         def consume_streams(conn, queue):
             # continuously poll for new messages
-            streams = {'telematics{g}': '0-0', 'telematics{x}': '0-0'}
+            streams = {'telemetry{g}': '0-0', 'telemetry{x}': '0-0'}
 
             # as long as we're alive
             while alive:

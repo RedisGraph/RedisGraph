@@ -26,8 +26,8 @@ static void endCrashReport(void) {
 static void logCommands(void) {
 	// #readers + #writers + Redis main thread
 	uint32_t n = ThreadPools_ThreadCount() + 1;
-	CommandCtx* commands[n] = {0};
-	Globals_GetCommandCtxs(&commands, &n);
+	CommandCtx* commands[n];
+	Globals_GetCommandCtxs(commands, &n);
 
 	for(uint32_t i = 0; i < n; i++) {
 		CommandCtx *cmd = commands[i];
@@ -55,13 +55,13 @@ void InfoFunc
 
 	// #readers + #writers + Redis main thread
 	uint32_t n = ThreadPools_ThreadCount() + 1;
-	CommandCtx* commands[n] = {0};
-	Globals_GetCommandCtxs(&commands, &n);
+	CommandCtx* commands[n];
+	Globals_GetCommandCtxs(commands, &n);
 
 	RedisModule_InfoAddSection(ctx, "executing commands");
 
 	for(int i = 0; i < n; i++) {
-		CommandCtx *cmd = command_ctxs[i];
+		CommandCtx *cmd = commands[i];
 		ASSERT(cmd != NULL);
 
 		int rc __attribute__((unused));

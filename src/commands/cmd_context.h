@@ -11,6 +11,8 @@
 #include "../util/simple_timer.h"
 #include "../graph/graphcontext.h"
 
+#include <stdatomic.h>
+
 // ExecutorThread lists the diffrent types of threads in the system
 typedef enum {
 	EXEC_THREAD_MAIN,    // redis main thread

@@ -101,7 +101,7 @@ void Globals_RemoveGraph
 
 	uint64_t i = 0;
 	uint64_t n = array_len(_globals.graphs_in_keyspace);
-	ASSERT(n > 0);
+	if(n == 0) return;
 
 	// acuire write lock
 	pthread_rwlock_wrlock(&_globals.lock);
@@ -241,7 +241,7 @@ void Globals_GetCommandCtxs
 		CommandCtx *cmd = _globals.command_ctxs[i];
 		if(cmd != NULL) {
 			 CommandCtx_Incref(cmd);
-			 *commands[found++, cmd];
+			 commands[found++] = cmd;
 		}
 	}
 
@@ -266,7 +266,7 @@ void Globals_Free(void) {
 // initialize iterator over graphs in keyspace
 void Globals_ScanGraphs
 (
-	KeyspaceGraphIterator *it
+	KeySpaceGraphIterator *it
 ) {
 	ASSERT(it != NULL);
 	it->idx = 0;
@@ -275,7 +275,7 @@ void Globals_ScanGraphs
 // seek iterator to index
 void GraphIterator_Seek
 (
-	KeyspaceGraphIterator *it,  // iterator
+	KeySpaceGraphIterator *it,  // iterator
 	uint64_t idx                // index to seek to
 ) {
 	ASSERT(it != NULL);
@@ -286,7 +286,7 @@ void GraphIterator_Seek
 // returns graph object in case iterator isn't depleted, otherwise returns NULL
 GraphContext *GraphIterator_Next
 (
-	KeyspaceGraphIterator *it  // iterator to advance
+	KeySpaceGraphIterator *it  // iterator to advance
 ) {
 	ASSERT(it != NULL);
 

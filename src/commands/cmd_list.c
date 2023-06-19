@@ -21,7 +21,7 @@ int Graph_List
 		return RedisModule_WrongArity(ctx);
 	}
 
-	GraphIterator it;
+	KeySpaceGraphIterator it;
 	Globals_ScanGraphs(&it);
 	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_LEN);
 

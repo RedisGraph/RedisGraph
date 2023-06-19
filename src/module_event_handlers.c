@@ -216,7 +216,7 @@ static void _CreateKeySpaceMetaKeys
 (
 	RedisModuleCtx *ctx
 ) {
-	GraphIterator it;
+	KeySpaceGraphIterator it;
 	GraphContext *gc = NULL;
 	Globals_ScanGraphs(&it);
 
@@ -234,7 +234,7 @@ static void _ClearKeySpaceMetaKeys
 	RedisModuleCtx *ctx,
 	bool decode
 ) {
-	GraphIterator it;
+	KeySpaceGraphIterator it;
 	GraphContext *gc = NULL;
 	Globals_ScanGraphs(&it);
 
@@ -287,7 +287,7 @@ static void _ReplicationRoleChangedEventHandler
 	uint64_t subevent,
 	void *data
 ) {
-	GraphIterator it;
+	KeySpaceGraphIterator it;
 	GraphContext *gc = NULL;
 	Globals_ScanGraphs(&it);
 	if(subevent == REDISMODULE_EVENT_REPLROLECHANGED_NOW_MASTER) {
@@ -436,7 +436,7 @@ static void RG_ForkPrepare() {
 	// return if we have half-baked graphs
 	if(INTERMEDIATE_GRAPHS) return;
 
-	GraphIterator it;
+	KeySpaceGraphIterator it;
 	GraphContext *gc = NULL;
 	Globals_ScanGraphs(&it);
 	while((gc = GraphIterator_Next(&it)) != NULL) {
@@ -464,7 +464,7 @@ static void RG_AfterForkParent() {
 	if(INTERMEDIATE_GRAPHS) return;
 
 	// the child process forked, release all acquired locks
-	GraphIterator it;
+	KeySpaceGraphIterator it;
 	GraphContext *gc = NULL;
 	Globals_ScanGraphs(&it);
 

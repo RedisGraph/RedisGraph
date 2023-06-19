@@ -181,7 +181,7 @@ void CronTask_streamFinishedQueries
 	uint32_t max_query_count = 0;  // determine max number of queries to collect
 	Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_query_count);
 
-	GraphIterator it;
+	KeySpaceGraphIterator it;
 	Globals_ScanGraphs(&it);
 
 	// pick up from where we've left
@@ -230,7 +230,7 @@ void CronTask_streamFinishedQueries
 				//--------------------------------------------------------------
 
 				RedisModuleString *keyname =
-					(RedisModuleString*) GraphContext_GetTelematicsStreamName(gc);
+					(RedisModuleString*)GraphContext_GetTelemetryStreamName(gc);
 
 				RedisModuleKey *key = RedisModule_OpenKey(rm_ctx, keyname,
 						REDISMODULE_WRITE);

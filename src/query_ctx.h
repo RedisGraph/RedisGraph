@@ -116,9 +116,9 @@ void QueryCtx_AdvanceStage
 	QueryCtx *ctx  // query context
 );
 
-// regress query's stage
+// reset query's stage
 // waiting <- executing
-void QueryCtx_regressStage
+void QueryCtx_ResetStage
 (
 	QueryCtx *ctx  // query context
 );

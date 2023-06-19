@@ -783,7 +783,7 @@ GraphContext *GraphContext_UnsafeGetGraphContext
 (
 	const char *graph_name
 ) {
-	GraphIterator it;
+	KeySpaceGraphIterator it;
 	Globals_ScanGraphs(&it);
 
 	GraphContext *gc = NULL;
@@ -891,9 +891,17 @@ static void _GraphContext_Free(void *arg) {
 	// delete graph telemetry stream
 	//--------------------------------------------------------------------------
 
-	if(ctx != NULL && gc->telemetry_stream != NULL) {
+	if(gc->telemetry_stream != NULL) {
+		bool should_create = (ctx == NULL);
+		if(should_create) {
+			ctx = RedisModule_GetThreadSafeContext(NULL);
+		}
 		_DeleteTelemetryStream(ctx, gc);
 		RedisModule_FreeString(ctx, gc->telemetry_stream);
+		if (should_create) {
+			RedisModule_FreeThreadSafeContext(ctx);
+			ctx = NULL;
+		}
 	}
 
 	//--------------------------------------------------------------------------

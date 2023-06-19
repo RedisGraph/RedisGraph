@@ -450,7 +450,7 @@ static void _DelegateWriter(GraphQueryCtx *gq_ctx) {
 	// update execution thread to writer
 	gq_ctx->command_ctx->thread = EXEC_THREAD_WRITER;
 
-	// regress query stage from executing back to waiting
+	// reset query stage from executing back to waiting
 	QueryCtx_ResetStage(gq_ctx->query_ctx);
 
 	// dispatch work to the writer thread

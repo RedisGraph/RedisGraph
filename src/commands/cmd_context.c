@@ -154,7 +154,7 @@ void CommandCtx_Free
 	Globals_UntrackCommandCtx(command_ctx);
 
 	// decrement reference count
-	if(__atomic_sub_fetch(&command_ctx->ref_count, 1, __ATOMIC_RELAXED) == 0) {
+	if(atomic_fetch_sub(&command_ctx->ref_count, 1) == 1) {
 		// reference count is zero, free command context
 		if(command_ctx->bc) {
 			RedisGraph_UnblockClient(command_ctx->bc);
