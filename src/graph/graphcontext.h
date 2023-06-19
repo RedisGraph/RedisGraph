@@ -42,7 +42,7 @@ typedef struct {
 	GraphDecodeContext *decoding_context;  // decode context of the graph
 	Cache *cache;                          // global cache of execution plans
 	XXH32_hash_t version;                  // graph version
-	RedisModuleString *telematics_stream;  // telematics stream name
+	RedisModuleString *telemetry_stream;   // telemetry stream name
 } GraphContext;
 
 //------------------------------------------------------------------------------
@@ -102,8 +102,8 @@ const char *GraphContext_GetName
 	const GraphContext *gc
 );
 
-// get graph context's telematics stream name
-const RedisModuleString *GraphContext_GetTelematicsStreamName
+// get graph context's telemetry stream name
+const RedisModuleString *GraphContext_GetTelemetryStreamName
 (
 	const GraphContext *gc
 );

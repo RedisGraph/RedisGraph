@@ -15,6 +15,7 @@ void Cron_AddRecurringTasks(void) {
 	// add query logging task
 	//--------------------------------------------------------------------------
 
+	// TODO: see how difficult it would be enable/disable info tracking
 	// make sure info tracking is enabled
 	bool info_enabled = false;
 	if(Config_Option_get(Config_CMD_INFO, &info_enabled) && info_enabled) {

@@ -16,15 +16,10 @@ from pathos.pools import ProcessPool as Pool
 # 5. test a mixture of queries, ~90% successful ones and the rest are expected
 #    to fail due to out of memory error
 
-g                  =  None
-GRAPH_NAME         =  "max_query_mem"
-MEM_HOG_QUERY      =  """UNWIND range(0, 100000) AS x
-                         WITH x
-                         WHERE (x / 2) = 50
-                         RETURN x, count(x)"""
-
-MEM_THRIFTY_QUERY  =  """RETURN 1"""
-
+g                 = None
+GRAPH_NAME        = "max_query_mem"
+MEM_HOG_QUERY     = """UNWIND range(0, 100000) AS x RETURN x, count(x)"""
+MEM_THRIFTY_QUERY = """RETURN 1"""
 
 def issue_query(conn, q, should_fail):
     try:

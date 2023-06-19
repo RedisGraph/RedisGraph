@@ -38,7 +38,7 @@ CommandCtx *CommandCtx_New
 	context->thread             = thread;
 	context->compact            = compact;
 	context->timeout            = timeout;
-	context->ref_count          = 1;
+	context->ref_count          = ATOMIC_VAR_INIT(1);
 	context->graph_ctx          = graph_ctx;
 	context->timeout_rw         = timeout_rw;
 	context->received_ts        = received_ts;
@@ -70,7 +70,7 @@ void CommandCtx_Incref
 	ASSERT(command_ctx != NULL);
 
 	// atomicly increment reference count
-	command_ctx->ref_count++;
+	atomic_fetch_add(&command_ctx->ref_count, 1);
 }
 
 RedisModuleCtx *CommandCtx_GetRedisCtx

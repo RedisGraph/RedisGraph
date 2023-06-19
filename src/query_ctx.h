@@ -39,12 +39,12 @@ typedef enum QueryExecutionStatus {
 	QueryExecutionStatus_TIMEDOUT,
 } QueryExecutionStatus;
 
-// a stage a query may be in
+// stages a query may be in
 typedef enum QueryStage {
-    QueryStage_WAITING   = 1,
-    QueryStage_EXECUTING = 1 << 1,
-    QueryStage_REPORTING = 1 << 2,
-    QueryStage_FINISHED  = 1 << 3
+    QueryStage_WAITING   = 0,
+    QueryStage_EXECUTING = 1,
+    QueryStage_REPORTING = 2,
+    QueryStage_FINISHED  = 3,
 } QueryStage;
 
 typedef struct {
@@ -68,13 +68,11 @@ typedef struct {
 
 // query statistics
 typedef struct {
-	simple_timer_t timer;          // stage timer
-	uint64_t received_ts;          // query received timestamp
-	double wait_duration_ms;       // waiting time
-	double execution_duration_ms;  // executing time
-	double report_duration_ms;     // reporting time
-	bool parameterized;            // uses parameters
-	bool utilized_cache;           // utilized cache
+	simple_timer_t timer;  // stage timer
+	uint64_t received_ts;  // query received timestamp
+	double durations[3];   // stage durations
+	bool parameterized;    // uses parameters
+	bool utilized_cache;   // utilized cache
 } QueryStats;
 
 typedef struct QueryCtx {

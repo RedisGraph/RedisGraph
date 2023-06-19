@@ -4,6 +4,7 @@ import string
 import random
 import datetime
 import threading
+import multiprocessing
 from common import *
 
 GRAPH_ID ="info"
@@ -303,4 +304,99 @@ class testGraphInfo(FlowTestsBase):
 
         # wait for stream consumer thread to exit
         t.join()
+
+    def test07_current_queries(self):
+        """test currently running queries"""
+
+        # flush DB
+        self.conn.flushall()
+
+        # shared variable, single consumer thread to exit
+        alive = True
+
+        # issue a number of threads all running the same query
+        def issue_query(g, q):
+            while alive:
+                g.query(q)
+
+        num_threads = multiprocessing.cpu_count() * 2
+
+        # create multiple connections
+        connections = []
+        for i in range(num_threads+1):
+            connections.append(self.env.getConnection())
+
+        # create multiple threads
+        threads = []
+        for i in range(num_threads):
+            # read queries
+            t = threading.Thread(target=issue_query, args=(Graph(connections[i], GRAPH_ID), "RETURN 1"))
+            threads.append(t)
+
+        # write query
+        t = threading.Thread(target=issue_query, args=(Graph(connections[-1], GRAPH_ID), "CREATE ()"))
+        threads.append(t)
+
+        # issue threads
+        for t in threads:
+            t.start()
+        
+        # wait for graph to be created
+        print("waiting for graph to be created")
+        res = self.conn.type(GRAPH_ID)
+        while res != "graphdata":
+            res = self.conn.type(GRAPH_ID)
+        print("graph created")
+
+        # get waiting and running queries
+        res = self.conn.execute_command("GRAPH.INFO", "QUERIES")
+
+        # validate response structure
+        self.env.assertEquals(len(res), 3)
+        self.env.assertEquals(res[0], "Queries")
+        self.env.assertEquals(res[1][0], "# Current queries")
+        self.env.assertEquals(res[2][0], "# Waiting queries")
+
+        #-----------------------------------------------------------------------
+        # validate running queries
+        #-----------------------------------------------------------------------
+
+        self.env.assertTrue(len(res[1]) > 1)
+        running_queries= res[1][1:]
+        running_query = running_queries[0]
+        self.env.assertEquals(running_query[0], "Received at")
+        self.env.assertEquals(running_query[2], "Graph name")
+        self.env.assertEquals(running_query[4], "Query")
+        self.env.assertEquals(running_query[6], "Execution duration")
+        self.env.assertEquals(running_query[8], "Replicated command")
+
+        self.env.assertEquals(running_query[3], GRAPH_ID)
+        self.env.assertTrue(running_query[5] == "RETURN 1" or
+                            running_query[5] == "CREATE ()")
+        self.env.assertEquals(running_query[9], False)
+
+        #-----------------------------------------------------------------------
+        # validate waiting queries
+        #-----------------------------------------------------------------------
+
+        self.env.assertTrue(len(res[2]) > 1)
+        waiting_queries= res[2][1:]
+        waiting_query = waiting_queries[0]
+        self.env.assertEquals(waiting_query[0], "Received at")
+        self.env.assertEquals(waiting_query[2], "Graph name")
+        self.env.assertEquals(waiting_query[4], "Query")
+        self.env.assertEquals(waiting_query[6], "Wait duration")
+        self.env.assertEquals(waiting_query[8], "Replicated command")
+
+        self.env.assertEquals(waiting_query[3], GRAPH_ID)
+        self.env.assertTrue(waiting_query[5] == "RETURN 1" or
+                            waiting_query[5] == "CREATE ()")
+        self.env.assertEquals(waiting_query[9], False)
+
+        # signal worker threads to stop
+        alive = False
+
+        # wait for all threads to complete
+        for t in threads:
+            t.join()
 

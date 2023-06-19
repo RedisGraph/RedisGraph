@@ -20,8 +20,8 @@
 #include <sys/param.h>
 #include <pthread.h>
 
-// telematics stream format
-#define TELEMATICS_FORMAT "telematics{%s}"
+// telemetry stream format
+#define TELEMETRY_FORMAT "telemetry{%s}"
 
 extern uint aux_field_counter;
 // GraphContext type as it is registered at Redis.
@@ -30,7 +30,7 @@ extern RedisModuleType *GraphContextRedisModuleType;
 // Forward declarations.
 static void _GraphContext_Free(void *arg);
 static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str);
-static void _DeleteTelematicsStream(RedisModuleCtx *ctx, const GraphContext *gc);
+static void _DeleteTelemetryStream(RedisModuleCtx *ctx, const GraphContext *gc);
 
 static uint64_t _count_indices_from_schemas(const Schema** schemas) {
 	ASSERT(schemas);
@@ -114,8 +114,8 @@ GraphContext *GraphContext_New
 
 	gc->g = Graph_New(node_cap, edge_cap);
 	gc->graph_name = rm_strdup(graph_name);
-	gc->telematics_stream = RedisModule_CreateStringPrintf(NULL,
-			TELEMATICS_FORMAT, gc->graph_name);
+	gc->telemetry_stream = RedisModule_CreateStringPrintf(NULL,
+			TELEMETRY_FORMAT, gc->graph_name);
 
 	// allocate the default space for schemas and indices
 	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
@@ -253,15 +253,15 @@ const char *GraphContext_GetName
 	return gc->graph_name;
 }
 
-// get graph context's telematics stream name
-const RedisModuleString *GraphContext_GetTelematicsStreamName
+// get graph context's telemetry stream name
+const RedisModuleString *GraphContext_GetTelemetryStreamName
 (
 	const GraphContext *gc
 ) {
 	ASSERT(gc != NULL);
-	ASSERT(gc->telematics_stream != NULL);
+	ASSERT(gc->telemetry_stream != NULL);
 
-	return gc->telematics_stream;
+	return gc->telemetry_stream;
 }
 
 // rename a graph context
@@ -274,13 +274,13 @@ void GraphContext_Rename
 	rm_free(gc->graph_name);
 	gc->graph_name = rm_strdup(name);
 
-	// drop old telematics stream
-	_DeleteTelematicsStream(ctx, gc);
+	// drop old telemetry stream
+	_DeleteTelemetryStream(ctx, gc);
 
-	// recreate telematics stream name
-	RedisModule_FreeString(ctx, gc->telematics_stream);
-	gc->telematics_stream = RedisModule_CreateStringPrintf(NULL,
-			TELEMATICS_FORMAT, gc->graph_name);
+	// recreate telemetry stream name
+	RedisModule_FreeString(ctx, gc->telemetry_stream);
+	gc->telemetry_stream = RedisModule_CreateStringPrintf(NULL,
+			TELEMETRY_FORMAT, gc->graph_name);
 }
 
 XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
@@ -846,8 +846,8 @@ Cache *GraphContext_GetCache(const GraphContext *gc) {
 // Free routine
 //------------------------------------------------------------------------------
 
-// delete graph's telematics stream
-static void _DeleteTelematicsStream
+// delete graph's telemetry stream
+static void _DeleteTelemetryStream
 (
 	RedisModuleCtx *ctx,    // redis module context
 	const GraphContext *gc  // graph context
@@ -855,7 +855,7 @@ static void _DeleteTelematicsStream
 	ASSERT(gc  != NULL);
 	ASSERT(ctx != NULL);
 
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, gc->telematics_stream,
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, gc->telemetry_stream,
 			REDISMODULE_WRITE);
 	RedisModule_DeleteKey(key);
 	RedisModule_CloseKey(key);
@@ -877,21 +877,23 @@ static void _GraphContext_Free(void *arg) {
 	}
 
 	// Redis main thread is 0
+	RedisModuleCtx *ctx = NULL;
 	bool main_thread = ThreadPools_GetThreadID() == 0;
-	RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
+	bool should_lock = !main_thread && RedisModule_GetThreadSafeContext != NULL;
 
-	if(!main_thread) {
+	if(should_lock) {
+		ctx = RedisModule_GetThreadSafeContext(NULL);
 		// GIL need to be acquire because RediSearch change Redis data structure
 		RedisModule_ThreadSafeContextLock(ctx);
 	}
 
 	//--------------------------------------------------------------------------
-	// delete graph telematics stream
+	// delete graph telemetry stream
 	//--------------------------------------------------------------------------
 
-	if(gc->telematics_stream != NULL) {
-		_DeleteTelematicsStream(ctx, gc);
-		RedisModule_FreeString(ctx, gc->telematics_stream);
+	if(ctx != NULL && gc->telemetry_stream != NULL) {
+		_DeleteTelemetryStream(ctx, gc);
+		RedisModule_FreeString(ctx, gc->telemetry_stream);
 	}
 
 	//--------------------------------------------------------------------------
@@ -918,10 +920,10 @@ static void _GraphContext_Free(void *arg) {
 		array_free(gc->relation_schemas);
 	}
 
-	if(!main_thread) {
+	if(should_lock) {
 		RedisModule_ThreadSafeContextUnlock(ctx);
+		RedisModule_FreeThreadSafeContext(ctx);
 	}
-	RedisModule_FreeThreadSafeContext(ctx);
 
 	//--------------------------------------------------------------------------
 	// free queries log

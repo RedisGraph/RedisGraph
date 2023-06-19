@@ -39,7 +39,7 @@
 //#define WAIT_DURATION_KEY_NAME "Wait duration"
 //#define REPORT_DURATION_KEY_NAME "Report duration"
 //#define UNIMPLEMENTED_ERROR_STRING "Unimplemented"
-#define UNKNOWN_SUBCOMMAND_MESSAGE "Unknown subcommand."
+#define UNKNOWN_SECTION_MESSAGE "Unknown section."
 #define WAIT_DURATION_KEY_NAME "Wait duration"
 #define EXECUTION_DURATION_KEY_NAME "Execution duration"
 //#define COMMAND_IS_DISABLED "Info tracking is disabled."
@@ -367,7 +367,7 @@ static void _emit_waiting_query
 //	array_free(qs);
 //}
 
-// handles the "GRAPH.INFO QUERIES" subcommand
+// handles the "GRAPH.INFO QUERIES" section
 // "GRAPH.INFO QUERIES"
 static void _info_queries
 (
@@ -388,21 +388,20 @@ static void _info_queries
 
     ASSERT(ctx != NULL);
 
-	if(argc != 0) {
-		RedisModule_WrongArity(ctx);
-		return;
-	}
-
 	//--------------------------------------------------------------------------
 	// collect running queries
 	//--------------------------------------------------------------------------
 
 	// get all currently executing commands
-	CommandCtx **cmds = Globals_GetCommandCtxs();
-	uint32_t n = array_len(cmds);
+	// #readers + #writers + Redis main thread
+	uint32_t n = ThreadPools_ThreadCount() + 1;
+	CommandCtx* cmds[n] = {0};
+	Globals_GetCommandCtxs(&cmds, &n);
 
 	// create a new section in the reply
 	Info_AddSection(ctx, "Queries", 2);
+
+	// TODO: support only GRAPH.INFO RunningQueries and GRAPH.INFO WaitingQueries
 
 	// create a new subsection in the reply
 	Info_AddSubSection(ctx, "# Current queries", n);
@@ -418,8 +417,6 @@ static void _info_queries
 		// free the command if it's no longer referenced
 		CommandCtx_Free(cmd);
 	}
-
-	array_free(cmds);
 
 	//--------------------------------------------------------------------------
 	// collect waiting queries
@@ -458,15 +455,19 @@ static void _handle_subcommand
     ASSERT(argv   != NULL);
     ASSERT(subcmd != NULL);
 
+	// TODO: collect all sections and reply with top level array
+	// of size n sections...
+
     if (!strcasecmp(subcmd, SUBCOMMAND_NAME_QUERIES)) {
 		// GRAPH.INFO QUERIES
         _info_queries(ctx, argv, argc);
 	} else {
-        RedisModule_ReplyWithError(ctx, UNKNOWN_SUBCOMMAND_MESSAGE);
+        RedisModule_ReplyWithError(ctx, UNKNOWN_SECTION_MESSAGE);
     }
 }
 
 // graph.info command handler
+// GRAPH.INFO [Section [Section ...]]
 // GRAPH.INFO QUERIES
 int Graph_Info
 (
@@ -477,9 +478,11 @@ int Graph_Info
     ASSERT(ctx != NULL);
 
 	// expecting at least two arguments
-    if (argc < 2) {
+    if (argc < 1) {
         return RedisModule_WrongArity(ctx);
     }
+
+	// TODO: return all sections in the case of GRAPH.INFO
 
     const char *subcmd = RedisModule_StringPtrLen(argv[1], NULL);
     _handle_subcommand(ctx, argv + 2, argc - 2, subcmd);

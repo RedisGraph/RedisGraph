@@ -145,6 +145,7 @@ static void _stream_queries
 	LoggedQuery *q = NULL;
 
 	// reset reader
+	// TODO: pass "index" to where the reader should be, 0 for oldest item
 	CircularBuffer_ResetReader(queries, CircularBuffer_ItemCount(queries));
 
 	while((q = CircularBuffer_Read(queries, NULL)) != NULL) {
@@ -176,6 +177,7 @@ void CronTask_streamFinishedQueries
 	double deadline = 3;  // 3ms
 	simple_tic(ctx->stopwatch);
 
+	// TODO: remove configuration
 	uint32_t max_query_count = 0;  // determine max number of queries to collect
 	Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_query_count);
 
@@ -189,8 +191,6 @@ void CronTask_streamFinishedQueries
 
 	// as long as we've got processing time
 	while(TIMER_GET_ELAPSED_MILLISECONDS(ctx->stopwatch) < deadline) {
-		ctx->graph_idx++;  // prepare next iteration
-
 		// pull iterator
 		gc = GraphIterator_Next(&it);
 
@@ -198,6 +198,8 @@ void CronTask_streamFinishedQueries
 		if((gc) == NULL) {
 			break;
 		}
+
+		ctx->graph_idx++;  // prepare next iteration
 
 		// get graph's queries log
 		QueriesLog queries_log = gc->queries_log;
@@ -212,6 +214,8 @@ void CronTask_streamFinishedQueries
 			uint8_t attempts  = 8;  // max number of attempts to acquire the GIL
 			bool gil_acquired = false;
 
+			// TODO: do not try to reacquire if already acquired
+			// TODO: switch from 8 attempts to time limit (deadline)
 			while(attempts > 0 && !gil_acquired) {
 				attempts--;
 				gil_acquired =
@@ -273,8 +277,8 @@ void CronTask_streamFinishedQueries
 		// reduce delay, lower limit: 250ms
 		_pdata->when = (250 + ctx->when) / 2;
 	} else {
-		// increase delay, upper limit: 1sec
-		_pdata->when = (1000 + ctx->when) / 2;
+		// increase delay, upper limit: 3sec
+		_pdata->when = (3000 + ctx->when) / 2;
 	}
 
 	// re-add task to CRON

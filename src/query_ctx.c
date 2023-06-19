@@ -87,34 +87,15 @@ static double _QueryCtx_GetCountedMilliseconds
 	return ms;
 }
 
-// reads the stage timer and updates the waiting time with it
-static void _QueryCtx_UpdateWaitingTime
+// reads the stage timer and updates the current stage duration
+static void _QueryCtx_UpdateStageDuration
 (
 	QueryCtx *ctx  // query context
 ) {
 	ASSERT(ctx != NULL);
 
-	ctx->stats.wait_duration_ms += _QueryCtx_GetCountedMilliseconds(ctx);
-}
-
-// reads the stage timer and updates the execution time with it
-static void _QueryCtx_UpdateExecutionTime
-(
-	QueryCtx *ctx  // query context
-) {
-	ASSERT(ctx != NULL);
-
-	ctx->stats.execution_duration_ms += _QueryCtx_GetCountedMilliseconds(ctx);
-}
-
-// reads the stage timer and updates the reporting time with it
-static void _QueryCtx_UpdateReportingTime
-(
-	QueryCtx *ctx  // query context
-) {
-	ASSERT(ctx != NULL);
-
-	ctx->stats.report_duration_ms += _QueryCtx_GetCountedMilliseconds(ctx);
+	// update stage duration
+	ctx->stats.durations[ctx->stage] += _QueryCtx_GetCountedMilliseconds(ctx);
 }
 
 // advance query's stage
@@ -127,38 +108,32 @@ void QueryCtx_AdvanceStage
 ) {
 	ASSERT(ctx != NULL);
 
-	// transition to next stage
-	switch(ctx->stage) {
-		case QueryStage_WAITING:
-			_QueryCtx_UpdateWaitingTime(ctx);
-			break;
-		case QueryStage_EXECUTING:
-			_QueryCtx_UpdateExecutionTime(ctx);
-			break;
-		case QueryStage_REPORTING:
-			_QueryCtx_UpdateReportingTime(ctx);
+	// validate query stage
+	ASSERT(ctx->stage >= QueryStage_WAITING);
+	ASSERT(ctx->stage <= QueryStage_REPORTING);
 
-			// done reporting, log query
-			GraphContext_LogQuery(ctx->gc,
-					ctx->stats.received_ts,
-					ctx->stats.wait_duration_ms,
-					ctx->stats.execution_duration_ms,
-					ctx->stats.report_duration_ms,
-					ctx->stats.parameterized,
-					ctx->stats.utilized_cache,
-					ctx->query_data.query);
-			break;
-		default:
-			assert(false && "unexpected query stage");
+	// update stage duration
+	_QueryCtx_UpdateStageDuration(ctx);
+
+	if(ctx->stage == QueryStage_REPORTING) {
+		// done reporting, log query
+		GraphContext_LogQuery(ctx->gc,
+				ctx->stats.received_ts,
+				ctx->stats.durations[QueryStage_WAITING],
+				ctx->stats.durations[QueryStage_EXECUTING],
+				ctx->stats.durations[QueryStage_REPORTING],
+				ctx->stats.parameterized,
+				ctx->stats.utilized_cache,
+				ctx->query_data.query);
 	}
 
 	// advance to next stage
-	ctx->stage = ctx->stage << 1;
+	ctx->stage++;
 }
 
 // regress query's stage
 // waiting <- executing
-void QueryCtx_regressStage
+void QueryCtx_ResetStage
 (
 	QueryCtx *ctx  // query context
 ) {
@@ -167,9 +142,11 @@ void QueryCtx_regressStage
 	// a query can only transition back from executing to waiting
 	ASSERT(ctx->stage == QueryStage_EXECUTING);
 
-	// transition from executing to  waiting
-	_QueryCtx_UpdateExecutionTime(ctx);
-	ctx->stage = ctx->stage >> 1;
+	// update stage duration
+	_QueryCtx_UpdateStageDuration(ctx);
+
+	// transition from executing to waiting
+	ctx->stage = QueryStage_WAITING;
 }
 
 // sets the "utilized_cache" flag of a QueryInfo
@@ -445,7 +422,9 @@ void QueryCtx_Replicate
 double QueryCtx_GetRuntime(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ASSERT(ctx != NULL);
-	return ctx->stats.execution_duration_ms + ctx->stats.report_duration_ms;
+
+	return ctx->stats.durations[QueryStage_EXECUTING] +
+		ctx->stats.durations[QueryStage_REPORTING];
 }
 
 // free the allocations within the QueryCtx and reset it for the next query

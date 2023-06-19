@@ -101,14 +101,10 @@ void Globals_RemoveGraph
 
 	uint64_t i = 0;
 	uint64_t n = array_len(_globals.graphs_in_keyspace);
+	ASSERT(n > 0);
 
-	// no graphs, early return
-	if(n == 0) {
-		return;
-	}
-
-	// acuire read lock
-	pthread_rwlock_rdlock(&_globals.lock);
+	// acuire write lock
+	pthread_rwlock_wrlock(&_globals.lock);
 
 	// search for graph
 	for(; i < n; i++) {
@@ -117,19 +113,14 @@ void Globals_RemoveGraph
 		}
 	}
 
+	// graph must be found
+	ASSERT(i != n);
+
+	// graph located, remove it
+	array_del_fast(_globals.graphs_in_keyspace, i);
+
 	// release lock
 	pthread_rwlock_unlock(&_globals.lock);
-
-	if(i != n) {
-		// acuire write lock
-		pthread_rwlock_wrlock(&_globals.lock);
-
-		// graph located, remove it
-		array_del_fast(_globals.graphs_in_keyspace, i);
-
-		// release lock
-		pthread_rwlock_unlock(&_globals.lock);
-	}
 }
 
 // remove a graph by its name
@@ -139,8 +130,8 @@ void Globals_RemoveGraphByName
 ) {
 	ASSERT(name != NULL);
 
-	// acuire read lock
-	pthread_rwlock_rdlock(&_globals.lock);
+	// acuire write lock
+	pthread_rwlock_wrlock(&_globals.lock);
 
 	// search for graph
 	uint64_t i = 0;
@@ -152,19 +143,13 @@ void Globals_RemoveGraphByName
 		}
 	}
 
-	// release lock
-	pthread_rwlock_unlock(&_globals.lock);
-
 	if(i != n) {
-		// acuire write lock
-		pthread_rwlock_wrlock(&_globals.lock);
-
 		// graph located, remove it
 		array_del_fast(_globals.graphs_in_keyspace, i);
-
-		// release lock
-		pthread_rwlock_unlock(&_globals.lock);
 	}
+
+	// release lock
+	pthread_rwlock_unlock(&_globals.lock);
 }
 
 // clear all tracked graphs
@@ -196,6 +181,7 @@ void Globals_TrackCommandCtx
 	// acuire read lock
 	pthread_rwlock_rdlock(&_globals.lock);
 
+	// expecting slot to be empty
 	ASSERT(_globals.command_ctxs[tid] == NULL);
 
 	// set ctx at the current thread entry
@@ -204,6 +190,7 @@ void Globals_TrackCommandCtx
 	// release lock
 	pthread_rwlock_unlock(&_globals.lock);
 
+	// TODO: see if there's a better place to reset memory consumption
 	// reset thread memory consumption to 0 (no memory consumed)
 	rm_reset_n_alloced();
 }
@@ -218,8 +205,6 @@ void Globals_UntrackCommandCtx
 
 	int tid = ThreadPools_GetThreadID();
 
-	if(_globals.command_ctxs[tid] == NULL) return; // nothing to clean
-
 	// acuire read lock
 	pthread_rwlock_rdlock(&_globals.lock);
 
@@ -233,31 +218,38 @@ void Globals_UntrackCommandCtx
 	pthread_rwlock_unlock(&_globals.lock);
 }
 
-// get a copy of all tracked CommandCtxs
-// caller must free each CommandCtx and the array
-CommandCtx **Globals_GetCommandCtxs(void) {
+// get all currently tracked CommandCtxs
+void Globals_GetCommandCtxs
+(
+	CommandCtx **commands,  // array to populate
+	uint32_t *count         // [input/output] number of entries in 'commands'
+) {
+	ASSERT(count != NULL);
+	ASSERT(commands != NULL);
 	ASSERT(_globals.command_ctxs != NULL);
 
 	// make a copy of the command contexts
-	uint32_t nthreads = ThreadPools_ThreadCount();
-	CommandCtx **commands = array_new(CommandCtx*, nthreads);
+	uint32_t nthreads = ThreadPools_ThreadCount() + 1;
+	uint32_t cap = *count;  // capacity of 'commands'
+	uint32_t found = 0;     // number of command contexts found
 
 	// acquire write lock
 	pthread_rwlock_wrlock(&_globals.lock);
 
 	// increase ref count of each CommandCtx
-	for(uint32_t i = 0; i < nthreads; i++) {
+	for(uint32_t i = 0; i < nthreads && found < cap; i++) {
 		CommandCtx *cmd = _globals.command_ctxs[i];
 		if(cmd != NULL) {
 			 CommandCtx_Incref(cmd);
-			 array_append(commands, cmd);
+			 *commands[found++, cmd];
 		}
 	}
 
 	// release lock
 	pthread_rwlock_unlock(&_globals.lock);
 
-	return commands;
+	// update number of command contexts found
+	*count = found;
 }
 
 // free globals
@@ -272,7 +264,10 @@ void Globals_Free(void) {
 //------------------------------------------------------------------------------
 
 // initialize iterator over graphs in keyspace
-void Globals_ScanGraphs(GraphIterator *it) {
+void Globals_ScanGraphs
+(
+	KeyspaceGraphIterator *it
+) {
 	ASSERT(it != NULL);
 	it->idx = 0;
 }
@@ -280,8 +275,8 @@ void Globals_ScanGraphs(GraphIterator *it) {
 // seek iterator to index
 void GraphIterator_Seek
 (
-	GraphIterator *it,  // iterator
-	uint64_t idx        // index to seek to
+	KeyspaceGraphIterator *it,  // iterator
+	uint64_t idx                // index to seek to
 ) {
 	ASSERT(it != NULL);
 	it->idx = idx;
@@ -291,7 +286,7 @@ void GraphIterator_Seek
 // returns graph object in case iterator isn't depleted, otherwise returns NULL
 GraphContext *GraphIterator_Next
 (
-	GraphIterator *it  // iterator to advance
+	KeyspaceGraphIterator *it  // iterator to advance
 ) {
 	ASSERT(it != NULL);
 
@@ -299,12 +294,6 @@ GraphContext *GraphIterator_Next
 
 	pthread_rwlock_rdlock(&_globals.lock);
 
-	// NOTICE:
-	// if caller doesn't hold the GIL thoughout the iterator scan
-	// it is possible for the scanning thread to miss keys which are deleted
-	// consider the iterator is at position 4 and graph at position 0 is deleted
-	// in which case array_del_fast will move the last graph (say index 9) to
-	// index 0. in this case the iterator will miss that migrated graph
 	if(it->idx < array_len(_globals.graphs_in_keyspace)) {
 		// prepare next call
 		gc = _globals.graphs_in_keyspace[it->idx++];

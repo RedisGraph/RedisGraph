@@ -306,11 +306,6 @@ void free_algebraic_expressions(AlgebraicExpression **exps, uint count) {
 }
 
 void setup() {
-	// skip if memory sanitizer is enabled
-	if(getenv("SANITIZER") != NULL || getenv("VALGRIND") != NULL) {
-		exit(0);
-	}
-
 	// Use the malloc family for allocations
 	Alloc_Reset();
 
@@ -337,8 +332,8 @@ void setup() {
 void tearDown() {
 	TEST_ASSERT(GrB_finalize() == GrB_SUCCESS);
 	QueryGraph_Free(qg);
-//	GraphContext *gc = QueryCtx_GetGraphCtx();
-//	GraphContext_DecreaseRefCount(gc);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	GraphContext_DecreaseRefCount(gc);
 	QueryCtx_Free();
 }
 

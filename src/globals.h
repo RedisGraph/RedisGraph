@@ -67,9 +67,12 @@ void Globals_UntrackCommandCtx
 	const CommandCtx *ctx  // CommandCtx to untrack
 );
 
-// get a copy of all tracked CommandCtxs
-// caller must free each CommandCtx and the array
-CommandCtx **Globals_GetCommandCtxs(void);
+// get all currently tracked CommandCtxs
+void Globals_GetCommandCtxs
+(
+	CommandCtx **commands,  // array to populate
+	uint32_t *count         // [input/output] number of entries in 'commands'
+);
 
 // free globals
 void Globals_Free(void);
@@ -79,25 +82,31 @@ void Globals_Free(void);
 //------------------------------------------------------------------------------
 
 // graphs_in_keyspace iterator
-typedef struct GraphIterator {
+typedef struct KeySpaceGraphIterator {
 	uint64_t idx;       // current graph index
-} GraphIterator;
+} KeySpaceGraphIterator;
 
 // initialize iterator over graphs in keyspace
-void Globals_ScanGraphs(GraphIterator *it);
+void Globals_ScanGraphs(KeySpaceGraphIterator *it);
 
 // seek iterator to index
 void GraphIterator_Seek
 (
-	GraphIterator *it,  // iterator
-	uint64_t idx        // index to seek to
+	KeySpaceGraphIterator *it,  // iterator
+	uint64_t idx                // index to seek to
 );
 
 // advance iterator
 // returns graph object in case iterator isn't depleted
 // otherwise returns NULL
+// NOTICE:
+// if caller doesn't hold the GIL thoughout the iterator scan
+// it is possible for the scanning thread to miss keys which are deleted
+// consider the iterator is at position 4 and graph at position 0 is deleted
+// in which case array_del_fast will move the last graph (say index 9) to
+// index 0. in this case the iterator will miss that migrated graph
 GraphContext *GraphIterator_Next
 (
-	GraphIterator *it  // iterator to advance
+	KeySpaceGraphIterator *it  // iterator to advance
 );
 

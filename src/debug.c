@@ -25,9 +25,9 @@ static void endCrashReport(void) {
 
 static void logCommands(void) {
 	// #readers + #writers + Redis main thread
-
-	CommandCtx **commands = Globals_GetCommandCtxs();
-	uint32_t n = array_len(commands);
+	uint32_t n = ThreadPools_ThreadCount() + 1;
+	CommandCtx* commands[n] = {0};
+	Globals_GetCommandCtxs(&commands, &n);
 
 	for(uint32_t i = 0; i < n; i++) {
 		CommandCtx *cmd = commands[i];
@@ -38,8 +38,6 @@ static void logCommands(void) {
 
 		CommandCtx_Free(cmd);
 	}
-
-	array_free(commands);
 }
 
 void InfoFunc
@@ -55,10 +53,10 @@ void InfoFunc
 	// other threads can potentially change states before being interrupted.
 	ThreadPools_Pause();
 
-	char *command_desc = NULL;
 	// #readers + #writers + Redis main thread
-	CommandCtx **command_ctxs = Globals_GetCommandCtxs();
-	uint32_t n = array_len(command_ctxs);
+	uint32_t n = ThreadPools_ThreadCount() + 1;
+	CommandCtx* commands[n] = {0};
+	Globals_GetCommandCtxs(&commands, &n);
 
 	RedisModule_InfoAddSection(ctx, "executing commands");
 
@@ -67,14 +65,13 @@ void InfoFunc
 		ASSERT(cmd != NULL);
 
 		int rc __attribute__((unused));
+		char *command_desc = NULL;
 		rc = asprintf(&command_desc, "%s %s", cmd->command_name, cmd->query);
 		RedisModule_InfoAddFieldCString(ctx, "command", command_desc);
 
 		free(command_desc);
 		CommandCtx_Free(cmd);
 	}
-
-	array_free(command_ctxs);
 }
 
 void crashHandler

@@ -68,7 +68,7 @@ void QueriesLog_AddQuery
 	// add query stats to buffer
 	// acquire READ lock, multiple threads can be populating the circular buffer
 	// simultaneously (the circular-buffer is lock-free)
-	
+
 	int res = pthread_rwlock_rdlock(&log->rwlock);
 	ASSERT(res == 0);
 
@@ -119,52 +119,6 @@ uint64_t QueriesLog_GetQueriesCount
 	return n;
 }
 
-// increments the corresponding query type counter
-// the passed parameters define the kind of query [READ/WRITE]
-// and its finish status [FAILED/TIMEOUT/SUCCESS]
-//void QueriesLog_IncrementNumberOfQueries
-//(
-//    QueriesLog log,                // queries log
-//    const QueryExecutionTypeFlag,  //
-//    const QueryExecutionStatus     //
-//) {
-//    ASSERT(log != NULL);
-//
-//	//--------------------------------------------------------------------------
-//	// write query
-//	//--------------------------------------------------------------------------
-//
-//    if(flags & QueryExecutionTypeFlag_WRITE) {
-//		// encountered error
-//        if(status == QueryExecutionStatus_FAILURE) {
-//            log->counters.write_failed_n++;
-//		// timedout
-//        } else if(status == QueryExecutionStatus_TIMEDOUT) {
-//            log->counters.write_timedout_n++;
-//        } else {
-//		// succeeded
-//            log->counters.write_succeeded_n++;
-//        }
-//    }
-//
-//	//--------------------------------------------------------------------------
-//	// read query
-//	//--------------------------------------------------------------------------
-//
-//	// encountered error
-//	else if(flags & QueryExecutionTypeFlag_READ) {
-//		if(status == QueryExecutionStatus_FAILURE) {
-//			log->counters.ro_failed_n++;
-//			// timedout
-//		} else if(status == QueryExecutionStatus_TIMEDOUT) {
-//			log->counters.ro_timedout_n++;
-//		} else {
-//			// succeeded
-//			log->counters.ro_succeeded_n++;
-//		}
-//	}
-//}
-
 // reset queries buffer
 // returns queries buffer prior to reset
 CircularBuffer QueriesLog_ResetQueries
@@ -177,19 +131,17 @@ CircularBuffer QueriesLog_ResetQueries
 	// swap buffers
 	//--------------------------------------------------------------------------
 
-	CircularBuffer prev = log->queries;
-
 	// acquire WRITE lock, waiting for all readers to finish
 	int res = pthread_rwlock_wrlock(&log->rwlock);
 	ASSERT(res == 0);
 
+	CircularBuffer prev = log->queries;
 	log->queries = log->swap;
+	log->swap = prev;
 
 	// release lock
 	res = pthread_rwlock_unlock(&log->rwlock);
 	ASSERT(res == 0);
-
-	log->swap = prev;
 
 	return prev;
 }

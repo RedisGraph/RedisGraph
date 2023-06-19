@@ -24,7 +24,7 @@ typedef struct {
 	RedisModuleCtx *ctx;           // redis module context
 	char *command_name;            // command to execute
 	GraphContext *graph_ctx;       // graph context
-	int ref_count;                 // reference count
+	atomic_int ref_count;          // reference count
 	RedisModuleBlockedClient *bc;  // blocked client
 	bool replicated_command;       // whether this instance was spawned by a replication command
 	bool compact;                  // whether this query was issued with the compact flag
