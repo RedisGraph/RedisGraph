@@ -633,8 +633,7 @@ static void _statement_add_star_projection
 	cypher_astnode_t *new_query = cypher_ast_query(NULL, 0, clauses,
 		nclauses + 1, clauses, nclauses + 1, range);
 
-	cypher_ast_free(query);
-	cypher_ast_statement_set_body(statement, new_query);
+	cypher_ast_statement_replace_body(statement, new_query);
 }
 
 // adds a star projection (i.e., `WITH *`) before every call {} clause in the
