@@ -360,19 +360,17 @@ class testGraphInfo(FlowTestsBase):
         # validate running queries
         #-----------------------------------------------------------------------
 
-        res = self.conn.execute_command("GRAPH.INFO", "QUERIES")
+        res = self.conn.execute_command("GRAPH.INFO")
         while True:
             # validate response structure
-            self.env.assertEquals(len(res), 3)
-            self.env.assertEquals(res[0], "Queries")
-            self.env.assertEquals(res[1][0], "# Current queries")
-            self.env.assertEquals(res[2][0], "# Waiting queries")
-            if len(res[1]) > 1:
+            self.env.assertEquals(len(res), 4)
+            self.env.assertEquals(res[0], "# Running queries")
+            self.env.assertEquals(res[2], "# Waiting queries")
+            if len(res[1]) > 0:
                 break
-            res = self.conn.execute_command("GRAPH.INFO", "QUERIES")
+            res = self.conn.execute_command("GRAPH.INFO")
 
-        self.env.assertTrue(len(res[1]) > 1)
-        running_queries= res[1][1:]
+        running_queries = res[1]
         running_query = running_queries[0]
         self.env.assertEquals(running_query[0], "Received at")
         self.env.assertEquals(running_query[2], "Graph name")
@@ -390,31 +388,27 @@ class testGraphInfo(FlowTestsBase):
         # validate waiting queries
         #-----------------------------------------------------------------------
 
-        res = self.conn.execute_command("GRAPH.INFO", "QUERIES")
+        res = self.conn.execute_command("GRAPH.INFO")
         while True:
             # validate response structure
-            self.env.assertEquals(len(res), 3)
-            self.env.assertEquals(res[0], "Queries")
-            self.env.assertEquals(res[1][0], "# Current queries")
-            self.env.assertEquals(res[2][0], "# Waiting queries")
-            if len(res[2]) > 1:
+            self.env.assertEquals(len(res), 4)
+            self.env.assertEquals(res[0], "# Running queries")
+            self.env.assertEquals(res[2], "# Waiting queries")
+            if len(res[3]) > 0:
                 break
-            res = self.conn.execute_command("GRAPH.INFO", "QUERIES")
+            res = self.conn.execute_command("GRAPH.INFO")
 
-        self.env.assertTrue(len(res[2]) > 1)
-        waiting_queries= res[2][1:]
+        waiting_queries = res[3]
         waiting_query = waiting_queries[0]
         self.env.assertEquals(waiting_query[0], "Received at")
         self.env.assertEquals(waiting_query[2], "Graph name")
         self.env.assertEquals(waiting_query[4], "Query")
         self.env.assertEquals(waiting_query[6], "Wait duration")
-        self.env.assertEquals(waiting_query[8], "Replicated command")
 
         self.env.assertEquals(waiting_query[3], GRAPH_ID)
         self.env.assertTrue(waiting_query[5] == read_query or
                             waiting_query[5] == write_query1 or
                             waiting_query[5] == write_query2)
-        self.env.assertEquals(waiting_query[9], False)
 
         # signal worker threads to stop
         alive = False
@@ -422,4 +416,3 @@ class testGraphInfo(FlowTestsBase):
         # wait for all threads to complete
         for t in threads:
             t.join()
-
