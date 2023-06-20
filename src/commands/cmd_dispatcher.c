@@ -261,6 +261,7 @@ int CommandDispatch
 			// release the GraphContext, as we increased its reference count
 			// when retrieving it
 			GraphContext_DecreaseRefCount(gc);
+			CommandCtx_UnblockClient(context);
 			CommandCtx_Free(context);
 		}
 	}
