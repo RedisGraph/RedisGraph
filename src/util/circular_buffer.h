@@ -71,11 +71,10 @@ void *CircularBuffer_Read
 	void *item          // [optional] pointer populated with removed item
 );
 
-// sets the read pointer to be 'n' entries behind the write pointer
+// sets the read pointer to the beginning of the buffer
 void CircularBuffer_ResetReader
 (
-	CircularBuffer cb,  // circular buffer
-	int n               // set read 'n' entries behind write
+	CircularBuffer cb  // circular buffer
 );
 
 // free buffer (does not free its elements if its free callback is NULL)

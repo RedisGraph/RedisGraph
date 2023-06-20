@@ -90,21 +90,17 @@ inline bool CircularBuffer_Full
 	return cb->item_count == cb->item_cap;
 }
 
-// sets the read pointer to be 'n' entries behind the write pointer
+// sets the read pointer to the beginning of the buffer
 void CircularBuffer_ResetReader
 (
-	CircularBuffer cb,  // circular buffer
-	int n               // set read 'n' entries behind write
+	CircularBuffer cb  // circular buffer
 ) {
-	// set the read pointer to min(#items, n) items behind the write pointer
-	n = MIN(n, CircularBuffer_ItemCount(cb));
-
 	// compensate for circularity
 	uint64_t write = cb->write;
 	uint write_idx = write / cb->item_size;
-	int sub = write_idx - n;
+	int sub = write_idx - cb->item_count;
 	if(sub >= 0) {
-		cb->read = (cb->data + write) - (n * cb->item_size);
+		cb->read = (cb->data + write) - (cb->item_count * cb->item_size);
 	} else {
 		cb->read = cb->end_marker + (sub * cb->item_size);
 	}

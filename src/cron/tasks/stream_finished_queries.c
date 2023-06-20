@@ -145,8 +145,7 @@ static void _stream_queries
 	LoggedQuery *q = NULL;
 
 	// reset reader
-	// TODO: pass "index" to where the reader should be, 0 for oldest item
-	CircularBuffer_ResetReader(queries, CircularBuffer_ItemCount(queries));
+	CircularBuffer_ResetReader(queries);
 
 	while((q = CircularBuffer_Read(queries, NULL)) != NULL) {
 		_populateEvent(ctx, q);
@@ -177,7 +176,6 @@ void CronTask_streamFinishedQueries
 	double deadline = 3;  // 3ms
 	simple_tic(ctx->stopwatch);
 
-	// TODO: remove configuration
 	uint32_t max_query_count = 0;  // determine max number of queries to collect
 	Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_query_count);
 
@@ -190,74 +188,72 @@ void CronTask_streamFinishedQueries
 	GraphContext *gc = NULL;
 
 	// as long as we've got processing time
+	bool gil_acquired = false;
 	while(TIMER_GET_ELAPSED_MILLISECONDS(ctx->stopwatch) < deadline) {
-		// pull iterator
-		gc = GraphIterator_Next(&it);
+		// get next graph to populate
+		QueriesLog queries_log = NULL;
+		while((gc = GraphIterator_Next(&it)) != NULL) {
+			ctx->graph_idx++;  // prepare next iteration
+			if(QueriesLog_GetQueriesCount(gc->queries_log) > 0) {
+				queries_log = gc->queries_log;
+				break;
+			}
+			GraphContext_DecreaseRefCount(gc);
+		}
 
 		// iterator depleted
 		if((gc) == NULL) {
 			break;
 		}
 
-		ctx->graph_idx++;  // prepare next iteration
+		//----------------------------------------------------------------------
+		// try to acquire GIL
+		//----------------------------------------------------------------------
 
-		// get graph's queries log
-		QueriesLog queries_log = gc->queries_log;
-
-		// process logged queries
-		if(QueriesLog_GetQueriesCount(queries_log) > 0) {
-
-			//------------------------------------------------------------------
-			// try to acquire GIL
-			//------------------------------------------------------------------
-
-			uint8_t attempts  = 8;  // max number of attempts to acquire the GIL
-			bool gil_acquired = false;
-
-			// TODO: do not try to reacquire if already acquired
-			// TODO: switch from 8 attempts to time limit (deadline)
-			while(attempts > 0 && !gil_acquired) {
-				attempts--;
-				gil_acquired =
-					RedisModule_ThreadSafeContextTryLock(rm_ctx) == REDISMODULE_OK;
-			}
-
-			if(gil_acquired == true) {
-				CircularBuffer queries = QueriesLog_ResetQueries(queries_log);
-
-				//--------------------------------------------------------------
-				// stream queries
-				//--------------------------------------------------------------
-
-				RedisModuleString *keyname =
-					(RedisModuleString*)GraphContext_GetTelemetryStreamName(gc);
-
-				RedisModuleKey *key = RedisModule_OpenKey(rm_ctx, keyname,
-						REDISMODULE_WRITE);
-
-				// make sure key is of type stream
-				int key_type = RedisModule_KeyType(key);
-				if(key_type == REDISMODULE_KEYTYPE_STREAM ||
-				   key_type == REDISMODULE_KEYTYPE_EMPTY) {
-					// add queries to stream
-					_stream_queries(rm_ctx, key, queries);
-
-					// cap stream
-					RedisModule_StreamTrimByLength(key,
-							REDISMODULE_STREAM_TRIM_APPROX, max_query_count);
-				} else {
-					// TODO: decide how to handle this...
-				}
-
-				// clean up
-				RedisModule_CloseKey(key);
-
-				// release GIL
-				RedisModule_ThreadSafeContextUnlock(rm_ctx);
-			}
+		while(!gil_acquired && TIMER_GET_ELAPSED_MILLISECONDS(ctx->stopwatch) < deadline) {
+			gil_acquired =
+				RedisModule_ThreadSafeContextTryLock(rm_ctx) == REDISMODULE_OK;
 		}
 
+		if(!gil_acquired) {
+			GraphContext_DecreaseRefCount(gc);
+			break;
+		}
+
+		CircularBuffer queries = QueriesLog_ResetQueries(queries_log);
+
+		//----------------------------------------------------------------------
+		// stream queries
+		//----------------------------------------------------------------------
+
+		RedisModuleString *keyname =
+			(RedisModuleString*)GraphContext_GetTelemetryStreamName(gc);
+
+		RedisModuleKey *key = RedisModule_OpenKey(rm_ctx, keyname,
+			REDISMODULE_WRITE);
+
+		// make sure key is of type stream
+		int key_type = RedisModule_KeyType(key);
+		if(key_type == REDISMODULE_KEYTYPE_STREAM ||
+			key_type == REDISMODULE_KEYTYPE_EMPTY) {
+			// add queries to stream
+			_stream_queries(rm_ctx, key, queries);
+
+			// cap stream
+			RedisModule_StreamTrimByLength(key,
+					REDISMODULE_STREAM_TRIM_APPROX, max_query_count);
+		} else {
+			// TODO: decide how to handle this...
+		}
+
+		// clean up
+		RedisModule_CloseKey(key);
+
 		GraphContext_DecreaseRefCount(gc);
+	}
+
+	if(gil_acquired) {
+		RedisModule_ThreadSafeContextUnlock(rm_ctx);
 	}
 
 	RedisModule_FreeThreadSafeContext(rm_ctx);
