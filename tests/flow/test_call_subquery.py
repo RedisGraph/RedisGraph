@@ -1785,6 +1785,10 @@ updating clause.")
     def test29_rewrite_star_projections(self):
         """Tests that star projections within call {}are rewritten correctly"""
 
+        # clean the db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
         # import data with *
         res = graph.query(
             """
@@ -1864,8 +1868,7 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][1], 2)
 
         # embedded call {}
-        res = graph.query(
-            """
+        query = """
             WITH 1 AS a
             CALL {
                 WITH *
@@ -1880,16 +1883,33 @@ updating clause.")
             }
             RETURN a, num order by a, num
             """
+
+        self.expect_error(query, "Variable `a` already declared in outer scope")
+
+        # intermediate with *
+
+        # create a node with label N
+        res = graph.query("CREATE (:N)")
+
+        res = graph.query(
+            """
+            WITH 1 AS a, 2 AS b
+            CALL {
+                WITH *
+                MATCH (n)
+                WITH *
+                RETURN n
+            }
+            RETURN a, b, n
+            """
         )
 
         # assert results
-        self.env.assertEquals(len(res.result_set), 2)
-        self.env.assertEquals(len(res.result_set[0]), 2)
-        self.env.assertEquals(len(res.result_set[1]), 2)
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 3)
         self.env.assertEquals(res.result_set[0][0], 1)
-        self.env.assertEquals(res.result_set[0][1], 1)
-        self.env.assertEquals(res.result_set[1][0], 1)
-        self.env.assertEquals(res.result_set[1][1], 2)
+        self.env.assertEquals(res.result_set[0][1], 2)
+        self.env.assertEquals(res.result_set[0][2], Node(label='N'))
 
     def test30_surrounding_matches(self):
         """Tests that in case the call {} is surrounded by matches, the

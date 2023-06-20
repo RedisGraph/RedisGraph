@@ -759,7 +759,6 @@ cypher_parse_result_t *parse_query
 	// will be rewritten as:
 	// MATCH (m) CALL { WITH m AS @m CREATE (n:N) RETURN n, @m AS m } RETURN n, m
 	// note: we rewrite the ast for sure here, so we need to re-validate it
-	// TODO: remove all boolean return-vals from rewriting functions
 	rerun_validation |= AST_RewriteCallSubquery(root);
 
 	// rewrite '*' projections
