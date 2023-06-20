@@ -30,6 +30,9 @@ void Cron_Stop(void);
 // add recurring tasks
 void Cron_AddRecurringTasks(void);
 
+// add stream finished queries task
+void CronTask_AddStreamFinishedQueries();
+
 // create a new CRON task
 CronTaskHandle Cron_AddTask
 (

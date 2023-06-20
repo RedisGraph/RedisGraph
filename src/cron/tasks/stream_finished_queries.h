@@ -11,14 +11,17 @@
 // task context
 typedef struct {
 	uint32_t graph_idx;        // last processed graph index
-	simple_timer_t stopwatch;  // time spent processing
-	uint32_t when;             // next scheduling
 } StreamFinishedQueryCtx;
+
+// create task context
+void *CronTask_newStreamFinishedQueries
+(
+	void *pdata  // task context
+);
 
 // cron task
 // stream finished queries for each graph in the keyspace
-// task is alowed to run for 1ms before it terminates and reschedules
-void CronTask_streamFinishedQueries
+bool CronTask_streamFinishedQueries
 (
 	void *pdata  // task context
 );

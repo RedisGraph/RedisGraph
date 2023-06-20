@@ -148,21 +148,31 @@ void CommandCtx_ThreadSafeContextUnlock
 	}
 }
 
+void CommandCtx_UnblockClient
+(
+	CommandCtx *command_ctx
+) {
+	ASSERT(command_ctx != NULL);
+	if(command_ctx->bc) {
+		RedisGraph_UnblockClient(command_ctx->bc);
+		command_ctx->bc = NULL;
+		if(command_ctx->ctx) {
+			RedisModule_FreeThreadSafeContext(command_ctx->ctx);
+			command_ctx->ctx = NULL;
+		}
+	}
+}
+
 void CommandCtx_Free
 (
 	CommandCtx *command_ctx
 ) {
 	// decrement reference count
 	if(atomic_fetch_sub(&command_ctx->ref_count, 1) == 1) {
+		// reference count is zero, free command context
 		Globals_UntrackCommandCtx(command_ctx);
 
-		// reference count is zero, free command context
-		if(command_ctx->bc) {
-			RedisGraph_UnblockClient(command_ctx->bc);
-			if(command_ctx->ctx) {
-				RedisModule_FreeThreadSafeContext(command_ctx->ctx);
-			}
-		}
+		ASSERT(command_ctx->bc == NULL);
 
 		if(command_ctx->query != NULL) rm_free(command_ctx->query);
 		rm_free(command_ctx->command_name);

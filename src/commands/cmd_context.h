@@ -103,6 +103,11 @@ void CommandCtx_ThreadSafeContextUnlock
 	const CommandCtx *command_ctx
 );
 
+void CommandCtx_UnblockClient
+(
+	CommandCtx *command_ctx
+);
+
 // free command context
 void CommandCtx_Free
 (

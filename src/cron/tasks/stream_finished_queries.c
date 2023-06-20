@@ -158,9 +158,25 @@ static void _stream_queries
 	}
 }
 
+void *CronTask_newStreamFinishedQueries
+(
+	void *pdata  // task context
+) {
+	ASSERT(pdata != NULL);
+	StreamFinishedQueryCtx *ctx = (StreamFinishedQueryCtx*)pdata;
+
+	// create private data for next invocation
+	StreamFinishedQueryCtx *new_ctx = rm_malloc(sizeof(StreamFinishedQueryCtx));
+
+	// set next iteration graph index
+	new_ctx->graph_idx = ctx->graph_idx;
+
+	return new_ctx;
+}
+
 // cron task
 // stream finished queries for each graph in the keyspace
-void CronTask_streamFinishedQueries
+bool CronTask_streamFinishedQueries
 (
 	void *pdata  // task context
 ) {
@@ -174,7 +190,8 @@ void CronTask_streamFinishedQueries
 
 	// start stopwatch
 	double deadline = 3;  // 3ms
-	simple_tic(ctx->stopwatch);
+	simple_timer_t stopwatch;
+	simple_tic(stopwatch);
 
 	uint32_t max_query_count = 0;  // determine max number of queries to collect
 	Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &max_query_count);
@@ -189,7 +206,7 @@ void CronTask_streamFinishedQueries
 
 	// as long as we've got processing time
 	bool gil_acquired = false;
-	while(TIMER_GET_ELAPSED_MILLISECONDS(ctx->stopwatch) < deadline) {
+	while(TIMER_GET_ELAPSED_MILLISECONDS(stopwatch) < deadline) {
 		// get next graph to populate
 		QueriesLog queries_log = NULL;
 		while((gc = GraphIterator_Next(&it)) != NULL) {
@@ -210,7 +227,7 @@ void CronTask_streamFinishedQueries
 		// try to acquire GIL
 		//----------------------------------------------------------------------
 
-		while(!gil_acquired && TIMER_GET_ELAPSED_MILLISECONDS(ctx->stopwatch) < deadline) {
+		while(!gil_acquired && TIMER_GET_ELAPSED_MILLISECONDS(stopwatch) < deadline) {
 			gil_acquired =
 				RedisModule_ThreadSafeContextTryLock(rm_ctx) == REDISMODULE_OK;
 		}
@@ -258,26 +275,9 @@ void CronTask_streamFinishedQueries
 
 	RedisModule_FreeThreadSafeContext(rm_ctx);
 
-	//--------------------------------------------------------------------------
-	// determine next invocation
-	//--------------------------------------------------------------------------
-
-	// create private data for next invocation
-	StreamFinishedQueryCtx *_pdata = rm_malloc(sizeof(StreamFinishedQueryCtx));
-
 	// set next iteration graph index
-	_pdata->graph_idx =	(gc == NULL) ? 0 : ctx->graph_idx;
+	ctx->graph_idx = (gc == NULL) ? 0 : ctx->graph_idx;
 
-	bool speed_up = (gc != NULL);
-	if(speed_up) {
-		// reduce delay, lower limit: 250ms
-		_pdata->when = (250 + ctx->when) / 2;
-	} else {
-		// increase delay, upper limit: 3sec
-		_pdata->when = (3000 + ctx->when) / 2;
-	}
-
-	// re-add task to CRON
-	Cron_AddTask(ctx->when, CronTask_streamFinishedQueries, rm_free, _pdata);
+	return (gc != NULL);
 }
 
