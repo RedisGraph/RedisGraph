@@ -162,7 +162,7 @@ static void _replace_with_clause
 	uint existing_projections_count = cypher_ast_with_nprojections(clause);
 	uint n_projections = array_len(inter_names) + existing_projections_count;
 	uint proj_idx = 0;
-	cypher_astnode_t *projections[n_projections + 1];
+	cypher_astnode_t *projections[n_projections];
 
 	//--------------------------------------------------------------------------
 	// create projections for bound vars
@@ -340,6 +340,8 @@ static void _replace_return_clause
 			cypher_ast_return_get_projection(clause, i);
 		projections[proj_idx++] = cypher_ast_clone(projection);
 	}
+
+	ASSERT(proj_idx == n_projections);
 
 	// copy projections to the children array
 	cypher_astnode_t *children[n_projections + 3];
