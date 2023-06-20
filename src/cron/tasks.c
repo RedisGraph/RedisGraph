@@ -21,6 +21,13 @@ typedef struct RecurringTaskCtx {
 	void *ctx;
 } RecurringTaskCtx;
 
+void CronTask_RecurringTaskFree(void *pdata) {
+	ASSERT(pdata != NULL);
+	RecurringTaskCtx *current_ctx = (RecurringTaskCtx*)pdata;
+	current_ctx->free(current_ctx->ctx);
+	rm_free(current_ctx);
+}
+
 void CronTask_RecurringTask(void *pdata) {
 	ASSERT(pdata != NULL);
 	RecurringTaskCtx *current_ctx = (RecurringTaskCtx*)pdata;
@@ -42,10 +49,8 @@ void CronTask_RecurringTask(void *pdata) {
 		}
 
 		// re-add task to CRON
-		Cron_AddTask(re_ctx->when, CronTask_RecurringTask, rm_free, (void*)re_ctx);
+		Cron_AddTask(re_ctx->when, CronTask_RecurringTask, CronTask_RecurringTaskFree, (void*)re_ctx);
 	}
-	
-	current_ctx->free(current_ctx->ctx);
 }
 
 void CronTask_AddStreamFinishedQueries() {
@@ -71,7 +76,7 @@ void CronTask_AddStreamFinishedQueries() {
 		re_ctx->ctx = ctx;
 
 		// add recurring task
-		Cron_AddTask(0, CronTask_RecurringTask, rm_free, (void*)re_ctx);
+		Cron_AddTask(0, CronTask_RecurringTask, CronTask_RecurringTaskFree, (void*)re_ctx);
 	}
 }
 
