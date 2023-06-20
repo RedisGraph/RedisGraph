@@ -255,7 +255,7 @@ static void _FlushDBHandler
 
 	if(subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		// clear global graphs tracking
-		Globals_ClearGraphs();
+		Globals_ClearGraphs(ctx);
 
 		// reset `aux_field_counter`
 		aux_field_counter = 0;

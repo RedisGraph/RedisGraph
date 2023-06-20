@@ -49,7 +49,9 @@ void Globals_RemoveGraphByName
 );
 
 // clear all tracked graphs
-void Globals_ClearGraphs(void);
+void Globals_ClearGraphs(
+	RedisModuleCtx *ctx
+);
 
 //------------------------------------------------------------------------------
 // Command context tracking

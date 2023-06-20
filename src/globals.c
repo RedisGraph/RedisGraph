@@ -153,9 +153,20 @@ void Globals_RemoveGraphByName
 }
 
 // clear all tracked graphs
-void Globals_ClearGraphs(void) {
+void Globals_ClearGraphs
+(
+	RedisModuleCtx *ctx
+) {
 	// acquire write lock
 	pthread_rwlock_wrlock(&_globals.lock);
+	
+	for(uint i = 0; i < array_len(_globals.graphs_in_keyspace); i++) {
+		GraphContext *gc = _globals.graphs_in_keyspace[i];
+		if(gc->telemetry_stream != NULL) {
+			RedisModule_FreeString(ctx, gc->telemetry_stream);
+			gc->telemetry_stream = NULL;
+		}
+	}
 
 	// clear graph tracking
 	array_clear(_globals.graphs_in_keyspace);
