@@ -103,6 +103,7 @@ void CommandCtx_ThreadSafeContextUnlock
 	const CommandCtx *command_ctx
 );
 
+// unblock the client
 void CommandCtx_UnblockClient
 (
 	CommandCtx *command_ctx

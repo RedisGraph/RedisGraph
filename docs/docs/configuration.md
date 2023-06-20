@@ -298,9 +298,9 @@ It's valid values are 'yes' and 'no' (i.e., on and off).
 
 ### MAX_INFO_QUERIES
 
-A limit for the number of previously executed queries stored for the `GRAPH.INFO PREV` subcommand.
+A limit for the number of previously executed queries stored in the telemetry stream.
 
-A number within the range [0, TBD]
+A number within the range [0, 1000]
 
 #### Default
 

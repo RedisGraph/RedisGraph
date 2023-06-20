@@ -92,7 +92,7 @@ typedef struct {
 	int64_t delta_max_pending_changes; // number of pending changed befor RG_Matrix flushed
 	Config_on_change cb;               // callback function which being called when config param changed
 	bool cmd_info_on;                  // If true, the GRAPH.INFO is enabled.
-  uint64_t effects_threshold;         // replicate via effects when runtime exceeds threshold
+	uint64_t effects_threshold;        // replicate via effects when runtime exceeds threshold
 	uint32_t max_info_queries_count;   // Maximum number of query info elements.
 } RG_Config;
 
