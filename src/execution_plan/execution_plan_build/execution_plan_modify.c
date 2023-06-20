@@ -201,7 +201,7 @@ void ExecutionPlan_BindOpsToPlan
 	}
 }
 
-// binds all ops in `ops` to `plan`, until meeting an op of type `exclude_type`
+// binds all ops in `ops` to `plan`, other than ops of type `exclude_type`
 void ExecutionPlan_MigrateOpsExcludeType
 (
 	OpBase * ops[],             // array of ops to bind

@@ -17,22 +17,6 @@
 #include "../ops/op_argument_list.h"
 #include "../ops/op_call_subquery.h"
 
-// returns an AST containing the body of a subquery as its body (stripped from
-// the CALL {} clause)
-static void _create_ast_from_call_subquery
-(
-	AST *subquery_ast,               // target AST to populate
-	const cypher_astnode_t *clause,  // CALL {} ast-node
-	const AST *orig_ast              // original AST with which to build new one
-) {
-	ASSERT(orig_ast != NULL);
-	ASSERT(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY);
-
-	// create an AST from the body of the subquery
-	subquery_ast->root = cypher_ast_call_subquery_get_query(clause);
-	subquery_ast->anot_ctx_collection = orig_ast->anot_ctx_collection;
-}
-
 // adds an empty projection as the child of parent, such that the records passed
 // to parent are "filtered" to contain no bound vars
 static OpBase *_add_empty_projection
@@ -78,6 +62,7 @@ static void _get_deepest
 	}
 
 	// traverse children
+	OPType type;
 	while(OpBase_ChildCount(deepest) > 0) {
 		deepest = deepest->children[0];
 		// in case of a CallSubquery op with no lhs, we want to stop
@@ -85,7 +70,7 @@ static void _get_deepest
 		// the current child, which will be moved to be the second)
 		// Example:
 		// "CALL {CALL {RETURN 1 AS one} RETURN one} RETURN one"
-		OPType type = OpBase_Type(deepest);
+		type = OpBase_Type(deepest);
 		if(_is_deepest_call_foreach(deepest)){
 			array_append(*deepest_ops, deepest);
 			return;
@@ -148,7 +133,9 @@ static OpBase **_find_feeding_points
 // binds the returning ops (effectively, all ops between the first
 // Project\Aggregate and CallSubquery in every branch other than the Join op,
 // inclusive) in embedded_plan to plan
-static void _bind_returning_ops_to_plan
+// returns true if `embedded_plan` should be free'd after binding its root to
+// the call {} op (if there are no more ops left in it), false otherwise
+static bool _bind_returning_ops_to_plan
 (
 	const ExecutionPlan *embedded_plan,  // embedded plan
 	const ExecutionPlan *plan            // plan to migrate ops to
@@ -167,17 +154,42 @@ static void _bind_returning_ops_to_plan
 		// only one returning projection/aggregation
 		OpBase *returning_op =
 			ExecutionPlan_LocateOpMatchingTypes(root, return_types, 2);
+		// if the returning op has no children, we need to free its exec-plan
+		// after binding it to a new plan
+		ExecutionPlan *old_plan = (ExecutionPlan *)returning_op->plan;
 		uint n_ops = ExecutionPlan_CollectUpwards(ops, returning_op);
 		ExecutionPlan_MigrateOpsExcludeType(ops, OPType_JOIN, n_ops, plan);
+		if(returning_op->childCount == 0) {
+			if(old_plan == embedded_plan) {
+				return true;
+			} else {
+				old_plan->root = NULL;
+				ExecutionPlan_Free(old_plan);
+				return false;
+			}
+		}
+
+		// there are more ops in the plan of the binded op, so we don't free its
+		// plan
+		return false;
 	} else {
 		// if there is a Union operation, we need to look at all of its branches
 		for(uint i = 0; i < join_op->childCount; i++) {
 			OpBase *child = join_op->children[i];
 			OpBase *returning_op =
 				ExecutionPlan_LocateOpMatchingTypes(child, return_types, 2);
+			if(returning_op->childCount == 0) {
+				ExecutionPlan *old_plan = (ExecutionPlan *)returning_op->plan;
+				old_plan->root = NULL;
+				ExecutionPlan_Free(old_plan);
+			}
 			uint n_ops = ExecutionPlan_CollectUpwards(ops, child);
 			ExecutionPlan_MigrateOpsExcludeType(ops, OPType_JOIN, n_ops, plan);
+
 		}
+
+		// if there is a join op, we never free the embedded plan
+		return false;
 	}
 }
 
@@ -210,7 +222,8 @@ void buildCallSubqueryPlan
 
 	// create an AST from the body of the subquery
 	AST subquery_ast = {0};
-	_create_ast_from_call_subquery(&subquery_ast, clause, orig_ast);
+	subquery_ast.root = cypher_ast_call_subquery_get_query(clause);
+	subquery_ast.anot_ctx_collection = orig_ast->anot_ctx_collection;
 
 	//--------------------------------------------------------------------------
 	// build the embedded execution plan corresponding to the subquery
@@ -237,6 +250,7 @@ void buildCallSubqueryPlan
 	// Bind returning projection(s)\aggregation(s) to the outer plan
 	//--------------------------------------------------------------------------
 
+	bool free_embedded_plan = false;
 	if(is_returning) {
 		// remove the Results op from the embedded execution-plan
 		OpBase *results_op = embedded_plan->root;
@@ -245,7 +259,7 @@ void buildCallSubqueryPlan
 		OpBase_Free(results_op);
 
 		// bind the returning ops to the outer plan
-		_bind_returning_ops_to_plan(embedded_plan, plan);
+		free_embedded_plan = _bind_returning_ops_to_plan(embedded_plan, plan);
 	}
 
 	//--------------------------------------------------------------------------
@@ -276,4 +290,9 @@ void buildCallSubqueryPlan
 
 	// add the embedded plan as a child of the Call-Subquery op
 	ExecutionPlan_AddOp(call_op, embedded_plan->root);
+
+	if(free_embedded_plan) {
+		embedded_plan->root = NULL;
+		ExecutionPlan_Free(embedded_plan);
+	}
 }
