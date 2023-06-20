@@ -162,7 +162,7 @@ static void _replace_with_clause
 	uint existing_projections_count = cypher_ast_with_nprojections(clause);
 	uint n_projections = array_len(inter_names) + existing_projections_count;
 	uint proj_idx = 0;
-	cypher_astnode_t *projections[n_projections];
+	cypher_astnode_t *projections[n_projections + 1];
 
 	//--------------------------------------------------------------------------
 	// create projections for bound vars
