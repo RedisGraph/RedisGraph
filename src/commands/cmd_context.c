@@ -40,6 +40,7 @@ CommandCtx *CommandCtx_New
 	context->timeout            = timeout;
 	context->ref_count          = ATOMIC_VAR_INIT(1);
 	context->graph_ctx          = graph_ctx;
+	context->thread_id          = -1;
 	context->timeout_rw         = timeout_rw;
 	context->received_ts        = received_ts;
 	context->command_name       = NULL;

@@ -204,6 +204,8 @@ void Globals_UntrackCommandCtx
 	ASSERT(ctx != NULL);
 	ASSERT(_globals.command_ctxs != NULL);
 
+	if(ctx->thread_id == -1) return;  // not tracked
+
 	// acuire read lock
 	pthread_rwlock_rdlock(&_globals.lock);
 
