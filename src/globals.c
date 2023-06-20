@@ -177,6 +177,7 @@ void Globals_TrackCommandCtx
 	ASSERT(_globals.command_ctxs != NULL);
 
 	int tid = ThreadPools_GetThreadID();
+	ctx->thread_id = tid;
 
 	// acuire read lock
 	pthread_rwlock_rdlock(&_globals.lock);
@@ -203,16 +204,14 @@ void Globals_UntrackCommandCtx
 	ASSERT(ctx != NULL);
 	ASSERT(_globals.command_ctxs != NULL);
 
-	int tid = ThreadPools_GetThreadID();
-
 	// acuire read lock
 	pthread_rwlock_rdlock(&_globals.lock);
 
-	ASSERT(_globals.command_ctxs[tid] == ctx);
+	ASSERT(_globals.command_ctxs[ctx->thread_id] == ctx);
 
 	// clear ctx at the current thread entry
 	// CommandCtx_Free will free it eventually
-	_globals.command_ctxs[tid] = NULL;
+	_globals.command_ctxs[ctx->thread_id] = NULL;
 
 	// release lock
 	pthread_rwlock_unlock(&_globals.lock);

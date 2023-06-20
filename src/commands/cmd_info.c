@@ -244,7 +244,7 @@ static void _info_queries
 		CommandCtx_Free(cmd);
 	}
 
-	rm_free(cmds_ctx);
+	free(cmds_ctx);
 }
 
 // attempts to find the specified subcommand of "GRAPH.INFO" and dispatch it

@@ -319,6 +319,12 @@ class testGraphInfo(FlowTestsBase):
             while alive:
                 g.query(q)
 
+        def issue_2_query(g, q1, q2):
+            while alive:
+                g.query(q1)
+                time.sleep(1)
+                g.query(q2)
+
         num_threads = multiprocessing.cpu_count() * 2
 
         # create multiple connections
@@ -326,15 +332,18 @@ class testGraphInfo(FlowTestsBase):
         for i in range(num_threads+1):
             connections.append(self.env.getConnection())
 
+        read_query = "MATCH (n) WHERE n.v > 100 RETURN count(1)"
+        write_query1 = "UNWIND range(1, 10000) AS x CREATE (v: x)"
+        write_query2 = "MATCH (n) DELETE n"
         # create multiple threads
         threads = []
         for i in range(num_threads):
             # read queries
-            t = threading.Thread(target=issue_query, args=(Graph(connections[i], GRAPH_ID), "RETURN 1"))
+            t = threading.Thread(target=issue_query, args=(Graph(connections[i], GRAPH_ID), read_query))
             threads.append(t)
 
         # write query
-        t = threading.Thread(target=issue_query, args=(Graph(connections[-1], GRAPH_ID), "CREATE ()"))
+        t = threading.Thread(target=issue_2_query, args=(Graph(connections[-1], GRAPH_ID), write_query1, write_query2))
         threads.append(t)
 
         # issue threads
@@ -342,24 +351,26 @@ class testGraphInfo(FlowTestsBase):
             t.start()
         
         # wait for graph to be created
-        print("waiting for graph to be created")
         res = self.conn.type(GRAPH_ID)
         while res != "graphdata":
             res = self.conn.type(GRAPH_ID)
-        print("graph created")
 
         # get waiting and running queries
-        res = self.conn.execute_command("GRAPH.INFO", "QUERIES")
-
-        # validate response structure
-        self.env.assertEquals(len(res), 3)
-        self.env.assertEquals(res[0], "Queries")
-        self.env.assertEquals(res[1][0], "# Current queries")
-        self.env.assertEquals(res[2][0], "# Waiting queries")
 
         #-----------------------------------------------------------------------
         # validate running queries
         #-----------------------------------------------------------------------
+
+        res = self.conn.execute_command("GRAPH.INFO", "QUERIES")
+        while True:
+            # validate response structure
+            self.env.assertEquals(len(res), 3)
+            self.env.assertEquals(res[0], "Queries")
+            self.env.assertEquals(res[1][0], "# Current queries")
+            self.env.assertEquals(res[2][0], "# Waiting queries")
+            if len(res[1]) > 1:
+                break
+            res = self.conn.execute_command("GRAPH.INFO", "QUERIES")
 
         self.env.assertTrue(len(res[1]) > 1)
         running_queries= res[1][1:]
@@ -371,13 +382,25 @@ class testGraphInfo(FlowTestsBase):
         self.env.assertEquals(running_query[8], "Replicated command")
 
         self.env.assertEquals(running_query[3], GRAPH_ID)
-        self.env.assertTrue(running_query[5] == "RETURN 1" or
-                            running_query[5] == "CREATE ()")
+        self.env.assertTrue(running_query[5] == read_query or
+                            running_query[5] == write_query1 or
+                            running_query[5] == write_query2)
         self.env.assertEquals(running_query[9], False)
 
         #-----------------------------------------------------------------------
         # validate waiting queries
         #-----------------------------------------------------------------------
+
+        res = self.conn.execute_command("GRAPH.INFO", "QUERIES")
+        while True:
+            # validate response structure
+            self.env.assertEquals(len(res), 3)
+            self.env.assertEquals(res[0], "Queries")
+            self.env.assertEquals(res[1][0], "# Current queries")
+            self.env.assertEquals(res[2][0], "# Waiting queries")
+            if len(res[2]) > 1:
+                break
+            res = self.conn.execute_command("GRAPH.INFO", "QUERIES")
 
         self.env.assertTrue(len(res[2]) > 1)
         waiting_queries= res[2][1:]
@@ -389,8 +412,9 @@ class testGraphInfo(FlowTestsBase):
         self.env.assertEquals(waiting_query[8], "Replicated command")
 
         self.env.assertEquals(waiting_query[3], GRAPH_ID)
-        self.env.assertTrue(waiting_query[5] == "RETURN 1" or
-                            waiting_query[5] == "CREATE ()")
+        self.env.assertTrue(waiting_query[5] == read_query or
+                            waiting_query[5] == write_query1 or
+                            waiting_query[5] == write_query2)
         self.env.assertEquals(waiting_query[9], False)
 
         # signal worker threads to stop

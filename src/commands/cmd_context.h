@@ -35,6 +35,7 @@ typedef struct {
 	bool timeout_rw;               // apply timeout on both read and write queries
 	uint64_t received_ts;          // command received at this UNIX timestamp
 	simple_timer_t timer;          // stopwatch started upon command received
+	int thread_id; 		           // thread id
 } CommandCtx;
 
 // create a new command context
