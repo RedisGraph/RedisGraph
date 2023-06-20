@@ -126,8 +126,8 @@ void setup() {
 
 void tearDown() {
 	TEST_ASSERT(GrB_finalize() == GrB_SUCCESS);
-//	GraphContext *gc = QueryCtx_GetGraphCtx();
-//	GraphContext_DecreaseRefCount(gc);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	GraphContext_DecreaseRefCount(gc);
 	QueryCtx_Free();
 }
 
