@@ -77,11 +77,8 @@ class testGraphInfo(FlowTestsBase):
         # wait for telemetry stream to be created
         t = 'none' # type of stream_key
 
-        start = time.time()
-        deadline = 3000
-        while t == 'none' and ((time.time() - start) * 1000) < deadline:
+        while t == 'none':
             t = self.conn.type(stream)
-            time.sleep(0.1) # sleep for 100ms
 
         self.env.assertEquals(t, "stream")
 
@@ -232,6 +229,7 @@ class testGraphInfo(FlowTestsBase):
 
         # wait for stream to be created
         logged_queries = self.consumeStream(StreamName(old_graph), drop=False)
+        self.env.assertEquals(len(logged_queries), 1)
 
         # validate that stream exists
         self.env.assertEquals(self.conn.type(StreamName(old_graph)), "stream")
@@ -244,6 +242,7 @@ class testGraphInfo(FlowTestsBase):
 
         # wait for stream to be created
         logged_queries = self.consumeStream(StreamName(new_graph), drop=False)
+        self.env.assertEquals(len(logged_queries), 1)
 
         # validate that stream was renamed
         self.env.assertEquals(self.conn.type(StreamName(old_graph)), "none")
