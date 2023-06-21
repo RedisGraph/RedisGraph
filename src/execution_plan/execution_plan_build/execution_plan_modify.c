@@ -75,6 +75,21 @@ inline void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 	_OpBase_AddChild(parent, newOp);
 }
 
+// adds child to be the ind'th child of parent
+void ExecutionPlan_AddOpInd
+(
+	OpBase *parent,  // parent op
+	OpBase *child,   // child op
+	uint ind         // index of child
+) {
+	ASSERT(parent != NULL);
+	ASSERT(child != NULL);
+
+	OpBase *to_replace = parent->children[ind];
+	_ExecutionPlan_ParentReplaceChild(parent, to_replace, child);
+	_OpBase_AddChild(parent, to_replace);
+}
+
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	// B belongs to A's plan.
@@ -164,202 +179,9 @@ void ExecutionPlan_DetachOp(OpBase *op) {
 	op->parent = NULL;
 }
 
-OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
-	if(!root) return NULL;
-
-	uint count = array_len(root->modifies);
-
-	for(uint i = 0; i < count; i++) {
-		const char *resolved_alias = root->modifies[i];
-		/* NOTE - if this function is later used to modify the returned operation, we should return
-		 * the deepest operation that modifies the alias rather than the shallowest, as done here. */
-		if(strcmp(resolved_alias, alias) == 0) return root;
-	}
-
-	for(int i = 0; i < root->childCount; i++) {
-		OpBase *op = ExecutionPlan_LocateOpResolvingAlias(root->children[i], alias);
-		if(op) return op;
-	}
-
-	return NULL;
-}
-
-OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, uint type_count) {
-	for(int i = 0; i < type_count; i++) {
-		// Return the current op if it matches any of the types we're searching for.
-		if(root->type == types[i]) return root;
-	}
-
-	for(int i = 0; i < root->childCount; i++) {
-		// Recursively visit children.
-		OpBase *op = ExecutionPlan_LocateOpMatchingType(root->children[i], types, type_count);
-		if(op) return op;
-	}
-
-	return NULL;
-}
-
-OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
-	if(!root) return NULL;
-
-	const OPType type_arr[1] = {type};
-	return ExecutionPlan_LocateOpMatchingType(root, type_arr, 1);
-}
-
-OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
-												   const OpBase *recurse_limit, const OPType *blacklisted_ops,
-												   int nblacklisted_ops, rax *refs_to_resolve) {
-
-	int dependency_count = 0;
-	bool blacklisted = false;
-	OpBase *resolving_op = NULL;
-	bool all_refs_resolved = false;
-
-	// check if this op is blacklisted
-	for(int i = 0; i < nblacklisted_ops && !blacklisted; i++) {
-		blacklisted = (root->type == blacklisted_ops[i]);
-	}
-
-	// we're not allowed to inspect child operations of blacklisted ops
-	// also we're not allowed to venture further than 'recurse_limit'
-	if(blacklisted == false && root != recurse_limit) {
-		for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
-			// Visit each child and try to resolve references, storing a pointer to the child if successful.
-			OpBase *tmp_op = ExecutionPlan_LocateReferencesExcludingOps(root->children[i],
-																		recurse_limit, blacklisted_ops, nblacklisted_ops, refs_to_resolve);
-
-			if(tmp_op) dependency_count ++; // Count how many children resolved references.
-			// If there is more than one child resolving an op, set the root as the resolver.
-			resolving_op = resolving_op ? root : tmp_op;
-			all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
-		}
-	}
-
-	// If we've resolved all references, our work is done.
-	if(all_refs_resolved) return resolving_op;
-
-	char **modifies = NULL;
-	if(blacklisted) {
-		// If we've reached a blacklisted op, all variables in its subtree are
-		// considered to be modified by it, as we can't recurse farther.
-		rax *bound_vars = raxNew();
-		ExecutionPlan_BoundVariables(root, bound_vars);
-		modifies = (char **)raxKeys(bound_vars);
-		raxFree(bound_vars);
-	} else {
-		modifies = (char **)root->modifies;
-	}
-
-	// Try to resolve references in the current operation.
-	bool refs_resolved = false;
-	uint modifies_count = array_len(modifies);
-	for(uint i = 0; i < modifies_count; i++) {
-		const char *ref = modifies[i];
-		// Attempt to remove the current op's references, marking whether any removal was succesful.
-		refs_resolved |= raxRemove(refs_to_resolve, (unsigned char *)ref, strlen(ref), NULL);
-	}
-
-	// Free the modified array and its contents if it was generated to represent a blacklisted op.
-	if(blacklisted) {
-		for(uint i = 0; i < modifies_count; i++) rm_free(modifies[i]);
-		array_free(modifies);
-	}
-
-	if(refs_resolved) resolving_op = root;
-	return resolving_op;
-}
-
-OpBase *ExecutionPlan_LocateReferences
-(
-	OpBase *root,
-	const OpBase *recurse_limit,
-	rax *refs_to_resolve
-) {
-	return ExecutionPlan_LocateReferencesExcludingOps(
-			   root, recurse_limit, NULL, 0, refs_to_resolve);
-}
-
-void _ExecutionPlan_LocateTaps
-(
-	OpBase *root,
-	OpBase ***taps
-) {
-	if(root == NULL) {
-		return;
-	}
-
-	if(root->childCount == 0) {
-		// op Argument isn't considered a tap
-		if(root->type != OPType_ARGUMENT) {
-			array_append(*taps, root);
-		}
-	}
-
-	// recursively visit children
-	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlan_LocateTaps(root->children[i], taps);
-	}
-}
-
-OpBase **ExecutionPlan_LocateTaps(const ExecutionPlan *plan) {
-	ASSERT(plan != NULL);
-	OpBase **taps = array_new(OpBase *, 1);
-	_ExecutionPlan_LocateTaps(plan->root, &taps);
-	return taps;
-}
-
-static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, int type_count,
-												  OpBase ***ops) {
-	for(int i = 0; i < type_count; i++) {
-		// Check to see if the op's type matches any of the types we're searching for.
-		if(root->type == types[i]) {
-			array_append(*ops, root);
-			break;
-		}
-	}
-
-	for(int i = 0; i < root->childCount; i++) {
-		// Recursively visit children.
-		_ExecutionPlan_CollectOpsMatchingType(root->children[i], types, type_count, ops);
-	}
-}
-
-OpBase **ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, uint type_count) {
-	OpBase **ops = array_new(OpBase *, 0);
-	_ExecutionPlan_CollectOpsMatchingType(root, types, type_count, &ops);
-	return ops;
-}
-
-OpBase **ExecutionPlan_CollectOps(OpBase *root, OPType type) {
-	OpBase **ops = array_new(OpBase *, 0);
-	const OPType type_arr[1] = {type};
-	_ExecutionPlan_CollectOpsMatchingType(root, type_arr, 1, &ops);
-	return ops;
-}
-
-// Collect all aliases that have been resolved by the given tree of operations.
-void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
-	ASSERT(op != NULL && modifiers != NULL);
-	if(op->modifies) {
-		uint modifies_count = array_len(op->modifies);
-		for(uint i = 0; i < modifies_count; i++) {
-			const char *modified = op->modifies[i];
-			raxTryInsert(modifiers, (unsigned char *)modified, strlen(modified), (void *)modified, NULL);
-		}
-	}
-
-	/* Project and Aggregate operations demarcate variable scopes,
-	 * collect their projections but do not recurse into their children.
-	 * Note that future optimizations which operate across scopes will require different logic
-	 * than this for application. */
-	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return;
-
-	for(int i = 0; i < op->childCount; i++) {
-		ExecutionPlan_BoundVariables(op->children[i], modifiers);
-	}
-}
-
-void ExecutionPlan_BindPlanToOps
+// For all ops in the given tree, associate the provided ExecutionPlan.
+// if qg is set, merge the query graphs of the temporary and main plans
+void ExecutionPlan_BindOpsToPlan
 (
 	ExecutionPlan *plan,  // plan to bind the operations to
 	OpBase *root,         // root operation
@@ -375,59 +197,21 @@ void ExecutionPlan_BindPlanToOps
 
 	root->plan = plan;
 	for(int i = 0; i < root->childCount; i ++) {
-		ExecutionPlan_BindPlanToOps(plan, root->children[i], qg);
+		ExecutionPlan_BindOpsToPlan(plan, root->children[i], qg);
 	}
 }
 
-OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_vars,
-									   const cypher_astnode_t *node) {
-	// Initialize an ExecutionPlan that shares this plan's Record mapping.
-	ExecutionPlan *match_stream_plan = ExecutionPlan_NewEmptyExecutionPlan();
-	match_stream_plan->record_map = plan->record_map;
-
-	// If we have bound variables, build an Argument op that represents them.
-	if(bound_vars) match_stream_plan->root = NewArgumentOp(match_stream_plan,
-															   bound_vars);
-
-	AST *ast = QueryCtx_GetAST();
-	// Build a temporary AST holding a MATCH clause.
-	cypher_astnode_type_t type = cypher_astnode_type(node);
-
-	/* The AST node we're building a mock MATCH clause for will be a path
-	 * if we're converting a MERGE clause or WHERE filter, and we must build
-	 * and later free a CYPHER_AST_PATTERN node to contain it.
-	 * If instead we're converting an OPTIONAL MATCH, the node is itself a MATCH clause,
-	 * and we will reuse its CYPHER_AST_PATTERN node rather than building a new one. */
-	bool node_is_path = (type == CYPHER_AST_PATTERN_PATH || type == CYPHER_AST_NAMED_PATH);
-	AST *match_stream_ast = AST_MockMatchClause(ast, (cypher_astnode_t *)node, node_is_path);
-
-	//--------------------------------------------------------------------------
-	// Build plan's query graph
-	//--------------------------------------------------------------------------
-
-	// Extract pattern from holistic query graph.
-	const cypher_astnode_t **match_clauses = AST_GetClauses(match_stream_ast, CYPHER_AST_MATCH);
-	ASSERT(array_len(match_clauses) == 1);
-	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[0]);
-	array_free(match_clauses);
-	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(plan->query_graph, &pattern, 1);
-	match_stream_plan->query_graph = sub_qg;
-
-	ExecutionPlan_PopulateExecutionPlan(match_stream_plan);
-
-	AST_MockFree(match_stream_ast, node_is_path);
-	QueryCtx_SetAST(ast); // Reset the AST.
-
-	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
-	OpBase *match_stream_root = match_stream_plan->root;
-	ExecutionPlan_BindPlanToOps(plan, match_stream_root, true);
-
-	// NULL-set variables shared between the match_stream_plan and the overall plan.
-	match_stream_plan->root = NULL;
-	match_stream_plan->record_map = NULL;
-	// Free the temporary plan.
-	ExecutionPlan_Free(match_stream_plan);
-
-	return match_stream_root;
+// binds all ops in `ops` to `plan`, other than ops of type `exclude_type`
+void ExecutionPlan_MigrateOpsExcludeType
+(
+	OpBase * ops[],             // array of ops to bind
+	OPType exclude_type,        // type of ops to exclude
+	uint op_count,              // number of ops in the array
+	const ExecutionPlan *plan   // plan to bind the ops to
+) {
+	for(uint i = 0; i < op_count; i++) {
+		if(ops[i]->type != exclude_type) {
+			OpBase_BindOpToPlan(ops[i], (ExecutionPlan *)plan);
+		}
+	}
 }
-

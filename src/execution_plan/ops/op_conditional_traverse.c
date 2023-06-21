@@ -154,7 +154,9 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		for(op->record_count = 0; op->record_count < op->record_cap; op->record_count++) {
 			Record childRecord = OpBase_Consume(child);
 			// If the Record is NULL, the child has been depleted.
-			if(!childRecord) break;
+			if(childRecord == NULL) {
+				break;
+			}
 			if(!Record_GetNode(childRecord, op->srcNodeIdx)) {
 				/* The child Record may not contain the source node in scenarios like
 				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
@@ -189,7 +191,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		EdgeTraverseCtx_SetEdge(op->edge_ctx, op->r);
 	}
 
-	return OpBase_CloneRecord(op->r);
+	return OpBase_DeepCloneRecord(op->r);
 }
 
 static OpResult CondTraverseReset(OpBase *ctx) {

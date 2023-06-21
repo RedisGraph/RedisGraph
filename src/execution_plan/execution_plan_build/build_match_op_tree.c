@@ -4,12 +4,13 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "execution_plan_construct.h"
-#include "execution_plan_modify.h"
 #include "../ops/ops.h"
 #include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../execution_plan.h"
+#include "execution_plan_util.h"
+#include "execution_plan_modify.h"
+#include "execution_plan_construct.h"
 #include "../../util/rax_extensions.h"
 #include "../optimizations/optimizations.h"
 #include "../../ast/ast_build_filter_tree.h"
@@ -201,7 +202,7 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 
 	// only add at most one set of traversals per plan
 	// TODO Revisit and improve this logic
-	if(plan->root && ExecutionPlan_LocateOpMatchingType(plan->root, SCAN_OPS, SCAN_OP_COUNT)) {
+	if(plan->root && ExecutionPlan_LocateOpMatchingTypes(plan->root, SCAN_OPS, SCAN_OP_COUNT)) {
 		return;
 	}
 

@@ -4,13 +4,14 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "op_results.h"
 #include "RG.h"
+#include "op_join.h"
+#include "op_results.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../configuration/config.h"
 #include "../../arithmetic/arithmetic_expression.h"
-#include "../execution_plan_build/execution_plan_modify.h"
+#include "../execution_plan_build/execution_plan_util.h"
 
 /* Forward declarations. */
 static Record ResultsConsume(OpBase *opBase);
@@ -33,8 +34,8 @@ static OpResult ResultsInit(OpBase *opBase) {
 	Config_Option_get(Config_RESULTSET_MAX_SIZE, &op->result_set_size_limit);
 
 	// map resultset columns to record entries
-	OpBase *join = ExecutionPlan_LocateOp(opBase, OPType_JOIN);
-	if(op->result_set != NULL && join == NULL) {
+	OpBase *join = ExecutionPlan_LocateOpDepth(opBase, OPType_JOIN, 2);
+	if(op->result_set != NULL && (join == NULL || !JoinGetUpdateColumnMap(join))) {
 		rax *mapping = ExecutionPlan_GetMappings(opBase->plan);
 		ResultSet_MapProjection(op->result_set, mapping);
 	}

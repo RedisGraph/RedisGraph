@@ -54,15 +54,15 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	int union_count = array_len(union_indices);
 	ASSERT(union_count > 1);
 
-	/* Placeholder for each execution plan, these all will be joined
-	 * via a single UNION operation. */
+	// Placeholder for each execution plan, these all will be joined
+	// via a single UNION operation
 	ExecutionPlan *plans[union_count];
 
 	for(int i = 0; i < union_count; i++) {
 		// Create an AST segment from which we will build an execution plan.
 		end_offset = union_indices[i];
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-		plans[i] = NewExecutionPlan();
+		plans[i] = ExecutionPlan_FromTLS_AST();
 		AST_Free(ast_segment); // Free the AST segment.
 
 		// Next segment starts where this one ends.
@@ -163,9 +163,9 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	// bound segments
 	//--------------------------------------------------------------------------
 
-	/* retrieve the indices of each WITH clause to properly set
-	 * the segment's bounds.
-	 * Every WITH clause demarcates the beginning of a new segment. */
+	// retrieve the indices of each WITH clause to properly set
+	// the segment's bounds.
+	// Every WITH clause demarcates the beginning of a new segment
 	segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
 	// last segment
@@ -201,6 +201,29 @@ static ExecutionPlan **_process_segments(AST *ast) {
 	return segments;
 }
 
+static bool _ExecutionPlan_HasLocateTaps
+(
+	OpBase *root
+) {
+	if((root->childCount == 0 && root->type != OPType_ARGUMENT &&
+		root->type != OPType_ARGUMENT_LIST) ||
+		// when Foreach or Call {} have a single child, they don't need a tap
+		(root->childCount == 1 &&
+			(root->type == OPType_FOREACH || root->type == OPType_CALLSUBQUERY))
+		) {
+			return true;
+	}
+
+	// recursively visit children
+	for(int i = 0; i < root->childCount; i++) {
+		if(_ExecutionPlan_HasLocateTaps(root->children[i])) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static ExecutionPlan *_tie_segments
 (
 	ExecutionPlan **segments,
@@ -223,17 +246,17 @@ static ExecutionPlan *_tie_segments
 
 		// find the first non-argument op with no children in this segment
 		prev_connecting_op = connecting_op;
-		OpBase **taps = ExecutionPlan_LocateTaps(segment);
 		// in the case of a single segment with FOREACH as its root, there is no
 		// tap (of the current definition)
 		// for instance: FOREACH(i in [i] | CREATE (n:N))
 		// in any other case, there must be a tap
-		ASSERT((array_len(taps) > 0) ||
-		   (segment_count == 1 &&
-			(OpBase_Type(segment->root) == OPType_FOREACH)));
 
-		connecting_op = taps[0];
-		array_free(taps);
+		ASSERT(_ExecutionPlan_HasLocateTaps(segment->root) == true);
+
+		connecting_op = segment->root;
+		while(connecting_op->childCount > 0) {
+			connecting_op = connecting_op->children[0];
+		}
 
 		// tie the current segment's tap to the previous segment's root op
 		if(prev_segment != NULL) {
@@ -324,7 +347,7 @@ static inline void _implicit_result(ExecutionPlan *plan) {
 	}
 }
 
-ExecutionPlan *NewExecutionPlan(void) {
+ExecutionPlan *ExecutionPlan_FromTLS_AST(void) {
 	AST *ast = QueryCtx_GetAST();
 
 	// handle UNION if there are any
@@ -384,8 +407,8 @@ void ExecutionPlan_ReturnRecord(const ExecutionPlan *plan, Record r) {
 
 static inline void _ExecutionPlan_InitRecordPool(ExecutionPlan *plan) {
 	if(plan->record_pool) return;
-	/* Initialize record pool.
-	 * Determine Record size to inform ObjectPool allocation. */
+	// Initialize record pool.
+	// Determine Record size to inform ObjectPool allocation
 	uint entries_count = raxSize(plan->record_map);
 	uint rec_size = sizeof(_Record) + (sizeof(Entry) * entries_count);
 
@@ -412,9 +435,9 @@ void ExecutionPlan_Init(ExecutionPlan *plan) {
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	ASSERT(plan->prepared)
-	/* Set an exception-handling breakpoint to capture run-time errors.
-	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
-	 * a downstream exception returns us to this breakpoint. */
+	// Set an exception-handling breakpoint to capture run-time errors.
+	// encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
+	// a downstream exception returns us to this breakpoint
 	int encountered_error = SET_EXCEPTION_HANDLER();
 
 	// Encountered a run-time error - return immediately.

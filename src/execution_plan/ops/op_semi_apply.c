@@ -6,7 +6,7 @@
 
 #include "op_semi_apply.h"
 #include "../execution_plan.h"
-#include "../execution_plan_build/execution_plan_modify.h"
+#include "../execution_plan_build/execution_plan_util.h"
 
 // Forward declarations.
 static OpResult SemiApplyInit(OpBase *opBase);

@@ -8,6 +8,7 @@
 #include "../../query_ctx.h"
 #include "../ops/op_node_by_label_scan.h"
 #include "../ops/op_conditional_traverse.h"
+#include "../execution_plan_build/execution_plan_util.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 #include "../../arithmetic/algebraic_expression/utils.h"
 
@@ -111,7 +112,7 @@ void optimizeLabelScan(ExecutionPlan *plan) {
 
 	// collect all label scan operations
 	OPType t = OPType_NODE_BY_LABEL_SCAN;
-	OpBase **label_scan_ops = ExecutionPlan_CollectOpsMatchingType(plan->root,
+	OpBase **label_scan_ops = ExecutionPlan_CollectOpsMatchingTypes(plan->root,
 			&t ,1);
 
 	// for each label scan operation try to optimize scanned label

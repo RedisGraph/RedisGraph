@@ -55,3 +55,12 @@ void buildPatternPathOps(
 	OpBase *root,
 	const cypher_astnode_t *ast
 );
+
+// given an AST path pattern, generate the tree of scan, traverse,
+// and filter operations required to represent it.
+OpBase *ExecutionPlan_BuildOpsFromPath
+(
+	ExecutionPlan *plan,
+	const char **vars,
+	const cypher_astnode_t *path
+);

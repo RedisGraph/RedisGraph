@@ -12,9 +12,10 @@
 #include "../execution_plan_build/execution_plan_modify.h"
 
 /* Forward declarations. */
-static Record DistinctConsume(OpBase *opBase);
-static OpBase *DistinctClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DistinctFree(OpBase *opBase);
+static Record DistinctConsume(OpBase *opBase);
+static OpResult DistinctReset(OpBase *opBase);
+static OpBase *DistinctClone(const ExecutionPlan *plan, const OpBase *opBase);
 
 // compute hash on distinct values
 // values that are required to be distinct are located at 'offset'
@@ -66,7 +67,7 @@ OpBase *NewDistinctOp(const ExecutionPlan *plan, const char **aliases, uint alia
 	memcpy(op->aliases, aliases, alias_count * sizeof(const char *));
 
 	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctConsume,
-				NULL, NULL, DistinctClone, DistinctFree, false, plan);
+				DistinctReset, NULL, DistinctClone, DistinctFree, false, plan);
 
 	return (OpBase *)op;
 }
@@ -104,6 +105,20 @@ static inline OpBase *DistinctClone(const ExecutionPlan *plan, const OpBase *opB
 	ASSERT(opBase->type == OPType_DISTINCT);
 	OpDistinct *op = (OpDistinct *)opBase;
 	return NewDistinctOp(plan, op->aliases, op->offset_count);
+}
+
+static OpResult DistinctReset
+(
+	OpBase *opBase
+) {
+	OpDistinct *op = (OpDistinct *)opBase;
+
+	if(op->found) {
+		raxFree(op->found);
+		op->found = raxNew();
+	}
+
+	return OP_OK;
 }
 
 static void DistinctFree(OpBase *ctx) {

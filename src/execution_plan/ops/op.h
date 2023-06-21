@@ -43,6 +43,7 @@ typedef enum {
 	OPType_UNWIND,
 	OPType_FOREACH,
 	OPType_PROC_CALL,
+	OPType_CALLSUBQUERY,
 	OPType_ARGUMENT,
 	OPType_ARGUMENT_LIST,
 	OPType_CARTESIAN_PRODUCT,
@@ -192,6 +193,19 @@ OPType OpBase_Type
 	const OpBase *op
 );
 
+// returns the number of children of the op
+uint OpBase_ChildCount
+(
+	const OpBase *op
+);
+
+// returns the i'th child of the op
+OpBase *OpBase_GetChild
+(
+	OpBase *join,  // op
+	uint i         // child index
+);
+
 // mark alias as being modified by operation
 // returns the ID associated with alias
 int OpBase_Modifies
@@ -204,9 +218,9 @@ int OpBase_Modifies
 // such that record[modifier] = record[alias]
 int OpBase_AliasModifier
 (
-	OpBase *op,
-	const char *modifier,
-	const char *alias
+	OpBase *op,            // op
+	const char *modifier,  // existing alias
+	const char *alias      // new alias
 );
 
 // returns true if any of an op's children are aware of the given alias
@@ -244,6 +258,13 @@ void OpBase_UpdateConsume
 (
 	OpBase *op,
 	fpConsume consume
+);
+
+// updates the plan of an operation
+void OpBase_BindOpToPlan
+(
+	OpBase *op,
+	const struct ExecutionPlan *plan
 );
 
 // creates a new record that will be populated during execution
