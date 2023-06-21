@@ -99,7 +99,7 @@ static void _emit_running_query
 	ASSERT(cmd != NULL);
 
 	// compute query execution time
-    const double total_time = TIMER_GET_ELAPSED_MILLISECONDS(cmd->timer);
+	const double total_time = TIMER_GET_ELAPSED_MILLISECONDS(cmd->timer);
 
 	RedisModule_ReplyWithArray(ctx, 5 * 2);
 
@@ -125,14 +125,14 @@ static void _emit_running_query
 // replies with query information
 static void _emit_waiting_query
 (
-    RedisModuleCtx *ctx,   // redis module context
-    const CommandCtx *cmd  // command context
+	RedisModuleCtx *ctx,   // redis module context
+	const CommandCtx *cmd  // command context
 ) {
 	ASSERT(ctx != NULL);
 	ASSERT(cmd != NULL);
 
 	// compute query execution time
-    const double total_time = TIMER_GET_ELAPSED_MILLISECONDS(cmd->timer);
+	const double total_time = TIMER_GET_ELAPSED_MILLISECONDS(cmd->timer);
 
 	RedisModule_ReplyWithArray(ctx, 4 * 2);
 
@@ -155,20 +155,20 @@ static void _emit_waiting_query
 // "GRAPH.INFO RunningQueries"
 static void _info_running_queries
 (
-    RedisModuleCtx *ctx       // redis context
+	RedisModuleCtx *ctx       // redis context
 ) {
-    // an example for a command and reply:
-    // command:
-    // GRAPH.INFO RunningQueries
-    // reply:
-    // "RunningQueries"
-    //     "Received at"
-    //     "Graph name"
-    //     "Query"
-    //     "Execution duration"
+	// an example for a command and reply:
+	// command:
+	// GRAPH.INFO RunningQueries
+	// reply:
+	// "RunningQueries"
+	//     "Received at"
+	//     "Graph name"
+	//     "Query"
+	//     "Execution duration"
 	//     "Replicated command"
 
-    ASSERT(ctx != NULL);
+	ASSERT(ctx != NULL);
 
 	//--------------------------------------------------------------------------
 	// collect running queries
@@ -200,19 +200,19 @@ static void _info_running_queries
 // "GRAPH.INFO WaitingQueries"
 static void _info_waiting_queries
 (
-    RedisModuleCtx *ctx       // redis context
+	RedisModuleCtx *ctx       // redis context
 ) {
-    // an example for a command and reply:
-    // command:
-    // GRAPH.INFO WaitingQueries
-    // reply:
-    // "WaitingQueries"
-    //     "Received at"
-    //     "Graph name"
-    //     "Query"
-    //     "Wait duration"
+	// an example for a command and reply:
+	// command:
+	// GRAPH.INFO WaitingQueries
+	// reply:
+	// "WaitingQueries"
+	//     "Received at"
+	//     "Graph name"
+	//     "Query"
+	//     "Wait duration"
 
-    ASSERT(ctx != NULL);
+	ASSERT(ctx != NULL);
 
 	//--------------------------------------------------------------------------
 	// collect waiting queries
@@ -243,12 +243,12 @@ static void _info_waiting_queries
 // attempts to find the specified sections of "GRAPH.INFO" and dispatch it
 static void _handle_sections
 (
-    RedisModuleCtx *ctx,       // redis module context
-    RedisModuleString **argv,  // command arguments
-    const int argc             // number of arguments
+	RedisModuleCtx *ctx,       // redis module context
+	RedisModuleString **argv,  // command arguments
+	const int argc             // number of arguments
 ) {
-    ASSERT(ctx    != NULL);
-    ASSERT(argv   != NULL);
+	ASSERT(ctx    != NULL);
+	ASSERT(argv   != NULL);
 
 	int section_count = 0;
 	bool running_queries = false;
@@ -292,18 +292,18 @@ static void _handle_sections
 // GRAPH.INFO RunningQueries WaitingQueries
 int Graph_Info
 (
-    RedisModuleCtx *ctx,       // redis module context
-    RedisModuleString **argv,  // command arguments
-    const int argc             // number of arguments
+	RedisModuleCtx *ctx,       // redis module context
+	RedisModuleString **argv,  // command arguments
+	const int argc             // number of arguments
 ) {
-    ASSERT(ctx != NULL);
+	ASSERT(ctx != NULL);
 
 	// expecting at least two arguments
-    if (argc < 1) {
-        return RedisModule_WrongArity(ctx);
-    }
+	if (argc < 1) {
+		return RedisModule_WrongArity(ctx);
+	}
 
-    _handle_sections(ctx, argv + 1, argc - 1);
+	_handle_sections(ctx, argv + 1, argc - 1);
 
-    return REDISMODULE_OK;
+	return REDISMODULE_OK;
 }

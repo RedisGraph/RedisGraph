@@ -44,16 +44,6 @@ uint64_t QueriesLog_GetQueriesCount
 	QueriesLog log  // queries log
 );
 
-// increments the corresponding query type counter
-// the passed parameters define the kind of query [READ/WRITE]
-// and its finish status [FAILED/TIMEOUT/SUCCESS]
-//void QueriesLog_IncrementNumberOfQueries
-//(
-//    QueriesLog log,                // queries log
-//    const QueryExecutionTypeFlag,  //
-//    const QueryExecutionStatus     //
-//);
-
 // reset queries buffer
 // returns queries buffer prior to reset
 CircularBuffer QueriesLog_ResetQueries

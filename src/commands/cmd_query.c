@@ -43,13 +43,13 @@ static GraphQueryCtx *GraphQueryCtx_New
 ) {
 	GraphQueryCtx *ctx = rm_malloc(sizeof(GraphQueryCtx));
 
-	ctx->rm_ctx          =  rm_ctx;
-	ctx->exec_ctx        =  exec_ctx;
-	ctx->graph_ctx       =  graph_ctx;
-	ctx->query_ctx       =  QueryCtx_GetQueryCtx();
+	ctx->rm_ctx           =  rm_ctx;
+	ctx->exec_ctx         =  exec_ctx;
+	ctx->graph_ctx        =  graph_ctx;
+	ctx->query_ctx        =  QueryCtx_GetQueryCtx();
 	ctx->query_ctx->flags = flags;
-	ctx->command_ctx     =  command_ctx;
-	ctx->timeout         =  timeout;
+	ctx->command_ctx      =  command_ctx;
+	ctx->timeout          =  timeout;
 
 	return ctx;
 }
