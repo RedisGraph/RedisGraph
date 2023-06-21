@@ -5,6 +5,7 @@
  */
 
 #include "RG.h"
+#include "cron/cron.h"
 #include "util/rmalloc.h"
 #include "reconf_handler.h"
 #include "util/thpool/pools.h"
@@ -36,6 +37,17 @@ void reconf_handler(Config_Option_Field type) {
 				bool res = Config_Option_get(type, &query_mem_capacity);
 				ASSERT(res);
 				rm_set_mem_capacity(query_mem_capacity);
+			}
+			break;
+
+		case Config_CMD_INFO:
+			{
+				bool info_enabled;
+				bool res = Config_Option_get(type, &info_enabled);
+				ASSERT(res);
+				if(info_enabled) {
+					CronTask_AddStreamFinishedQueries();
+				}
 			}
 			break;
 

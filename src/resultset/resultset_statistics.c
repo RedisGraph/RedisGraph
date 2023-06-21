@@ -129,7 +129,7 @@ void ResultSetStat_emit
 	RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 
 	// emit query execution time
-	double t = QueryCtx_GetExecutionTime();
+	double t = QueryCtx_GetRuntime();
 	buflen = sprintf(buff, "Query internal execution time: %.6f milliseconds", t);
 	RedisModule_ReplyWithStringBuffer(ctx, buff, buflen);
 }

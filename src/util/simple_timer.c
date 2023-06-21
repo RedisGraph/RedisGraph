@@ -10,6 +10,7 @@
 // simple_timer:  a portable timer for accurate performance measurements
 
 #include "simple_timer.h"
+#include <assert.h>
 
 //------------------------------------------------------------------------------
 // simple_tic: return the current wallclock time in high resolution
@@ -76,3 +77,25 @@ double simple_toc           // returns time since last simple_tic
     simple_tic (toc) ;
     return ((toc [0] - tic [0]) + 1e-9 * (toc [1] - tic [1])) ;
 }
+
+void simple_timer_copy      // copies a simple time
+(
+    const double tic [2],    // tic from last call to simple_tic
+    double cpy [2]           // pointer to recieve a copy of tic
+)
+{
+	cpy[0] = tic[0];
+	cpy[1] = tic[1];
+}
+
+uint64_t unix_timestamp    // returns UNIX timestamp
+(
+	void
+)
+{
+	struct timespec timestamp;
+	assert(clock_gettime(CLOCK_REALTIME, &timestamp) == 0);
+
+	return timestamp.tv_sec;
+}
+

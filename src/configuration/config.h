@@ -30,8 +30,10 @@ typedef enum {
 	Config_QUERY_MEM_CAPACITY        = 10,  // max mem(bytes) that query/thread can utilize at any given time
 	Config_DELTA_MAX_PENDING_CHANGES = 11,  // number of pending changes before RG_Matrix flushed
 	Config_NODE_CREATION_BUFFER      = 12,  // size of buffer to maintain as margin in matrices
-	Config_EFFECTS_THRESHOLD         = 13,  // replicate queries via effects
-	Config_END_MARKER                = 14
+	Config_CMD_INFO                  = 13,  // toggle on/off the GRAPH.INFO
+	Config_CMD_INFO_MAX_QUERY_COUNT  = 14,  // the max number of info queries count
+	Config_EFFECTS_THRESHOLD         = 15,  // replicate queries via effects
+	Config_END_MARKER                = 16
 } Config_Option_Field;
 
 // callback function, invoked once configuration changes as a result of
@@ -42,12 +44,15 @@ typedef void (*Config_on_change)(Config_Option_Field type);
 static const Config_Option_Field RUNTIME_CONFIGS[] = {
 	Config_TIMEOUT,
 	Config_TIMEOUT_MAX,
+	Config_ASYNC_DELETE,
 	Config_TIMEOUT_DEFAULT,
 	Config_RESULTSET_MAX_SIZE,
 	Config_MAX_QUEUED_QUERIES,
 	Config_QUERY_MEM_CAPACITY,
 	Config_VKEY_MAX_ENTITY_COUNT,
 	Config_DELTA_MAX_PENDING_CHANGES,
+	Config_CMD_INFO,
+	Config_CMD_INFO_MAX_QUERY_COUNT,
 	Config_EFFECTS_THRESHOLD
 };
 static const size_t RUNTIME_CONFIG_COUNT = sizeof(RUNTIME_CONFIGS) / sizeof(RUNTIME_CONFIGS[0]);

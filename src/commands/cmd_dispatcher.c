@@ -8,6 +8,7 @@
 #include "commands.h"
 #include "cmd_context.h"
 #include "../util/thpool/pools.h"
+#include "../util/simple_timer.h"
 #include "../util/blocked_client.h"
 #include "../configuration/config.h"
 
@@ -23,7 +24,7 @@ static int _read_flags
 	RedisModuleString **argv,   // commands arguments
   	int argc,                   // number of arguments
   	bool *compact,              // compact result-set format
-  	long long *timeout,         // query level timeout
+	long long *timeout,         // query level timeout
   	bool *timeout_rw,           // apply timeout on both read and write queries
   	uint *graph_version,        // graph version [UNUSED]
   	char **errmsg               // reported error message
@@ -170,13 +171,22 @@ static bool should_command_create_graph(GRAPH_Commands cmd) {
 	return false;
 }
 
-int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+int CommandDispatch
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString **argv,
+	int argc
+) {
 	char *errmsg;
 	uint version;
 	bool compact;
 	bool timeout_rw;
 	long long timeout;
+	simple_timer_t timer;
 	CommandCtx *context = NULL;
+
+	simple_tic(timer);
+	uint64_t received_ts = unix_timestamp();
 
 	RedisModuleString *graph_name = argv[1];
 	RedisModuleString *query = (argc > 2) ? argv[2] : NULL;
@@ -187,17 +197,18 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	// parse additional arguments
 	int res = _read_flags(argv, argc, &compact, &timeout, &timeout_rw, &version,
-		&errmsg);
+			&errmsg);
 	if(res == REDISMODULE_ERR) {
 		// emit error and exit if argument parsing failed
 		RedisModule_ReplyWithError(ctx, errmsg);
 		free(errmsg);
-		// the API reference dictates that registered functions should always return OK
 		return REDISMODULE_OK;
 	}
 
 	bool shouldCreate = should_command_create_graph(cmd);
-	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, shouldCreate);
+	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true,
+			shouldCreate);
+
 	// if GraphContext is null, key access failed and an error been emitted
 	if(!gc) return REDISMODULE_ERR;
 
@@ -210,30 +221,36 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		return REDISMODULE_OK;
 	}
 
-	/* Determine the query execution context.
-	 * queries issued within a LUA script or multi exec block must
-	 * run on Redis main thread, others can run on different threads. */
+
+	// determine the query execution context
+	// queries issued within a LUA script or multi exec block must
+	// run on Redis main thread, others can run on different threads
 	int flags = RedisModule_GetContextFlags(ctx);
-	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
+	bool is_replicated = RedisModule_GetContextFlags(ctx) &
+		REDISMODULE_CTX_FLAGS_REPLICATED;
 
 	bool main_thread = (is_replicated ||
 		(flags & (REDISMODULE_CTX_FLAGS_MULTI       |
 				REDISMODULE_CTX_FLAGS_LUA           |
 				REDISMODULE_CTX_FLAGS_DENY_BLOCKING |
 				REDISMODULE_CTX_FLAGS_LOADING)));
-	ExecutorThread exec_thread = main_thread ? EXEC_THREAD_MAIN : EXEC_THREAD_READER;
+	ExecutorThread exec_thread = (main_thread)
+		? EXEC_THREAD_MAIN
+		: EXEC_THREAD_READER;
 
 	Command_Handler handler = get_command_handler(cmd);
 	if(exec_thread == EXEC_THREAD_MAIN) {
 		// run query on Redis main thread
 		context = CommandCtx_New(ctx, NULL, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout, timeout_rw);
+								 is_replicated, compact, timeout, timeout_rw,
+								 received_ts, timer);
 		handler(context);
 	} else {
 		// run query on a dedicated thread
 		RedisModuleBlockedClient *bc = RedisGraph_BlockClient(ctx);
 		context = CommandCtx_New(NULL, bc, argv[0], query, gc, exec_thread,
-								 is_replicated, compact, timeout, timeout_rw);
+								 is_replicated, compact, timeout, timeout_rw,
+								 received_ts, timer);
 
 		if(ThreadPools_AddWorkReader(handler, context, false) ==
 				THPOOL_QUEUE_FULL) {
@@ -244,6 +261,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 			// release the GraphContext, as we increased its reference count
 			// when retrieving it
 			GraphContext_DecreaseRefCount(gc);
+			CommandCtx_UnblockClient(context);
 			CommandCtx_Free(context);
 		}
 	}

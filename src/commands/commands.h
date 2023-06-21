@@ -47,6 +47,5 @@ int Graph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Effect(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Config(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int Graph_Slowlog(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
-int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
-
+int Graph_Constraint(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
