@@ -233,15 +233,6 @@ void Graph_DeleteEdges
 	uint64_t n
 );
 
-// update entity attribute with new value
-int Graph_UpdateEntity
-(
-	GraphEntity *ge,             // entity yo update
-	Attribute_ID attr_id,        // attribute to update
-	SIValue value,               // value to be set
-	GraphEntityType entity_type  // type of the entity node/edge
-);
-
 // returns true if the given entity has been deleted
 bool Graph_EntityIsDeleted
 (

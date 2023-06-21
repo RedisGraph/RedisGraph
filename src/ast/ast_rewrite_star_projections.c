@@ -376,8 +376,8 @@ bool AST_RewriteStarProjections
 	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) return rewritten;
 
 	// rewrite all WITH * / RETURN * clauses to include all aliases
-	uint  scope_start   =  0;
-	uint  clause_count  =  cypher_ast_query_nclauses(root);
+	uint scope_start  = 0;
+	uint clause_count = cypher_ast_query_nclauses(root);
 
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);

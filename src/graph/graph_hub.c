@@ -178,7 +178,7 @@ void DeleteNodes
 				EffectsBuffer_AddDeleteNodeEffect(eb, n);
 			}
 
-			if(has_indices == true) {
+			if(has_indices) {
 				_DeleteNodeFromIndices(gc, n);
 			}
 		}
@@ -200,6 +200,7 @@ void DeleteEdges
 
 	// add edge deletion operation to undo log
 	bool has_indecise = GraphContext_HasIndices(gc);
+
 	UndoLog *undo_log = (log == true) ? QueryCtx_GetUndoLog() : NULL;
 	EffectsBuffer *eb = (log == true) ? QueryCtx_GetEffectsBuffer() : NULL;
 
