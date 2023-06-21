@@ -177,12 +177,12 @@ ExecutionCtx *ExecutionCtx_FromQuery
 		//----------------------------------------------------------------------
 		// build execution-plan
 		//----------------------------------------------------------------------
-		ExecutionPlan *plan = NewExecutionPlan();
+		ExecutionPlan *plan = ExecutionPlan_FromTLS_AST();
 
 		// TODO: there must be a better way to understand if the execution-plan
 		// was constructed correctly,
-		// maybe free the plan within NewExecutionPlan, if error was encountered
-		// and return NULL ?
+		// maybe free the plan within ExecutionPlan_FromTLS_AST, if error was
+		// encountered and return NULL ?
 		if(ErrorCtx_EncounteredError()) {
 			// failed to construct plan
 			// clean up and return NULL

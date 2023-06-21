@@ -299,11 +299,60 @@ static void _annotate_foreach_clause_projected_named_path
 	// annotate named paths referring the outer scope
 	_annotate_relevant_projected_named_path_identifier(ast, identifier_map,
 													   scope_start, scope_end);
+	raxFreeWithCallback(identifier_map, array_free);
 
 	// annotate named paths defined inside the body
 	_annotate_projected_named_path(&subquery_clauses_ast);
 	array_free(clauses);
 	cypher_astnode_free(query_node);
+}
+
+static void _annotate_callsubquery_clause_projected_named_path
+(
+	AST *ast,
+	const cypher_astnode_t *callsubquery_clause,
+	uint scope_start,
+	uint scope_end
+) {
+	rax *identifier_map = raxNew();
+
+	const cypher_astnode_t *subquery = cypher_ast_call_subquery_get_query(
+		callsubquery_clause);
+
+	AST subquery_clauses_ast = {
+		.root = subquery,
+		.anot_ctx_collection = ast->anot_ctx_collection,
+		.referenced_entities = ast->referenced_entities
+	};
+
+	// collect identifiers from importing WITH clauses (if exist)
+	// annotate them only. the later references of imported paths with already
+	// have the value in the record
+	uint *union_indices = AST_GetClauseIndices(&subquery_clauses_ast,
+		CYPHER_AST_UNION);
+	uint n_union_clauses = array_len(union_indices);
+	// handle first `UNION` branch
+	const cypher_astnode_t *first_in_branch =
+		cypher_ast_query_get_clause(subquery, 0);
+	if(cypher_astnode_type(first_in_branch) == CYPHER_AST_WITH) {
+		_collect_projected_identifier(first_in_branch, identifier_map);
+	}
+	// handle rest of `UNION` branches
+	for(uint i = 0; i < n_union_clauses; i++) {
+		first_in_branch =
+			cypher_ast_query_get_clause(subquery, union_indices[i] + 1);
+		if(cypher_astnode_type(first_in_branch) == CYPHER_AST_WITH) {
+			_collect_projected_identifier(first_in_branch, identifier_map);
+		}
+	}
+	array_free(union_indices);
+
+	// annotate named paths referring the outer scope
+	_annotate_relevant_projected_named_path_identifier(ast, identifier_map,
+													   scope_start, scope_end);
+
+	// annotate named paths defined inside the body
+	_annotate_projected_named_path(&subquery_clauses_ast);
 	raxFreeWithCallback(identifier_map, array_free);
 }
 
@@ -314,31 +363,33 @@ static void _annotate_projected_named_path(AST *ast) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i++) {
 		scope_end = i;
-		const cypher_astnode_t *child = cypher_ast_query_get_clause(ast->root, i);
+		const cypher_astnode_t *child =
+			cypher_ast_query_get_clause(ast->root, i);
 		if(cypher_astnode_type(child) == CYPHER_AST_WITH) {
 			_annotate_with_clause_projected_named_path(ast, child, scope_start,
 													   scope_end);
+			// update scope
 			scope_start = scope_end;
 		} else if(cypher_astnode_type(child) == CYPHER_AST_RETURN) {
 			_annotate_return_clause_projected_named_path(ast, child,
 														scope_start, scope_end);
+			// update scope
 			scope_start = scope_end;
 		} else if(cypher_astnode_type(child) == CYPHER_AST_DELETE) {
 			_annotate_delete_clause_projected_named_path(ast, child,
 														scope_start, scope_end);
-			// Do not update scope start!
 		} else if(cypher_astnode_type(child) == CYPHER_AST_UNWIND) {
 			_annotate_unwind_clause_projected_named_path(ast, child,
 														scope_start, scope_end);
-			// Do not update scope start!
 		} else if(cypher_astnode_type(child) == CYPHER_AST_MATCH) {
 			_annotate_match_clause_projected_named_path(ast, child,
 														scope_start, scope_end);
-			// Do not update scope start!
 		} else if(cypher_astnode_type(child) == CYPHER_AST_FOREACH) {
 			_annotate_foreach_clause_projected_named_path(ast,
 				child, scope_start, scope_end);
-			// Do not update scope start!
+		} else if(cypher_astnode_type(child) == CYPHER_AST_CALL_SUBQUERY) {
+			_annotate_callsubquery_clause_projected_named_path(ast, child,
+				scope_start, scope_end);
 		}
 	}
 }

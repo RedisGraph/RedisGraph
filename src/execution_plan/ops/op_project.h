@@ -21,3 +21,10 @@ typedef struct {
 } OpProject;
 
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps);
+
+// binds a Project op to an ExecutionPlan
+void ProjectBindToPlan
+(
+	OpBase *opBase,            // op to bind
+	const ExecutionPlan *plan  // plan to bind the op to
+);

@@ -648,14 +648,14 @@ class testForeachFlow():
             graph.query("FOREACH(n in li | CREATE (:N))")
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
-            self.env.assertIn("li not defined", str(e))
+            self.env.assertIn("'li' not defined", str(e))
 
         # same check, when the list-var is the same as the list expression
         try:
             graph.query("FOREACH(n in n | CREATE (:N))")
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
-            self.env.assertIn("n not defined", str(e))
+            self.env.assertIn("'n' not defined", str(e))
 
     def test15_foreach_and_index_scan(self):
         query = """UNWIND range(1,9) AS i 

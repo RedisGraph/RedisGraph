@@ -29,3 +29,9 @@ OpBase *NewAggregateOp
 	AR_ExpNode **exps
 );
 
+// bind the Aggregate operation to the execution plan
+void AggregateBindToPlan
+(
+	OpBase *opBase,            // op to bind
+	const ExecutionPlan *plan  // plan to bind the op to
+);
