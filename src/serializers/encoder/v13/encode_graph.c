@@ -5,13 +5,12 @@
  */
 
 #include "encode_v13.h"
-
-extern bool process_is_child; // Global variable declared in module.c
+#include "../../../globals.h"
 
 // Determine whether we are in the context of a bgsave, in which case
-// the process is independent and should not acquire locks.
+// the process is independent and should not acquire locks
 static inline bool _shouldAcquireLocks(void) {
-	return !process_is_child;
+	return !Globals_Get_ProcessIsChild();
 }
 
 static void _RdbSaveHeader

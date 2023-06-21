@@ -6,14 +6,15 @@
 
 #pragma once
 
+#include "graph.h"
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
-#include "graph.h"
+#include "../util/cache/cache.h"
 #include "../slow_log/slow_log.h"
+#include "../queries_log/queries_log.h"
 #include "../serializers/encode_context.h"
 #include "../serializers/decode_context.h"
-#include "../util/cache/cache.h"
 
 // GraphContext holds refrences to various elements of a graph object
 // It is the value sitting behind a Redis graph key
@@ -26,20 +27,22 @@
 // and take action accordingly
 
 typedef struct {
-	Graph *g;                               // container for all matrices and entity properties
-	int ref_count;                          // number of active references
-	rax *attributes;                        // from strings to attribute IDs
-	pthread_rwlock_t _attribute_rwlock;     // read-write lock to protect access to the attribute maps
-	char *graph_name;                       // string associated with graph
-	char **string_mapping;                  // from attribute IDs to strings
-	Schema **node_schemas;                  // array of schemas for each node label
-	Schema **relation_schemas;              // array of schemas for each relation type
-	unsigned short index_count;             // number of indicies
-	SlowLog *slowlog;                       // slowlog associated with graph
-	GraphEncodeContext *encoding_context;   // encode context of the graph
-	GraphDecodeContext *decoding_context;   // decode context of the graph
-	Cache *cache;                           // global cache of execution plans
-	XXH32_hash_t version;                   // graph version
+	Graph *g;                              // container for all matrices and entity properties
+	int ref_count;                         // number of active references
+	rax *attributes;                       // from strings to attribute IDs
+	pthread_rwlock_t _attribute_rwlock;    // read-write lock to protect access to the attribute maps
+	char *graph_name;                      // string associated with graph
+	char **string_mapping;                 // from attribute IDs to strings
+	Schema **node_schemas;                 // array of schemas for each node label
+	Schema **relation_schemas;             // array of schemas for each relation type
+	unsigned short index_count;            // number of indicies
+	SlowLog *slowlog;                      // slowlog associated with graph
+	QueriesLog queries_log;                // log last x executed queries
+	GraphEncodeContext *encoding_context;  // encode context of the graph
+	GraphDecodeContext *decoding_context;  // decode context of the graph
+	Cache *cache;                          // global cache of execution plans
+	XXH32_hash_t version;                  // graph version
+	RedisModuleString *telemetry_stream;   // telemetry stream name
 } GraphContext;
 
 //------------------------------------------------------------------------------
@@ -81,8 +84,26 @@ void GraphContext_MarkWriter
 	GraphContext *gc
 );
 
+void GraphContext_LockForCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+);
+
+void GraphContext_UnlockCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+);
+
 // get graph name out of graph context
 const char *GraphContext_GetName
+(
+	const GraphContext *gc
+);
+
+// get graph context's telemetry stream name
+const RedisModuleString *GraphContext_GetTelemetryStreamName
 (
 	const GraphContext *gc
 );
@@ -90,8 +111,9 @@ const char *GraphContext_GetName
 // rename a graph context
 void GraphContext_Rename
 (
-	GraphContext *gc,
-	const char *name
+	RedisModuleCtx *ctx,  // redis module context
+	GraphContext *gc,     // graph context to rename
+	const char *name      // new name
 );
 
 // Get graph context version
@@ -312,11 +334,13 @@ void GraphContext_RegisterWithModule
 	GraphContext *gc
 );
 
-// retrive GraphContext from the global array, by name
-// if no such graph is registered, NULL is returned
-GraphContext *GraphContext_GetRegisteredGraphContext
+// retrive GraphContext from the global array
+// graph isn't registered, NULL is returned
+// graph's references count isn't increased!
+// this is OK as long as only a single thread has access to the graph
+GraphContext *GraphContext_UnsafeGetGraphContext
 (
-	const char *graph_name
+	const char *graph_name  // graph name
 );
 
 //------------------------------------------------------------------------------
@@ -329,6 +353,22 @@ SlowLog *GraphContext_GetSlowLog
 );
 
 //------------------------------------------------------------------------------
+// Queries API
+//------------------------------------------------------------------------------
+
+void GraphContext_LogQuery
+(
+	const GraphContext *gc,       // graph context
+	uint64_t received,            // query received timestamp
+	double wait_duration,         // waiting time
+	double execution_duration,    // executing time
+	double report_duration,       // reporting time
+	bool parameterized,           // uses parameters
+	bool utilized_cache,          // utilized cache
+	const char *query             // query string
+);
+
+//------------------------------------------------------------------------------
 // Cache API
 //------------------------------------------------------------------------------
 
@@ -338,14 +378,3 @@ Cache *GraphContext_GetCache
 	const GraphContext *gc
 );
 
-void GraphContext_LockForCommit
-(
-	RedisModuleCtx *ctx,
-	GraphContext *gc
-);
-
-void GraphContext_UnlockCommit
-(
-	RedisModuleCtx *ctx,
-	GraphContext *gc
-);

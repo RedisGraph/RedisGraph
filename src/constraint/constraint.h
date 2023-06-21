@@ -12,7 +12,7 @@
 #include "../graph/entities/graph_entity.h"
 #include "../graph/entities/attribute_set.h"
 
-// forward declaration of opaque constraint structures
+// forward declaration of opaque constraint structure
 typedef struct _Constraint *Constraint;
 
 // constraint enforcement callback function

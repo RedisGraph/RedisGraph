@@ -112,6 +112,8 @@ class testStressFlow():
         conn.ping()
         conn.close()
 
+        pool.clear()
+
     def test01_bgsave_stress(self):
         n_reads      =  50000
         n_creations  =  50000
@@ -144,6 +146,8 @@ class testStressFlow():
         conn.ping()
         conn.close()
 
+        pool.clear()
+
     def test02_write_only_workload(self):
         pool              =  Pool(nodes=3)
         n_creations       =  20000
@@ -169,6 +173,8 @@ class testStressFlow():
         conn.ping()
         conn.close()
 
+        pool.clear()
+
     def test03_clean_shutdown(self):
         # issue SHUTDOWN while traffic is generated
         indexes = range(self.client_count)
@@ -186,4 +192,6 @@ class testStressFlow():
         m.wait()
 
         self.env.assertTrue(self.env.checkExitCode())
+
+        pool.clear()
 

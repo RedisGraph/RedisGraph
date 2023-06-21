@@ -103,6 +103,11 @@ ExecutionCtx *ExecutionCtx_FromQuery
 	ExecutionCtx *ret;
 	const char *q_str;  // query string excluding query parameters
 
+	if(unlikely(strlen(q) == 0)) {
+		ErrorCtx_SetError("Error: empty query.");
+		return NULL;
+	}
+
 	// parse and validate parameters only
 	// extract query string
 	// return invalid execution context if failed to parse params
@@ -124,6 +129,7 @@ ExecutionCtx *ExecutionCtx_FromQuery
 	}
 
 	// update query context with the query without params
+	// (here the QueryInfo is created as well, starting the stage timer)
 	QueryCtx *ctx = QueryCtx_GetQueryCtx();
 	ctx->query_data.query_no_params = q_str;
 

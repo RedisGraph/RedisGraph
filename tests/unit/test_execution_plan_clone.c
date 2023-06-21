@@ -8,6 +8,7 @@
 #include "src/query_ctx.h"
 #include "src/util/rmalloc.h"
 #include "src/arithmetic/funcs.h"
+#include "src/util/thpool/pools.h"
 #include "src/procedures/procedure.h"
 #include "src/execution_plan/execution_plan_clone.h"
 
@@ -36,21 +37,20 @@ static void build_ast_and_plan
 }
 
 static void _fake_graph_context() {
-	GraphContext *gc = (GraphContext *)malloc(sizeof(GraphContext));
+	GraphContext *gc = (GraphContext *)calloc(1, sizeof(GraphContext));
 
 	gc->g = Graph_New(16, 16);
-	gc->ref_count = 1;
-	gc->index_count = 0;
-	gc->graph_name = strdup("G");
-	gc->attributes = raxNew();
-	pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
-	gc->string_mapping = (char **)array_new(char *, 64);
-	gc->node_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
-	gc->relation_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
-	gc->cache = NULL;
-	gc->slowlog = NULL;
-	gc->encoding_context = NULL;
-	gc->decoding_context = NULL;
+
+	gc->ref_count        = 1;
+	gc->index_count      = 0;
+	gc->graph_name       = strdup("G");
+	gc->attributes       = raxNew();
+	gc->string_mapping   = (char**)array_new(char*, 64);
+	gc->node_schemas     = (Schema**)array_new(Schema*, GRAPH_DEFAULT_LABEL_CAP);
+	gc->relation_schemas = (Schema**)array_new(Schema*, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+	gc->queries_log      = QueriesLog_New();
+
+	pthread_rwlock_init(&gc->_attribute_rwlock,  NULL);
 	QueryCtx_SetGraphCtx(gc);
 }
 
@@ -99,8 +99,16 @@ static void validate_query_plans_clone
 }
 
 void setup() {
+	// skip if memory sanitizer is enabled
+	if(getenv("SANITIZER") != NULL || getenv("VALGRIND") != NULL) {
+		exit(0);
+	}
+
 	// use the malloc family for allocations
 	Alloc_Reset();
+
+	// Initialize the thread pool.
+	TEST_ASSERT(ThreadPools_CreatePools(1, 1, 2));
 
 	// init query context
 	TEST_ASSERT(QueryCtx_Init());

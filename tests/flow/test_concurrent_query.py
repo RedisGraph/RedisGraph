@@ -45,7 +45,11 @@ def run_concurrent(queries, f):
     barriers = [barrier] * CLIENT_COUNT
 
     # invoke queries
-    return pool.map(f, queries, barriers)
+    results = pool.map(f, queries, barriers)
+
+    pool.clear()
+
+    return results
 
 class testConcurrentQueryFlow(FlowTestsBase):
     def __init__(self):
@@ -112,6 +116,8 @@ class testConcurrentQueryFlow(FlowTestsBase):
 
         # Exactly one thread should have successfully deleted the graph.
         self.env.assertEquals(assertions.count(True), 1)
+
+        pool.clear()
 
     # Try to delete a graph while multiple queries are executing.
     def test_05_concurrent_read_delete(self):
@@ -194,6 +200,8 @@ class testConcurrentQueryFlow(FlowTestsBase):
         resultset = self.graph.query("MATCH (n) RETURN count(n)").result_set
         self.env.assertEquals(resultset[0][0], 0)
 
+        pool.clear()
+
     def test_06_concurrent_write_delete(self):
         # Test setup - validate that graph exists and possible results are None
         self.graph.query("MATCH (n) RETURN n")
@@ -210,6 +218,8 @@ class testConcurrentQueryFlow(FlowTestsBase):
             self.env.assertContains(result, possible_exceptions)
         else:
             self.env.assertEquals(1000000, result["result_set"][0][0])
+
+        pool.clear()
     
     def test_07_concurrent_write_rename(self):
         # Test setup - validate that graph exists and possible results are None
@@ -236,6 +246,8 @@ class testConcurrentQueryFlow(FlowTestsBase):
             self.env.assertContains(result, possible_exceptions)
         else:
             self.env.assertEquals(1000000, result["result_set"][0][0])
+
+        pool.clear()
         
     def test_08_concurrent_write_replace(self):
         # Test setup - validate that graph exists and possible results are None
@@ -261,6 +273,8 @@ class testConcurrentQueryFlow(FlowTestsBase):
 
         # Delete the key
         self.conn.delete(GRAPH_ID)
+
+        pool.clear()
 
     def test_09_concurrent_multiple_readers_after_big_write(self):
         # Test issue #890
@@ -331,6 +345,8 @@ class testConcurrentQueryFlow(FlowTestsBase):
 
         # delete the key
         self.conn.delete(GRAPH_ID)
+
+        pool.clear()
 
     def test_11_concurrent_resize_zero_matrix(self):
         if "to_thread" not in dir(asyncio):

@@ -4,26 +4,39 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "../util/arr.h"
+#include "RG.h"
+#include "../globals.h"
 #include "../redismodule.h"
 #include "../graph/graphcontext.h"
 
-// Global array tracking all extant GraphContexts (defined in module.c)
-extern GraphContext **graphs_in_keyspace;
-
-int Graph_List(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+int Graph_List
+(
+	RedisModuleCtx *ctx,
+	RedisModuleString **argv,
+	int argc
+) {
 	ASSERT(ctx != NULL);
-	ASSERT(graphs_in_keyspace != NULL);
 
-	uint count = array_len(graphs_in_keyspace);
-	RedisModule_ReplyWithArray(ctx, count);
+	if(argc != 1) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	KeySpaceGraphIterator it;
+	Globals_ScanGraphs(&it);
+	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_LEN);
 
 	// reply with each graph name
-	for(uint i = 0; i < count; i ++) {
-		GraphContext *gc = graphs_in_keyspace[i];
+	uint64_t     n   = 0;
+	GraphContext *gc = NULL;
+
+	while((gc = GraphIterator_Next(&it)) != NULL) {
 		const char *name = GraphContext_GetName(gc);
 		RedisModule_ReplyWithStringBuffer(ctx, name, strlen(name));
+		n++;
+		GraphContext_DecreaseRefCount(gc);
 	}
+
+	RedisModule_ReplySetArrayLength(ctx, n);
 
 	return REDISMODULE_OK;
 }
