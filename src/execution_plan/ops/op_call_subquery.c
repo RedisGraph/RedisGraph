@@ -79,7 +79,7 @@ OpBase *NewCallSubqueryOp
 	op->is_returning = is_returning;
 
 	// set the consume function according to eagerness of the op
-	Record (*consumeFunc)(OpBase *opBase) = is_eager ?
+	fpConsume consumeFunc = is_eager ?
 		CallSubqueryConsumeEager :
 		CallSubqueryConsume;
 
@@ -340,6 +340,11 @@ static void _free_records
 		}
 		array_free(op->records);
 		op->records = NULL;
+	}
+
+	if(op->r != NULL) {
+		OpBase_DeleteRecord(op->r);
+		op->r = NULL;
 	}
 }
 

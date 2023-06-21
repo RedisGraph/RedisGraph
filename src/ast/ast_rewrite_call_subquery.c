@@ -39,53 +39,24 @@ static void _get_vars_inner_rep
 	}
 }
 
-// adds projections from `names` to `inter_names` to `projections` array
-static uint _add_projection_names_to_inter
+// adds projections from `names` to `inter_names` into `projections` array
+static uint _add_names_projections
 (
 	cypher_astnode_t *projections[],  // array of projections
 	uint proj_idx,                    // index to start adding projections
 	char **names,                     // bound vars
-	char **inter_names                // internal representation of bound vars
+	char **inter_names,               // internal representation of bound vars
+	bool hide                         // hide or reveal vars
 ) {
-	uint n_names = array_len(names);
-	uint n_inter_names = array_len(inter_names);
+	uint n_names = hide ? array_len(names) : array_len(inter_names);
+
 	for(uint i = 0; i < n_names; i++) {
 		// create a projection for the bound var
 		struct cypher_input_range range = {0};
 		cypher_astnode_t *exp = cypher_ast_identifier(names[i],
 			strlen(names[i]), range);
-		int ind = n_inter_names - n_names + i;
-		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[ind],
-			strlen(inter_names[ind]), range);
-		cypher_astnode_t *children[2];
-		children[0] = exp;
-		children[1] = alias;
-
-		projections[proj_idx++] = cypher_ast_projection(exp, alias, children,
-			2, range);
-	}
-
-	return proj_idx;
-}
-
-// adds projections from `inter_names` to `names` to `projections` array
-static uint _add_projection_inter_to_names
-(
-	cypher_astnode_t *projections[],  // array of projections
-	uint proj_idx,                    // index to start adding projections
-	char **names,                     // bound vars
-	char **inter_names                // internal representation of bound vars
-) {
-	uint n_names = array_len(names);
-	uint n_inter_names = array_len(inter_names);
-	for(uint i = 0; i < n_names; i++) {
-		// create a projection for the bound var
-		struct cypher_input_range range = {0};
-		int ind = n_inter_names - n_names + i;
-		cypher_astnode_t *exp = cypher_ast_identifier(inter_names[ind],
-			strlen(inter_names[ind]), range);
-		cypher_astnode_t *alias = cypher_ast_identifier(names[i],
-			strlen(names[i]), range);
+		cypher_astnode_t *alias = cypher_ast_identifier(inter_names[i],
+			strlen(inter_names[i]), range);
 		cypher_astnode_t *children[2];
 		children[0] = exp;
 		children[1] = alias;
@@ -114,19 +85,19 @@ static uint _add_projections
 ) {
 	uint n_names = array_len(names);
 	uint n_inter_names = array_len(inter_names);
+	uint n_outer_names = n_inter_names - n_names;
 
 	if(hide) {
-		proj_idx = _add_projection_names_to_inter(projections, proj_idx, names,
-			inter_names);
+		proj_idx = _add_names_projections(projections, proj_idx, names,
+			inter_names + n_outer_names, hide);
 	} else {
-		proj_idx = _add_projection_inter_to_names(projections, proj_idx, names,
-			inter_names);
+		proj_idx = _add_names_projections(projections, proj_idx,
+			inter_names + n_outer_names, names, hide);
 	}
 
 	// -------------------------------------------------------------------------
 	// create projections for bound vars from outer context
 	// -------------------------------------------------------------------------
-	uint n_outer_names = n_inter_names - n_names;
 	for(uint i = 0; i < n_outer_names; i++) {
 		// create a projection for the bound var
 		struct cypher_input_range range = {0};
@@ -389,8 +360,8 @@ static void _replace_return_clause
 		last_ind - 1);
 }
 
-// rewrites the projections of a Call {} clause to contain the wanted
-// projections as depicted in the main function
+// rewrites the projections of a Call {} clause, such that bound vars will
+// remain in the record when passed to the CallSubquery op
 static void _rewrite_projections
 (
 	cypher_astnode_t *wrapping_clause,  // outer-context clause (query/call {})
@@ -478,10 +449,10 @@ static void _rewrite_projections
 }
 
 // rewrites the subquery to contain the projections needed in case of an
-// eager and returning execution-plan (see specification in main function), and
-// recursively rewrites embedded Call {} clauses in the subquery
+// eager and returning execution-plan such that bound vars will
+// remain in the record when passed to the CallSubquery op
 // returns true if the subquery was rewritten
-static bool rewrite_call_subquery_clause
+static bool _rewrite_call_subquery_clause
 (
 	cypher_astnode_t *wrapping_clause,  // outer-context clause (query/call {})
 	uint clause_idx,                    // index of the call {} clause in query
@@ -513,7 +484,7 @@ static bool rewrite_call_subquery_clause
 	return false;
 }
 
-// frees the added names over from the context
+// restores `outer_names` to its original size by freeing the added components
 static void _restore_outer_internal_names
 (
 	char ***outer_names,  // expanded context
@@ -527,7 +498,9 @@ static void _restore_outer_internal_names
 	}
 }
 
-// recursively rewrites call {} clauses
+// rewrites the subquery to contain the projections needed in case of an
+// eager and returning execution-plan such that bound vars will
+// remain in the record when passed to the CallSubquery op
 // returns true if a rewrite was performed
 static bool _rewrite_call_subquery_clauses
 (
@@ -549,7 +522,7 @@ static bool _rewrite_call_subquery_clauses
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 		if(type == CYPHER_AST_CALL_SUBQUERY) {
 			// if the subquery is returning & eager, rewrite its projections
-			rewritten |= rewrite_call_subquery_clause(wrapping_clause,
+			rewritten |= _rewrite_call_subquery_clause(wrapping_clause,
 				i, start_scope, outer_inter_names);
 
 			// `outer_inter_names` now contains the internal representation of
@@ -573,15 +546,23 @@ static bool _rewrite_call_subquery_clauses
 	return rewritten;
 }
 
-// add a star projection (i.e., `WITH *`) to a call {} clause at a given index
-static void _call_subquery_add_star_projection
+static void _add_star_projection
 (
-	cypher_astnode_t *call_subquery,  // call {} node to add the projection to
-	uint ind                          // index in which to plant the projection
+	cypher_astnode_t *node,  // node to add the projection to
+	uint idx                 // index in which to plant the projection
 ) {
-	ASSERT(cypher_astnode_type(call_subquery) == CYPHER_AST_CALL_SUBQUERY);
+	cypher_astnode_type_t type = cypher_astnode_type(node);
 
-	cypher_astnode_t *query = cypher_ast_call_subquery_get_query(call_subquery);
+	cypher_astnode_t *query;
+	if(type == CYPHER_AST_STATEMENT) {
+		query = (cypher_astnode_t *)cypher_ast_statement_get_body(node);
+	} else {
+		// node is a call {} clause
+		ASSERT(type == CYPHER_AST_CALL_SUBQUERY);
+
+		query = cypher_ast_call_subquery_get_query(node);
+	}
+
 	uint nclauses = cypher_ast_query_nclauses(query);
 
 	// create a star projection
@@ -590,110 +571,58 @@ static void _call_subquery_add_star_projection
 		NULL, NULL, NULL, NULL, NULL, 0, range);
 
 	cypher_astnode_t *clauses[nclauses + 1];
-	for(uint i = 0; i < ind; i++) {
+	for(uint i = 0; i < idx; i++) {
 		clauses[i] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
 	}
-	clauses[ind] = star_projection;
-	for(uint i = ind; i < nclauses; i++) {
+	clauses[idx] = star_projection;
+	for(uint i = idx; i < nclauses; i++) {
 		clauses[i + 1] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
 	}
 
 	cypher_astnode_t *new_query = cypher_ast_query(NULL, 0, clauses,
 		nclauses + 1, clauses, nclauses + 1, range);
 
-	cypher_ast_call_subquery_replace_query(call_subquery, new_query);
-}
-
-// add a star projection (i.e., `WITH *`) to a statement clause at a given index
-static void _statement_add_star_projection
-(
-	cypher_astnode_t *statement,  // call {} node to add the projection to
-	uint ind                      // index in which to plant the projection
-) {
-	ASSERT(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
-
-	cypher_astnode_t *query = (cypher_astnode_t *)
-		cypher_ast_statement_get_body(statement);
-	uint nclauses = cypher_ast_query_nclauses(query);
-
-	// create a star projection
-	struct cypher_input_range range = {0};
-	cypher_astnode_t *star_projection = cypher_ast_with(false, true, NULL, 0,
-		NULL, NULL, NULL, NULL, NULL, 0, range);
-
-	cypher_astnode_t *clauses[nclauses + 1];
-	for(uint i = 0; i < ind; i++) {
-		clauses[i] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
-	}
-	clauses[ind] = star_projection;
-	for(uint i = ind; i < nclauses; i++) {
-		clauses[i + 1] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
-	}
-
-	cypher_astnode_t *new_query = cypher_ast_query(NULL, 0, clauses,
-		nclauses + 1, clauses, nclauses + 1, range);
-
-	cypher_ast_statement_replace_body(statement, new_query);
-}
-
-// adds a star projection (i.e., `WITH *`) before every call {} clause in the
-// body of a call {} ast node
-static void _call_subquery_add_star_projections
-(
-	cypher_astnode_t *call_subquery  // call {} ast node
-) {
-	ASSERT(cypher_astnode_type(call_subquery) == CYPHER_AST_CALL_SUBQUERY);
-
-	cypher_astnode_t *query = cypher_ast_call_subquery_get_query(call_subquery);
-	uint nclauses = cypher_ast_query_nclauses(query);
-	for(uint i = 1; i < nclauses; i++) {
-		cypher_astnode_t *clause = (cypher_astnode_t *)
-			cypher_ast_query_get_clause(query, i);
-		if(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY) {
-			_call_subquery_add_star_projection(call_subquery, i);
-
-			// update `query` and `nclauses` to reflect the new query
-			query = cypher_ast_call_subquery_get_query(call_subquery);
-			i++;
-			nclauses++;
-			clause = (cypher_astnode_t *)cypher_ast_query_get_clause(query, i);
-
-			_call_subquery_add_star_projections(clause);
-		}
+	if(type == CYPHER_AST_STATEMENT) {
+		cypher_ast_statement_replace_body(node, new_query);
+	} else {
+		cypher_ast_call_subquery_replace_query(node, new_query);
 	}
 }
 
-// adds a star projection (i.e., `WITH *`) before every call {} clause in the
-// ast embedded in a statement ast node
-static bool _statement_add_star_projections
+static bool _add_star_projections
 (
-	cypher_astnode_t *statement  // statement of ast to rewrite
+	cypher_astnode_t *node  // node to add the projections to
 ) {
-	ASSERT(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
+	cypher_astnode_type_t type = cypher_astnode_type(node);
 
-	cypher_astnode_t *query = (cypher_astnode_t *)
-		cypher_ast_statement_get_body(statement);
-	uint nclauses = cypher_ast_query_nclauses(query);
+	cypher_astnode_t *query;
+	if(type == CYPHER_AST_STATEMENT) {
+		query = (cypher_astnode_t *)cypher_ast_statement_get_body(node);
+	} else {
+		// node is a call {} clause
+		ASSERT(type == CYPHER_AST_CALL_SUBQUERY);
 
-	// add a star projection before every call {} clause, excluding the first
-	// clause
+		query = cypher_ast_call_subquery_get_query(node);
+	}
+
 	bool rewritten = false;
+	uint nclauses = cypher_ast_query_nclauses(query);
 	for(uint i = 1; i < nclauses; i++) {
 		cypher_astnode_t *clause = (cypher_astnode_t *)
 			cypher_ast_query_get_clause(query, i);
 		if(cypher_astnode_type(clause) == CYPHER_AST_CALL_SUBQUERY) {
+			_add_star_projection(node, i);
 			rewritten = true;
 
-			_statement_add_star_projection(statement, i);
-
 			// update `query` and `nclauses` to reflect the new query
-			query = (cypher_astnode_t *)
-				cypher_ast_statement_get_body(statement);
+			query = type == CYPHER_AST_STATEMENT ?
+				(cypher_astnode_t *)cypher_ast_statement_get_body(node) :
+				cypher_ast_call_subquery_get_query(node);
 			i++;
 			nclauses++;
 			clause = (cypher_astnode_t *)cypher_ast_query_get_clause(query, i);
 
-			_call_subquery_add_star_projections(clause);
+			_add_star_projections(clause);
 		}
 	}
 
@@ -729,7 +658,7 @@ bool AST_RewriteCallSubquery
 	array_free_cb(inter_names, rm_free);
 
 	// add a `WITH *` clause before every call {} clause
-	rewritten |= _statement_add_star_projections((cypher_astnode_t *)root);
+	rewritten |= _add_star_projections((cypher_astnode_t *)root);
 
 	return rewritten;
 }

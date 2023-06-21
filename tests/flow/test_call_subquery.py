@@ -442,6 +442,33 @@ updating clause.")
         res = graph.query("MATCH (n:TEMP) DELETE n")
         self.env.assertEquals(res.nodes_deleted, 2)
 
+        # tests that `FOREACH` is interpreted as an updating clause, properly
+        res = graph.query(
+            """
+            MATCH (n)
+            CALL {
+                FOREACH (m in [1] |
+                    CREATE (:TEMP)
+                )
+                RETURN 1 AS one
+            }
+            RETURN n, one ORDER BY n.v ASC
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(res.nodes_created, 2)
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0][0], Node(label='N',
+            properties={'name': 'Raz', 'v': 5}))
+        self.env.assertEquals(res.result_set[0][1], 1)
+        self.env.assertEquals(res.result_set[1][0], Node(label='N',
+            properties={'name': 'Raz', 'v': 6}))
+        self.env.assertEquals(res.result_set[1][1], 1)
+
+        # delete the nodes with label :TEMP
+        res = graph.query("MATCH (n:TEMP) DELETE n")
+
     def test11_skip_limit(self):
         """Tests that SKIP and LIMIT work properly when placed inside a
         subquery"""

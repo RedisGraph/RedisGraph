@@ -27,17 +27,12 @@ typedef struct {
 	rax *defined_identifiers;      // identifiers environment
 	cypher_astnode_type_t clause;  // top-level clause type
 	is_union_all union_all;        // union type (regular or ALL)
-	bool ignore_identifiers;       // ignore identifiers
+	bool ignore_identifiers;       // ignore identifiers in case `RETURN *` was met in a call {} clause
 } validations_ctx;
 
 // ast validation visitor mappings
 // number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 115
 static visit validations_mapping[115];
-
-// forward declarations
-static AST_Validation _ValidateQuerySequence(const AST *ast);
-static AST_Validation _ValidateClauseOrder(const AST *ast);
-static AST_Validation _ValidateUnion_Clauses(const AST *ast);
 
 // validate that allShortestPaths is in a supported place
 static bool _ValidateAllShortestPaths
@@ -1178,11 +1173,11 @@ cleanup:
 	return VISITOR_CONTINUE;
 }
 
-// validates that root does not contain bound identifiers
+// validates that root does not contain (bound) identifiers. For instance, would
+// fail on `MATCH (a) CALL {WITH a AS b RETURN b}`
 static bool _ValidateSubqueryFirstWithClauseIdentifiers
 (
-	const cypher_astnode_t *root,  // root to validate
-	rax *defined_identifiers       // bound vars
+	const cypher_astnode_t *root  // root to validate
 ) {
 	ASSERT(root != NULL);
 
@@ -1194,7 +1189,7 @@ static bool _ValidateSubqueryFirstWithClauseIdentifiers
 	uint nchildren = cypher_astnode_nchildren(root);
 	for(uint i = 0; i < nchildren; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-		if(!_ValidateSubqueryFirstWithClauseIdentifiers(child, defined_identifiers)) {
+		if(!_ValidateSubqueryFirstWithClauseIdentifiers(child)) {
 			return false;
 		}
 	}
@@ -1235,8 +1230,8 @@ static bool _ValidateCallInitialWith
 			// check that the import does not make reference to an outer scope
 			// identifier. This is invalid:
 			// 'WITH 1 AS a CALL {WITH a + 1 AS b RETURN b} RETURN b'
-			if(found_simple || !_ValidateSubqueryFirstWithClauseIdentifiers(exp,
-				vctx->defined_identifiers)) {
+			if(found_simple ||
+			   !_ValidateSubqueryFirstWithClauseIdentifiers(exp)) {
 					return false;
 			}
 			found_non_simple = true;
@@ -1350,11 +1345,6 @@ references to outside variables");
 		const cypher_astnode_t *return_clause
 			= cypher_ast_query_get_clause(body, nclauses-1);
 
-		// TODO: If the return clause has a `*` projection, return all
-		// bound vars from the subquery (discluding the initial with clause if
-		// it imports data from outer scope).
-		// AST_CollectAliases(aliases, )
-
 		uint n_projections = cypher_ast_return_nprojections(return_clause);
 		for(uint i = 0; i < n_projections; i++) {
 			const cypher_astnode_t *proj =
@@ -1398,11 +1388,11 @@ static bool _is_updating_clause
 	cypher_astnode_type_t type = cypher_astnode_type(clause);
 
 	return type == CYPHER_AST_CREATE             ||
-		   type == CYPHER_AST_MERGE              ||
-		   type == CYPHER_AST_DELETE             ||
-		   type == CYPHER_AST_SET                ||
-		   type == CYPHER_AST_REMOVE             ||
-		   type == CYPHER_AST_FOREACH;
+	       type == CYPHER_AST_MERGE              ||
+	       type == CYPHER_AST_DELETE             ||
+	       type == CYPHER_AST_SET                ||
+	       type == CYPHER_AST_REMOVE             ||
+	       type == CYPHER_AST_FOREACH;
 }
 
 // validate a WITH clause
@@ -1500,10 +1490,10 @@ static VISITOR_STRATEGY _Validate_DELETE_Clause
 		// expecting an identifier or a function call
 		// identifiers and calls that don't resolve to a node, path or edge
 		// will raise an error at run-time
-		if(type != CYPHER_AST_IDENTIFIER &&
-				type != CYPHER_AST_APPLY_OPERATOR &&
-				type != CYPHER_AST_APPLY_ALL_OPERATOR &&
-				type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
+		if(type != CYPHER_AST_IDENTIFIER         &&
+		   type != CYPHER_AST_APPLY_OPERATOR     &&
+		   type != CYPHER_AST_APPLY_ALL_OPERATOR &&
+		   type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
 			ErrorCtx_SetError("DELETE can only be called on nodes, paths and relationships");
 			return VISITOR_BREAK;
 		}

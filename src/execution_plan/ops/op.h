@@ -216,13 +216,11 @@ int OpBase_Modifies
 
 // adds an alias to an existing modifier
 // such that record[modifier] = record[alias]
-// updates `modifies` array of op if `update_modifies` is on
 int OpBase_AliasModifier
 (
 	OpBase *op,            // op
 	const char *modifier,  // existing alias
-	const char *alias,     // new alias
-	bool update_modifies   // whether to update modifies array or not
+	const char *alias      // new alias
 );
 
 // returns true if any of an op's children are aware of the given alias

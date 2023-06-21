@@ -84,25 +84,18 @@ int OpBase_Modifies
 
 // adds an alias to an existing modifier
 // such that record[modifier] = record[alias]
-// updates `modifies` array of op if `update_modifies` is on
 int OpBase_AliasModifier
 (
 	OpBase *op,            // op
 	const char *modifier,  // existing alias
-	const char *alias,     // new alias
-	bool update_modifies   // whether to update modifies array or not
+	const char *alias      // new alias
 ) {
 	rax *mapping = ExecutionPlan_GetMappings(op->plan);
 	void *id = raxFind(mapping, (unsigned char *)modifier, strlen(modifier));
 	ASSERT(id != raxNotFound);
 
 	// make sure to not introduce the same modifier twice
-	if(raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL) &&
-		update_modifies) {
-		if(op->modifies == NULL) {
-			// initialize modifies array if it not yet initialized
-			op->modifies = array_new(const char *, 1);
-		}
+	if(raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL)) {
 		array_append(op->modifies, alias);
 	}
 

@@ -250,10 +250,8 @@ static bool _rewrite_call_subquery_star_projections
 			cypher_astnode_t *inner_query =
 				cypher_ast_call_subquery_get_query(call_subquery);
 			rewritten |= AST_RewriteStarProjections(inner_query);
-			continue;
-		}
-
-		if(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN) {
+			last_is_union = false;
+		} else if(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN) {
 			// check whether the clause contains a star projection
 			bool has_star = (t == CYPHER_AST_WITH) ?
 				cypher_ast_with_has_include_existing(clause) :
