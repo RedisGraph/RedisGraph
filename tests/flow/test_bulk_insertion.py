@@ -13,7 +13,7 @@ redis_graph = None
 
 def run_bulk_loader(graphname, filename):
     runner = CliRunner()
-    runner.invoke(bulk_insert, ['--port', port,
+    runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                 '--nodes', filename,
                                 graphname])
 
