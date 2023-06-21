@@ -28,7 +28,7 @@ QueriesLog QueriesLog_New(void);
 // add query to buffer
 void QueriesLog_AddQuery
 (
-    QueriesLog log,             // queries log
+	QueriesLog log,             // queries log
 	uint64_t received,          // query received timestamp
 	double wait_duration,       // waiting time
 	double execution_duration,  // executing time
