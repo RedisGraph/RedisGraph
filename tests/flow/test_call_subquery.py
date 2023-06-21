@@ -41,30 +41,87 @@ class testCallSubqueryFlow():
     def test01_test_validations(self):
         """Make sure we fail on invalid queries"""
 
-        import_error = "WITH imports in CALL {} must consist of only simple references to outside variables"
-        match_after_updating = "A WITH clause is required to introduce MATCH after an updating clause"
-        union_column_name_error = "All sub queries in a UNION must have the same column names."
-        queries_errors = [
-            ("WITH 1 AS a CALL {WITH a+1 AS b RETURN b} RETURN b", import_error),
-            ("WITH {a: 1} AS map CALL {WITH map.a AS b RETURN b} RETURN b", import_error),
-            ("WITH [1, 2, 3] AS list CALL {WITH list[0] AS b RETURN b} RETURN b", import_error),
-            ("WITH 'RAZ' AS str CALL {WITH toUpper(str) AS b RETURN b} RETURN b", import_error),
-            ("WITH 1 AS a CALL {WITH a AS b RETURN b} RETURN b", import_error),
-            ("WITH 1 AS a CALL {WITH a LIMIT 5 RETURN a} RETURN a", import_error),
-            ("WITH 1 AS a CALL {WITH a ORDER BY a.v RETURN a} RETURN a", import_error),
-            ("WITH 1 AS a CALL {WITH a WHERE a > 5 RETURN a} RETURN a", import_error),
-            ("WITH 1 AS a CALL {WITH a SKIP 5 RETURN a} RETURN a", import_error),
-            ("WITH true AS a CALL {WITH NOT(a) AS b RETURN b} RETURN b", import_error),
-            ("CALL {CREATE (n:N) MATCH (n:N) RETURN n} RETURN 1", match_after_updating),
-            ("WITH 1 AS a CALL {WITH a CREATE (n:N) MATCH (n:N) RETURN n} RETURN a", match_after_updating),
-            ("CALL {MATCH (n:N) CREATE (n:N2)} RETURN 1 ", "The bound variable 'n' can't be redeclared in a CREATE clause"),
-            ("MATCH (n) CALL {WITH n AS n1 RETURN n1 UNION WITH n RETURN n1} RETURN n, n1", import_error),
-            ("MATCH (n) CALL {WITH n RETURN n AS n1 UNION WITH n AS n1 RETURN n1} RETURN n, n1", import_error),
-            ("CALL {RETURN 1 AS one UNION RETURN 2 AS two} RETURN 1", union_column_name_error),
-            ("MATCH (n) CALL {RETURN 1 AS one UNION RETURN 2 AS two} RETURN 1", union_column_name_error)
+        # invalid queries: imports that are not simple imports
+        queries = [
+            "WITH 1 AS a CALL {WITH a + 1 AS b RETURN b} RETURN b",
+            "WITH {a: 1} AS map CALL {WITH map.a AS b RETURN b} RETURN b",
+            "WITH [1, 2, 3] AS list CALL {WITH list[0] AS b RETURN b} RETURN b",
+            "WITH 'RAZ' AS str CALL {WITH toUpper(str) AS b RETURN b} RETURN b",
+            "WITH 1 AS a CALL {WITH a AS b RETURN b} RETURN b",
+            "WITH 1 AS a CALL {WITH a LIMIT 5 RETURN a} RETURN a",
+            "WITH 1 AS a CALL {WITH a ORDER BY a.v RETURN a} RETURN a",
+            "WITH 1 AS a CALL {WITH a WHERE a > 5 RETURN a} RETURN a",
+            "WITH 1 AS a CALL {WITH a SKIP 5 RETURN a} RETURN a",
+            "WITH true AS a CALL {WITH NOT(a) AS b RETURN b} RETURN b",
+            "MATCH (n) CALL {WITH n AS n1 RETURN n1 UNION WITH n RETURN n1} RETURN n, n1",
+            "MATCH (n) CALL {WITH n RETURN n AS n1 UNION WITH n AS n1 RETURN n1} RETURN n, n1",
         ]
-        for query, err in queries_errors:
-            self.expect_error(query, err)
+        expected_error = "WITH imports in CALL {} must consist of only simple references to outside variables"
+        for query in queries:
+            self.expect_error(query, expected_error)
+
+        # invalid queries: MATCH without preceding WITH
+        queries = [
+            "CALL {CREATE (n:N) MATCH (n:N) RETURN n} RETURN 1",
+            "WITH 1 AS a CALL {WITH a CREATE (n:N) MATCH (n:N) RETURN n} RETURN a",
+        ]
+        expected_error = "A WITH clause is required to introduce MATCH after an updating clause"
+        for query in queries:
+            self.expect_error(query, expected_error)
+
+        # invalid queries: redeclaring variable in CREATE
+        queries = [
+            "CALL {MATCH (n:N) CREATE (n:N2)} RETURN 1 ",
+        ]
+        expected_error = "The bound variable 'n' can't be redeclared in a CREATE clause"
+        for query in queries:
+            self.expect_error(query, expected_error)
+
+        # invalid queries: UNION column names
+        queries = [
+            # different column names
+            """
+            CALL {
+                RETURN 1 AS one
+                UNION
+                RETURN 2 AS two
+            }
+            RETURN 1
+            """,
+            """
+            MATCH (n)
+            CALL {
+                RETURN 1 AS one
+                UNION
+                RETURN n
+            } RETURN 1
+            """,
+            # missing column names
+            """
+            CALL {
+                RETURN 1
+                UNION
+                RETURN 2 AS two
+            } RETURN 1
+            """,
+        ]
+        expected_error = "All sub queries in a UNION must have the same column names"
+        for query in queries:
+            self.expect_error(query, expected_error)
+
+        # invalid queries: returning literals inside CALL{} must be aliased
+        queries = [
+            "CALL {RETURN 1} RETURN 0",
+            "CALL {RETURN 'a'} RETURN 0",
+            "CALL {RETURN 5.7} RETURN 0",
+            "CALL {RETURN 1+2} RETURN 0",
+            "CALL {RETURN true} RETURN 0",
+            "CALL {RETURN sum(0)} RETURN 0",
+            "CALL {MATCH (n) RETURN n.x} RETURN 0",
+            "CALL {MATCH p=(n) RETURN nodes(p)[0]} RETURN 0",
+        ]
+        for query in queries:
+            self.expect_error(query, "must be aliased")
 
         # invalid queries: import an undefined identifier
         queries = [
