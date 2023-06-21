@@ -1786,11 +1786,11 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 			cypher_astnode_type_t type = cypher_astnode_type(exp);
 			if(type == CYPHER_AST_IDENTIFIER) {
 				alias = cypher_ast_identifier_get_name(exp);
+			} else {
+				continue;
 			}
 		}
-		if(alias != NULL) {
-			raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
-		}
+		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
 
 	// visit ORDER BY clause
