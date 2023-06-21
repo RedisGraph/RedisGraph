@@ -425,6 +425,7 @@ static void _ExecuteQuery(void *args) {
 	// clean up
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_DecreaseRefCount(gc);
+	Globals_UntrackCommandCtx(command_ctx);
 	CommandCtx_UnblockClient(command_ctx);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // reset the QueryCtx and free its allocations
@@ -542,6 +543,7 @@ cleanup:
 	// Cleanup routine invoked after encountering errors in this function.
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_DecreaseRefCount(gc);
+	Globals_UntrackCommandCtx(command_ctx);
 	CommandCtx_UnblockClient(command_ctx);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.

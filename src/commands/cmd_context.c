@@ -40,7 +40,6 @@ CommandCtx *CommandCtx_New
 	context->timeout            = timeout;
 	context->ref_count          = ATOMIC_VAR_INIT(1);
 	context->graph_ctx          = graph_ctx;
-	context->thread_id          = -1;
 	context->timeout_rw         = timeout_rw;
 	context->received_ts        = received_ts;
 	context->command_name       = NULL;
@@ -170,8 +169,6 @@ void CommandCtx_Free
 	// decrement reference count
 	if(atomic_fetch_sub(&command_ctx->ref_count, 1) == 1) {
 		// reference count is zero, free command context
-		Globals_UntrackCommandCtx(command_ctx);
-
 		ASSERT(command_ctx->bc == NULL);
 
 		if(command_ctx->query != NULL) rm_free(command_ctx->query);

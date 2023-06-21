@@ -188,7 +188,6 @@ void Globals_TrackCommandCtx
 	ASSERT(_globals.command_ctxs != NULL);
 
 	int tid = ThreadPools_GetThreadID();
-	ctx->thread_id = tid;
 
 	// acuire read lock
 	pthread_rwlock_rdlock(&_globals.lock);
@@ -202,7 +201,6 @@ void Globals_TrackCommandCtx
 	// release lock
 	pthread_rwlock_unlock(&_globals.lock);
 
-	// TODO: see if there's a better place to reset memory consumption
 	// reset thread memory consumption to 0 (no memory consumed)
 	rm_reset_n_alloced();
 }
@@ -215,16 +213,16 @@ void Globals_UntrackCommandCtx
 	ASSERT(ctx != NULL);
 	ASSERT(_globals.command_ctxs != NULL);
 
-	if(ctx->thread_id == -1) return;  // not tracked
+	int tid = ThreadPools_GetThreadID();
 
 	// acuire read lock
 	pthread_rwlock_rdlock(&_globals.lock);
 
-	ASSERT(_globals.command_ctxs[ctx->thread_id] == ctx);
+	ASSERT(_globals.command_ctxs[tid] == ctx);
 
 	// clear ctx at the current thread entry
 	// CommandCtx_Free will free it eventually
-	_globals.command_ctxs[ctx->thread_id] = NULL;
+	_globals.command_ctxs[tid] = NULL;
 
 	// release lock
 	pthread_rwlock_unlock(&_globals.lock);
