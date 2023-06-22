@@ -1338,30 +1338,24 @@ references to outside variables");
 
 		uint n_projections = cypher_ast_return_nprojections(return_clause);
 		for(uint i = 0; i < n_projections; i++) {
-			const char *var_name = NULL;
 			const cypher_astnode_t *proj =
 				cypher_ast_return_get_projection(return_clause, i);
 			const cypher_astnode_t *alias_node =
 				cypher_ast_projection_get_alias(proj);
 			const cypher_astnode_t *exp =
 					cypher_ast_projection_get_expression(proj);
+			const char *var_name = AST_GetProjectionAlias(proj);
 
-			if(alias_node != NULL) {
-				var_name = cypher_ast_identifier_get_name(alias_node);
+			if(var_name == NULL) {
+				ErrorCtx_SetError("Return projection in CALL {} must be aliased");
+				return VISITOR_BREAK;
+			} else {
 				if(exp &&
 				   cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER &&
 				   cypher_ast_identifier_get_name(exp)[0] == '@') {
 					// this is an artificial projection, skip it
 					continue;
 				}
-			} else {
-				// validate expressions that must be aliased
-				cypher_astnode_type_t type = cypher_astnode_type(exp);
-				if(type != CYPHER_AST_IDENTIFIER) {
-					ErrorCtx_SetError("Return projection in CALL {} must be aliased");
-					return VISITOR_BREAK;
-				}
-				var_name = cypher_ast_identifier_get_name(exp);
 			}
 
 			if(!raxTryInsert(vctx->defined_identifiers,
