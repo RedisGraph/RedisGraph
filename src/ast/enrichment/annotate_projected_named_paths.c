@@ -127,6 +127,11 @@ static void _annotate_relevant_projected_named_path_identifier
 				_annotate_named_paths_in_expression(ast, identifier_map,
 													named_paths_ctx, exp);
 			}
+		} else if(clause_type == CYPHER_AST_UNWIND) {
+			const cypher_astnode_t *exp =
+				cypher_ast_unwind_get_expression(clause);
+			_annotate_named_paths_in_expression(ast, identifier_map,
+												named_paths_ctx, exp);
 		}
 	}
 }
