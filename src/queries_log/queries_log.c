@@ -63,6 +63,8 @@ void QueriesLog_AddQuery
 	double report_duration,       // reporting time
 	bool parameterized,           // uses parameters
 	bool utilized_cache,          // utilized cache
+	bool write,    	   	          // write query
+	bool timeout,    		      // timeout query
 	const char *query             // query string
 ) {
 	// add query stats to buffer
@@ -83,6 +85,8 @@ void QueriesLog_AddQuery
 	q->execution_duration = execution_duration;
 	q->report_duration    = report_duration;
 	q->parameterized      = parameterized;
+	q->write              = write;
+	q->timeout            = timeout;
 	q->utilized_cache     = utilized_cache;
 
 	// copy query string into slot
