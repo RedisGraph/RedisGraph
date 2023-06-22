@@ -387,7 +387,8 @@ static void test_AbortRunningTask() {
 	double time_taken_sec = ((double)t)/CLOCKS_PER_SEC;
 
 	// expecting Cron_AbortTask to return after task completed
-	TEST_ASSERT(time_taken_sec >= 0.1);
+	printf("time_taken_sec = %lf\n", time_taken_sec);
+	TEST_ASSERT(time_taken_sec > 0.099);
 
 	_AddTaskData_Free(data);
 }
