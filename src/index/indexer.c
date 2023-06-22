@@ -139,10 +139,30 @@ static void _indexer_enforce_constraint
 		}
 	}
 
+	// try to enforce constraint on all relevent entities
 	if(Constraint_GetEntityType(c) == GETYPE_NODE) {
 		Constraint_EnforceNodes(c, g);
 	} else {
 		Constraint_EnforceEdges(c, g);
+	}
+
+	// replicate constraint if active
+	// upon constraint creation
+	// it is possible for the primary shard to replicate the constraint via RDB
+	// in which case the constraint wouldn't be included
+	// as only active constraints are encoded within RDBs
+	// to make sure the constraint is introduced to the replica we re-issue it
+	// once the constraint becomes active
+	if(Constraint_GetStatus(c) == CT_ACTIVE) {
+		// lock before calling replicate
+		RedisModuleCtx *rm_ctx = RedisModule_GetThreadSafeContext(NULL);
+		RedisModule_ThreadSafeContextLock(rm_ctx);
+
+		Constraint_Replicate(rm_ctx, c, (const struct GraphContext*)gc);
+
+		// unlock and free
+		RedisModule_ThreadSafeContextUnlock(rm_ctx);
+		RedisModule_FreeThreadSafeContext(rm_ctx);
 	}
 
 	// decrease number of pending changes
@@ -271,8 +291,8 @@ static void _indexer_PopTask
 		ASSERT(res == 0);
 	}
 
-	res = CircularBuffer_Remove(indexer->q, task);
-	ASSERT(res == 1);
+	void *read = CircularBuffer_Read(indexer->q, task);
+	ASSERT(read != NULL);
 
 	// unlock
 	res = pthread_mutex_unlock(&indexer->m);
@@ -348,7 +368,7 @@ cleanup:
 	}
 
 	if(indexer->q != NULL) {
-		CircularBuffer_Free(&indexer->q);
+		CircularBuffer_Free(indexer->q);
 	}
 
 	rm_free(indexer);

@@ -12,6 +12,7 @@
 static Record JoinConsume(OpBase *opBase);
 static OpResult JoinInit(OpBase *opBase);
 static OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase);
+static OpResult JoinReset(OpBase *opBase);
 
 OpBase *NewJoinOp(const ExecutionPlan *plan) {
 	OpJoin *op = rm_malloc(sizeof(OpJoin));
@@ -19,7 +20,11 @@ OpBase *NewJoinOp(const ExecutionPlan *plan) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", JoinInit, JoinConsume, 
-		NULL, NULL, JoinClone, NULL, false, plan);
+		JoinReset, NULL, JoinClone, NULL, false, plan);
+
+	// if the Join op is not placed directly under a Results op (or as second
+	// descendent in case of `UNION ALL`), don't update the result set mapping
+	op->update_column_map = true;
 
 	return (OpBase *)op;
 }
@@ -32,7 +37,16 @@ static OpResult JoinInit(OpBase *opBase) {
 
 	// map first stream resultset mapping
 	ResultSet *result_set = QueryCtx_GetResultSet();
-	if(result_set != NULL) {
+
+	OpBase *parent = op->op.parent;
+	if(parent != NULL && parent->type != OPType_RESULTS) {
+		parent = parent->parent;
+		if(parent != NULL && parent->type != OPType_RESULTS) {
+			op->update_column_map = false;
+		}
+	}
+
+	if(result_set != NULL && op->update_column_map) {
 		OpBase *child = op->stream;
 		rax *mapping = ExecutionPlan_GetMappings(child->plan);
 		ResultSet_MapProjection(result_set, mapping);
@@ -44,7 +58,7 @@ static OpResult JoinInit(OpBase *opBase) {
 static Record JoinConsume(OpBase *opBase) {
 	OpJoin *op = (OpJoin *)opBase;
 	Record r = NULL;
-	bool update_column_map = false;
+	bool new_stream = false;
 
 	while(!r) {
 		// Try pulling from current stream.
@@ -60,11 +74,11 @@ static Record JoinConsume(OpBase *opBase) {
 
 			op->stream = op->op.children[op->streamIdx];
 			// Switched streams, need to update the ResultSet column mapping
-			update_column_map = true;
+			new_stream = true;
 			continue;
 		}
 
-		if(update_column_map) {
+		if(op->update_column_map && new_stream) {
 			// We have a new record mapping, update the ResultSet column map to match it.
 			ResultSet_MapProjection(QueryCtx_GetResultSet(), r->mapping);
 		}
@@ -75,6 +89,33 @@ static Record JoinConsume(OpBase *opBase) {
 
 static inline OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	ASSERT(opBase->type == OPType_JOIN);
-	return NewJoinOp(plan);
+	OpBase *clone = NewJoinOp(plan);
+	return clone;
 }
 
+static OpResult JoinReset
+(
+	OpBase *opBase
+) {
+	OpJoin *op = (OpJoin *)opBase;
+	op->streamIdx = 0;
+	op->stream = op->op.children[op->streamIdx];
+
+	// map first stream resultset mapping
+	ResultSet *result_set = QueryCtx_GetResultSet();
+	if(result_set != NULL && op->update_column_map) {
+		OpBase *child = op->stream;
+		rax *mapping = ExecutionPlan_GetMappings(child->plan);
+		ResultSet_MapProjection(result_set, mapping);
+	}
+
+	return OP_OK;
+}
+
+bool JoinGetUpdateColumnMap
+(
+	const OpBase *op
+) {
+	ASSERT(op->type == OPType_JOIN);
+	return ((OpJoin *)op)->update_column_map;
+}

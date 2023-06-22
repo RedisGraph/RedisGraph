@@ -9,6 +9,7 @@
 #include "../ops/op_value_hash_join.h"
 #include "../../util/rax_extensions.h"
 #include "../ops/op_cartesian_product.h"
+#include "../execution_plan_build/execution_plan_util.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 #define NOT_RESOLVED -1

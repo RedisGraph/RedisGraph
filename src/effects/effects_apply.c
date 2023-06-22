@@ -100,7 +100,7 @@ static void ApplyCreateNode
 	// create node
 	//--------------------------------------------------------------------------
 
-	Node n;
+	Node n = GE_NEW_NODE();
 	CreateNode(gc, &n, labels, lbl_count, attr_set, false);
 }
 
@@ -444,8 +444,6 @@ static void ApplyDeleteEdge
 	//--------------------------------------------------------------------------
 
 	Edge e;  // edge to delete
-	Node s;  // edge src node
-	Node t;  // edge dest node
 
 	EntityID id   = INVALID_ENTITY_ID;       // edge ID
 	int      r_id = GRAPH_UNKNOWN_RELATION;  // edge rel-type
@@ -469,17 +467,13 @@ static void ApplyDeleteEdge
 	// read dest node ID
 	fread_assert(&t_id, sizeof(EntityID), stream);
 
-	// get src node, dest node and edge from the graph
-	res = Graph_GetNode(g, s_id, (Node*)&s);
-	ASSERT(res != 0);
-	res = Graph_GetNode(g, t_id, (Node*)&t);
-	ASSERT(res != 0);
+	// get edge from the graph
 	res = Graph_GetEdge(g, id, (Edge*)&e);
 	ASSERT(res != 0);
 
 	// set edge relation, src and destination node
-	Edge_SetSrcNode(&e, &s);
-	Edge_SetDestNode(&e, &t);
+	Edge_SetSrcNodeID(&e, s_id);
+	Edge_SetDestNodeID(&e, t_id);
 	Edge_SetRelationID(&e, r_id);
 
 	// delete edge

@@ -6,41 +6,39 @@
 
 #include "../errors.h"
 #include "cmd_context.h"
+#include "../globals.h"
 #include "../query_ctx.h"
 #include "execution_ctx.h"
 #include "../index/index.h"
 #include "../util/rmalloc.h"
 #include "../execution_plan/execution_plan.h"
 
-/* Builds an execution plan but does not execute it
- * reports plan back to the client
- * Args:
- * argv[1] graph name
- * argv[2] query */
+// builds an execution plan but does not execute it
+// reports plan back to the client
+// Args:
+// argv[1] graph name
+// argv[2] query
 void Graph_Explain(void *args) {
 	bool lock_acquired = false;
 	CommandCtx     *command_ctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx         = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext   *gc          = CommandCtx_GetGraphContext(command_ctx);
 	ExecutionCtx   *exec_ctx    = NULL;
+	QueryCtx       *query_ctx   = QueryCtx_GetQueryCtx();
 
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
-	CommandCtx_TrackCtx(command_ctx);
+	Globals_TrackCommandCtx(command_ctx);
 
-	if(strcmp(command_ctx->query, "") == 0) {
-		ErrorCtx_SetError("Error: empty query.");
+	// retrieve the required execution items and information:
+	// 1. Execution plan
+	// 2. Whether these items were cached or not
+	bool           cached = false;
+	ExecutionPlan  *plan  = NULL;
+	exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query);
+	if (exec_ctx == NULL) {
+		query_ctx->status = QueryExecutionStatus_FAILURE;
 		goto cleanup;
 	}
-
-	QueryCtx_BeginTimer(); // Start query timing.
-
-	/* Retrieve the required execution items and information:
-	 * 1. Execution plan
-	 * 2. Whether these items were cached or not */
-	bool           cached =  false;
-	ExecutionPlan  *plan  =  NULL;
-	exec_ctx  =  ExecutionCtx_FromQuery(command_ctx->query);
-	if(exec_ctx == NULL) goto cleanup;
 
 	plan = exec_ctx->plan;
 	ExecutionType exec_type = exec_ctx->exec_type;
@@ -59,7 +57,10 @@ void Graph_Explain(void *args) {
 	ExecutionPlan_PreparePlan(plan);
 	ExecutionPlan_Init(plan);       // Initialize the plan's ops.
 
-	if(ErrorCtx_EncounteredError()) goto cleanup;
+	if (ErrorCtx_EncounteredError()) {
+		query_ctx->status = QueryExecutionStatus_FAILURE;
+		goto cleanup;
+	}
 
 	ExecutionPlan_Print(plan, ctx); // Print the execution plan.
 
@@ -68,6 +69,8 @@ cleanup:
 	if(lock_acquired) Graph_ReleaseLock(gc->g);
 	ExecutionCtx_Free(exec_ctx);
 	GraphContext_DecreaseRefCount(gc);
+	Globals_UntrackCommandCtx(command_ctx);
+	CommandCtx_UnblockClient(command_ctx);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	ErrorCtx_Clear();

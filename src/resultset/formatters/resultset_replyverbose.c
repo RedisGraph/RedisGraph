@@ -141,12 +141,12 @@ static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 	const char *reltype = Schema_GetName(s);
 	RedisModule_ReplyWithStringBuffer(ctx, reltype, strlen(reltype));
 
-	// ["src_node", srcNodeID (integer)]
+	// ["src_node", src_id (integer)]
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithStringBuffer(ctx, "src_node", 8);
 	RedisModule_ReplyWithLongLong(ctx, Edge_GetSrcNodeID(e));
 
-	// ["dest_node", destNodeID (integer)]
+	// ["dest_node", dest_id (integer)]
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithStringBuffer(ctx, "dest_node", 9);
 	RedisModule_ReplyWithLongLong(ctx, Edge_GetDestNodeID(e));

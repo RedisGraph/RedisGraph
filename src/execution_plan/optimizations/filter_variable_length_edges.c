@@ -7,6 +7,7 @@
 #include "../../util/arr.h"
 #include "../ops/op_filter.h"
 #include "../ops/op_cond_var_len_traverse.h"
+#include "../execution_plan_build/execution_plan_util.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 /* The filterVariableLengthEdges optimization finds variable-length traversal ops
@@ -108,7 +109,7 @@ void filterVariableLengthEdges(ExecutionPlan *plan) {
 							OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO
 						   };
 
-	var_len_traverse_ops = ExecutionPlan_CollectOpsMatchingType(plan->root,
+	var_len_traverse_ops = ExecutionPlan_CollectOpsMatchingTypes(plan->root,
 																types, 2);
 
 	uint count = array_len(var_len_traverse_ops);

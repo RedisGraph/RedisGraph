@@ -170,6 +170,42 @@ void ThreadPools_SetMaxPendingWork(uint64_t val) {
 	if(_writers_thpool != NULL) thpool_set_jobqueue_cap(_writers_thpool, val);
 }
 
+// returns a list of queued tasks that match the given handler
+// caller must free the returned list
+void **ThreadPools_GetTasksByHandler
+(
+	void (*handler)(void *),  // task handler to match
+	void (*match)(void *),    // [optional] function to invoke on each match
+	uint32_t *n               // number of tasks returned
+) {
+	// validations
+	ASSERT(handler         != NULL);
+	ASSERT(_readers_thpool != NULL);
+	ASSERT(_writers_thpool != NULL);
+
+	// cap number of read tasks
+	uint32_t r_task_count = (thpool_get_jobqueue_len(_readers_thpool) > 1000)
+		? 1000
+		: thpool_get_jobqueue_len(_readers_thpool);
+
+	// cap number of write tasks
+	uint32_t w_task_count = (thpool_get_jobqueue_len(_writers_thpool) > 1000)
+		? 1000
+		: thpool_get_jobqueue_len(_writers_thpool);
+
+	void **tasks = malloc(sizeof(void *) * (r_task_count + w_task_count));
+
+	// collect tasks from readers and writers
+	thpool_get_tasks(_readers_thpool, tasks, &r_task_count, handler, match);
+	thpool_get_tasks(_writers_thpool, tasks + r_task_count, &w_task_count,
+			handler, match);
+
+	// update number of tasks
+	*n = r_task_count + w_task_count;
+
+	return tasks;
+}
+
 void ThreadPools_Destroy
 (
 	void
@@ -180,3 +216,4 @@ void ThreadPools_Destroy
 	thpool_destroy(_readers_thpool);
 	thpool_destroy(_writers_thpool);
 }
+

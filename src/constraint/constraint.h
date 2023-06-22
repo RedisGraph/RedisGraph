@@ -12,7 +12,7 @@
 #include "../graph/entities/graph_entity.h"
 #include "../graph/entities/attribute_set.h"
 
-// forward declaration of opaque constraint structures
+// forward declaration of opaque constraint structure
 typedef struct _Constraint *Constraint;
 
 // constraint enforcement callback function
@@ -156,6 +156,14 @@ void Constraint_IncPendingChanges
 void Constraint_DecPendingChanges
 (
 	Constraint c  // constraint to update
+);
+
+// replicate constraint to both persistency and replicas
+void Constraint_Replicate
+(
+	RedisModuleCtx *ctx,           // redis module context
+	const Constraint c,            // constraint to replicate
+	const struct GraphContext *gc  // graph context
 );
 
 // tries to enforce constraint on all relevant entities

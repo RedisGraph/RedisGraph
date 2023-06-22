@@ -27,6 +27,8 @@ static int _record_cmp
 	Record b,
 	OpSort *op
 ) {
+	ASSERT(a->owner == b->owner);
+
 	uint comparison_count = array_len(op->record_offsets);
 	for(uint i = 0; i < comparison_count; i++) {
 		SIValue aVal = Record_Get(a, op->record_offsets[i]);
@@ -90,27 +92,19 @@ OpBase *NewSortOp
 ) {
 	OpSort *op = rm_malloc(sizeof(OpSort));
 
-	op->exps       = exps;
-	op->heap       = NULL;
-	op->skip       = 0;
-	op->first      = true;
-	op->limit      = UNLIMITED;
-	op->buffer     = NULL;
-	op->record_idx = 0;
-	op->directions = directions;
+	op->exps           = exps;
+	op->heap           = NULL;
+	op->skip           = 0;
+	op->first          = true;
+	op->limit          = UNLIMITED;
+	op->buffer         = NULL;
+	op->record_idx     = 0;
+	op->directions     = directions;
+	op->record_offsets = NULL;
 
 	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", SortInit, SortConsume,
 			SortReset, NULL, SortClone, SortFree, false, plan);
-
-	uint comparison_count = array_len(exps);
-	op->record_offsets = array_new(uint, comparison_count);
-	for(uint i = 0; i < comparison_count; i ++) {
-		int record_idx;
-		bool aware = OpBase_Aware((OpBase *)op, exps[i]->resolved_name, &record_idx);
-		ASSERT(aware);
-		array_append(op->record_offsets, record_idx);
-	}
 
 	return (OpBase *)op;
 }
@@ -129,6 +123,16 @@ static OpResult SortInit(OpBase *opBase) {
 	} else {
 		// if all records are being sorted, use quicksort
 		op->buffer = array_new(Record, 32);
+	}
+
+	uint comparison_count = array_len(op->exps);
+	op->record_offsets = array_new(uint, comparison_count);
+	for(uint i = 0; i < comparison_count; i ++) {
+		int record_idx;
+		bool aware = OpBase_Aware((OpBase *)op, op->exps[i]->resolved_name,
+			&record_idx);
+		ASSERT(aware);
+		array_append(op->record_offsets, record_idx);
 	}
 
 	return OP_OK;
@@ -248,4 +252,3 @@ static void SortFree(OpBase *ctx) {
 		op->exps = NULL;
 	}
 }
-

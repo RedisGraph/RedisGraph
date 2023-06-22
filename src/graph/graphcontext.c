@@ -4,10 +4,9 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include <sys/param.h>
-#include <pthread.h>
-#include "graphcontext.h"
 #include "../RG.h"
+#include "globals.h"
+#include "graphcontext.h"
 #include "../util/arr.h"
 #include "../util/uuid.h"
 #include "../query_ctx.h"
@@ -18,8 +17,12 @@
 #include "../serializers/graphcontext_type.h"
 #include "../commands/execution_ctx.h"
 
-// Global array tracking all extant GraphContexts (defined in module.c)
-extern GraphContext **graphs_in_keyspace;
+#include <sys/param.h>
+#include <pthread.h>
+
+// telemetry stream format
+#define TELEMETRY_FORMAT "telemetry{%s}"
+
 extern uint aux_field_counter;
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
@@ -27,6 +30,7 @@ extern RedisModuleType *GraphContextRedisModuleType;
 // Forward declarations.
 static void _GraphContext_Free(void *arg);
 static void _GraphContext_UpdateVersion(GraphContext *gc, const char *str);
+static void _DeleteTelemetryStream(RedisModuleCtx *ctx, const GraphContext *gc);
 
 static uint64_t _count_indices_from_schemas(const Schema** schemas) {
 	ASSERT(schemas);
@@ -42,22 +46,12 @@ static uint64_t _count_indices_from_schemas(const Schema** schemas) {
 	return count;
 }
 
-// delete a GraphContext reference from the `graphs_in_keyspace` global array
-void _GraphContext_RemoveFromRegistry(GraphContext *gc) {
-	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i ++) {
-		if(graphs_in_keyspace[i] == gc) {
-			graphs_in_keyspace = array_del_fast(graphs_in_keyspace, i);
-			break;
-		}
-	}
-}
-
 // increase graph context ref count by 1
 inline void GraphContext_IncreaseRefCount
 (
 	GraphContext *gc
 ) {
+	ASSERT(gc != NULL);
 	__atomic_fetch_add(&gc->ref_count, 1, __ATOMIC_RELAXED);
 }
 
@@ -66,15 +60,14 @@ inline void GraphContext_DecreaseRefCount
 (
 	GraphContext *gc
 ) {
+	ASSERT(gc != NULL);
+
 	// if the reference count is 0
 	// the graph has been marked for deletion and no queries are active
 	// free the graph
 	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) == 0) {
 		bool async_delete;
 		Config_Option_get(Config_ASYNC_DELETE, &async_delete);
-
-		// remove graph context from global `graphs_in_keyspace` array
-		_GraphContext_RemoveFromRegistry(gc);
 
 		if(async_delete) {
 			// Async delete
@@ -101,6 +94,7 @@ GraphContext *GraphContext_New
 
 	gc->version          = 0;  // initial graph version
 	gc->slowlog          = SlowLog_New();
+	gc->queries_log      = QueriesLog_New();
 	gc->ref_count        = 0;  // no refences
 	gc->attributes       = raxNew();
 	gc->index_count      = 0;  // no indicies
@@ -120,6 +114,8 @@ GraphContext *GraphContext_New
 
 	gc->g = Graph_New(node_cap, edge_cap);
 	gc->graph_name = rm_strdup(graph_name);
+	gc->telemetry_stream = RedisModule_CreateStringPrintf(NULL,
+			TELEMETRY_FORMAT, gc->graph_name);
 
 	// allocate the default space for schemas and indices
 	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
@@ -140,17 +136,19 @@ GraphContext *GraphContext_New
 	return gc;
 }
 
-/* _GraphContext_Create tries to get a graph context, and if it does not exists, create a new one.
- * The try-get-create flow is done when module global lock is acquired, to enforce consistency
- * while BGSave is called. */
+// _GraphContext_Create tries to get a graph context
+// and if it does not exists, create a new one
+// the try-get-create flow is done when module global lock is acquired
+// to enforce consistency while BGSave is called
 static GraphContext *_GraphContext_Create
 (
 	RedisModuleCtx *ctx,
 	const char *graph_name
 ) {
-	// Create and initialize a graph context.
+	// create and initialize a graph context
 	GraphContext *gc = GraphContext_New(graph_name);
-	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
+	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name,
+			strlen(graph_name));
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
 
@@ -162,6 +160,7 @@ static GraphContext *_GraphContext_Create
 
 	RedisModule_FreeString(ctx, graphID);
 	RedisModule_CloseKey(key);
+
 	return gc;
 }
 
@@ -222,14 +221,66 @@ cleanup:
 	RedisModule_FreeString(ctx, graphID);
 }
 
-const char *GraphContext_GetName(const GraphContext *gc) {
+void GraphContext_LockForCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+) {
+	// aquire GIL
+	RedisModule_ThreadSafeContextLock(ctx);
+
+	// acquire graph write lock
+	Graph_AcquireWriteLock(gc->g);
+}
+
+void GraphContext_UnlockCommit
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+) {
+	// release graph R/W lock
+	Graph_ReleaseLock(gc->g);
+
+	// unlock GIL
+	RedisModule_ThreadSafeContextUnlock(ctx);
+}
+
+const char *GraphContext_GetName
+(
+	const GraphContext *gc
+) {
 	ASSERT(gc != NULL);
 	return gc->graph_name;
 }
 
-void GraphContext_Rename(GraphContext *gc, const char *name) {
+// get graph context's telemetry stream name
+const RedisModuleString *GraphContext_GetTelemetryStreamName
+(
+	const GraphContext *gc
+) {
+	ASSERT(gc != NULL);
+	ASSERT(gc->telemetry_stream != NULL);
+
+	return gc->telemetry_stream;
+}
+
+// rename a graph context
+void GraphContext_Rename
+(
+	RedisModuleCtx *ctx,  // redis module context
+	GraphContext *gc,     // graph context to rename
+	const char *name      // new name
+) {
 	rm_free(gc->graph_name);
 	gc->graph_name = rm_strdup(name);
+
+	// drop old telemetry stream
+	_DeleteTelemetryStream(ctx, gc);
+
+	// recreate telemetry stream name
+	RedisModule_FreeString(ctx, gc->telemetry_stream);
+	gc->telemetry_stream = RedisModule_CreateStringPrintf(NULL,
+			TELEMETRY_FORMAT, gc->graph_name);
 }
 
 XXH32_hash_t GraphContext_GetVersion(const GraphContext *gc) {
@@ -287,22 +338,6 @@ unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t) {
 	ASSERT(gc);
 	if(t == SCHEMA_NODE) return array_len(gc->node_schemas);
 	else return array_len(gc->relation_schemas);
-}
-
-void GraphContext_ActivateAllConstraints(const GraphContext *gc) {
-	for(uint i = 0; i < array_len(gc->node_schemas); i ++) {
-		Schema *s = gc->node_schemas[i];
-		for(uint j = 0; j < array_len(s->constraints); j ++) {
-			Constraint_SetStatus(s->constraints[j], CT_ACTIVE);
-		}
-	}
-
-	for(uint i = 0; i < array_len(gc->relation_schemas); i ++) {
-		Schema *s = gc->relation_schemas[i];
-		for(uint j = 0; j < array_len(s->constraints); j ++) {
-			Constraint_SetStatus(s->constraints[j], CT_ACTIVE);
-		}
-	}
 }
 
 // enable all constraints
@@ -516,7 +551,10 @@ void GraphContext_RemoveAttribute
 bool GraphContext_HasIndices(GraphContext *gc) {
 	ASSERT(gc != NULL);
 
-	return GraphContext_NodeIndexCount(gc) || GraphContext_EdgeIndexCount(gc);
+	const bool has_node_indices = GraphContext_NodeIndexCount(gc);
+	const bool has_edge_indices = GraphContext_EdgeIndexCount(gc);
+
+	return has_node_indices || has_edge_indices;
 }
 
 uint64_t GraphContext_NodeIndexCount
@@ -730,28 +768,34 @@ int GraphContext_DeleteIndex
 //------------------------------------------------------------------------------
 
 // register a new GraphContext for module-level tracking
-void GraphContext_RegisterWithModule(GraphContext *gc) {
-
-	// increase graph context ref count
-	GraphContext_IncreaseRefCount(gc);
-
-	// See if the graph context is not already in the keyspace.
-	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i ++) {
-		if(graphs_in_keyspace[i] == gc) return;
-	}
-	array_append(graphs_in_keyspace, gc);
+void GraphContext_RegisterWithModule
+(
+	GraphContext *gc
+) {
+	Globals_AddGraph(gc);
 }
 
-GraphContext *GraphContext_GetRegisteredGraphContext(const char *graph_name) {
+// retrive GraphContext from the global array
+// graph isn't registered, NULL is returned
+// graph's references count isn't increased!
+// this is OK as long as only a single thread has access to the graph
+GraphContext *GraphContext_UnsafeGetGraphContext
+(
+	const char *graph_name
+) {
+	KeySpaceGraphIterator it;
+	Globals_ScanGraphs(&it);
+
 	GraphContext *gc = NULL;
-	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i ++) {
-		if(strcmp(graphs_in_keyspace[i]->graph_name, graph_name) == 0) {
-			gc = graphs_in_keyspace[i];
+
+	while((gc = GraphIterator_Next(&it)) != NULL) {
+		bool match = (strcmp(gc->graph_name, graph_name) == 0);
+		GraphContext_DecreaseRefCount(gc);
+		if(match == true) {
 			break;
 		}
 	}
+
 	return gc;
 }
 
@@ -763,6 +807,29 @@ GraphContext *GraphContext_GetRegisteredGraphContext(const char *graph_name) {
 SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 	ASSERT(gc);
 	return gc->slowlog;
+}
+
+//------------------------------------------------------------------------------
+// Queries API
+//------------------------------------------------------------------------------
+
+void GraphContext_LogQuery
+(
+	const GraphContext *gc,       // graph context
+	uint64_t received,            // query received timestamp
+	double wait_duration,         // waiting time
+	double execution_duration,    // executing time
+	double report_duration,       // reporting time
+	bool parameterized,           // uses parameters
+	bool utilized_cache,          // utilized cache
+	const char *query             // query string
+) {
+	ASSERT(gc != NULL);
+	ASSERT(query != NULL);
+
+	QueriesLog_AddQuery(gc->queries_log, received, wait_duration,
+			execution_duration, report_duration, parameterized, utilized_cache,
+			query);
 }
 
 //------------------------------------------------------------------------------
@@ -779,28 +846,66 @@ Cache *GraphContext_GetCache(const GraphContext *gc) {
 // Free routine
 //------------------------------------------------------------------------------
 
+// delete graph's telemetry stream
+static void _DeleteTelemetryStream
+(
+	RedisModuleCtx *ctx,    // redis module context
+	const GraphContext *gc  // graph context
+) {
+	ASSERT(gc  != NULL);
+	ASSERT(ctx != NULL);
+
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, gc->telemetry_stream,
+			REDISMODULE_WRITE);
+	RedisModule_DeleteKey(key);
+	RedisModule_CloseKey(key);
+}
+
 // Free all data associated with graph
 static void _GraphContext_Free(void *arg) {
 	GraphContext *gc = (GraphContext *)arg;
 	uint len;
 
-	// Disable matrix synchronization for graph deletion.
+	// disable matrix synchronization for graph deletion
 	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
-	if(gc->decoding_context == NULL || GraphDecodeContext_Finished(gc->decoding_context)) Graph_Free(gc->g);
-	else Graph_PartialFree(gc->g);
 
-	bool async_delete;
-	Config_Option_get(Config_ASYNC_DELETE, &async_delete);
+	if(gc->decoding_context == NULL ||
+			GraphDecodeContext_Finished(gc->decoding_context)) {
+		Graph_Free(gc->g);
+	} else {
+		Graph_PartialFree(gc->g);
+	}
 
+	// Redis main thread is 0
 	RedisModuleCtx *ctx = NULL;
-	if(async_delete) {
+	bool main_thread = ThreadPools_GetThreadID() == 0;
+	bool should_lock = !main_thread && RedisModule_GetThreadSafeContext != NULL;
+
+	if(should_lock) {
 		ctx = RedisModule_GetThreadSafeContext(NULL);
-		// GIL need to be acquire because RediSearch change Redis global data structure
+		// GIL need to be acquire because RediSearch change Redis data structure
 		RedisModule_ThreadSafeContextLock(ctx);
 	}
 
 	//--------------------------------------------------------------------------
-	// Free node schemas
+	// delete graph telemetry stream
+	//--------------------------------------------------------------------------
+
+	if(gc->telemetry_stream != NULL) {
+		bool should_create = (ctx == NULL);
+		if(should_create) {
+			ctx = RedisModule_GetThreadSafeContext(NULL);
+		}
+		_DeleteTelemetryStream(ctx, gc);
+		RedisModule_FreeString(ctx, gc->telemetry_stream);
+		if (should_create) {
+			RedisModule_FreeThreadSafeContext(ctx);
+			ctx = NULL;
+		}
+	}
+
+	//--------------------------------------------------------------------------
+	// free node schemas
 	//--------------------------------------------------------------------------
 
 	if(gc->node_schemas) {
@@ -812,7 +917,7 @@ static void _GraphContext_Free(void *arg) {
 	}
 
 	//--------------------------------------------------------------------------
-	// Free relation schemas
+	// free relation schemas
 	//--------------------------------------------------------------------------
 
 	if(gc->relation_schemas) {
@@ -823,13 +928,19 @@ static void _GraphContext_Free(void *arg) {
 		array_free(gc->relation_schemas);
 	}
 
-	if(async_delete) {
+	if(should_lock) {
 		RedisModule_ThreadSafeContextUnlock(ctx);
 		RedisModule_FreeThreadSafeContext(ctx);
 	}
 
 	//--------------------------------------------------------------------------
-	// Free attribute mappings
+	// free queries log
+	//--------------------------------------------------------------------------
+
+	QueriesLog_Free(gc->queries_log);
+
+	//--------------------------------------------------------------------------
+	// free attribute mappings
 	//--------------------------------------------------------------------------
 
 	if(gc->attributes) raxFree(gc->attributes);
@@ -848,7 +959,7 @@ static void _GraphContext_Free(void *arg) {
 	if(gc->slowlog) SlowLog_Free(gc->slowlog);
 
 	//--------------------------------------------------------------------------
-	// Clear cache
+	// clear cache
 	//--------------------------------------------------------------------------
 
 	if(gc->cache) Cache_Free(gc->cache);
@@ -859,26 +970,3 @@ static void _GraphContext_Free(void *arg) {
 	rm_free(gc);
 }
 
-void GraphContext_LockForCommit
-(
-	RedisModuleCtx *ctx,
-	GraphContext *gc
-) {
-    // aquire GIL
-    RedisModule_ThreadSafeContextLock(ctx);
-
-	// acquire graph write lock
-	Graph_AcquireWriteLock(gc->g);
-}
-
-void GraphContext_UnlockCommit
-(
-	RedisModuleCtx *ctx,
-	GraphContext *gc
-) {
-	// release graph R/W lock
-	Graph_ReleaseLock(gc->g);
-
-	// unlock GIL
-	RedisModule_ThreadSafeContextUnlock(ctx);
-}

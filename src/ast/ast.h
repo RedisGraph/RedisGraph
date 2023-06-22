@@ -67,6 +67,12 @@ bool AST_ReadOnly
 	const cypher_astnode_t *root
 );
 
+// checks if a query contains an ast-node corresponding to an eager operation
+bool AST_IsEager
+(
+	const cypher_astnode_t *root
+);
+
 // checks to see if AST contains specified clause
 bool AST_ContainsClause
 (

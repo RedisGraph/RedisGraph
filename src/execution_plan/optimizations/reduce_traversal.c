@@ -9,6 +9,7 @@
 #include "../ops/op_expand_into.h"
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
+#include "../execution_plan_build/execution_plan_util.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 /* Reduce traversal searches for traversal operations where
@@ -44,7 +45,7 @@ static void _removeRedundantTraversal(ExecutionPlan *plan, OpCondTraverse *trave
  * are already resolved, in which case replace traversal operation
  * with expand-into op. */
 void reduceTraversal(ExecutionPlan *plan) {
-	OpBase **traversals = ExecutionPlan_CollectOpsMatchingType(plan->root, TRAVERSE_OPS,
+	OpBase **traversals = ExecutionPlan_CollectOpsMatchingTypes(plan->root, TRAVERSE_OPS,
 															   TRAVERSE_OP_COUNT);
 	uint traversals_count = array_len(traversals);
 

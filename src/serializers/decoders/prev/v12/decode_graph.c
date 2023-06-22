@@ -10,14 +10,16 @@ static GraphContext *_GetOrCreateGraphContext
 (
 	char *graph_name
 ) {
-	GraphContext *gc = GraphContext_GetRegisteredGraphContext(graph_name);
+	GraphContext *gc = GraphContext_UnsafeGetGraphContext(graph_name);
 	if(!gc) {
-		// New graph is being decoded. Inform the module and create new graph context.
+		// new graph is being decoded
+		// inform the module and create new graph context
 		gc = GraphContext_New(graph_name);
-		// While loading the graph, minimize matrix realloc and synchronization calls.
+		// while loading the graph
+		// minimize matrix realloc and synchronization calls
 		Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_RESIZE);
 	}
-	// Free the name string, as it either not in used or copied.
+	// free the name string, as it either not in used or copied
 	RedisModule_Free(graph_name);
 
 	return gc;

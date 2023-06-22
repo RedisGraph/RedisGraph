@@ -165,7 +165,7 @@ static bool _EmitIndex
 	//--------------------------------------------------------------------------
 
 	if(ctx->yield_entity_type != NULL) {
-		if(Index_GraphEntityType(idx) == SCHEMA_NODE) {
+		if(Index_GraphEntityType(idx) == GETYPE_NODE) {
 			*ctx->yield_entity_type = SI_ConstStringVal("NODE");
 		} else {
 			*ctx->yield_entity_type = SI_ConstStringVal("RELATIONSHIP");

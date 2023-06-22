@@ -4,7 +4,7 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "src/util/cron.h"
+#include "src/cron/cron.h"
 #include "src/util/rmalloc.h"
 
 #include <assert.h>
@@ -243,8 +243,8 @@ static void test_cronExec() {
 	AddTaskData add_task_data = _AddTaskData_New(add_task, (void *)&Z);
 	AddTaskData mul_task_data = _AddTaskData_New(mul_task, (void *)&Y);
 
-	Cron_AddTask(15, _AddTaskData_Execute, &add_task_data);
-	Cron_AddTask(5, _AddTaskData_Execute, &mul_task_data);
+	Cron_AddTask(15, _AddTaskData_Execute, NULL, &add_task_data);
+	Cron_AddTask(5,  _AddTaskData_Execute, NULL, &mul_task_data);
 
 	_AddTaskData_Wait(add_task_data);
 	_AddTaskData_Wait(mul_task_data);
@@ -267,7 +267,8 @@ static void test_cronAbort() {
 	AddTaskData data = _AddTaskData_New(add_task, (void *)&Y);
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, &data);
+	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, NULL,
+			&data);
 
 	// abort task
 	Cron_AbortTask(task_handle);
@@ -294,7 +295,8 @@ static void test_cronLateAbort() {
 	AddTaskData data = _AddTaskData_New(add_task, (void *)&Y);
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, &data);
+	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, NULL,
+			&data);
 
 	_AddTaskData_Wait(data);
 	_AddTaskData_Free(data);
@@ -317,7 +319,8 @@ static void test_MultiAbort() {
 	AddTaskData data = _AddTaskData_New(add_task, (void *)&Y);
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, &data);
+	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, NULL,
+			&data);
 
 	// abort task multiple times, should not crash or hang
 	for(int i = 0; i < 20; i++) {
@@ -346,7 +349,8 @@ static void test_abortNoneExistingTask() {
 	AddTaskData data = _AddTaskData_New(add_task, (void*)&Y);
 
 	// issue task X += 2
-	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, &data);
+	CronTaskHandle task_handle = Cron_AddTask(15, _AddTaskData_Execute, NULL,
+			&data);
 	CronTaskHandle none_existing_task_handle = task_handle + 1;
 
 	// abort task, should not crash hang
@@ -363,32 +367,28 @@ static void test_abortNoneExistingTask() {
 static void test_AbortRunningTask() {
 	// issue a long running task ~100ms
 	// issue abort 20ms into execution
-	// validate call to Cron_AbortTask returns in less than ~10 ms
+	// validate call to Cron_AbortTask returns after task compelted
 
 	int ms = 100;
 	AddTaskData data = _AddTaskData_New(long_running_task, (void*)&ms);
 	// issue a long running task, task will sleep for 100 'ms'
-	CronTaskHandle task_handle = Cron_AddTask(0, _AddTaskData_Execute, &data);
+	CronTaskHandle task_handle = Cron_AddTask(0, _AddTaskData_Execute, NULL,
+			&data);
 
 	_AddTaskData_WaitForRunning(data);
 
 	clock_t t = clock(); // start timer
 
 	// the task should be already running
-	// abort the task, call should return immediately without waiting
-	// until the task completed.
+	// abort the task, call should return until the task completed.
 	Cron_AbortTask(task_handle);
-	// As the function call should've been as fast as possible, the
-	// task is expected to not have yet been completed.
-	TEST_ASSERT(!_AddTaskData_HasCompleted(data));
 
 	t = clock() - t; // stop timer
 	double time_taken_sec = ((double)t)/CLOCKS_PER_SEC;
 
-	// expecting Cron_AbortTask to return before at-most 10 ms
-	TEST_ASSERT(time_taken_sec < 0.01);
+	// expecting Cron_AbortTask to return after task completed
+	TEST_ASSERT(time_taken_sec >= 0.1);
 
-	_AddTaskData_WaitForCompletion(data);
 	_AddTaskData_Free(data);
 }
 

@@ -30,6 +30,7 @@
 #include "op_merge_create.h"
 #include "op_argument_list.h"
 #include "op_all_node_scan.h"
+#include "op_call_subquery.h"
 #include "op_procedure_call.h"
 #include "op_node_by_id_seek.h"
 #include "op_value_hash_join.h"
