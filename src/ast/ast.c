@@ -580,6 +580,34 @@ bool AST_ClauseContainsAggregation
 	return aggregated;
 }
 
+const char *AST_GetProjectionAlias
+(
+	const cypher_astnode_t* projection
+) {
+	ASSERT(cypher_astnode_type(projection) == CYPHER_AST_PROJECTION);
+
+	const char *alias = NULL;
+	const cypher_astnode_t *ast_alias =
+		cypher_ast_projection_get_alias(projection);
+
+	if(ast_alias != NULL) {
+		alias = cypher_ast_identifier_get_name(ast_alias);
+	} else {
+		// if the projection was not aliased:
+		// a) if it is an identifier, the alias will be its name
+		// b) if it is not an identifier, the alias will be NULL
+		// the second case occurs when unaliased literals are returned by a
+		// call subquery: CALL {RETURN 1}
+		const cypher_astnode_t *exp =
+			cypher_ast_projection_get_expression(projection);
+		cypher_astnode_type_t type = cypher_astnode_type(exp);
+		if(type == CYPHER_AST_IDENTIFIER) {
+			alias = cypher_ast_identifier_get_name(exp);
+		}
+	}
+	return alias;
+}
+
 const char **AST_BuildReturnColumnNames
 (
 	const cypher_astnode_t *return_clause
@@ -591,25 +619,13 @@ const char **AST_BuildReturnColumnNames
 	uint projection_count = cypher_ast_return_nprojections(return_clause);
 	const char **columns = array_new(const char *, projection_count);
 	for(uint i = 0; i < projection_count; i++) {
-		const char *alias = NULL;
 		const cypher_astnode_t *projection =
 			cypher_ast_return_get_projection(return_clause, i);
 		const cypher_astnode_t *ast_alias =
 			cypher_ast_projection_get_alias(projection);
-
-		// if the projection was not aliased,
-		// verify if it is an identifier to take its name as alias
-		if(ast_alias != NULL) {
-			alias = cypher_ast_identifier_get_name(ast_alias);
+		const char *alias = AST_GetProjectionAlias(projection);
+		if(alias != NULL) {
 			array_append(columns, alias);
-		} else {
-			const cypher_astnode_t *exp =
-				cypher_ast_projection_get_expression(projection);
-			cypher_astnode_type_t type = cypher_astnode_type(exp);
-			if( type == CYPHER_AST_IDENTIFIER) {
-				alias = cypher_ast_identifier_get_name(exp);
-				array_append(columns, alias);
-			}
 		}
 	}
 
