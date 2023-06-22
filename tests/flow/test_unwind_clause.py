@@ -127,3 +127,15 @@ class testUnwindClause():
         e = Edge(0, "E", 1, edge_id=0)
         path = Path.new_empty_path().add_node(n1).add_edge(e).add_node(n2)
         self.env.assertEquals(res.result_set[0][0], path)
+
+        # use reduce in eval expression (user failed on this)
+        res = redis_graph.query(
+            """
+            UNWIND [p=()-[]->() | reduce(a=1,b in [1] | 1)] AS n
+            RETURN n
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], 1)
