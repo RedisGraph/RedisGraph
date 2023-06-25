@@ -1982,3 +1982,32 @@ updating clause.")
         self.env.assertEquals(res.result_set[1][0], n2)
         self.env.assertEquals(res.result_set[1][1], n3)
         self.env.assertEquals(res.result_set[1][2], 1)
+
+    def test31_following_scans(self):
+        """Tests that in case the call {} is followed by scans, the
+        following scans are planned and executed properly"""
+
+        # clean the db
+        self.env.flush()
+        graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create the node (:N {v: 1})
+        res = graph.query("CREATE (:N {v: 1})")
+
+        # query with a match clause following a call {} clause with a scan
+        res = graph.query(
+            """
+            CALL {
+                MATCH (m:M)
+                SET m.v = 2
+            }
+            MATCH (n:N)
+            RETURN n
+            """
+        )
+
+        # assert results
+        n = Node(label='N', properties={'v': 1})
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 1)
+        self.env.assertEquals(res.result_set[0][0], n)
