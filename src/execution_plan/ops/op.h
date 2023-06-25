@@ -141,6 +141,8 @@ struct OpBase {
 };
 typedef struct OpBase OpBase;
 
+OPType eager_types[6];
+
 // initialize op
 void OpBase_Init
 (
