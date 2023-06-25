@@ -593,17 +593,16 @@ const char *AST_GetProjectionAlias
 	if(ast_alias != NULL) {
 		alias = cypher_ast_identifier_get_name(ast_alias);
 	} else {
-		// if the projection was not aliased:
-		// a) if it is an identifier, the alias will be its name
-		// b) if it is not an identifier, the alias will be NULL
-		// the second case occurs when unaliased literals are returned by a
-		// call subquery: CALL {RETURN 1}
 		const cypher_astnode_t *exp =
 			cypher_ast_projection_get_expression(projection);
 		cypher_astnode_type_t type = cypher_astnode_type(exp);
 		if(type == CYPHER_AST_IDENTIFIER) {
 			alias = cypher_ast_identifier_get_name(exp);
 		}
+		// The only case in which the alias of a projection is NULL and the
+		// expression is not an identifier is when an unaliased literal is
+		// returned in a Call {} clause (e.g., "CALL {RETURN 1}").
+		// This case will fail and raise an error in the Call {} validation.
 	}
 	return alias;
 }
