@@ -95,13 +95,14 @@ static const OPType FILTER_RECURSE_BLACKLIST[] = {
 	OPType_MERGE
 };
 
-#define EAGER_OP_COUNT 5
+#define EAGER_OP_COUNT 6
 static const OPType EAGER_OPERATIONS[] = {
 	OPType_AGGREGATE,
 	OPType_CREATE,
 	OPType_UPDATE,
-	OPType_DELETE,
-	OPType_MERGE
+	OPType_MERGE,
+	OPType_FOREACH,
+	OPType_SORT
 };
 
 struct OpBase;
@@ -140,8 +141,6 @@ struct OpBase {
 	bool writer;             // Indicates this is a writer operation.
 };
 typedef struct OpBase OpBase;
-
-OPType eager_types[6];
 
 // initialize op
 void OpBase_Init

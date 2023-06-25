@@ -11,7 +11,7 @@ bool ExecutionPlan_isEager
 (
     OpBase *root
 ) {
-	return ExecutionPlan_LocateOpMatchingTypes(root, eager_types, 6) != NULL;
+	return ExecutionPlan_LocateOpMatchingTypes(root, EAGER_OPERATIONS, 6) != NULL;
 }
 
 OpBase *ExecutionPlan_LocateOpResolvingAlias

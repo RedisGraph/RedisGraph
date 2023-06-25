@@ -16,9 +16,6 @@ Record ExecutionPlan_BorrowRecord(struct ExecutionPlan *plan);
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
 void ExecutionPlan_ReturnRecord(const struct ExecutionPlan *plan, Record r);
 
-OPType eager_types[6] = {OPType_CREATE, OPType_UPDATE, OPType_FOREACH,
-					  OPType_MERGE, OPType_SORT, OPType_AGGREGATE};
-
 void OpBase_Init
 (
 	OpBase *op,
