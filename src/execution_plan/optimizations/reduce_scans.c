@@ -37,6 +37,10 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 	// Collect variables bound before this operation.
 	rax *bound_vars = raxNew();
 	for(int i = 0; i < scan->childCount; i ++) {
+		// do not look for bound vars in subqueries, as they are local
+		if(scan->children[i]->type == OPType_CALLSUBQUERY) {
+			continue;
+		}
 		ExecutionPlan_BoundVariables(scan->children[i], bound_vars);
 	}
 
