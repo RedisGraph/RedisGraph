@@ -64,7 +64,7 @@ OpBase *ExecutionPlan_LocateOpMatchingTypes
 // locate the first operation matching one of the given types in the op tree by
 // performing DFS until either a stoppage type is encountered or the entire tree
 // has been traversed. Returns NULL if no matching operation was found
-OpBase *ExecutionPlan_LocateOpMatchingTypesStopage
+OpBase *ExecutionPlan_LocateOpMatchingTypesStoppage
 (
     OpBase *root,              // root of the op tree to search
     const OPType *types,       // array of types to search for
