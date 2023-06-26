@@ -27,10 +27,13 @@ static void _ExecutionPlan_ProcessQueryGraph
 	// so that we can order traversals properly
 	FT_FilterNode *ft = AST_BuildFilterTree(ast);
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
+	bool free_connected_components = false;
 	if(plan->connected_components == NULL) {
 		plan->connected_components = connectedComponents;
 	} else {
-		array_ensure_append(plan->connected_components, connectedComponents, array_len(connectedComponents), QueryGraph *);
+		array_ensure_append(plan->connected_components, connectedComponents,
+			array_len(connectedComponents), QueryGraph *);
+		free_connected_components = true;
 	}
 	// if we have already constructed any ops
 	// the plan's record map contains all variables bound at this time
@@ -158,6 +161,9 @@ static void _ExecutionPlan_ProcessQueryGraph
 			// We've built the only necessary traversal chain, update the ExecutionPlan root.
 			ExecutionPlan_UpdateRoot(plan, root);
 		}
+	}
+	if(free_connected_components) {
+		array_free(connectedComponents);
 	}
 	FilterTree_Free(ft);
 }
