@@ -2037,3 +2037,24 @@ updating clause.")
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(len(res.result_set[0]), 1)
         self.env.assertEquals(res.result_set[0][0], n)
+
+        # query with a match clause, followed by a call {} clause with a scan
+        # with the same alias, followed by a match clause with the same alias.
+        # we expect the aliases before and after the call {} to be tied
+        query = """
+        MATCH (n:N)
+        CALL {
+            MATCH (n:M)
+            SET n.v = 5
+        }
+        MATCH (n:O)
+        RETURN n
+        """
+
+        plan = graph.explain(query)
+        self.env.assertEquals(count_operation(plan.structured_plan, "Node By Label Scan"), 2)
+        self.env.assertEquals(count_operation(plan.structured_plan, "Conditional Traverse"), 1)
+
+        # assert that the `O` label is scanned via cond-traverse
+        scan = locate_operation(plan.structured_plan, "Conditional Traverse")
+        self.env.assertEquals(str(scan), "Conditional Traverse | (n:O)->(n:O)")
