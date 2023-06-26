@@ -18,7 +18,7 @@ typedef struct QueryStats {
 	bool utilized_cache;        // utilized cache
 	bool write;    		        // write query
 	bool timeout;    		    // timeout query
-	char query[];               // query string
+	char *query;                // query string
 } LoggedQuery;
 
 // forward declaration of opaque QueriesLog structure

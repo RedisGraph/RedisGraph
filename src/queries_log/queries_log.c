@@ -45,8 +45,7 @@ QueriesLog QueriesLog_New(void) {
 	bool get = Config_Option_get(Config_CMD_INFO_MAX_QUERY_COUNT, &cap);
 	ASSERT(get == true);
 
-	// item_size = LoggedQuery + Max query string length (2000 chracters)
-	size_t item_size = sizeof(LoggedQuery) + 2000;
+	size_t item_size = sizeof(LoggedQuery);
 	log->swap    = CircularBuffer_New(item_size, cap);
 	log->queries = CircularBuffer_New(item_size, cap);
 
@@ -80,6 +79,10 @@ void QueriesLog_AddQuery
 	// dump query to slot
 	LoggedQuery *q = (LoggedQuery*)(slot);
 
+	if(q->query != NULL) {
+		rm_free(q->query);
+	}
+
 	q->received           = received;
 	q->wait_duration      = wait_duration;
 	q->execution_duration = execution_duration;
@@ -88,18 +91,7 @@ void QueriesLog_AddQuery
 	q->write              = write;
 	q->timeout            = timeout;
 	q->utilized_cache     = utilized_cache;
-
-	// copy query string into slot
-	// incase query string is too large, truncate
-	size_t l = strlen(query) + 1;
-	size_t d = CircularBuffer_ItemSize(log->queries) - sizeof(LoggedQuery);
-	if(l > d) {
-		// query string too large
-		memcpy(q->query, query, d-4); 
-		strcpy(q->query + (d-4), "..."); 
-	} else {
-		memcpy(q->query, query, l);
-	}
+	q->query              = rm_strdup(query);
 
 	res = pthread_rwlock_unlock(&log->rwlock);
 	ASSERT(res == 0);
@@ -156,6 +148,16 @@ void QueriesLog_Free
 	QueriesLog log  // queries log
 ) {
 	ASSERT(log != NULL);
+
+	LoggedQuery *q = NULL;
+	CircularBuffer_ResetReader(log->queries);
+
+	while((q = CircularBuffer_Read(log->queries, NULL)) != NULL) {
+		// clean up
+		if(q->query != NULL) {
+			rm_free(q->query);
+		}
+	}
 
 	CircularBuffer_Free(log->swap);
 	CircularBuffer_Free(log->queries);
