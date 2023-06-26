@@ -124,6 +124,8 @@ void QueryCtx_AdvanceStage
 				ctx->stats.durations[QueryStage_REPORTING],
 				ctx->stats.parameterized,
 				ctx->stats.utilized_cache,
+				ctx->flags & QueryExecutionTypeFlag_WRITE,
+				ctx->status == QueryExecutionStatus_TIMEDOUT,
 				ctx->query_data.query);
 	}
 

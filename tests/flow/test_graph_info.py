@@ -13,7 +13,8 @@ class LoggedQuery:
     def __init__(self, event):
         # make sure event contains all expected fields
         fields = ["Received at", "Query", "Total duration", "Wait duration",
-                  "Execution duration", "Report duration", "Utilized cache"]
+                  "Execution duration", "Report duration", "Utilized cache",
+                  "Write", "Timeout"]
         assert(all(field in event for field in fields))
 
         # cast and initialize
