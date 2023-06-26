@@ -175,6 +175,8 @@ static void _stream_queries
 				_event, FLD_COUNT);
 
 		// clean up
+		rm_free(q->query);
+		q->query = NULL;
 		_clearEvent(ctx);
 	}
 }

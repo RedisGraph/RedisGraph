@@ -30,8 +30,7 @@ CircularBuffer CircularBuffer_New
 	size_t item_size,  // size of item in bytes
 	uint cap           // max number of items in buffer
 ) {
-
-	CircularBuffer cb = rm_malloc(sizeof(_CircularBuffer) + item_size * cap);
+	CircularBuffer cb = rm_calloc(1, sizeof(_CircularBuffer) + item_size * cap);
 
 	cb->read       = cb->data;   // read from beginning of data
 	cb->write      = 0;          // write to beginning of data
