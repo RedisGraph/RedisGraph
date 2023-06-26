@@ -2041,12 +2041,15 @@ updating clause.")
         # query with a match clause, followed by a call {} clause with a scan
         # with the same alias, followed by a match clause with the same alias.
         # we expect the aliases before and after the call {} to be tied
+        # (the `UNWIND` is placed to separate the scan and the call {}, since
+        # this was a bug in the past)
         query = """
         MATCH (n:N)
         CALL {
             MATCH (n:M)
             SET n.v = 5
         }
+        UNWIND [1] AS one
         MATCH (n:O)
         RETURN n
         """

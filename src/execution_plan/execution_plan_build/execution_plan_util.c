@@ -268,6 +268,17 @@ void ExecutionPlan_BoundVariables
     const OpBase *op,
     rax *modifiers
 ) {
+	// if op is a CallSubquery op, collect bound vars from lhs only (if exists)
+	// as the body vars are local
+	// TODO: Do we need to collect vars from last Project/Aggregate op of call {}?
+	if(op->type == OPType_CALLSUBQUERY) {
+		if(op->childCount > 1) {
+			ExecutionPlan_BoundVariables(op->children[0], modifiers);
+		}
+
+		return;
+	}
+
 	ASSERT(op != NULL && modifiers != NULL);
 	if(op->modifies) {
 		uint modifies_count = array_len(op->modifies);

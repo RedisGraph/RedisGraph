@@ -27,7 +27,11 @@ static void _ExecutionPlan_ProcessQueryGraph
 	// so that we can order traversals properly
 	FT_FilterNode *ft = AST_BuildFilterTree(ast);
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
-	plan->connected_components = connectedComponents;
+	if(plan->connected_components == NULL) {
+		plan->connected_components = connectedComponents;
+	} else {
+		array_ensure_append(plan->connected_components, connectedComponents, array_len(connectedComponents), QueryGraph *);
+	}
 	// if we have already constructed any ops
 	// the plan's record map contains all variables bound at this time
 	uint connectedComponentsCount = array_len(connectedComponents);
