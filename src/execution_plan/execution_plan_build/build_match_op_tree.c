@@ -200,48 +200,22 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 		return;
 	}
 
-	// only add at most one set of traversals per plan
-	// TODO Revisit and improve this logic
-	if(plan->root &&
-	   ExecutionPlan_LocateOpMatchingTypesStoppage(plan->root,SCAN_OPS,
-	   SCAN_OP_COUNT, OPType_CALLSUBQUERY)) {
-		return;
-	}
-
-	//--------------------------------------------------------------------------
-	// Extract mandatory patterns
-	//--------------------------------------------------------------------------
-
-	uint mandatory_match_count = 0; // Number of mandatory patterns
-	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
-	uint match_clause_count = array_len(match_clauses);
-	const cypher_astnode_t *patterns[match_clause_count];
-	const cypher_astnode_t *mandatory_matches[match_clause_count];
-
-	for(uint i = 0; i < match_clause_count; i++) {
-		const cypher_astnode_t *match_clause = match_clauses[i];
-		if(cypher_ast_match_is_optional(match_clause)) continue;
-		mandatory_matches[mandatory_match_count] = match_clause;
-		patterns[mandatory_match_count] = cypher_ast_match_get_pattern(match_clause);
-		mandatory_match_count++;
-	}
+	const cypher_astnode_t *patterns[1] = {cypher_ast_match_get_pattern(clause)};
+	const cypher_astnode_t *mandatory_matches[1] = {clause};
 
 	// collect the QueryGraph entities referenced in the clauses being converted
-	QueryGraph *qg = plan->query_graph;
-	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, patterns,
-			mandatory_match_count);
+	QueryGraph *sub_qg =
+		QueryGraph_ExtractPatterns(plan->query_graph, patterns,1);
 
 	_ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
 	if(ErrorCtx_EncounteredError()) goto cleanup;
 
 	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
-	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, mandatory_matches,
-														   mandatory_match_count);
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, mandatory_matches, 1);
 	ExecutionPlan_PlaceFilterOps(plan, plan->root, NULL, sub_ft);
 
 	// Clean up
 cleanup:
 	QueryGraph_Free(sub_qg);
-	array_free(match_clauses);
 }
 
