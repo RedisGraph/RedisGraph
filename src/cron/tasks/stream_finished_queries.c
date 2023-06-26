@@ -13,9 +13,11 @@
 #include "stream_finished_queries.h"
 
 // event fields count
-#define FLD_COUNT 7
+#define FLD_COUNT 9
 
 // field names
+#define FLD_WRITE                    "Write"
+#define FLD_TIMEOUT                  "Timeout"
 #define FLD_NAME_QUERY               "Query"
 #define FLD_NAME_UTILIZED_CACHE      "Utilized cache"
 #define FLD_NAME_WAIT_DURATION       "Wait duration"
@@ -23,6 +25,7 @@
 #define FLD_NAME_RECEIVED_TIMESTAMP  "Received at"
 #define FLD_NAME_REPORT_DURATION     "Report duration"
 #define FLD_NAME_EXECUTION_DURATION  "Execution duration"
+
 
 // event field:value pairs
 static RedisModuleString *_event[FLD_COUNT * 2] = {0};
@@ -81,6 +84,18 @@ static void _initEventTemplate
 					FLD_NAME_UTILIZED_CACHE,
 					strlen(FLD_NAME_UTILIZED_CACHE)
 				 );
+
+	_event[14] = RedisModule_CreateString(
+					ctx,
+					FLD_WRITE,
+					strlen(FLD_WRITE)
+				 );
+
+	_event[16] = RedisModule_CreateString(
+					ctx,
+					FLD_TIMEOUT,
+					strlen(FLD_TIMEOUT)
+				 );
 }
 
 // populate event
@@ -121,6 +136,12 @@ static void _populateEvent
 
 	// FLD_NAME_UTILIZED_CACHE
 	_event[13] = RedisModule_CreateStringFromLongLong(ctx, q->utilized_cache);
+
+	// FLD_WRITE
+	_event[15] = RedisModule_CreateStringFromLongLong(ctx, q->write);
+
+	// FLD_TIMEOUT
+	_event[17] = RedisModule_CreateStringFromLongLong(ctx, q->timeout);
 }
 
 // free event values
