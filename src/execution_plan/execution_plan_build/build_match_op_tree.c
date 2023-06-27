@@ -162,6 +162,7 @@ static void _ExecutionPlan_ProcessQueryGraph
 			ExecutionPlan_UpdateRoot(plan, root);
 		}
 	}
+	// don't free the first array, free all the rest
 	if(free_connected_components) {
 		array_free(connectedComponents);
 	}
