@@ -99,7 +99,7 @@ void CircularBuffer_ResetReader
 	uint write_idx = write / cb->item_size;
 	int sub = write_idx - cb->item_count;
 	if(sub >= 0) {
-		cb->read = (cb->data + write) - (cb->item_count * cb->item_size);
+		cb->read = cb->data + (sub * cb->item_size);
 	} else {
 		cb->read = cb->end_marker + (sub * cb->item_size);
 	}
@@ -115,22 +115,25 @@ int CircularBuffer_Add
 	ASSERT(cb != NULL);
 	ASSERT(item != NULL);
 
-	// do not add item if buffer is full
-	if(unlikely(CircularBuffer_Full(cb))) {
-		return 0;
-	}
-
-	uint64_t write = atomic_fetch_add(&cb->write, cb->item_size);
-	if(unlikely(cb->data + write >= cb->end_marker)) {
-		cb->write = cb->end_marker;
-		return 0;
-	}
-
 	// atomic update buffer item count
-	cb->item_count++;
+	// do not add item if buffer is full
+	uint64_t item_count = atomic_fetch_add(&cb->item_count, 1);
+	if(unlikely(item_count >= cb->item_cap)) {
+		cb->item_count = cb->item_cap;
+		return 0;
+	}
+
+	// determine current and next write position
+	uint64_t curr = atomic_fetch_add(&cb->write, cb->item_size);
+	if(unlikely(cb->data + curr >= cb->end_marker)) {
+		uint64_t old_curr = curr + cb->item_size;
+		curr -= cb->item_size * cb->item_cap;
+		// advance write position atomicly
+		atomic_compare_exchange_weak(&cb->write, &old_curr, curr + cb->item_size);
+	}
 
 	// copy item into buffer
-	memcpy(cb->data + write, item, cb->item_size);
+	memcpy(cb->data + curr, item, cb->item_size);
 
 	// report success
 	return 1;
@@ -145,15 +148,20 @@ void *CircularBuffer_Reserve
 ) {
 	ASSERT(cb != NULL);
 
+	// atomic update buffer item count
+	// item is not added if buffer is full
+	uint64_t item_count = atomic_fetch_add(&cb->item_count, 1);
+	if(unlikely(item_count >= cb->item_cap)) {
+		cb->item_count = cb->item_cap;
+	}
+
 	// determine current and next write position
 	uint64_t curr = atomic_fetch_add(&cb->write, cb->item_size);
 	if(unlikely(cb->data + curr >= cb->end_marker)) {
 		uint64_t old_curr = curr + cb->item_size;
 		curr -= cb->item_size * cb->item_cap;
 		// advance write position atomicly
-		atomic_compare_exchange_weak(&cb->write, &old_curr, curr);
-	} else {
-		cb->item_count++;
+		atomic_compare_exchange_weak(&cb->write, &old_curr, curr + cb->item_size);
 	}
 
 	return cb->data + curr;
