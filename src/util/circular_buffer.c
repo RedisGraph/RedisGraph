@@ -116,8 +116,13 @@ int CircularBuffer_Add
 	ASSERT(item != NULL);
 
 	// do not add item if buffer is full
+	if(unlikely(CircularBuffer_Full(cb))) {
+		return 0;
+	}
+
 	uint64_t write = atomic_fetch_add(&cb->write, cb->item_size);
 	if(unlikely(cb->data + write >= cb->end_marker)) {
+		cb->write = 0;
 		return 0;
 	}
 
