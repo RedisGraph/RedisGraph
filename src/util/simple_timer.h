@@ -38,6 +38,7 @@
 #define SIMPLE_TIMER_H
 
 #include <time.h>
+#include <stdint.h>
 
 //------------------------------------------------------------------------------
 // decide which timer to use
@@ -66,6 +67,15 @@
 
 #endif // #if defined(_OPENMP)
 
+typedef double simple_timer_t[2];
+
+// Determines how many milliseconds are in a second.
+#define MILLISECONDS_IN_SECOND 1000
+
+// An alias to return the time in milliseconds passed since the previous call.
+#define TIMER_GET_ELAPSED_MILLISECONDS(timer) \
+    (simple_toc(timer) * MILLISECONDS_IN_SECOND)
+
 //------------------------------------------------------------------------------
 
 void simple_tic         // returns current time in seconds and nanoseconds
@@ -76,6 +86,17 @@ void simple_tic         // returns current time in seconds and nanoseconds
 double simple_toc           // returns time since last simple_tic
 (
     const double tic [2]    // tic from last call to simple_tic
+) ;
+
+void simple_timer_copy      // copies a simple time
+(
+    const double tic [2],    // tic from last call to simple_tic
+    double cpy [2]           // pointer to recieve a copy of tic
+) ;
+
+uint64_t unix_timestamp    // returns UNIX timestamp
+(
+	void
 ) ;
 
 #endif // SIMPLE_TIMER_H

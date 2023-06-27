@@ -196,11 +196,11 @@ void Serializer_Graph_SetEdge
 	AttributeSet *set = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);
 	*set = NULL;
 
-	e->id            =  edge_id;
-	e->attributes    =  set;
-	e->relationID    =  r;
-	e->srcNodeID     =  src;
-	e->destNodeID    =  dest;
+	e->id         =  edge_id;
+	e->src_id     =  src;
+	e->dest_id    =  dest;
+	e->attributes =  set;
+	e->relationID =  r;
 
 	if(multi_edge) {
 		if(!Graph_FormConnection(g, src, dest, edge_id, r)) {

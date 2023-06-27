@@ -6,8 +6,9 @@
 
 #pragma once
 
-#include "../arithmetic/arithmetic_expression.h"
 #include "ast.h"
+#include "../errors.h"
+#include "../arithmetic/arithmetic_expression.h"
 
 struct AR_ExpNode;
 
@@ -113,3 +114,11 @@ EntityUpdateEvalCtx *UpdateCtx_Clone(const EntityUpdateEvalCtx *ctx);
 void UpdateCtx_Clear(EntityUpdateEvalCtx *ctx);
 void UpdateCtx_Free(EntityUpdateEvalCtx *ctx);
 
+// collect aliases defined in a scope bounded by scope_start and scope_end
+void collect_aliases_in_scope
+(
+	const cypher_astnode_t *root,  // the query root
+	uint scope_start,              // start index of scope
+	uint scope_end,                // end index of scope
+	rax *identifiers               // rax to populate with identifiers
+);

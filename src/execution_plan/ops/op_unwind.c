@@ -148,8 +148,10 @@ static OpResult UnwindReset
 ) {
 	OpUnwind *op = (OpUnwind *)ctx;
 
-	// reset index to 0
 	op->listIdx = 0;
+	SIValue_Free(op->list);
+	op->list = SI_NullVal();
+	op->listLen = 0;
 
 	return OP_OK;
 }
@@ -180,6 +182,7 @@ static void UnwindFree
 
 	if(op->currentRecord != NULL) {
 		OpBase_DeleteRecord(op->currentRecord);
+		op->currentRecord = NULL;
 	}
 
 	op->currentRecord = NULL;

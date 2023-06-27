@@ -106,9 +106,9 @@ static void _CollectEdgesFromEntry
 ) {
 	Edge e = {0};
 
-	e.relationID  =  r;
-	e.srcNodeID   =  src;
-	e.destNodeID  =  dest;
+	e.src_id     =  src;
+	e.dest_id    =  dest;
+	e.relationID =  r;
 
 	if(SINGLE_EDGE(edgeId)) {
 		e.id          =  edgeId;
@@ -577,18 +577,17 @@ RelationID Graph_GetEdgeRelation
 	ASSERT(e);
 
 	GrB_Info info;
-	RelationID rel        = GRAPH_NO_RELATION;
-	EdgeID     id         = ENTITY_GET_ID(e);
-	NodeID     srcNodeID  = Edge_GetSrcNodeID(e);
-	NodeID     destNodeID = Edge_GetDestNodeID(e);
+	RelationID rel     = GRAPH_NO_RELATION;
+	EdgeID     id      = ENTITY_GET_ID(e);
+	NodeID     src_id  = Edge_GetSrcNodeID(e);
+	NodeID     dest_id = Edge_GetDestNodeID(e);
 
 	// search for relation mapping matrix M, where M[dest,src] == edge ID
 	uint n = array_len(g->relations);
 	for(uint i = 0; i < n; i++) {
 		EdgeID edgeId = 0;
 		RG_Matrix M = Graph_GetRelationMatrix(g, i, false);
-		info = RG_Matrix_extractElement_UINT64(&edgeId, M, srcNodeID,
-											   destNodeID);
+		info = RG_Matrix_extractElement_UINT64(&edgeId, M, src_id, dest_id);
 		if(info != GrB_SUCCESS) continue;
 
 		if(SINGLE_EDGE(edgeId)) {
@@ -653,6 +652,26 @@ void Graph_GetEdgesConnectingNodes
 	}
 }
 
+void Graph_ResetReservedNode
+(
+	Graph *g
+) {
+	ASSERT(g != NULL);
+	g->reserved_node_count = 0;
+}
+
+void Graph_ReserveNode
+(
+	Graph *g,               // graph for which nodes will be added
+	Node *n                 // node to reserve
+) {
+	ASSERT(g != NULL);
+	ASSERT(n != NULL);
+	ASSERT(n->id == INVALID_ENTITY_ID);
+
+	n->id = DataBlock_GetReservedIdx(g->nodes, g->reserved_node_count++);
+}
+
 void Graph_CreateNode
 (
 	Graph *g,
@@ -664,12 +683,12 @@ void Graph_CreateNode
 	ASSERT(n != NULL);
 	ASSERT(label_count == 0 || (label_count > 0 && labels != NULL));
 
-	NodeID id;
-	AttributeSet *set = DataBlock_AllocateItem(g->nodes, &id);
-	*set = NULL;
+	NodeID id = n->id;
+	n->attributes = DataBlock_AllocateItem(g->nodes, &n->id);
+	ASSERT(id == INVALID_ENTITY_ID || id == n->id);
+	*n->attributes = NULL;
 
-	n->id         = id;
-	n->attributes = set;
+	g->reserved_node_count--;
 
 	if(label_count > 0) {
 		Graph_LabelNode(g, ENTITY_GET_ID(n), labels, label_count);
@@ -816,9 +835,9 @@ void Graph_CreateEdge
 	*set = NULL;
 
 	e->id         = id;
+	e->src_id     = src;
+	e->dest_id    = dest;
 	e->attributes = set;
-	e->srcNodeID  = src;
-	e->destNodeID = dest;
 	e->relationID = r;
 
 	Graph_FormConnection(g, src, dest, id, r);
@@ -1139,39 +1158,6 @@ static void _Graph_FreeRelationMatrices
 ) {
 	uint relationCount = Graph_RelationTypeCount(g);
 	for(uint i = 0; i < relationCount; i++) RG_Matrix_free(&g->relations[i]);
-}
-
-// update entity's attribute with given value
-int Graph_UpdateEntity
-(
-	GraphEntity *ge,             // entity to update
-	Attribute_ID attr_id,        // attribute to update
-	SIValue value,               // value to be set
-	GraphEntityType entity_type  // type of the entity node/edge
-) {
-	ASSERT(ge != NULL);
-
-	int res = 0;
-
-	// handle the case in which we are deleting all attributes
-	if(attr_id == ATTRIBUTE_ID_ALL) {
-		return GraphEntity_ClearAttributes(ge);
-	}
-
-	// try to get current attribute value
-	SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
-
-	if(old_value == ATTRIBUTE_NOTFOUND) {
-		// adding a new attribute; do nothing if its value is NULL
-		if(SI_TYPE(value) != T_NULL) {
-			res = GraphEntity_AddProperty(ge, attr_id, value);
-		}
-	} else {
-		// update attribute
-		res = GraphEntity_SetProperty(ge, attr_id, value);
-	}
-
-	return res;
 }
 
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {

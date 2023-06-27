@@ -97,6 +97,26 @@ static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	return NewProjectOp(plan, exps);
 }
 
+void ProjectBindToPlan
+(
+	OpBase *opBase,            // op to bind
+	const ExecutionPlan *plan  // plan to bind the op to
+) {
+	OpProject *op = (OpProject *)opBase;
+	opBase->plan = plan;
+
+	// introduce the projected aliases to the plan record-mapping, and reset the
+	// record offsets to the correct indexes
+	array_clear(op->record_offsets);
+
+	for(uint i = 0; i < op->exp_count; i ++) {
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+		array_append(op->record_offsets, record_idx);
+	}
+}
+
 static void ProjectFree(OpBase *ctx) {
 	OpProject *op = (OpProject *)ctx;
 
@@ -121,4 +141,3 @@ static void ProjectFree(OpBase *ctx) {
 		op->projection = NULL;
 	}
 }
-

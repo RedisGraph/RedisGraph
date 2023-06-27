@@ -8,7 +8,9 @@
 #include "RG.h"
 #include <pthread.h>
 #include <stdbool.h>
+#include "globals.h"
 #include "util/uuid.h"
+#include "cron/cron.h"
 #include "util/thpool/pools.h"
 #include "util/redis_version.h"
 #include "graph/graphcontext.h"
@@ -19,10 +21,6 @@
 // indicates the possibility of half-baked graphs in the keyspace
 #define INTERMEDIATE_GRAPHS (aux_field_counter > 0)
 
-// global array tracking all extant GraphContexts
-extern GraphContext **graphs_in_keyspace;
-// flag indicating whether the running process is a child
-extern bool process_is_child;
 // graphContext type as it is registered at Redis
 extern RedisModuleType *GraphContextRedisModuleType;
 // graph meta keys type as it is registered at Redis
@@ -40,24 +38,44 @@ uint aux_field_counter = 0 ;
 // holds the id of the Redis Main thread in order to figure out the context the fork is running on
 static pthread_t redis_main_thread_id;
 
-// this callback invokes once rename for a graph is done. Since the key value is a graph context
-// which saves the name of the graph for later key accesses, this data must be consistent with the key name,
-// otherwise, the graph context will remain with the previous graph name, and a key access to this name might
-// yield an empty key or wrong value. This method changes the graph name value at the graph context to be
+// this callback invokes once rename for a graph is done
+// since the key value is a graph context
+// which saves the name of the graph for later key accesses
+// this data must be consistent with the key name
+// otherwise the graph context will remain with the previous graph name
+// and a key access to this name might yield an empty key or wrong value
+// this method changes the graph name value at the graph context to be
 // consistent with the key name
-static int _RenameGraphHandler(RedisModuleCtx *ctx, int type, const char *event,
-							   RedisModuleString *key_name) {
-	if(type != REDISMODULE_NOTIFY_GENERIC) return REDISMODULE_OK;
+static int _GenericKeyspaceHandler
+(
+	RedisModuleCtx *ctx,
+	int type,
+	const char *event,
+	RedisModuleString *key_name
+) {
+	if(type != REDISMODULE_NOTIFY_GENERIC) {
+		return REDISMODULE_OK;
+	}
+
 	if(strcasecmp(event, "RENAME_TO") == 0) {
-		RedisModuleKey *key = RedisModule_OpenKey(ctx, key_name, REDISMODULE_WRITE);
+		RedisModuleKey *key = RedisModule_OpenKey(ctx, key_name,
+				REDISMODULE_WRITE);
 		if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
 			GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
 			size_t len;
 			const char *new_name = RedisModule_StringPtrLen(key_name, &len);
-			GraphContext_Rename(gc, new_name);
+			GraphContext_Rename(ctx, gc, new_name);
 		}
 		RedisModule_CloseKey(key);
 	}
+
+	else if(strcasecmp(event, "DEL") == 0) {
+		// TODO: in Redis 7.2 we could use REDISMODULE_EVENT_KEY to register
+		// for a more convenient key event notification
+		const char *graph_name = RedisModule_StringPtrLen(key_name, NULL);
+		Globals_RemoveGraphByName(graph_name);
+	}
+
 	return REDISMODULE_OK;
 }
 
@@ -94,37 +112,43 @@ static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 	return MAX(key_count, 0);
 }
 
-static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
+static void _CreateGraphMetaKeys
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc
+) {
 	uint meta_key_count = _GraphContext_RequiredMetaKeys(gc);
 	bool graph_name_contains_tag = _GraphContext_NameContainsTag(gc);
 	for(uint i = 1; i <= meta_key_count; i++) {
 		char *uuid = UUID_New();
 		RedisModuleString *meta_rm_string;
-		/* Meta keys need to be in the exact shard/slot as the graph context key
-		 * to avoid graph sharding at the target db
-		 * we want to save all the graph keys on the same shard.
-		 * For that, we need to that them In so their tag hash value will be
-		 * the same as the graph context key hash value.
-		 * If the graph name already contains a tag, we can duplicate
-		 * the graph name completely for each meta key.
-		 * If not, the meta keys tag will be the graph name, so
-		 * when hashing the graphcontext key name (graph name)
-		 * and the graph meta key tag (graph name)
-		 * the hash values will be the same. */
+		// meta keys need to be in the exact shard/slot as the graph context key
+		// to avoid graph sharding at the target db
+		// we want to save all the graph keys on the same shard
+		// for that, we need to that them In so their tag hash value will be
+		// the same as the graph context key hash value
+		// if the graph name already contains a tag, we can duplicate
+		// the graph name completely for each meta key
+		// if not, the meta keys tag will be the graph name, so
+		// when hashing the graphcontext key name (graph name)
+		// and the graph meta key tag (graph name)
+		// the hash values will be the same
 		if(graph_name_contains_tag) {
-			// Graph already has a tag, create a meta key of "graph_name_uuid"
-			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "%s_%s", gc->graph_name, uuid);
+			// graph already has a tag, create a meta key of "graph_name_uuid"
+			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "%s_%s",
+					gc->graph_name, uuid);
 		} else {
-			// Graph is untagged, one must be introduced to ensure that
-			// keys are propagated to the same node.
-			// Create a meta key of "{graph_name}graph_name_i"
-			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "{%s}%s_%s", gc->graph_name,
-															gc->graph_name, uuid);
+			// graph is untagged, one must be introduced to ensure that
+			// keys are propagated to the same node
+			// create a meta key of "{graph_name}graph_name_i"
+			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "{%s}%s_%s",
+					gc->graph_name, gc->graph_name, uuid);
 		}
 
 		const char *key_name = RedisModule_StringPtrLen(meta_rm_string, NULL);
 		GraphEncodeContext_AddMetaKey(gc->encoding_context, key_name);
-		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
+		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string,
+				REDISMODULE_WRITE);
 
 		// set value in key
 		RedisModule_ModuleTypeSetValue(key, GraphMetaRedisModuleType, gc);
@@ -140,53 +164,100 @@ static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 			meta_key_count, gc->graph_name);
 }
 
-// Delete meta keys, upon RDB encode or decode finished event triggering.
-// The decode flag represent the event.
-static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc, bool decode) {
-	unsigned char **keys;
+// delete meta keys, upon RDB encode or decode finished event triggering
+// the decode flag represent the event
+static void _DeleteGraphMetaKeys
+(
+	RedisModuleCtx *ctx,
+	GraphContext *gc,
+	bool decode
+) {
 	uint key_count;
-	// Get the meta keys required, according to the "decode" flag.
-	if(decode) keys = GraphDecodeContext_GetMetaKeys(gc->decoding_context);
-	else keys = GraphEncodeContext_GetMetaKeys(gc->encoding_context);
+	unsigned char **keys;
+
+	// get the meta keys required, according to the "decode" flag.
+	if(decode) {
+		keys = GraphDecodeContext_GetMetaKeys(gc->decoding_context);
+	} else {
+		keys = GraphEncodeContext_GetMetaKeys(gc->encoding_context);
+	}
+
 	key_count = array_len(keys);
 	for(uint i = 0; i < key_count; i++) {
-		RedisModuleString *meta_rm_string = RedisModule_CreateStringPrintf(ctx, "%s", keys[i]);
-		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
+		RedisModuleString *meta_rm_string =
+			RedisModule_CreateStringPrintf(ctx, "%s", keys[i]);
+
+		RedisModuleKey *key =
+			RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
+
 		RedisModule_DeleteKey(key);
 		RedisModule_CloseKey(key);
 		RedisModule_FreeString(ctx, meta_rm_string);
+
 		rm_free(keys[i]);
 	}
+
 	array_free(keys);
-	// Clear the relevant context meta keys as they are no longer valid.
-	if(decode) GraphDecodeContext_ClearMetaKeys(gc->decoding_context);
-	else GraphEncodeContext_ClearMetaKeys(gc->encoding_context);
-	RedisModule_Log(ctx, "notice", "Deleted %d virtual keys for graph %s", key_count, gc->graph_name);
+
+	// clear the relevant context meta keys as they are no longer valid
+	if(decode) {
+		GraphDecodeContext_ClearMetaKeys(gc->decoding_context);
+	} else {
+		GraphEncodeContext_ClearMetaKeys(gc->encoding_context);
+	}
+
+	RedisModule_Log(ctx, "notice", "Deleted %d virtual keys for graph %s",
+			key_count, gc->graph_name);
 }
 
 // create the meta keys for each graph in the keyspace
 // used on RDB start event
-static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
-	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
-		_CreateGraphMetaKeys(ctx, graphs_in_keyspace[i]);
+static void _CreateKeySpaceMetaKeys
+(
+	RedisModuleCtx *ctx
+) {
+	KeySpaceGraphIterator it;
+	GraphContext *gc = NULL;
+	Globals_ScanGraphs(&it);
+
+	while((gc = GraphIterator_Next(&it)) != NULL) {
+		_CreateGraphMetaKeys(ctx, gc);
+		GraphContext_DecreaseRefCount(gc);
 	}
 }
 
-/* Delete the meta keys for each graph in the key space - used on RDB finish (save/load/fail) event.
- * The decode flag represent if the graph is after encodeing or decodeing. */
-static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx, bool decode) {
-	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
-		_DeleteGraphMetaKeys(ctx, graphs_in_keyspace[i], decode);
+// delete the meta keys for each graph in the keyspace
+// used on RDB finish (save/load/fail) event
+// the decode flag represent if the graph is after encodeing or decodeing
+static void _ClearKeySpaceMetaKeys
+(
+	RedisModuleCtx *ctx,
+	bool decode
+) {
+	KeySpaceGraphIterator it;
+	GraphContext *gc = NULL;
+	Globals_ScanGraphs(&it);
+
+	while((gc = GraphIterator_Next(&it)) != NULL) {
+		_DeleteGraphMetaKeys(ctx, gc, decode);
+		GraphContext_DecreaseRefCount(gc);
 	}
 }
 
-static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
-							void *data) {
-	// reset `aux_field_counter` upon handeling FLUSH-ALL
-	if(eid.id == REDISMODULE_EVENT_FLUSHDB &&
-	   subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
+static void _FlushDBHandler
+(
+	RedisModuleCtx *ctx,
+	RedisModuleEvent eid,
+	uint64_t subevent,
+	void *data
+) {
+	ASSERT(eid.id == REDISMODULE_EVENT_FLUSHDB);
+
+	if(subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
+		// clear global graphs tracking
+		Globals_ClearGraphs(ctx);
+
+		// reset `aux_field_counter`
 		aux_field_counter = 0;
 	}
 }
@@ -216,18 +287,20 @@ static void _ReplicationRoleChangedEventHandler
 	uint64_t subevent,
 	void *data
 ) {
-	uint n = array_len(graphs_in_keyspace);
+	KeySpaceGraphIterator it;
+	GraphContext *gc = NULL;
+	Globals_ScanGraphs(&it);
 	if(subevent == REDISMODULE_EVENT_REPLROLECHANGED_NOW_MASTER) {
 		// now master enable constraints
-		for(uint i = 0; i < n; i++) {
-			GraphContext *g = graphs_in_keyspace[i];
-			GraphContext_EnableConstrains(g);
+		while((gc = GraphIterator_Next(&it)) != NULL) {
+			GraphContext_EnableConstrains(gc);
+			GraphContext_DecreaseRefCount(gc);
 		}
 	} else if (subevent == REDISMODULE_EVENT_REPLROLECHANGED_NOW_REPLICA) {
 		// now slave disable constraints
-		for(uint i = 0; i < n; i++) {
-			GraphContext *g = graphs_in_keyspace[i];
-			GraphContext_DisableConstrains(g);
+		while((gc = GraphIterator_Next(&it)) != NULL) {
+			GraphContext_DisableConstrains(gc);
+			GraphContext_DecreaseRefCount(gc);
 		}
 	}
 }
@@ -241,7 +314,7 @@ static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid,
 		// in such case we do not want to either perform backup nor do we want to
 		// synchronize our replica, as such we're aborting by existing
 		// assuming we're running on a fork process
-		if(process_is_child) {
+		if(Globals_Get_ProcessIsChild()) {
 			// intermediate graph(s) detected, exit!
 			RedisModule_Log(NULL, REDISMODULE_LOGLEVEL_WARNING,
 					"RedisGraph - aborting BGSAVE, detected intermediate graph(s)");
@@ -261,37 +334,82 @@ static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid,
 }
 
 // Perform clean-up upon server shutdown.
-static void _ShutdownEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
-		void *data) {
+static void _ShutdownEventHandler
+(
+	RedisModuleCtx *ctx,
+	RedisModuleEvent eid,
+	uint64_t subevent,
+	void *data
+) {
 	void RediSearch_CleanupModule();
 	if (!getenv("RS_GLOBAL_DTORS")) {  // used only with sanitizer or valgrind
 		return; 
 	}
-	// Stop threads before finalize GraphBLAS.
+
+	// stop cron
+	Cron_Stop();
+
+	// stop threads before finalize GraphBLAS
 	ThreadPools_Destroy();
-	// Server is shutting down, finalize GraphBLAS.
+
+	// server is shutting down, finalize GraphBLAS
 	GrB_finalize();
 
 	RedisModule_Log(ctx, "notice", "%s", "Clearing RediSearch resources on shutdown");
 	RediSearch_CleanupModule();
+
+	// free global variables
+	Globals_Free();
+}
+
+static void _ModuleLoadedHandler
+(
+	RedisModuleCtx *ctx,
+	RedisModuleEvent eid,
+	uint64_t subevent,
+	void *data
+) {
+	if(subevent == REDISMODULE_SUBEVENT_MODULE_LOADED) {
+		// see which module been loaded
+		RedisModuleModuleChange *pdata = (RedisModuleModuleChange*)data;
+		if(strcmp(pdata->module_name, "graph") == 0) {
+			Cron_Start();
+			Cron_AddRecurringTasks();
+		}
+	}
 }
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {
-	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB,
+	int res;
+	res = RedisModule_SubscribeToServerEvent(ctx,
+			RedisModuleEvent_FlushDB,
 			_FlushDBHandler);
+	ASSERT(res == REDISMODULE_OK);
 
-	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Shutdown,
+	res = RedisModule_SubscribeToServerEvent(ctx,
+			RedisModuleEvent_Shutdown,
 			_ShutdownEventHandler);
+	ASSERT(res == REDISMODULE_OK);
 
-	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_GENERIC,
-			_RenameGraphHandler);
-
-	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence,
+	res = RedisModule_SubscribeToServerEvent(ctx,
+			RedisModuleEvent_Persistence,
 			_PersistenceEventHandler);
+	ASSERT(res == REDISMODULE_OK);
 
-//	RedisModule_SubscribeToServerEvent(ctx,
-//			RedisModuleEvent_ReplicationRoleChanged,
-//			_ReplicationRoleChangedEventHandler);
+	// TODO: try to use RedisModuleEvent_ModuleChange to start cron
+	//res = RedisModule_SubscribeToServerEvent(ctx,
+	//		RedisModuleEvent_ModuleChange,
+	//		_ModuleLoadedHandler);
+	//ASSERT(res == REDISMODULE_OK);
+
+	//	RedisModule_SubscribeToServerEvent(ctx,
+	//			RedisModuleEvent_ReplicationRoleChanged,
+	//			_ReplicationRoleChangedEventHandler);
+
+	RedisModule_SubscribeToKeyspaceEvents(ctx,
+			REDISMODULE_NOTIFY_GENERIC,
+			_GenericKeyspaceHandler);
+
 }
 
 //------------------------------------------------------------------------------
@@ -318,10 +436,12 @@ static void RG_ForkPrepare() {
 	// return if we have half-baked graphs
 	if(INTERMEDIATE_GRAPHS) return;
 
-	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i++) {
+	KeySpaceGraphIterator it;
+	GraphContext *gc = NULL;
+	Globals_ScanGraphs(&it);
+	while((gc = GraphIterator_Next(&it)) != NULL) {
 		// acquire read lock, guarantee graph isn't modified
-		Graph *g = graphs_in_keyspace[i]->g;
+		Graph *g = gc->g;
 		Graph_AcquireReadLock(g);
 
 		// set matrix synchronization policy to default
@@ -330,6 +450,8 @@ static void RG_ForkPrepare() {
 		// synchronize all matrices, make sure they're in a consistent state
 		// do not force-flush as this can take awhile
 		Graph_ApplyAllPending(g, false);
+
+		GraphContext_DecreaseRefCount(gc);
 	}
 }
 
@@ -342,9 +464,13 @@ static void RG_AfterForkParent() {
 	if(INTERMEDIATE_GRAPHS) return;
 
 	// the child process forked, release all acquired locks
-	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i++) {
-		Graph_ReleaseLock(graphs_in_keyspace[i]->g);
+	KeySpaceGraphIterator it;
+	GraphContext *gc = NULL;
+	Globals_ScanGraphs(&it);
+
+	while((gc = GraphIterator_Next(&it)) != NULL) {
+		Graph_ReleaseLock(gc->g);
+		GraphContext_DecreaseRefCount(gc);
 	}
 }
 
@@ -352,7 +478,7 @@ static void RG_AfterForkParent() {
 static void RG_AfterForkChild() {
 	// mark that the child is a forked process so that it doesn't
 	// attempt invalid accesses of POSIX primitives it doesn't own
-	process_is_child = true;
+	Globals_Set_ProcessIsChild(true);
 
 	// restrict GraphBLAS to use a single thread this is done for 2 reasons:
 	// 1. save resources
@@ -360,10 +486,10 @@ static void RG_AfterForkChild() {
 	// in forked process
 	GxB_set(GxB_NTHREADS, 1);
 
-	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i++) {
-		Graph *g = graphs_in_keyspace[i]->g;
-
+	GraphContext **graphs = Globals_Get_GraphsInKeyspace();
+	uint32_t n = array_len(graphs);
+	for(uint32_t i = 0; i < n; i++) {
+		Graph *g = graphs[i]->g;
 		// all matrices should be synced, set synchronization policy to NOP
 		Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 	}
@@ -372,7 +498,7 @@ static void RG_AfterForkChild() {
 static void _RegisterForkHooks() {
 	redis_main_thread_id = pthread_self();  // This function is being called on the main thread context.
 
-	/* Register handlers to control the behavior of fork calls. */
+	// register handlers to control the behavior of fork calls
 	int res = pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild);
 	ASSERT(res == 0);
 }
@@ -404,7 +530,7 @@ void ModuleEventHandler_AUXAfterKeyspaceEvent(void) {
 }
 
 void RegisterEventHandlers(RedisModuleCtx *ctx) {
-	_RegisterForkHooks();       // Set up hooks for forking logic to prevent bgsave deadlocks.
-	_RegisterServerEvents(ctx); // Set up hooks for rename and server events on Redis 6 and up.
+	_RegisterForkHooks();       // set up hooks for forking logic to prevent bgsave deadlocks
+	_RegisterServerEvents(ctx); // set up hooks for del/rename and server events
 }
 

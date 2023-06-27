@@ -248,7 +248,7 @@ static void _UndoLog_Rollback_Delete_Node
 ) {
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
-		Node n;
+		Node n = GE_NEW_NODE();
 		UndoOp *op = undo_list + i;
 		UndoDeleteNodeOp *delete_op = &(op->delete_node_op);
 
@@ -258,7 +258,8 @@ static void _UndoLog_Rollback_Delete_Node
 
 		// re-introduce node to indices
 		_index_node(ctx, &n);
-		// Cleanup after undo rollback, as the op D'tor is not called.
+
+		// cleanup after undo rollback, as the op D'tor is not called
 		rm_free(delete_op->labels);
 	}
 }
@@ -276,7 +277,7 @@ static void _UndoLog_Rollback_Delete_Edge
 		UndoOp *op = undo_list + i;
 		UndoDeleteEdgeOp delete_op = op->delete_edge_op;
 
-		Graph_CreateEdge(ctx->gc->g, delete_op.srcNodeID, delete_op.destNodeID,
+		Graph_CreateEdge(ctx->gc->g, delete_op.src_id, delete_op.dest_id,
 				delete_op.relationID, &e);
 		*e.attributes = delete_op.set;
 
@@ -317,7 +318,6 @@ static void _UndoLog_Rollback_Add_Attribute
 ) {
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
-		Edge e;
 		UndoOp *op = undo_list + i;
 		UndoAddAttributeOp attribute_op = op->attribute_op;
 		int attribute_id = attribute_op.attribute_id;
@@ -427,8 +427,8 @@ void UndoLog_DeleteEdge
 
 	op.type                      = UNDO_DELETE_EDGE;
 	op.delete_edge_op.id         = edge->id;
-	op.delete_edge_op.srcNodeID  = edge->srcNodeID;
-	op.delete_edge_op.destNodeID = edge->destNodeID;
+	op.delete_edge_op.src_id     = Edge_GetSrcNodeID(edge);
+	op.delete_edge_op.dest_id    = Edge_GetDestNodeID(edge);
 	op.delete_edge_op.relationID = edge->relationID;
 
 	// take ownership over edge's attribute-set
@@ -548,6 +548,8 @@ void UndoLog_Rollback
 
 	QueryCtx *ctx  = QueryCtx_GetQueryCtx();
 	uint64_t count = array_len(log);
+
+	Graph_ResetReservedNode(ctx->gc->g);
 
 	if(count == 0) return;
 

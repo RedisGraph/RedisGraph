@@ -13,7 +13,7 @@ redis_graph = None
 
 def run_bulk_loader(graphname, filename):
     runner = CliRunner()
-    runner.invoke(bulk_insert, ['--port', port,
+    runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                 '--nodes', filename,
                                 graphname])
 
@@ -21,12 +21,8 @@ class testGraphBulkInsertFlow(FlowTestsBase):
     def __init__(self):
         self.env = Env(decodeResponses=True)
 
-        # TODO: remove when flakiness resolved
-        if OS == 'macos':
-            self.env.skip()
-
         # skip test if we're running under Valgrind
-        if VALGRIND or SANITIZER != "":
+        if VALGRIND:
             self.env.skip() # valgrind is not working correctly with replication
 
         global redis_graph
@@ -391,7 +387,7 @@ class testGraphBulkInsertFlow(FlowTestsBase):
 
         thread.join()
         # Verify that at least one ping was issued
-        self.env.assertGreater(ping_count, 1)
+        self.env.assertGreaterEqual(ping_count, 1)
 
     # Verify that nodes with multiple labels are created correctly
     def test10_multiple_labels(self):

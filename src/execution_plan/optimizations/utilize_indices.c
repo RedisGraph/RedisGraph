@@ -22,6 +22,7 @@
 #include "../../filter_tree/filter_tree_utils.h"
 #include "../../arithmetic/algebraic_expression.h"
 #include "../../arithmetic/algebraic_expression/utils.h"
+#include "../execution_plan_build/execution_plan_util.h"
 #include "../execution_plan_build/execution_plan_modify.h"
 
 //------------------------------------------------------------------------------

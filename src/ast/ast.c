@@ -14,6 +14,7 @@
 #include "query_ctx.h"
 #include "procedures/procedure.h"
 #include "ast_rewrite_same_clauses.h"
+#include "ast_rewrite_call_subquery.h"
 #include "ast_rewrite_star_projections.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "arithmetic/arithmetic_expression_construct.h"
@@ -183,6 +184,54 @@ bool AST_ReadOnly
 	}
 
 	return true;
+}
+
+// returns true if the given ast-node will result in an eager operation
+static bool _clause_is_eager
+(
+	const cypher_astnode_t *clause
+) {
+	// -------------------------------------------------------------------------
+	// check if clause type is one of: CREATE, MERGE, SET or REMOVE
+	// -------------------------------------------------------------------------
+	cypher_astnode_type_t type = cypher_astnode_type(clause);
+	if(type == CYPHER_AST_CREATE ||
+	   type == CYPHER_AST_MERGE  ||
+	   type == CYPHER_AST_SET    ||
+	   type == CYPHER_AST_REMOVE ||
+	   type == CYPHER_AST_FOREACH) {
+		return true;
+	}
+
+	if(type == CYPHER_AST_CALL_SUBQUERY) {
+		return AST_IsEager(cypher_ast_call_subquery_get_query(clause));
+	}
+
+	// -------------------------------------------------------------------------
+	// check if clause is a WITH or RETURN clause with an aggregation
+	// -------------------------------------------------------------------------
+	if(type == CYPHER_AST_RETURN || type == CYPHER_AST_WITH) {
+		return AST_ClauseContainsAggregation(clause);
+	}
+
+	return false;
+}
+
+// checks if a query contains an ast-node corresponding to an eager operation
+bool AST_IsEager
+(
+	const cypher_astnode_t *root
+) {
+	ASSERT(cypher_astnode_type(root) == CYPHER_AST_QUERY);
+	uint n_clauses = cypher_ast_query_nclauses(root);
+
+	for(uint i = 0; i < n_clauses; i++) {
+		if(_clause_is_eager(cypher_ast_query_get_clause(root, i))) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 inline bool AST_ContainsClause
@@ -699,17 +748,25 @@ cypher_parse_result_t *parse_query
 		return NULL;
 	}
 
-	// rewrite '*' projections
-	// e.g. MATCH (a), (b) RETURN *
-	// will be rewritten as:
-	//  MATCH (a), (b) RETURN a, b
-	bool rerun_validation = AST_RewriteStarProjections(root);
-
 	// compress clauses
 	// e.g. MATCH (a:N) MATCH (b:N) RETURN a,b
 	// will be rewritten as:
 	// MATCH (a:N), (b:N) RETURN a,b
-	rerun_validation |= AST_RewriteSameClauses(root);
+	bool rerun_validation = AST_RewriteSameClauses(root);
+
+	// rewrite eager & resulting Call {} clauses
+	// e.g. MATCH (m) CALL { CREATE (n:N) RETURN n } RETURN n, m
+	// will be rewritten as:
+	// MATCH (m) CALL { WITH m AS @m CREATE (n:N) RETURN n, @m AS m } RETURN n, m
+	// note: we rewrite the ast for sure here, so we need to re-validate it
+	rerun_validation |= AST_RewriteCallSubquery(root);
+
+	// rewrite '*' projections
+	// e.g. MATCH (a), (b) RETURN *
+	// will be rewritten as:
+	//  MATCH (a), (b) RETURN a, b
+	rerun_validation |= AST_RewriteStarProjections(
+		cypher_ast_statement_get_body(root));
 
 	// only perform validations again if there's been a rewrite
 	if(rerun_validation && AST_Validate_Query(root) != AST_VALID) {

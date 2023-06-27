@@ -5,6 +5,7 @@
  */
 
 #include "rmalloc.h"
+
 #include "../errors.h"
 
 #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
@@ -43,7 +44,7 @@ static inline void _nmalloc_increment(int64_t n_bytes) {
 	if(n_alloced > mem_capacity) {
 		// set n_alloced to MIN to avoid further out of memory exceptions
 		// TODO: consider switching to double -inf
-		n_alloced = INT64_MIN;
+		n_alloced = INT32_MIN;
 
 		// throw exception cause memory limit exceeded
 		ErrorCtx_SetError("Query's mem consumption exceeded capacity");

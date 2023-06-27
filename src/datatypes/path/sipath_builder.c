@@ -17,8 +17,8 @@
  */
 static Edge _Edge_ReverseDirection(Edge *e) {
 	Edge edge = *e;
-	edge.srcNodeID = e->destNodeID;
-	edge.destNodeID = e->srcNodeID;
+	edge.src_id = e->dest_id;
+	edge.dest_id = e->src_id;
 	return edge;
 }
 
@@ -50,7 +50,7 @@ void SIPathBuilder_AppendEdge(SIValue p, SIValue e, bool RTLEdge) {
 	Node *n = Path_GetNode(path, edge_count);
 	EntityID nId = ENTITY_GET_ID(n);
 	// Validate source node is in the right place.
-	ASSERT(nId == edge->srcNodeID || nId == edge->destNodeID);
+	ASSERT(nId == edge->src_id || nId == edge->dest_id);
 	/* Reverse direction if needed. A direction change is needed if the last node in the path, reading
 	 * RTL is the source node in the edge, and the edge direction in the query is LTR.
 	 * path =[(a)]
@@ -58,7 +58,7 @@ void SIPathBuilder_AppendEdge(SIValue p, SIValue e, bool RTLEdge) {
 	 * Query: MATCH p=(a)<-[]-(b)
 	 * e direction needs to be change. */
 
-	Edge edge_to_append = (RTLEdge && nId == edge->srcNodeID) ? _Edge_ReverseDirection(edge) : *edge;
+	Edge edge_to_append = (RTLEdge && nId == edge->src_id) ? _Edge_ReverseDirection(edge) : *edge;
 	Path_AppendEdge(path, edge_to_append);
 }
 

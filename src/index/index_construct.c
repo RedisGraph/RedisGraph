@@ -175,8 +175,8 @@ static void _Index_PopulateEdgeIndex
 
 		do {
 			Edge e;
-			e.srcNodeID  = src_id;
-			e.destNodeID = dest_id;
+			e.src_id     = src_id;
+			e.dest_id    = dest_id;
 			e.relationID = Index_GetLabelID(idx);
 
 			if(SINGLE_EDGE(edge_id)) {

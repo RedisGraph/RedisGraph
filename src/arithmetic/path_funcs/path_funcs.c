@@ -248,7 +248,7 @@ SIValue AR_SHORTEST_PATH(SIValue *argv, int argc, void *private_data) {
 		SIPathBuilder_AppendEdge(p, SI_Edge(&edges[0]), false);
 
 		// Append the reached node to the path.
-		id = edges[0].srcNodeID;
+		id = Edge_GetSrcNodeID(&edges[0]);
 		Node n = GE_NEW_NODE();
 		Graph_GetNode(gc->g, id, &n);
 		SIPathBuilder_AppendNode(p, SI_Node(&n));

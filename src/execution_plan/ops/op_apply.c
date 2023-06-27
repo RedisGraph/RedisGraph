@@ -5,7 +5,7 @@
  */
 
 #include "op_apply.h"
-#include "../execution_plan_build/execution_plan_modify.h"
+#include "../execution_plan_build/execution_plan_util.h"
 
 /* Forward declarations. */
 static OpResult ApplyInit(OpBase *opBase);
@@ -71,7 +71,7 @@ static Record ApplyConsume(OpBase *opBase) {
 		Record rhs_record = OpBase_Consume(op->rhs_branch);
 
 		if(rhs_record == NULL) {
-			// RHS branch depleted for the current bound Record;
+			// RHS branch depleted for the current bound Record
 			// free it and loop back to retrieve a new one
 			op->r = NULL;
 			// reset the RHS branch

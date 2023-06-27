@@ -6,13 +6,15 @@
 
 #include "op.h"
 #include "RG.h"
+#include "op_project.h"
+#include "op_aggregate.h"
 #include "../../util/rmalloc.h"
 #include "../../util/simple_timer.h"
 
 // forward declarations
 Record ExecutionPlan_BorrowRecord(struct ExecutionPlan *plan);
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
-void ExecutionPlan_ReturnRecord(struct ExecutionPlan *plan, Record r);
+void ExecutionPlan_ReturnRecord(const struct ExecutionPlan *plan, Record r);
 
 void OpBase_Init
 (
@@ -80,11 +82,13 @@ int OpBase_Modifies
 	return (intptr_t)id;
 }
 
+// adds an alias to an existing modifier
+// such that record[modifier] = record[alias]
 int OpBase_AliasModifier
 (
-	OpBase *op,
-	const char *modifier,
-	const char *alias
+	OpBase *op,            // op
+	const char *modifier,  // existing alias
+	const char *alias      // new alias
 ) {
 	rax *mapping = ExecutionPlan_GetMappings(op->plan);
 	void *id = raxFind(mapping, (unsigned char *)modifier, strlen(modifier));
@@ -205,6 +209,24 @@ void OpBase_UpdateConsume
 	else op->consume = consume;
 }
 
+// updates the plan of an operation
+void OpBase_BindOpToPlan
+(
+	OpBase *op,
+	const struct ExecutionPlan *plan
+) {
+	ASSERT(op != NULL);
+
+	OPType type = OpBase_Type(op);
+	if(type == OPType_PROJECT) {
+		ProjectBindToPlan(op, plan);
+	} else if(type == OPType_AGGREGATE) {
+		AggregateBindToPlan(op, plan);
+	} else {
+		op->plan = plan;
+	}
+}
+
 inline Record OpBase_CreateRecord
 (
 	const OpBase *op
@@ -236,6 +258,26 @@ inline OPType OpBase_Type
 ) {
 	ASSERT(op != NULL);
 	return op->type;
+}
+
+// returns the number of children of the op
+inline uint OpBase_ChildCount
+(
+	const OpBase *op
+) {
+	ASSERT(op != NULL);
+	return op->childCount;
+}
+
+// returns the i'th child of the op
+OpBase *OpBase_GetChild
+(
+	OpBase *op,  // op
+	uint i       // child index
+) {
+	ASSERT(op != NULL);
+	ASSERT(i < op->childCount);
+	return op->children[i];
 }
 
 inline void OpBase_DeleteRecord

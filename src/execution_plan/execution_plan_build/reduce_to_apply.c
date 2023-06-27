@@ -4,13 +4,14 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "execution_plan_construct.h"
 #include "RG.h"
-#include "execution_plan_modify.h"
-#include "../execution_plan.h"
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
+#include "../execution_plan.h"
 #include "../../ast/ast_mock.h"
+#include "execution_plan_util.h"
+#include "execution_plan_modify.h"
+#include "execution_plan_construct.h"
 #include "../../util/rax_extensions.h"
 #include "../optimizations/optimizer.h"
 
