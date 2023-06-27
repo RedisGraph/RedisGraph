@@ -122,7 +122,7 @@ int CircularBuffer_Add
 
 	uint64_t write = atomic_fetch_add(&cb->write, cb->item_size);
 	if(unlikely(cb->data + write >= cb->end_marker)) {
-		cb->write = 0;
+		cb->write = cb->end_marker;
 		return 0;
 	}
 
