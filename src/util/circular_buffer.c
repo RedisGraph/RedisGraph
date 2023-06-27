@@ -109,33 +109,23 @@ void CircularBuffer_ResetReader
 // returns 1 on success, 0 otherwise
 int CircularBuffer_Add
 (
-	CircularBuffer cb,  // buffer to populate
+	CircularBuffer cb,   // buffer to populate
 	void *item           // item to add
 ) {
 	ASSERT(cb != NULL);
 	ASSERT(item != NULL);
 
 	// do not add item if buffer is full
-	if(unlikely(CircularBuffer_Full(cb))) {
+	uint64_t write = atomic_fetch_add(&cb->write, cb->item_size);
+	if(unlikely(cb->data + write >= cb->end_marker)) {
 		return 0;
 	}
-
-	// copy item into buffer
-	uint64_t write = cb->write;
-	memcpy(cb->data + write, item, cb->item_size);
 
 	// atomic update buffer item count
 	cb->item_count++;
 
-	// advance write position
-	// circle back if write reached the end of the buffer
-	write += cb->item_size;
-	if(unlikely(cb->data + write >= cb->end_marker)) {
-		write = 0;
-	}
-
-	// update write
-	cb->write = write;
+	// copy item into buffer
+	memcpy(cb->data + write, item, cb->item_size);
 
 	// report success
 	return 1;
@@ -151,24 +141,15 @@ void *CircularBuffer_Reserve
 	ASSERT(cb != NULL);
 
 	// determine current and next write position
-	uint64_t curr = cb->write;
-	uint64_t next = curr + cb->item_size;
-	if(unlikely(cb->data + next >= cb->end_marker)) {
-		next = 0;
+	uint64_t curr = atomic_fetch_add(&cb->write, cb->item_size);
+	if(unlikely(cb->data + curr >= cb->end_marker)) {
+		uint64_t old_curr = curr + cb->item_size;
+		curr -= cb->item_size * cb->item_cap;
+		// advance write position atomicly
+		atomic_compare_exchange_weak(&cb->write, &old_curr, curr);
+	} else {
+		cb->item_count++;
 	}
-
-	// advance write position atomicly
-	while(!atomic_compare_exchange_weak(&cb->write, &curr, next)) {
-		curr = cb->write;
-		next = curr + cb->item_size;
-		if(unlikely(cb->data + next >= cb->end_marker)) {
-			next = 0;
-		}
-	}
-
-	// increase and cap item count
-	cb->item_count++;
-	cb->item_count = MIN(cb->item_count, cb->item_cap);
 
 	return cb->data + curr;
 }
