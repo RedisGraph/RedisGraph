@@ -163,7 +163,7 @@ OpBase *ExecutionPlan_LocateReferencesExcludingOps
 		// If we've reached a blacklisted op, all variables in its subtree are
 		// considered to be modified by it, as we can't recurse farther.
 		rax *bound_vars = raxNew();
-		ExecutionPlan_BoundVariables(root, bound_vars);
+		ExecutionPlan_BoundVariables(root, bound_vars, root->plan);
 		modifies = (char **)raxKeys(bound_vars);
 		raxFree(bound_vars);
 	} else {
@@ -266,21 +266,11 @@ uint ExecutionPlan_CollectUpwards
 void ExecutionPlan_BoundVariables
 (
     const OpBase *op,
-    rax *modifiers
+    rax *modifiers,
+	const ExecutionPlan *plan
 ) {
-	// if op is a CallSubquery op, collect bound vars from lhs only (if exists)
-	// as the body vars are local
-	// TODO: Do we need to collect vars from last Project/Aggregate op of call {}?
-	if(op->type == OPType_CALLSUBQUERY) {
-		if(op->childCount > 1) {
-			ExecutionPlan_BoundVariables(op->children[0], modifiers);
-		}
-
-		return;
-	}
-
 	ASSERT(op != NULL && modifiers != NULL);
-	if(op->modifies) {
+	if(op->modifies && op->plan == plan) {
 		uint modifies_count = array_len(op->modifies);
 		for(uint i = 0; i < modifies_count; i++) {
 			const char *modified = op->modifies[i];
@@ -295,6 +285,6 @@ void ExecutionPlan_BoundVariables
 	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return;
 
 	for(int i = 0; i < op->childCount; i++) {
-		ExecutionPlan_BoundVariables(op->children[i], modifiers);
+		ExecutionPlan_BoundVariables(op->children[i], modifiers, plan);
 	}
 }

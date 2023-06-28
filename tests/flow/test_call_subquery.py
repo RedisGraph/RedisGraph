@@ -2061,3 +2061,20 @@ updating clause.")
         # assert that the `O` label is scanned via cond-traverse
         scan = locate_operation(plan.structured_plan, "Conditional Traverse")
         self.env.assertEquals(str(scan), "Conditional Traverse | (n:O)->(n:O)")
+
+        # return a bound variable from the call {} clause, with a scan on it
+        # after
+        query = """
+            CALL {
+                MATCH (n:M)
+                SET n.v = 2
+                RETURN n
+            }
+            MATCH (n:N)
+            RETURN n
+        """
+
+        # assert that the execution-plan holds a cond-traverse for :N
+        plan = graph.explain(query)
+        scan = locate_operation(plan.structured_plan, "Conditional Traverse")
+        self.env.assertEquals(str(scan), "Conditional Traverse | (n:N)->(n:N)")

@@ -108,7 +108,8 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 	rax *stream_entities[stream_count];
 	for(int j = 0; j < stream_count; j ++) {
 		stream_entities[j] = raxNew();
-		ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
+		ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j],
+			cp->children[j]->plan);
 	}
 
 	for(uint i = 0; i < filter_count; i ++) {
@@ -178,7 +179,8 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 				stream_count = cp->childCount;
 				for(int j = 0; j < stream_count; j ++) {
 					stream_entities[j] = raxNew();
-					ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
+					ExecutionPlan_BoundVariables(cp->children[j],
+						stream_entities[j], cp->children[j]->plan);
 				}
 			}
 		}

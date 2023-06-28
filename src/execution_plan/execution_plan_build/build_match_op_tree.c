@@ -171,7 +171,7 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 		bound_vars = raxNew();
 		// Rather than cloning the record map, collect the bound variables along with their
 		// parser-generated constant strings.
-		ExecutionPlan_BoundVariables(plan->root, bound_vars);
+		ExecutionPlan_BoundVariables(plan->root, bound_vars, plan);
 		// Collect the variable names from bound_vars to populate the Argument op we will build.
 		arguments = (const char **)raxValues(bound_vars);
 		raxFree(bound_vars);
@@ -202,18 +202,18 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 		return;
 	}
 
-	const cypher_astnode_t *patterns[1] = {cypher_ast_match_get_pattern(clause)};
-	const cypher_astnode_t *mandatory_matches[1] = {clause};
+	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
 
 	// collect the QueryGraph entities referenced in the clauses being converted
 	QueryGraph *sub_qg =
-		QueryGraph_ExtractPatterns(plan->query_graph, patterns,1);
+		QueryGraph_ExtractPatterns(plan->query_graph, &pattern, 1);
 
 	_ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
 	if(ErrorCtx_EncounteredError()) goto cleanup;
 
 	// Build the FilterTree to model any WHERE predicates on these clauses and place ops appropriately.
-	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, mandatory_matches, 1);
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast,
+		&clause, 1);
 	ExecutionPlan_PlaceFilterOps(plan, plan->root, NULL, sub_ft);
 
 	// Clean up

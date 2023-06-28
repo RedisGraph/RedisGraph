@@ -81,7 +81,8 @@ void reduceTraversal(ExecutionPlan *plan) {
 		// Collect variables bound before this op.
 		rax *bound_vars = raxNew();
 		for(int i = 0; i < op->childCount; i ++) {
-			ExecutionPlan_BoundVariables(op->children[i], bound_vars);
+			ExecutionPlan_BoundVariables(op->children[i], bound_vars,
+				op->children[i]->plan);
 		}
 
 		const char *dest = AlgebraicExpression_Dest(ae);
