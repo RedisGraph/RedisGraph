@@ -213,9 +213,15 @@ bool AST_ClauseContainsAggregation
 );
 
 // returns the alias of a projection
+const char *AST_GetProjectionAlias
+(
+	const cypher_astnode_t* projection
+);
+
+// returns the alias of a projection
 // the alias will be NULL in the case of an unaliased non-identifier projection
 // returned in a Call {} clause
-const char *AST_GetProjectionAlias
+const char *AST_GetSubqueryProjectionAlias
 (
 	const cypher_astnode_t* projection
 );

@@ -1344,7 +1344,7 @@ references to outside variables");
 				cypher_ast_projection_get_alias(proj);
 			const cypher_astnode_t *exp =
 					cypher_ast_projection_get_expression(proj);
-			const char *var_name = AST_GetProjectionAlias(proj);
+			const char *var_name = AST_GetSubqueryProjectionAlias(proj);
 
 			if(var_name == NULL) {
 				ErrorCtx_SetError("Return projection in CALL {} must be aliased");

@@ -595,14 +595,44 @@ const char *AST_GetProjectionAlias
 	} else {
 		const cypher_astnode_t *exp =
 			cypher_ast_projection_get_expression(projection);
-		cypher_astnode_type_t type = cypher_astnode_type(exp);
+		alias = cypher_ast_identifier_get_name(exp);
+	}
+	return alias;
+}
+
+const char *AST_GetSubqueryProjectionAlias
+(
+	const cypher_astnode_t* projection
+) {
+	ASSERT(cypher_astnode_type(projection) == CYPHER_AST_PROJECTION);
+
+	const char *alias = NULL;
+	const cypher_astnode_t *ast_alias =
+		cypher_ast_projection_get_alias(projection);
+	const cypher_astnode_t *exp =
+		cypher_ast_projection_get_expression(projection);
+	cypher_astnode_type_t type = cypher_astnode_type(exp);
+
+	if(ast_alias != NULL) {
 		if(type == CYPHER_AST_IDENTIFIER) {
-			alias = cypher_ast_identifier_get_name(exp);
+			alias = cypher_ast_identifier_get_name(ast_alias);
 		}
-		// The only case in which the alias of a projection is NULL and the
-		// expression is not an identifier is when an unaliased literal is
-		// returned in a Call {} clause (e.g., "CALL {RETURN 1}").
-		// This case will fail and raise an error in the Call {} validation.
+		else {
+			// even in the case of an unaliased literal, the parser returns
+			// an alias, so to detect if it is a real alias, we need to compare
+			// the range of the projection and the range of its alias
+			struct cypher_input_range range_proj =
+				cypher_astnode_range(projection);
+			struct cypher_input_range range_alias =
+				cypher_astnode_range(ast_alias);
+
+			if(range_proj.start.line == range_alias.start.line &&
+				range_proj.start.column != range_alias.start.column) {
+				alias = cypher_ast_identifier_get_name(ast_alias);
+			}
+		}
+	} else {
+		alias = cypher_ast_identifier_get_name(exp);
 	}
 	return alias;
 }
