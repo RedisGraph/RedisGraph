@@ -871,11 +871,11 @@ The variables in the scope before the CALL {} clause are available after the cla
 
 The bound variables may be imported **only** in an opening `WITH` clause, via simple projections (e.g. `WITH n, m`), or via `WITH *` (which imports all bound variables). Note that importing as little variables as possible will result in **higher performance**. Respectively, the returned variables may not override existing variables in the scope.
 
-The CALL {} clause may be used for numerous purposes, such as: Post-`UNION` processing, local environment for aggregations and actions on every input row, observing changes from previous executions (on previous records), efficient operations using a limited namespace (via imports) and performing side-effects using non-returning subqueries. Let's see some examples.
+The CALL {} clause may be used for numerous purposes, such as: Post-`UNION` processing, local environment for aggregations and actions on every input row, efficient operations using a limited namespace (via imports) and performing side-effects using non-returning subqueries. Let's see some examples.
 
 * Post-`UNION` processing.
 
-We can easily get the cheapest and most expensive items in a store using post-`UNION` processing:
+We can easily get the cheapest and most expensive items in a store and set their `keep_surveillance` property to `true` (to keep monitoring the 'interestin' items) using post-`UNION` processing:
   
   ```sh
   GRAPH.QUERY DEMO_GRAPH
@@ -890,6 +890,7 @@ We can easily get the cheapest and most expensive items in a store using post-`U
     ORDER BY price DESC
     LIMIT 1
   }
+  SET item.keep_surveillance = true
   RETURN item.name AS name, item.price AS price
   ```
 
@@ -913,13 +914,13 @@ Another key feature of the CALL {} clause is the ability to perform isolated agg
 
   ```sh
   GRAPH.QUERY DEMO_GRAPH
-  MATCH (i:Item)
+  MATCH (item:Item)
   CALL {
-    WITH i
-    MATCH (i)-[s:SOLD_TO]->(c:Customer)
+    WITH item
+    MATCH (item)-[s:SOLD_TO]->(c:Customer)
     RETURN count(s) AS item_sales
   }
-  RETURN i.name AS name, item_sales AS sales
+  RETURN item.name AS name, item_sales AS sales
   ```
 
 <!-- * Observe changes from previous executions (on previous records).
@@ -948,18 +949,19 @@ Given a large query holding a respectively large namespace (a lot of bound varia
 
 * Side-effects.
 
-We can comfortably perform side-effects using non-returning subqueries. For example, we can mark a sub-group of nodes in the graph withholding some shared property. Let's mark all the items in a Walmart store that were sold more than 100 times as popular items:
+We can comfortably perform side-effects using non-returning subqueries. For example, we can mark a sub-group of nodes in the graph withholding some shared property. Let's mark all the items in a Walmart store that were sold more than 100 times as popular items, and return **all** items in the store:
 
   ```sh
   GRAPH.QUERY DEMO_GRAPH
-  MATCH (i:Item)
+  MATCH (item:Item)
   CALL {
-    WITH i
-    MATCH (i)-[s:SOLD_TO]->(c:Customer)
-    WITH i, count(s) AS item_sales
+    WITH item
+    MATCH (item)-[s:SOLD_TO]->(c:Customer)
+    WITH item, count(s) AS item_sales
     WHERE item_sales > 100
-    SET i.popular = true
+    SET item.popular = true
   }
+  RETURN item
   ```
 
 ### Functions
