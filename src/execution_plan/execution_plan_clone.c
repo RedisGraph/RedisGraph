@@ -20,10 +20,6 @@ static ExecutionPlan *_ClonePlanInternals(const ExecutionPlan *template) {
 		QueryGraph_ResolveUnknownRelIDs(template->query_graph);
 		clone->query_graph = QueryGraph_Clone(template->query_graph);
 	}
-	// TODO improve QueryGraph logic so that we do not need to store or clone connected_components.
-	if(template->connected_components) {
-		array_clone_with_cb(clone->connected_components, template->connected_components, QueryGraph_Clone);
-	}
 
 	return clone;
 }
