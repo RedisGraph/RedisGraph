@@ -229,4 +229,3 @@ void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *cla
 cleanup:
 	QueryGraph_Free(sub_qg);
 }
-
