@@ -545,29 +545,15 @@ static void _add_star_projection
 		query = cypher_ast_call_subquery_get_query(node);
 	}
 
-	uint nclauses = cypher_ast_query_nclauses(query);
-
 	// create a star projection
 	struct cypher_input_range range = {0};
 	cypher_astnode_t *star_projection = cypher_ast_with(false, true, NULL, 0,
 		NULL, NULL, NULL, NULL, NULL, 0, range);
 
-	cypher_astnode_t *clauses[nclauses + 1];
-	for(uint i = 0; i < idx; i++) {
-		clauses[i] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
-	}
-	clauses[idx] = star_projection;
-	for(uint i = idx; i < nclauses; i++) {
-		clauses[i + 1] = cypher_ast_clone(cypher_ast_query_get_clause(query, i));
-	}
-
-	cypher_astnode_t *new_query = cypher_ast_query(NULL, 0, clauses,
-		nclauses + 1, clauses, nclauses + 1, range);
-
 	if(type == CYPHER_AST_STATEMENT) {
-		cypher_ast_statement_replace_body(node, new_query);
+		cypher_ast_statement_push_clause(node, star_projection, idx);
 	} else {
-		cypher_ast_call_subquery_replace_query(node, new_query);
+		cypher_ast_call_subquery_push_clause(node, star_projection, idx);
 	}
 }
 
