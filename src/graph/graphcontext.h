@@ -365,6 +365,8 @@ void GraphContext_LogQuery
 	double report_duration,       // reporting time
 	bool parameterized,           // uses parameters
 	bool utilized_cache,          // utilized cache
+	bool write,    		          // write query
+	bool timeout,    		      // timeout query
 	const char *query             // query string
 );
 

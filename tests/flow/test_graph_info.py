@@ -13,7 +13,8 @@ class LoggedQuery:
     def __init__(self, event):
         # make sure event contains all expected fields
         fields = ["Received at", "Query", "Total duration", "Wait duration",
-                  "Execution duration", "Report duration", "Utilized cache"]
+                  "Execution duration", "Report duration", "Utilized cache",
+                  "Write", "Timeout"]
         assert(all(field in event for field in fields))
 
         # cast and initialize
@@ -193,9 +194,7 @@ class testGraphInfo(FlowTestsBase):
 
         logged_query = logged_queries[0]
 
-        self.env.assertTrue(len(logged_query.Query) < len(q))
-        self.env.assertTrue(logged_query.Query.endswith('...'))
-        self.env.assertTrue(q.startswith(logged_query.Query[:-3]))
+        self.env.assertEquals(logged_query.Query, q)
 
     def test04_delete_graph(self):
         """make sure reporting stream is deleted when graph is deleted"""
