@@ -945,7 +945,32 @@ CALL {
 
 * Efficient operations using a limited namespace (via imports).
 
-Given a large query holding a respectively large namespace (a lot of bound variables), we can perform a subquery on a sub-namespace, and by thus enhance performance significantly.
+Given a query holding a respectively large namespace (a lot of bound variables), we can perform a subquery on a sub-namespace, and by thus enhance performance significantly. Let's look at an example.
+
+Without a CALL {} clause:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (n:N), (m:M), (x:X), (y:Y), (z:Z), (e:E), (q:Q)
+CALL {
+  WITH n
+  MATCH (temp:TEMP)
+  SET temp.v = n.v
+}
+RETURN n, m, x, y, z, e, q"
+```
+Runtime: 99 ms.
+
+With a CALL {} clause:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (n:N), (m:M), (x:X), (y:Y), (z:Z), (e:E), (q:Q)
+MATCH (temp:TEMP)
+SET temp.v = n.v
+RETURN n, m, x, y, z, e, q"
+```
+Runtime: 256 ms.
 
 * Side-effects.
 
