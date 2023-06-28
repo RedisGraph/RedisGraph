@@ -11,10 +11,7 @@ bool ExecutionPlan_isEager
 (
     OpBase *root
 ) {
-	OPType eager_types[] = {OPType_CREATE, OPType_UPDATE, OPType_FOREACH,
-					  OPType_MERGE, OPType_SORT, OPType_AGGREGATE};
-
-	return ExecutionPlan_LocateOpMatchingTypes(root, eager_types, 6) != NULL;
+	return ExecutionPlan_LocateOpMatchingTypes(root, EAGER_OPERATIONS, 6) != NULL;
 }
 
 OpBase *ExecutionPlan_LocateOpResolvingAlias

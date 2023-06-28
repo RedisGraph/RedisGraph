@@ -7,8 +7,9 @@ graph = None
 GRAPH_ID = "call_subquery"
 
 def _assert_subquery_contains_single(plan: ExecutionPlan, operation_name: str, env):
-    """Asserts that the plan contains a single single operation with the given
-    name. Assumes the plan has a single CallSubquery operation"""
+    """Asserts that the sub-plan embedded in a CallSubquery contains a single
+    operation with name `operation_name`. If `plan` contains more than one
+    CallSubquery operations, only the first will be checked."""
 
     callsubquery = locate_operation(plan.structured_plan, "CallSubquery")
     env.assertIsNotNone(callsubquery)

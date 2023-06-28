@@ -242,4 +242,3 @@ cleanup:
 	QueryGraph_Free(sub_qg);
 	array_free(match_clauses);
 }
-
