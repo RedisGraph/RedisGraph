@@ -54,6 +54,7 @@ The syntax is based on [Cypher](http://www.opencypher.org/). [Most](https://redi
 * [UNION](#union)
 * [UNWIND](#unwind)
 * [FOREACH](#foreach)
+* [CALL {}](#call-{}})
 
 #### MATCH
 
@@ -788,6 +789,24 @@ GRAPH.QUERY DEMO_GRAPH
 "MATCH (u:User)  WITH u AS nonrecent ORDER BY u.lastVisit LIMIT 3 SET nonrecent.should_contact = true"
 ```
 
+#### UNION
+The UNION clause is used to combine the result of multiple queries.
+
+UNION combines the results of two or more queries into a single result set that includes all the rows that belong to all queries in the union.
+
+The number and the names of the columns must be identical in all queries combined by using UNION.
+
+To keep all the result rows, use UNION ALL.
+
+Using just UNION will combine and remove duplicates from the result set.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (n:Actor) RETURN n.name AS name
+UNION ALL
+MATCH (n:Movie) RETURN n.title AS name"
+```
+
 #### UNWIND
 The UNWIND clause breaks down a given list into a sequence of records; each contains a single element in the list.
 
@@ -835,23 +854,137 @@ GRAPH.QUERY DEMO_GRAPH
 FOREACH(do_perform IN CASE WHEN b = NULL THEN [1] ELSE [] END | MERGE (h)-[b2:BUYS_FROM]->(s:SUPPLIER {supplies_bread: true}) SET b2.direct = false)"
 ```
 
-#### UNION
-The UNION clause is used to combine the result of multiple queries.
+#### CALL {}
 
-UNION combines the results of two or more queries into a single result set that includes all the rows that belong to all queries in the union.
+(Since RedisGraph v2.12)
 
-The number and the names of the columns must be identical in all queries combined by using UNION.
+The CALL {} (subquery) clause allows local execution of subqueries, which opens the door for many comfortable and efficient actions on a graph.
 
-To keep all the result rows, use UNION ALL.
+The subquery is executed once for each record in the input stream.
 
-Using just UNION will combine and remove duplicates from the result set.
+The subquery may be a returning or non-returning subquery. A returning subquery may change the amount of records, while a non-returning subquery may not.
+
+The variables in the scope before the CALL {} clause are available after the clause, together with the variables returned by the subquery (in the case of a returning subquery).
+
+The bound variables may be imported **only** in an opening `WITH` clause, via simple projections (e.g. `WITH n, m`), or via `WITH *` (which imports all bound variables). Note that importing as little variables as possible will result in **higher performance**. Respectively, the returned variables may not override existing variables in the scope.
+
+The CALL {} clause may be used for numerous purposes, such as: Post-`UNION` processing, local environment for aggregations and actions on every input row, efficient operations using a limited namespace (via imports) and performing side-effects using non-returning subqueries. Let's see some examples.
+
+* Post-`UNION` processing.
+
+We can easily get the cheapest and most expensive items in a store and set their `keep_surveillance` property to `true` (to keep monitoring the 'interesting' items) using post-`UNION` processing:
+  
+  ```sh
+  GRAPH.QUERY DEMO_GRAPH
+  CALL {
+    MATCH (s:Store {name: 'Walmart'})-[:SELLS]->(i:Item)
+    RETURN i AS item
+    ORDER BY price ASC
+    LIMIT 1
+    UNION
+    MATCH (s:Store {name: 'Walmart'})-[:SELLS]->(i:Item)
+    RETURN i AS item
+    ORDER BY price DESC
+    LIMIT 1
+  }
+  SET item.keep_surveillance = true
+  RETURN item.name AS name, item.price AS price
+  ```
+
+We can utilize post-`UNION` processing to perform aggregations over differently-matched entities. For example, we can count the number of customers and vendors that a store interacts with:
+
+  ```sh
+  GRAPH.QUERY DEMO_GRAPH
+  CALL {
+    MATCH (s:Store {name: 'Walmart'})-[:SELLS_TO]->(c:Customer)
+    RETURN c AS interface
+    UNION
+    MATCH (s:Store {name: 'Walmart'})-[:BUYS_FROM]->(v:Vendor)
+    RETURN v AS interface
+  }
+  RETURN count(interface) AS interfaces
+  ```
+
+* Local environment for aggregations and actions on every input row.
+
+Another key feature of the CALL {} clause is the ability to perform isolated aggregations on every input row. For example, we can count the amount of times every item was bought in a store:
+
+  ```sh
+  GRAPH.QUERY DEMO_GRAPH
+  MATCH (item:Item)
+  CALL {
+    WITH item
+    MATCH (item)-[s:SOLD_TO]->(c:Customer)
+    RETURN count(s) AS item_sales
+  }
+  RETURN item.name AS name, item_sales AS sales
+  ```
+
+<!-- * Observe changes from previous executions (on previous records).
+
+We can form useful structures and connections like linked-lists via the CALL {} clause. Let's form a linked-list of all items in a store, from the cheapest to the priciest:
+
+```sh
+MATCH (i:Item)
+WITH i order BY i.price ASC LIMIT 1
+SET i:HEAD
+WITH i
+MATCH (next_item:Item) WHERE NOT next_item:HEAD
+WITH next_item ORDER BY next_item.price ASC
+CALL {
+  WITH next_item
+  MATCH (curr_head:HEAD)
+  REMOVE curr_head:HEAD
+  SET next_item:HEAD
+  CREATE (curr_head)-[:IS_CHEAPER_THAN]->(next_item)
+}
+``` -->
+
+* Efficient operations using a limited namespace (via imports).
+
+Given a query holding a respectively large namespace (a lot of bound variables), we can perform a subquery on a sub-namespace, and by thus enhance performance significantly. Let's look at an example.
+
+Without a CALL {} clause:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (n:Actor) RETURN n.name AS name
-UNION ALL
-MATCH (n:Movie) RETURN n.title AS name"
+"MATCH (n:N), (m:M), (x:X), (y:Y), (z:Z), (e:E), (q:Q)
+CALL {
+  WITH n
+  MATCH (temp:TEMP)
+  SET temp.v = n.v
+}
+RETURN n, m, x, y, z, e, q"
 ```
+Runtime: 99 ms.
+
+With a CALL {} clause:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (n:N), (m:M), (x:X), (y:Y), (z:Z), (e:E), (q:Q)
+MATCH (temp:TEMP)
+SET temp.v = n.v
+RETURN n, m, x, y, z, e, q"
+```
+Runtime: 256 ms.
+
+* Side-effects.
+
+We can comfortably perform side-effects using non-returning subqueries. For example, we can mark a sub-group of nodes in the graph withholding some shared property. Let's mark all the items in a Walmart store that were sold more than 100 times as popular items, and return **all** items in the store:
+
+  ```sh
+  GRAPH.QUERY DEMO_GRAPH
+  MATCH (item:Item)
+  CALL {
+    WITH item
+    MATCH (item)-[s:SOLD_TO]->(c:Customer)
+    WITH item, count(s) AS item_sales
+    WHERE item_sales > 100
+    SET item.popular = true
+  }
+  RETURN item
+  ```
 
 ### Functions
 

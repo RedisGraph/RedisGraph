@@ -19,7 +19,6 @@ struct ExecutionPlan {
 	AST *ast_segment;                   // The segment which the current ExecutionPlan segment is built from.
 	rax *record_map;                    // Mapping between identifiers and record indices.
 	QueryGraph *query_graph;            // QueryGraph representing all graph entities in this segment.
-	QueryGraph **connected_components;  // Array of all connected components in this segment.
 	ObjectPool *record_pool;
 	bool prepared;                      // Indicates if the execution plan is ready for execute.
 };

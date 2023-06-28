@@ -37,7 +37,8 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 	// Collect variables bound before this operation.
 	rax *bound_vars = raxNew();
 	for(int i = 0; i < scan->childCount; i ++) {
-		ExecutionPlan_BoundVariables(scan->children[i], bound_vars);
+		ExecutionPlan_BoundVariables(scan->children[i], bound_vars,
+			scan->children[i]->plan);
 	}
 
 	if(raxFind(bound_vars, (unsigned char *)scanned_alias, strlen(scanned_alias)) != raxNotFound) {
