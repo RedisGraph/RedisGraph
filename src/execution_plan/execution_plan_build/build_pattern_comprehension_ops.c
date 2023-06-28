@@ -64,7 +64,8 @@ void buildPatternComprehensionOps
 	if(root->childCount > 0) {
 		// get the bound variable to use when building the traversal ops
 		rax *bound_vars = raxNew();
-		ExecutionPlan_BoundVariables(root->children[0], bound_vars);
+		ExecutionPlan_BoundVariables(root->children[0], bound_vars,
+			root->children[0]->plan);
 		arguments = (const char **)raxValues(bound_vars);
 		raxFree(bound_vars);
 	}
@@ -187,7 +188,8 @@ void buildPatternPathOps
 	if(root->childCount > 0) {
 		// get the bound variable to use when building the traversal ops
 		rax *bound_vars = raxNew();
-		ExecutionPlan_BoundVariables(root->children[0], bound_vars);
+		ExecutionPlan_BoundVariables(root->children[0], bound_vars,
+			root->children[0]->plan);
 		arguments = (const char **)raxValues(bound_vars);
 		raxFree(bound_vars);
 	}

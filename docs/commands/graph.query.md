@@ -872,7 +872,7 @@ The CALL {} clause may be used for numerous purposes, such as: Post-`UNION` proc
 
 * Post-`UNION` processing.
 
-We can easily get the cheapest and most expensive items in a store and set their `keep_surveillance` property to `true` (to keep monitoring the 'interestin' items) using post-`UNION` processing:
+We can easily get the cheapest and most expensive items in a store and set their `keep_surveillance` property to `true` (to keep monitoring the 'interesting' items) using post-`UNION` processing:
   
   ```sh
   GRAPH.QUERY DEMO_GRAPH
