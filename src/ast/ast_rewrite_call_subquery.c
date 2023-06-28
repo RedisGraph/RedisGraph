@@ -626,6 +626,8 @@ bool AST_RewriteCallSubquery
 	array_free_cb(inter_names, rm_free);
 
 	// add a `WITH *` clause before every call {} clause
+	// this is an optimization that decreases the mapping size of the plan up to
+	// the CallSubquery operation
 	rewritten |= _add_star_projections((cypher_astnode_t *)root);
 
 	return rewritten;
