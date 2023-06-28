@@ -16,7 +16,9 @@ typedef struct QueryStats {
 	double report_duration;     // reporting time
 	bool parameterized;         // uses parameters
 	bool utilized_cache;        // utilized cache
-	char query[];               // query string
+	bool write;    		        // write query
+	bool timeout;    		    // timeout query
+	char *query;                // query string
 } LoggedQuery;
 
 // forward declaration of opaque QueriesLog structure
@@ -35,6 +37,8 @@ void QueriesLog_AddQuery
 	double report_duration,     // reporting time
 	bool parameterized,         // uses parameters
 	bool utilized_cache,        // utilized cache
+	bool write,    		        // write query
+	bool timeout,    		    // timeout query
 	const char *query           // query string
 );
 
