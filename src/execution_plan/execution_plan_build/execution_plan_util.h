@@ -129,5 +129,6 @@ uint ExecutionPlan_CollectUpwards
 void ExecutionPlan_BoundVariables
 (
     const OpBase *op,
-    rax *modifiers
+    rax *modifiers,
+    const ExecutionPlan *plan
 );
