@@ -156,6 +156,9 @@ static void _ExecutionPlan_ProcessQueryGraph
 		}
 	}
 
+	for(uint i = 0; i < connectedComponentsCount; i++) {
+		QueryGraph_Free(connectedComponents[i]);
+	}
 	array_free(connectedComponents);
 	FilterTree_Free(ft);
 }
