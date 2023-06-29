@@ -554,6 +554,7 @@ class testConstraintEdges():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         self.con = self.env.getConnection()
+        self.con.flushall() # clear DB
         self.g = Graph(self.con, GRAPH_ID)
         self.populate_graph()
 
@@ -576,7 +577,7 @@ class testConstraintEdges():
         create_unique_edge_constraint(self.g, 'Person', 'height')
 
         # create unique edge constraint over Person name and age
-        create_unique_edge_constraint(self.g, 'Person', 'name', 'age')
+        create_unique_edge_constraint(self.g, 'Person', 'name', 'age', sync=True)
 
         # validate constrains
         constraints = list_constraints(self.g)
