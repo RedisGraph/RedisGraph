@@ -110,6 +110,23 @@ class testCallSubqueryFlow():
         for query in queries:
             self.expect_error(query, expected_error)
 
+        # invalid queries: wrong number of UNION clauses
+        queries = [
+            "CALL {WITH 1 UNION RETURN 1} RETURN 0"
+        ]
+        expected_error = "Found 1 UNION clauses but only 1 RETURN clauses"
+        for query in queries:
+            self.expect_error(query, expected_error)
+
+        # invalid queries: subquery with invalid termination
+        queries = [
+            "CALL {MATCH (n)} RETURN 0",
+            "CALL {RETURN 1 UNION WITH 1} RETURN 0"
+        ]
+        expected_error = "Query cannot conclude with"
+        for query in queries:
+            self.expect_error(query, expected_error)
+
         # invalid queries: returning literals inside CALL{} must be aliased
         queries = [
             "CALL {RETURN 1} RETURN 0",

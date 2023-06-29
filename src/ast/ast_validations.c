@@ -1344,20 +1344,20 @@ references to outside variables");
 				cypher_ast_projection_get_alias(proj);
 			const cypher_astnode_t *exp =
 					cypher_ast_projection_get_expression(proj);
-			const char *var_name = AST_GetSubqueryProjectionAlias(proj);
 
-			if(var_name == NULL) {
+			if(cypher_ast_projection_is_aliased(proj) == false) {
 				ErrorCtx_SetError("Return projection in CALL {} must be aliased");
 				return VISITOR_BREAK;
-			} else {
-				if(exp &&
-				   cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER &&
-				   cypher_ast_identifier_get_name(exp)[0] == '@') {
-					// this is an artificial projection, skip it
-					continue;
-				}
 			}
 
+			if(exp &&
+			   cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER &&
+			   cypher_ast_identifier_get_name(exp)[0] == '@') {
+				// this is an artificial projection, skip it
+				continue;
+			}
+
+			const char *var_name = AST_GetProjectionAlias(proj);
 			if(!raxTryInsert(vctx->defined_identifiers,
 				(unsigned char *)var_name, strlen(var_name), NULL, NULL)) {
 					ErrorCtx_SetError(
