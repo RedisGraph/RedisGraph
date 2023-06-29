@@ -17,7 +17,7 @@
 // items are removed by order of insertion, similar to a queue
 struct _CircularBuffer {
 	char *read;                   // read data from here
-	_Atomic uint64_t write;       // write data to here
+	_Atomic uint64_t write;       // write offset into data
 	size_t item_size;             // item size in bytes
 	_Atomic uint64_t item_count;  // current number of items in buffer
 	uint64_t item_cap;            // max number of items held by buffer
@@ -32,12 +32,12 @@ CircularBuffer CircularBuffer_New
 ) {
 	CircularBuffer cb = rm_calloc(1, sizeof(_CircularBuffer) + item_size * cap);
 
-	cb->read       = cb->data;   // read from beginning of data
-	cb->write      = 0;          // write to beginning of data
-	cb->item_cap   = cap;        // buffer capacity
-	cb->item_size  = item_size;  // item size
-	cb->item_count = 0;          // no items in buffer
-	cb->end_marker = cb->data + (item_size * cap);
+	cb->read       = cb->data;                      // initial read position
+	cb->write      = ATOMIC_VAR_INIT(0);            // write offset into data
+	cb->item_cap   = cap;                           // buffer capacity
+	cb->item_size  = item_size;                     // item size
+	cb->item_count = ATOMIC_VAR_INIT(0);            // no items in buffer
+	cb->end_marker = cb->data + (item_size * cap);  // end of data marker
 
 	return cb;
 }
@@ -72,7 +72,7 @@ uint CircularBuffer_ItemSize
 // return true if buffer is empty
 inline bool CircularBuffer_Empty
 (
-	const CircularBuffer cb  // buffer to inspect
+	const CircularBuffer cb  // buffer
 ) {
 	ASSERT(cb != NULL);
 
@@ -82,37 +82,71 @@ inline bool CircularBuffer_Empty
 // returns true if buffer is full
 inline bool CircularBuffer_Full
 (
-	const CircularBuffer cb  // buffer to inspect
+	const CircularBuffer cb  // buffer
 ) {
 	ASSERT(cb != NULL);
 
 	return cb->item_count == cb->item_cap;
 }
 
-// sets the read pointer to the beginning of the buffer
+// sets the read pointer to the oldest item in buffer
+// assuming the buffer looks like this:
+//
+// [., ., ., A, B, C, ., ., .]
+//                    ^
+//                    W
+//
+// CircularBuffer_ResetReader will set 'read' to A
+//
+// [., ., ., A, B, C, ., ., .]
+//           ^        ^
+//           R        W
+//
 void CircularBuffer_ResetReader
 (
 	CircularBuffer cb  // circular buffer
 ) {
 	// compensate for circularity
 	uint64_t write = cb->write;
-	uint write_idx = write / cb->item_size;
-	int sub = write_idx - cb->item_count;
-	if(sub >= 0) {
-		cb->read = cb->data + (sub * cb->item_size);
+
+	// compute newest item index, e.g. newest item is at index k
+	uint idx = write / cb->item_size;
+
+	// compute offset to oldest item
+	// oldest item is n elements before newest item
+	//
+	// example:
+	//
+	// [C, ., ., ., ., ., ., A, B]
+	//
+	// idx = 1, item_count = 3
+	// offset is 1 - 3 = -2
+	//
+	// [C, ., ., ., ., ., ., A, B]
+	//     ^                 ^
+	//     W                 R
+
+	int offset = idx - cb->item_count;
+	offset *= cb->item_size;
+
+	if(offset >= 0) {
+		// offset is positive, read from beginning of buffer
+		cb->read = cb->data + offset;
 	} else {
-		cb->read = cb->end_marker + (sub * cb->item_size);
+		// offset is negative, read from end of buffer
+		cb->read = cb->end_marker + offset;
 	}
 }
 
 // adds an item to buffer
 // returns 1 on success, 0 otherwise
+// this function is thread-safe and lock-free
 int CircularBuffer_Add
 (
 	CircularBuffer cb,   // buffer to populate
 	void *item           // item to add
 ) {
-	ASSERT(cb != NULL);
+	ASSERT(cb   != NULL);
 	ASSERT(item != NULL);
 
 	// atomic update buffer item count
@@ -124,16 +158,35 @@ int CircularBuffer_Add
 	}
 
 	// determine current and next write position
-	uint64_t curr = atomic_fetch_add(&cb->write, cb->item_size);
-	if(unlikely(cb->data + curr >= cb->end_marker)) {
-		uint64_t old_curr = curr + cb->item_size;
-		curr -= cb->item_size * cb->item_cap;
-		// advance write position atomicly
-		atomic_compare_exchange_weak(&cb->write, &old_curr, curr + cb->item_size);
+	uint64_t offset = atomic_fetch_add(&cb->write, cb->item_size);
+
+	// check for buffer overflow
+	if(unlikely(cb->data + offset >= cb->end_marker)) {
+		// write need to circle back
+		// [., ., ., ., ., ., A, B, C]
+		//                           ^  ^
+		//                           W0 W1
+		uint64_t overflow = offset + cb->item_size;
+
+		// adjust offset
+		// [., ., ., ., ., ., A, B, C]
+		//  ^  ^
+		//  W0 W1
+		offset -= cb->item_size * cb->item_cap;
+
+		// update write position
+		// multiple threads "competing" to update write position
+		// only the thread with the largest offset will succeed
+		// for the above example, W1 will succeed
+		//
+		// [., ., ., ., ., ., A, B, C]
+		//        ^
+		//        W
+		atomic_compare_exchange_weak(&cb->write, &overflow, offset + cb->item_size);
 	}
 
 	// copy item into buffer
-	memcpy(cb->data + curr, item, cb->item_size);
+	memcpy(cb->data + offset, item, cb->item_size);
 
 	// report success
 	return 1;
@@ -149,25 +202,46 @@ void *CircularBuffer_Reserve
 	ASSERT(cb != NULL);
 
 	// atomic update buffer item count
-	// item is not added if buffer is full
+	// an item will be overwritten if buffer is full
 	uint64_t item_count = atomic_fetch_add(&cb->item_count, 1);
 	if(unlikely(item_count >= cb->item_cap)) {
 		cb->item_count = cb->item_cap;
 	}
 
 	// determine current and next write position
-	uint64_t curr = atomic_fetch_add(&cb->write, cb->item_size);
-	if(unlikely(cb->data + curr >= cb->end_marker)) {
-		uint64_t old_curr = curr + cb->item_size;
-		curr -= cb->item_size * cb->item_cap;
-		// advance write position atomicly
-		atomic_compare_exchange_weak(&cb->write, &old_curr, curr + cb->item_size);
+	uint64_t offset = atomic_fetch_add(&cb->write, cb->item_size);
+
+	// check for buffer overflow
+	if(unlikely(cb->data + offset >= cb->end_marker)) {
+		// write need to circle back
+		// [., ., ., ., ., ., A, B, C]
+		//                           ^  ^
+		//                           W0 W1
+		uint64_t overflow = offset + cb->item_size;
+
+		// adjust offset
+		// [., ., ., ., ., ., A, B, C]
+		//  ^  ^
+		//  W0 W1
+		offset -= cb->item_size * cb->item_cap;
+
+		// update write position
+		// multiple threads "competing" to update write position
+		// only the thread with the largest offset will succeed
+		// for the above example, W1 will succeed
+		//
+		// [., ., ., ., ., ., A, B, C]
+		//        ^
+		//        W
+		atomic_compare_exchange_weak(&cb->write, &overflow, offset + cb->item_size);
 	}
 
-	return cb->data + curr;
+	// return slot pointer
+	return cb->data + offset;
 }
 
 // read oldest item from buffer
+// note: this function is not thread-safe
 void *CircularBuffer_Read
 (
 	CircularBuffer cb,  // buffer to read item from
