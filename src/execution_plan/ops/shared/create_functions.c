@@ -150,7 +150,6 @@ static void _CommitEdges
 		NodeID dest_id = Edge_GetDestNodeID(e);
 		AttributeSet attr = pending->edge_attributes[i];
 
-
 		Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
 		// all schemas have been created in the edge blueprint loop or earlier
 		ASSERT(s != NULL);
