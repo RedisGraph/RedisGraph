@@ -64,7 +64,7 @@ void buildMergeOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause,
 		bound_vars = raxNew();
 		// Rather than cloning the record map, collect the bound variables along with their
 		// parser-generated constant strings.
-		ExecutionPlan_BoundVariables(plan->root, bound_vars);
+		ExecutionPlan_BoundVariables(plan->root, bound_vars, plan);
 		// Collect the variable names from bound_vars to populate the Argument ops we will build.
 		arguments = (const char **)raxValues(bound_vars);
 	}

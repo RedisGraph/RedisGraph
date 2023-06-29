@@ -238,10 +238,12 @@ static Record _consume_and_merge
 ) {
 	Record consumed;
 	consumed = OpBase_Consume(op->body);
-	if(consumed == NULL) {
+
+	while(consumed == NULL) {
 		OpBase_PropagateReset(op->body);
 		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
+
 		if(op->lhs && (op->r = OpBase_Consume(op->lhs)) != NULL) {
 			// plant a clone of the record consumed at the Argument ops
 			_plant_records_Arguments(op);
@@ -249,7 +251,8 @@ static Record _consume_and_merge
 			// lhs depleted --> CALL {} depleted as well
 			return NULL;
 		}
-		return _consume_and_merge(op);
+
+		consumed = OpBase_Consume(op->body);
 	}
 
 	Record clone = OpBase_DeepCloneRecord(op->r);
