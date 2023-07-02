@@ -54,7 +54,8 @@ The syntax is based on [Cypher](http://www.opencypher.org/). [Most](https://redi
 * [UNION](#union)
 * [UNWIND](#unwind)
 * [FOREACH](#foreach)
-* [CALL {}](#call-{}})
+* [CALL {}](/docs/commands/graph.query.md#call)
+
 
 #### MATCH
 
@@ -945,9 +946,20 @@ CALL {
 
 * Efficient operations using a limited namespace (via imports).
 
-Given a query holding a respectively large namespace (a lot of bound variables), we can perform a subquery on a sub-namespace, and by thus enhance performance significantly. Let's look at an example.
+Given a query holding a respectively large namespace (a lot of bound variables), we can execute a subquery on a sub-namespace, and by thus enhance performance significantly. Let's look at an example.
 
 Without a CALL {} clause:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (n:N), (m:M), (x:X), (y:Y), (z:Z), (e:E), (q:Q)
+MATCH (temp:TEMP)
+SET temp.v = n.v
+RETURN n, m, x, y, z, e, q"
+```
+Runtime: 256 ms.
+
+With a CALL {} clause:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
@@ -961,16 +973,6 @@ RETURN n, m, x, y, z, e, q"
 ```
 Runtime: 99 ms.
 
-With a CALL {} clause:
-
-```sh
-GRAPH.QUERY DEMO_GRAPH
-"MATCH (n:N), (m:M), (x:X), (y:Y), (z:Z), (e:E), (q:Q)
-MATCH (temp:TEMP)
-SET temp.v = n.v
-RETURN n, m, x, y, z, e, q"
-```
-Runtime: 256 ms.
 
 * Side-effects.
 
