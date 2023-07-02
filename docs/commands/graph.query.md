@@ -54,8 +54,7 @@ The syntax is based on [Cypher](http://www.opencypher.org/). [Most](https://redi
 * [UNION](#union)
 * [UNWIND](#unwind)
 * [FOREACH](#foreach)
-* [CALL {}](/docs/commands/graph.query.md#call)
-
+* [CALL {}](/docs/commands/graph.query.md#call-)
 
 #### MATCH
 
@@ -858,7 +857,7 @@ GRAPH.QUERY DEMO_GRAPH
 FOREACH(do_perform IN CASE WHEN b = NULL THEN [1] ELSE [] END | MERGE (h)-[b2:BUYS_FROM]->(s:SUPPLIER {supplies_bread: true}) SET b2.direct = false)"
 ```
 
-#### CALL {}
+#### CALL \{\}
 
 (Since RedisGraph v2.12)
 
