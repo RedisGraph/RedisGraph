@@ -10,7 +10,7 @@
 
 #include "RG.h"
 #include "errors.h"
-#include "util/arr.h"
+// #include "util/arr.h"
 #include "query_ctx.h"
 #include "procedures/procedure.h"
 #include "ast_rewrite_same_clauses.h"
@@ -628,21 +628,10 @@ const char **AST_BuildCallColumnNames
 	if(yield_count > 0) {
 		proc_output_columns = array_new(const char *, yield_count);
 		for(uint i = 0; i < yield_count; i ++) {
-			const cypher_astnode_t *projection = cypher_ast_call_get_projection(call_clause, i);
-			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
-
-			const char *identifier = NULL;
-			const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
-			if(alias_node) {
-				// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
-				identifier = cypher_ast_identifier_get_name(alias_node);
-			} else {
-				// This expression did not have an alias, so it must be an identifier
-				ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
-				// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
-				identifier = cypher_ast_identifier_get_name(ast_exp);
-			}
-			array_append(proc_output_columns, identifier);
+			const cypher_astnode_t *projection =
+        cypher_ast_call_get_projection(call_clause, i);
+		  const char *alias = AST_GetProjectionAlias(projection);
+			array_append(proc_output_columns, alias);
 		}
 	} else {
 		// If the procedure call is missing its yield part, include procedure outputs.
