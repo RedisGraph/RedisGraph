@@ -1033,8 +1033,7 @@ static AST_Validation _ValidateUnion_Clauses
 				const cypher_astnode_t *proj =
 					cypher_ast_return_get_projection(return_clause, j);
 				const char *alias = AST_GetProjectionAlias(proj);
-				if(alias == NULL || projections[j] == NULL ||
-					strcmp(projections[j], alias) != 0) {
+				if(projections[j] == NULL || strcmp(projections[j], alias) != 0) {
 					ErrorCtx_SetError("All sub queries in a UNION must have the same column names.");
 					res = AST_INVALID;
 					goto cleanup;
@@ -1340,8 +1339,6 @@ references to outside variables");
 		for(uint i = 0; i < n_projections; i++) {
 			const cypher_astnode_t *proj =
 				cypher_ast_return_get_projection(return_clause, i);
-			const cypher_astnode_t *alias_node =
-				cypher_ast_projection_get_alias(proj);
 			const cypher_astnode_t *exp =
 					cypher_ast_projection_get_expression(proj);
 
@@ -1741,10 +1738,8 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 	for(uint i = 0; i < num_return_projections; i ++) {
 		const cypher_astnode_t *proj = cypher_ast_return_get_projection(n, i);
 		const char *alias = AST_GetProjectionAlias(proj);
-		if(alias != NULL) {
-			raxInsert(vctx->defined_identifiers, (unsigned char *)alias,
-				strlen(alias), NULL, NULL);
-		}
+		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias),
+      NULL, NULL);
 	}
 
 	// visit ORDER BY clause
