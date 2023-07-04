@@ -14,6 +14,7 @@
 #include "ast_visitor.h"
 #include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
+#include "../execution_plan/ops/op.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include <stdio.h>
 
@@ -28,11 +29,12 @@ typedef struct {
 	cypher_astnode_type_t clause;  // top-level clause type
 	is_union_all union_all;        // union type (regular or ALL)
 	rax *intermediate_identifiers; // identifiers which are in creation in the pattern
+	bool ignore_identifiers;       // ignore identifiers in case `RETURN *` was met in a call {} clause
 } validations_ctx;
 
 // ast validation visitor mappings
-// number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 114
-static visit validations_mapping[114];
+// number of ast-node types: _MAX_VT_OFF = sizeof(struct cypher_astnode_vts) / sizeof(struct cypher_astnode_vt *) = 115
+static visit validations_mapping[115];
 
 // validate that allShortestPaths is in a supported place
 static bool _ValidateAllShortestPaths
@@ -162,11 +164,14 @@ static bool _AST_GetWithAliases
 			alias = cypher_ast_identifier_get_name(expr);
 		}
 
-		// check for duplicate column names
-		if(raxTryInsert(local_env, (unsigned char *)alias, strlen(alias), NULL, NULL) == 0) {
-			ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported");
-			raxFree(local_env);
-			return false;
+		// check for duplicate column names (other than internal representation
+		// of outer-context variables)
+		if(raxTryInsert(local_env, (unsigned char *)alias, strlen(alias), NULL,
+			NULL) == 0 &&
+			alias[0] != '@') {
+				ErrorCtx_SetError("Error: Multiple result columns with the same name are not supported.");
+				raxFree(local_env);
+				return false;
 		}
 	}
 
@@ -678,7 +683,7 @@ static VISITOR_STRATEGY _Validate_identifier
 ) {
 	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
 
-	if(!start) {
+	if(!start || vctx->ignore_identifiers) {
 		return VISITOR_CONTINUE;
 	}
 
@@ -1395,51 +1400,28 @@ static AST_Validation _ValidateUnion_Clauses
 (
 	const AST *ast  // ast-node
 ) {
-	// get amount of UNION clauses
 	AST_Validation res = AST_VALID;
+
 	uint *union_indices = AST_GetClauseIndices(ast, CYPHER_AST_UNION);
 	uint union_clause_count = array_len(union_indices);
 	array_free(union_indices);
 
-	if(union_clause_count == 0) {
-		return AST_VALID;
-	}
+	if(union_clause_count != 0) {
+		// Require all RETURN clauses to perform the exact same projection
+		uint *return_indices = AST_GetClauseIndices(ast, CYPHER_AST_RETURN);
+		uint return_clause_count = array_len(return_indices);
 
-	// Require all RETURN clauses to perform the exact same projection
-	uint *return_indices = AST_GetClauseIndices(ast, CYPHER_AST_RETURN);
-	uint return_clause_count = array_len(return_indices);
-
-	// We should have one more RETURN clauses than we have UNION clauses.
-	if(return_clause_count != union_clause_count + 1) {
-		ErrorCtx_SetError("Found %d UNION clauses but only %d RETURN clauses", union_clause_count,
-						  return_clause_count);
-		array_free(return_indices);
-		return AST_INVALID;
-	}
-
-	const cypher_astnode_t *return_clause = cypher_ast_query_get_clause(ast->root, return_indices[0]);
-	uint proj_count = cypher_ast_return_nprojections(return_clause);
-	const char *projections[proj_count];
-
-	for(uint j = 0; j < proj_count; j++) {
-		const cypher_astnode_t *proj = cypher_ast_return_get_projection(return_clause, j);
-		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj);
-		if(alias_node == NULL)  {
-			// The projection was not aliased, so the projection itself must be an identifier.
-			alias_node = cypher_ast_projection_get_expression(proj);
-			ASSERT(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
+		// We should have one more RETURN clauses than we have UNION clauses.
+		if(return_clause_count != union_clause_count + 1) {
+			ErrorCtx_SetError("Found %d UNION clauses but only %d RETURN clauses.", union_clause_count,
+							return_clause_count);
+			array_free(return_indices);
+			return AST_INVALID;
 		}
-		const char *alias = cypher_ast_identifier_get_name(alias_node);
-		projections[j] = alias;
-	}
 
-	for(uint i = 1; i < return_clause_count; i++) {
-		return_clause = cypher_ast_query_get_clause(ast->root, return_indices[i]);
-		if(proj_count != cypher_ast_return_nprojections(return_clause)) {
-			ErrorCtx_SetError("All sub queries in a UNION must have the same column names");
-			res = AST_INVALID;
-			goto cleanup;
-		}
+		const cypher_astnode_t *return_clause = cypher_ast_query_get_clause(ast->root, return_indices[0]);
+		uint proj_count = cypher_ast_return_nprojections(return_clause);
+		const char *projections[proj_count];
 
 		for(uint j = 0; j < proj_count; j++) {
 			const cypher_astnode_t *proj = cypher_ast_return_get_projection(return_clause, j);
@@ -1450,16 +1432,60 @@ static AST_Validation _ValidateUnion_Clauses
 				ASSERT(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
 			}
 			const char *alias = cypher_ast_identifier_get_name(alias_node);
-			if(strcmp(projections[j], alias) != 0) {
-				ErrorCtx_SetError("All sub queries in a UNION must have the same column names");
+			projections[j] = alias;
+		}
+
+		for(uint i = 1; i < return_clause_count; i++) {
+			return_clause = cypher_ast_query_get_clause(ast->root, return_indices[i]);
+			if(proj_count != cypher_ast_return_nprojections(return_clause)) {
+				ErrorCtx_SetError("All sub queries in a UNION must have the same column names.");
 				res = AST_INVALID;
 				goto cleanup;
 			}
+
+			for(uint j = 0; j < proj_count; j++) {
+				const cypher_astnode_t *proj = cypher_ast_return_get_projection(return_clause, j);
+				const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj);
+				if(alias_node == NULL)  {
+					// The projection was not aliased, so the projection itself must be an identifier.
+					alias_node = cypher_ast_projection_get_expression(proj);
+					ASSERT(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
+				}
+				const char *alias = cypher_ast_identifier_get_name(alias_node);
+				if(strcmp(projections[j], alias) != 0) {
+					ErrorCtx_SetError("All sub queries in a UNION must have the same column names.");
+					res = AST_INVALID;
+					goto cleanup;
+				}
+			}
+		}
+
+	cleanup:
+		array_free(return_indices);
+		if(res == AST_INVALID) {
+			return res;
 		}
 	}
 
-cleanup:
-	array_free(return_indices);
+	// validate union clauses of subqueries
+	uint *call_subquery_indices = AST_GetClauseIndices(ast,
+		CYPHER_AST_CALL_SUBQUERY);
+	uint n_subqueries = array_len(call_subquery_indices);
+
+	for(uint i = 0; i < n_subqueries; i++) {
+		AST subquery_ast = {
+			.root = cypher_ast_call_subquery_get_query(
+				cypher_ast_query_get_clause(ast->root,
+					call_subquery_indices[i])),
+		};
+
+		if(_ValidateUnion_Clauses(&subquery_ast) == AST_INVALID) {
+			res = AST_INVALID;
+			break;
+		}
+	}
+	array_free(call_subquery_indices);
+
 	return res;
 }
 
@@ -1554,6 +1580,228 @@ cleanup:
 	}
 
 	return VISITOR_CONTINUE;
+}
+
+// validates that root does not contain (bound) identifiers. For instance, would
+// fail on `MATCH (a) CALL {WITH a AS b RETURN b}`
+static bool _ValidateSubqueryFirstWithClauseIdentifiers
+(
+	const cypher_astnode_t *root  // root to validate
+) {
+	ASSERT(root != NULL);
+
+	if(cypher_astnode_type(root) == CYPHER_AST_IDENTIFIER) {
+		return false;
+	}
+
+	// recursively traverse all children
+	uint nchildren = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < nchildren; i ++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+		if(!_ValidateSubqueryFirstWithClauseIdentifiers(child)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+// validates a leading `WITH` clause of a subquery
+static bool _ValidateCallInitialWith
+(
+	const cypher_astnode_t *with_clause,  // `WITH` clause to validate
+	validations_ctx *vctx            // validation context
+) {
+	bool found_simple = false;
+	bool found_non_simple = false;
+
+	for(uint i = 0; i < cypher_ast_with_nprojections(with_clause); i++) {
+		const cypher_astnode_t *curr_proj =
+			cypher_ast_with_get_projection(with_clause, i);
+		const cypher_astnode_t *exp =
+			cypher_ast_projection_get_expression(curr_proj);
+		const cypher_astnode_type_t t = cypher_astnode_type(exp);
+
+		if (t == CYPHER_AST_IDENTIFIER ) {
+			const cypher_astnode_t *alias =
+				cypher_ast_projection_get_alias(curr_proj);
+			// if this is an internal representation of a variable, skip it
+			if(alias != NULL && cypher_ast_identifier_get_name(alias)[0] == '@') {
+				continue;
+			}
+			const char *identifier = cypher_ast_identifier_get_name(exp);
+			int len = strlen(identifier);
+			if(found_non_simple || alias != NULL) {
+				return false;
+			}
+			found_simple = true;
+		} else {
+			// check that the import does not make reference to an outer scope
+			// identifier. This is invalid:
+			// 'WITH 1 AS a CALL {WITH a + 1 AS b RETURN b} RETURN b'
+			if(found_simple ||
+			   !_ValidateSubqueryFirstWithClauseIdentifiers(exp)) {
+					return false;
+			}
+			found_non_simple = true;
+		}
+	}
+
+	// order by, predicates, limit and skips are not valid
+	if(cypher_ast_with_get_skip(with_clause)      != NULL ||
+		cypher_ast_with_get_limit(with_clause)     != NULL ||
+		cypher_ast_with_get_order_by(with_clause)  != NULL ||
+		cypher_ast_with_get_predicate(with_clause) != NULL) {
+
+		return false;
+	}
+
+	return true;
+}
+
+// validate a CALL {} (subquery) clause
+static VISITOR_STRATEGY _Validate_call_subquery
+(
+	const cypher_astnode_t *n,  // ast-node
+	bool start,                 // first traversal
+	ast_visitor *visitor        // visitor
+) {
+	validations_ctx *vctx = AST_Visitor_GetContext(visitor);
+
+	vctx->clause = cypher_astnode_type(n);
+
+	// create a query astnode with the body of the subquery as its body
+	cypher_astnode_t *body = cypher_ast_call_subquery_get_query(n);
+	uint nclauses = cypher_ast_query_nclauses(body);
+
+	// clone the bound vars context.
+	rax *in_env = raxClone(vctx->defined_identifiers);
+
+	// if there are no imports, set the env of bound-vars to the empty env
+	const cypher_astnode_t *first_clause = cypher_ast_query_get_clause(body, 0);
+	if(cypher_astnode_type(first_clause) !=
+	   CYPHER_AST_WITH) {
+		raxFree(vctx->defined_identifiers);
+		vctx->defined_identifiers = raxNew();
+	} else {
+		// validate that the with imports (if exist) are simple, i.e., 'WITH a'
+		if(!_ValidateCallInitialWith(first_clause, vctx)) {
+			raxFree(in_env);
+			ErrorCtx_SetError(
+				"WITH imports in CALL {} must consist of only simple references\
+ to outside variables");
+			return VISITOR_BREAK;
+		}
+	}
+
+	// visit the subquery clauses
+	bool last_is_union = false;
+	for(uint i = 0; i < nclauses; i++) {
+		const cypher_astnode_t *clause =
+			cypher_ast_query_get_clause(body, i);
+		cypher_astnode_type_t type = cypher_astnode_type(clause);
+
+		// if the current clause is a `UNION` clause, it has reset the bound
+		// vars env to the empty env. We compensate for that in case there is no
+		// initial `WITH` clause
+		if(last_is_union && type == CYPHER_AST_WITH) {
+			// set the env of bound-vars to the input env
+			raxFree(vctx->defined_identifiers);
+			vctx->defined_identifiers = raxClone(in_env);
+
+			// validate that the with imports (if exist) are simple, i.e.,
+			// 'WITH a'
+			if(!_ValidateCallInitialWith(clause, vctx)) {
+				raxFree(in_env);
+				ErrorCtx_SetError(
+					"WITH imports in CALL {} must consist of only simple \
+references to outside variables");
+				return VISITOR_BREAK;
+			}
+		}
+
+		AST_Visitor_visit(clause, visitor);
+		if(ErrorCtx_EncounteredError()) {
+			raxFree(in_env);
+			return VISITOR_BREAK;
+		}
+
+		if(type == CYPHER_AST_UNION) {
+			last_is_union = true;
+		} else if(type == CYPHER_AST_RETURN &&
+			cypher_ast_return_has_include_existing(clause)){
+				vctx->ignore_identifiers = true;
+				last_is_union = false;
+		} else {
+			last_is_union = false;
+		}
+	}
+
+	// free the temporary environment
+	raxFree(vctx->defined_identifiers);
+	vctx->defined_identifiers = in_env;
+
+	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(body,
+		nclauses-1);
+	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
+
+	if(is_returning) {
+		// merge projected aliases from in_env into vctx->defined_identifiers
+		// make sure no returned aliases are bound
+		// notice: this can be done only once for the last branch of a UNION
+		// since the returned aliases are always the same
+
+		const cypher_astnode_t *return_clause
+			= cypher_ast_query_get_clause(body, nclauses-1);
+
+		uint n_projections = cypher_ast_return_nprojections(return_clause);
+		for(uint i = 0; i < n_projections; i++) {
+			const cypher_astnode_t *proj =
+				cypher_ast_return_get_projection(return_clause, i);
+			const char *var_name;
+			const cypher_astnode_t *identifier =
+				cypher_ast_projection_get_alias(proj);
+			const cypher_astnode_t *exp =
+					cypher_ast_projection_get_expression(proj);
+			if(identifier) {
+				var_name = cypher_ast_identifier_get_name(identifier);
+				if(exp &&
+				   cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER &&
+				   cypher_ast_identifier_get_name(exp)[0] == '@') {
+					// this is an artificial projection, skip it
+					continue;
+				}
+			} else {
+				var_name = cypher_ast_identifier_get_name(exp);
+			}
+
+			if(!raxTryInsert(vctx->defined_identifiers,
+				(unsigned char *)var_name, strlen(var_name), NULL, NULL)) {
+					ErrorCtx_SetError(
+						"Variable `%s` already declared in outer scope",
+						var_name);
+					return VISITOR_BREAK;
+			}
+		}
+	}
+
+	// don't traverse children
+	return VISITOR_CONTINUE;
+}
+
+// returns true if the clause is an updating clause, false otherwise
+static bool _is_updating_clause
+(
+	const cypher_astnode_t *clause  // clause
+) {
+	cypher_astnode_type_t type = cypher_astnode_type(clause);
+
+	return type == CYPHER_AST_CREATE             ||
+	       type == CYPHER_AST_MERGE              ||
+	       type == CYPHER_AST_DELETE             ||
+	       type == CYPHER_AST_SET                ||
+	       type == CYPHER_AST_REMOVE             ||
+	       type == CYPHER_AST_FOREACH;
 }
 
 // validate a WITH clause
@@ -1686,10 +1934,10 @@ static VISITOR_STRATEGY _Validate_DELETE_Clause
 		// expecting an identifier or a function call
 		// identifiers and calls that don't resolve to a node, path or edge
 		// will raise an error at run-time
-		if(type != CYPHER_AST_IDENTIFIER &&
-				type != CYPHER_AST_APPLY_OPERATOR &&
-				type != CYPHER_AST_APPLY_ALL_OPERATOR &&
-				type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
+		if(type != CYPHER_AST_IDENTIFIER         &&
+		   type != CYPHER_AST_APPLY_OPERATOR     &&
+		   type != CYPHER_AST_APPLY_ALL_OPERATOR &&
+		   type != CYPHER_AST_SUBSCRIPT_OPERATOR) {
 			ErrorCtx_SetError("DELETE can only be called on nodes, paths and relationships");
 			return VISITOR_BREAK;
 		}
@@ -1945,7 +2193,7 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 			return VISITOR_BREAK;
 	}
 
-	if(!cypher_ast_return_has_include_existing(n)) {
+	if(num_return_projections > 1) {
 		// check for duplicate column names
 		rax           *rax          = raxNew();
 		const char   **columns      = AST_BuildReturnColumnNames(n);
@@ -2057,51 +2305,78 @@ static VISITOR_STRATEGY _Validate_index_creation
 }
 
 // A query must end in a RETURN clause, a procedure, or an updating clause
-// (CREATE, MERGE, DELETE, SET, REMOVE or FOREACH)
+// (CREATE, MERGE, DELETE, SET, REMOVE, FOREACH or CALL {})
 static AST_Validation _ValidateQueryTermination
 (
 	const AST *ast  // ast
 ) {
 	ASSERT(ast != NULL);
 
+	const cypher_astnode_t *root = ast->root;
 	uint clause_idx = 0;
 	const cypher_astnode_t *return_clause = NULL;
 	const cypher_astnode_t *following_clause = NULL;
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	uint clause_count = cypher_ast_query_nclauses(root);
 
-	// libcypher-parser does not enforce clause sequence order:
-	// queries such as 'RETURN CREATE' and 'RETURN RETURN' are considered
-	// valid by the parser
-	// make sure the only clause following RETURN is UNION
+	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(root,
+		clause_count - 1);
+	cypher_astnode_type_t type = cypher_astnode_type(last_clause);
+	if(type != CYPHER_AST_RETURN         &&
+	   type != CYPHER_AST_CREATE         &&
+	   type != CYPHER_AST_MERGE          &&
+	   type != CYPHER_AST_DELETE         &&
+	   type != CYPHER_AST_SET            &&
+	   type != CYPHER_AST_CALL           &&
+	   type != CYPHER_AST_CALL_SUBQUERY  &&
+	   type != CYPHER_AST_REMOVE         &&
+	   type != CYPHER_AST_FOREACH
+	  ) {
+			ErrorCtx_SetError("Query cannot conclude with %s (must be a RETURN \
+clause, an update clause, a procedure call or a non-returning subquery)",
+						cypher_astnode_typestr(type));
+		return AST_INVALID;
+	}
 
-	// get first instance of a RETURN clause
-	return_clause = AST_GetClause(ast, CYPHER_AST_RETURN, &clause_idx);
-	if(return_clause != NULL && clause_idx < clause_count - 1) {
-		// RETURN clause isn't the last clause
-		// the only clause which can follow a RETURN is the UNION clause
-		following_clause = AST_GetClauseByIdx(ast, clause_idx + 1);
-		if(cypher_astnode_type(following_clause) != CYPHER_AST_UNION) {
-			// unexpected clause following RETURN
-			ErrorCtx_SetError("Unexpected clause following RETURN");
+	// if the last clause is CALL {}, it must be non-returning
+	if(type == CYPHER_AST_CALL_SUBQUERY) {
+		cypher_astnode_t *query =
+			cypher_ast_call_subquery_get_query(last_clause);
+		if(cypher_astnode_type(cypher_ast_query_get_clause(query,
+				cypher_ast_query_nclauses(query)-1)) ==
+		   CYPHER_AST_RETURN) {
+			ErrorCtx_SetError("A query cannot conclude with a returning \
+subquery (must be a RETURN clause, an update clause, a procedure call or a \
+non-returning subquery)");
+
 			return AST_INVALID;
 		}
 	}
 
-	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
-	cypher_astnode_type_t type = cypher_astnode_type(last_clause);
-	if(type != CYPHER_AST_RETURN   &&
-	   type != CYPHER_AST_CREATE   &&
-	   type != CYPHER_AST_MERGE    &&
-	   type != CYPHER_AST_DELETE   &&
-	   type != CYPHER_AST_SET      &&
-	   type != CYPHER_AST_CALL     &&
-	   type != CYPHER_AST_REMOVE   &&
-	   type != CYPHER_AST_FOREACH
-	  ) {
-		ErrorCtx_SetError("Query cannot conclude with %s (must be RETURN or an update clause)",
-						  cypher_astnode_typestr(type));
-		return AST_INVALID;
+	// validate that `UNION` is the only clause following a `RETURN` clause, and
+	// termination of embedded call {} clauses
+	bool last_was_return = false;
+	for(uint i = 0; i < clause_count; i++) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
+		cypher_astnode_type_t type = cypher_astnode_type(clause);
+		if(type != CYPHER_AST_UNION && last_was_return) {
+			// unexpected clause following RETURN
+			ErrorCtx_SetError("Unexpected clause following RETURN");
+			return AST_INVALID;
+		} else if(type == CYPHER_AST_RETURN) {
+			last_was_return = true;
+		} else if(type == CYPHER_AST_CALL_SUBQUERY) {
+			AST subquery_ast = {
+				.root = cypher_ast_call_subquery_get_query(clause)
+			};
+			if(_ValidateQueryTermination(&subquery_ast) != AST_VALID) {
+				return AST_INVALID;
+			}
+			last_was_return = false;
+		} else {
+			last_was_return = false;
+		}
 	}
+
 	return AST_VALID;
 }
 
@@ -2160,27 +2435,25 @@ static AST_Validation _ValidateClauseOrder
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
-		encountered_updating_clause = (encountered_updating_clause   ||
-									  (type == CYPHER_AST_CREATE     ||
-									   type == CYPHER_AST_MERGE      ||
-									   type == CYPHER_AST_DELETE     ||
-									   type == CYPHER_AST_SET        ||
-									   type == CYPHER_AST_REMOVE     ||
-									   type == CYPHER_AST_FOREACH));
-		if(encountered_updating_clause && (type == CYPHER_AST_MATCH  ||
-										   type == CYPHER_AST_UNWIND ||
-										   type == CYPHER_AST_CALL)) {
-			ErrorCtx_SetError("A WITH clause is required to introduce %s after an updating clause",
+		if(encountered_updating_clause && (type == CYPHER_AST_MATCH          ||
+										   type == CYPHER_AST_UNWIND         ||
+										   type == CYPHER_AST_CALL           ||
+										   type == CYPHER_AST_CALL_SUBQUERY)) {
+			ErrorCtx_SetError("A WITH clause is required to introduce %s after an updating clause.",
 							  cypher_astnode_typestr(type));
 			return AST_INVALID;
 		}
+		encountered_updating_clause = (encountered_updating_clause ||
+									   _is_updating_clause(clause));
 
 		if(type == CYPHER_AST_MATCH) {
-			// Check whether this match is optional.
+			// Check whether this match is optional
 			bool current_clause_is_optional = cypher_ast_match_is_optional(clause);
-			// If the current clause is non-optional but we have already encountered an optional match, emit an error.
+			// If the current clause is non-optional but we have already
+			// encountered an optional match, emit an error
 			if(!current_clause_is_optional && encountered_optional_match) {
-				ErrorCtx_SetError("A WITH clause is required to introduce a MATCH clause after an OPTIONAL MATCH");
+				ErrorCtx_SetError("A WITH clause is required to introduce a \
+MATCH clause after an OPTIONAL MATCH.");
 				return AST_INVALID;
 			}
 			encountered_optional_match |= current_clause_is_optional;
@@ -2189,6 +2462,15 @@ static AST_Validation _ValidateClauseOrder
 		if(type == CYPHER_AST_WITH) {
 			encountered_optional_match = false;
 			encountered_updating_clause = false;
+		}
+
+		if(type == CYPHER_AST_CALL_SUBQUERY) {
+			AST subquery_ast = {
+				.root = cypher_ast_call_subquery_get_query(clause)
+			};
+			if(_ValidateClauseOrder(&subquery_ast) != AST_VALID) {
+				return AST_INVALID;
+			}
 		}
 	}
 
@@ -2229,10 +2511,12 @@ static AST_Validation _ValidateScopes
 	AST *ast  // ast
 ) {
 	// create a context for the traversal
-	validations_ctx ctx;
-	ctx.union_all = NOT_DEFINED;
-	ctx.defined_identifiers = raxNew();
-	ctx.intermediate_identifiers = raxNew();
+	validations_ctx ctx = {
+		.union_all = NOT_DEFINED,
+		.defined_identifiers = raxNew(),
+		.ignore_identifiers = false,
+		.intermediate_identifiers = raxNew()
+	};
 
 	// create a visitor
 	ast_visitor visitor = {&ctx, validations_mapping};
@@ -2252,7 +2536,7 @@ bool AST_ValidationsMappingInit(void) {
 	// create a mapping for the validations
 
 	// set default entries
-	for(uint i = 0; i < 114; i++) {
+	for(uint i = 0; i < 115; i++) {
 		validations_mapping[i] = _default_visit;
 	}
 
@@ -2286,6 +2570,7 @@ bool AST_ValidationsMappingInit(void) {
 	validations_mapping[CYPHER_AST_SET_PROPERTY]               = _Validate_set_property;
 	validations_mapping[CYPHER_AST_NODE_PATTERN]               = _Validate_node_pattern;
 	validations_mapping[CYPHER_AST_PATTERN_PATH]               = _Validate_pattern_path;
+	validations_mapping[CYPHER_AST_CALL_SUBQUERY]              = _Validate_call_subquery;
 	validations_mapping[CYPHER_AST_SHORTEST_PATH]              = _Validate_shortest_path;
 	validations_mapping[CYPHER_AST_APPLY_OPERATOR]             = _Validate_apply_operator;
 	validations_mapping[CYPHER_AST_APPLY_ALL_OPERATOR]         = _Validate_apply_all_operator;
@@ -2417,7 +2702,7 @@ AST_Validation AST_Validate_Query
 	}
 
 	if(!_ValidateShortestPaths(body)) {
-		ErrorCtx_SetError("RedisGraph currently only supports shortestPath in WITH or RETURN clauses");
+		ErrorCtx_SetError("RedisGraph currently only supports shortestPaths in WITH or RETURN clauses");
 		return AST_INVALID;
 	}
 
@@ -2498,9 +2783,11 @@ AST_Validation AST_Validate_QueryParams
 	}
 
 	// create a context for the traversal
-	validations_ctx ctx;
-	ctx.union_all = NOT_DEFINED;
-	ctx.defined_identifiers = raxNew();
+	validations_ctx ctx = {
+		.union_all = NOT_DEFINED,
+		.defined_identifiers = raxNew(),
+		.ignore_identifiers = false
+	};
 
 	// create a visitor
 	ast_visitor visitor = {&ctx, validations_mapping};

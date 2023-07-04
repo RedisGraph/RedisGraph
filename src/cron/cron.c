@@ -1,7 +1,14 @@
+/*
+ * Copyright Redis Ltd. 2018 - present
+ * Licensed under your choice of the Redis Source Available License 2.0 (RSALv2) or
+ * the Server Side Public License v1 (SSPLv1).
+ */
+
+#include "RG.h"
 #include "cron.h"
-#include "heap.h"
-#include "rmalloc.h"
-#include "../RG.h"
+#include "util/heap.h"
+#include "util/rmalloc.h"
+
 #include <time.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -16,18 +23,19 @@
 typedef struct {
 	struct timespec due;    // absolute time for when task should run
 	CronTaskCB cb;          // callback to call when task is due
+	CronTaskFree free;      // [optional] private data free function
 	void *pdata;            // [optional] private data passed to callback
 } CRON_TASK;
 
 // CRON object
 typedef struct {
-	bool alive;                   // indicates cron is active
-	heap_t *tasks;                // min heap of cron tasks
-	CRON_TASK * volatile current_task;      // current task being executed
-	pthread_mutex_t mutex;        // mutex control access to tasks
-	pthread_mutex_t condv_mutex;  // mutex control access to condv
-	pthread_cond_t condv;         // conditional variable
-	pthread_t thread;             // thread running cron main loop
+	bool alive;                        // indicates cron is active
+	heap_t *tasks;                     // min heap of cron tasks
+	CRON_TASK* volatile current_task;  // current task being executed
+	pthread_mutex_t mutex;             // mutex control access to tasks
+	pthread_mutex_t condv_mutex;       // mutex control access to condv
+	pthread_cond_t condv;              // conditional variable
+	pthread_t thread;                  // thread running cron main loop
 } CRON;
 
 // single static CRON instance, initialized at CRON_Start
@@ -116,7 +124,7 @@ static bool CRON_RemoveTask
 
 static bool CRON_RemoveCurrentTask
 (
-	const CRON_TASK *t
+	const CRON_TASK *t  // task to remove
 ) {
 	ASSERT(t != NULL);
 
@@ -150,7 +158,13 @@ static void CRON_FreeTask
 (
 	CRON_TASK *t
 ) {
-	ASSERT(t);
+	ASSERT(t != NULL);
+
+	// free task private data
+	if(t->pdata != NULL && t->free != NULL) {
+		t->free(t->pdata);
+	}
+
 	rm_free(t);
 }
 
@@ -198,30 +212,38 @@ static void *Cron_Run
 // User facing API
 //------------------------------------------------------------------------------
 
-void Cron_Start(void) {
+bool Cron_Start(void) {
 	ASSERT(cron == NULL);
 
 	cron = rm_malloc(sizeof(CRON));
+
 	cron->alive = true;
 	cron->tasks = Heap_new(CRON_JobCmp, NULL);
-	pthread_cond_init(&cron->condv, NULL);
-	pthread_mutex_init(&cron->mutex, NULL);
-	pthread_mutex_init(&cron->condv_mutex, NULL);
-	pthread_create(&cron->thread, NULL, Cron_Run, NULL);
+
+	bool res = true;
+	res &= pthread_cond_init(&cron->condv, NULL)               == 0;
+	res &= pthread_mutex_init(&cron->mutex, NULL)              == 0;
+	res &= pthread_mutex_init(&cron->condv_mutex, NULL)        == 0;
+	res &= pthread_create(&cron->thread, NULL, Cron_Run, NULL) == 0;
+
+	return res;
 }
 
+// stops CRON
+// clears all tasks and waits for thread to terminate
 void Cron_Stop(void) {
 	ASSERT(cron != NULL);
 
-	// Stop cron main loop
+	// stop cron main loop
 	cron->alive = false;
 	CRON_WakeUp();
 
-	// Wait for thread to terminate
+	// wait for thread to terminate
 	pthread_join(cron->thread, NULL);
 
 	clear_tasks();
 
+	// free resources
 	Heap_free(cron->tasks);
 	pthread_mutex_destroy(&cron->mutex);
 	pthread_mutex_destroy(&cron->condv_mutex);
@@ -230,29 +252,35 @@ void Cron_Stop(void) {
 	cron = NULL;
 }
 
+// create a new CRON task
 CronTaskHandle Cron_AddTask
 (
-	uint when,
-	CronTaskCB cb,
-	void *pdata
+	uint when,          // number of miliseconds until task invocation
+	CronTaskCB work,    // callback to call when task is due
+	CronTaskFree free,  // [optional] task private data free function
+	void *pdata         // [optional] private data to pass to callback
 ) {
-	ASSERT(cb   != NULL);
-	ASSERT(cron != NULL);
+	ASSERT(work   != NULL);
+	ASSERT(cron   != NULL);
+	ASSERT(!(free != NULL && pdata == NULL));
 
 	CRON_TASK *task = rm_malloc(sizeof(CRON_TASK));
 
-	task->cb    = cb;
-	task->pdata = pdata;
+	task->cb    = work;
 	task->due   = due_in_ms(when);
+	task->free  = free;
+	task->pdata = pdata;
 
 	CRON_InsertTask(task);
 
 	return (uintptr_t)task;
 }
 
-void Cron_AbortTask
+// tries to abort given task
+// in case task is currently being executed, it will wait for it to finish
+bool Cron_AbortTask
 (
-	CronTaskHandle t
+	CronTaskHandle t  // task to abort
 ) {
 	ASSERT(cron != NULL);
 
@@ -260,12 +288,17 @@ void Cron_AbortTask
 
 	// try remove the task
 	if(!CRON_RemoveTask(task)) {
-		// task is currently being performed, wait for it to finish
+		// in case task is currently being performed, wait for it to finish
 		while (cron->current_task == task) { }
-		// task performed
-		return;
+
+		// task wan't aborted
+		return false;
 	}
 	
 	// free task
 	CRON_FreeTask(task);
+
+	// managed to abort task
+	return true;
 }
+

@@ -3,11 +3,11 @@ from index_utils import *
 
 class Constraint():
     def __init__(self, ct, et, lbl, attrs, status):
-        self.lbl = lbl
-        self.s = status
-        self.et = et
+        self.s     = status
+        self.ct    = ct
+        self.et    = et
+        self.lbl   = lbl
         self.attrs = attrs
-        self.ct = ct
 
     def __eq__(self, other):
         return (self.lbl   == other.lbl   and

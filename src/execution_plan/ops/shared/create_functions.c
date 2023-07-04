@@ -145,26 +145,17 @@ static void _CommitEdges
 	ASSERT(Graph_GetMatrixPolicy(g) == SYNC_POLICY_NOP);
 
 	for(int i = 0; i < edge_count; i++) {
-		NodeID srcNodeID;
-		NodeID destNodeID;
 		e = pending->created_edges[i];
+		NodeID src_id  = Edge_GetSrcNodeID(e);
+		NodeID dest_id = Edge_GetDestNodeID(e);
 		AttributeSet attr = pending->edge_attributes[i];
-
-		// nodes which already existed prior to this query would
-		// have their ID set under e->srcNodeID and e->destNodeID
-		// Nodes which are created as part of this query would be
-		// saved under edge src/dest pointer
-		if(e->srcNodeID != INVALID_ENTITY_ID) srcNodeID = e->srcNodeID;
-		else srcNodeID = ENTITY_GET_ID(Edge_GetSrcNode(e));
-		if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
-		else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
 		Schema *s = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
 		// all schemas have been created in the edge blueprint loop or earlier
 		ASSERT(s != NULL);
 		int relation_id = Schema_GetID(s);
 
-		CreateEdge(gc, e, srcNodeID, destNodeID, relation_id, attr, true);
+		CreateEdge(gc, e, src_id, dest_id, relation_id, attr, true);
 
 		//----------------------------------------------------------------------
 		// enforce constraints

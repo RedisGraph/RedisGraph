@@ -44,6 +44,7 @@ typedef struct Graph Graph;
 typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
 
 struct Graph {
+	uint reserved_node_count;           // number of nodes not commited yet
 	DataBlock *nodes;                   // graph nodes stored in blocks
 	DataBlock *edges;                   // graph edges stored in blocks
 	RG_Matrix adjacency_matrix;         // adjacency matrix, holds all graph connections
@@ -184,6 +185,17 @@ void Graph_AllocateEdges
 	size_t n                // number of edges to create
 );
 
+void Graph_ResetReservedNode
+(
+	Graph *g
+);
+
+void Graph_ReserveNode
+(
+	Graph *g,               // graph for which nodes will be added
+	Node *n                 // node to reserve
+);
+
 // Create a single node and labels it accordingly.
 // Return newly created node.
 void Graph_CreateNode
@@ -219,15 +231,6 @@ void Graph_DeleteEdges
 	Graph *g,
 	Edge *edges,
 	uint64_t n
-);
-
-// update entity attribute with new value
-int Graph_UpdateEntity
-(
-	GraphEntity *ge,             // entity yo update
-	Attribute_ID attr_id,        // attribute to update
-	SIValue value,               // value to be set
-	GraphEntityType entity_type  // type of the entity node/edge
 );
 
 // returns true if the given entity has been deleted

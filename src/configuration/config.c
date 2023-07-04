@@ -55,34 +55,45 @@
 // size of node creation buffer
 #define NODE_CREATION_BUFFER "NODE_CREATION_BUFFER"
 
+// The GRAPH.INFO command
+#define CMD_INFO "CMD_INFO"
+
+// The GRAPH.INFO QUERIES maximum element count
+#define CMD_INFO_MAX_QUERIES_COUNT_OPTION_NAME "MAX_INFO_QUERIES"
+
 // effects replication threshold
 #define EFFECTS_THRESHOLD "EFFECTS_THRESHOLD"
+
 
 //------------------------------------------------------------------------------
 // Configuration defaults
 //------------------------------------------------------------------------------
 
-#define CACHE_SIZE_DEFAULT            25
-#define QUEUED_QUERIES_UNLIMITED      UINT64_MAX
-#define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
+#define CACHE_SIZE_DEFAULT                 25
+#define QUEUED_QUERIES_UNLIMITED           UINT64_MAX
+#define VKEY_MAX_ENTITY_COUNT_DEFAULT      100000
+#define CMD_INFO_DEFAULT                   true
+#define CMD_INFO_QUERIES_MAX_COUNT_DEFAULT 1000
 
 // configuration object
 typedef struct {
-	uint64_t timeout;                   // The timeout for each query in milliseconds.
-	uint64_t timeout_max;               // max timeout that can be enforced
-	uint64_t timeout_default;           // default timeout for read and write queries
-	bool async_delete;                  // If true, graph deletion is done asynchronously.
-	uint64_t cache_size;                // The cache size for each thread, per graph.
-	uint thread_pool_size;              // Thread count for thread pool.
-	uint omp_thread_count;              // Maximum number of OpenMP threads.
-	uint64_t resultset_size;            // resultset maximum size, UINT64_MAX unlimited
-	uint64_t vkey_entity_count;         // The limit of number of entities encoded at once for each RDB key.
-	uint64_t max_queued_queries;        // max number of queued queries
-	int64_t query_mem_capacity;         // Max mem(bytes) that query/thread can utilize at any given time
-	uint64_t node_creation_buffer;      // Number of extra node creations to buffer as margin in matrices
-	int64_t delta_max_pending_changes;  // number of pending changed befor RG_Matrix flushed
-	uint64_t effects_threshold;         // replicate via effects when runtime exceeds threshold
-	Config_on_change cb;                // callback function which being called when config param changed
+	uint64_t timeout;                  // The timeout for each query in milliseconds.
+	uint64_t timeout_max;              // max timeout that can be enforced
+	uint64_t timeout_default;          // default timeout for read and write queries
+	bool async_delete;                 // If true, graph deletion is done asynchronously.
+	uint64_t cache_size;               // The cache size for each thread, per graph.
+	uint thread_pool_size;             // Thread count for thread pool.
+	uint omp_thread_count;             // Maximum number of OpenMP threads.
+	uint64_t resultset_size;           // resultset maximum size, UINT64_MAX unlimited
+	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
+	uint64_t max_queued_queries;       // max number of queued queries
+	int64_t query_mem_capacity;        // Max mem(bytes) that query/thread can utilize at any given time
+	uint64_t node_creation_buffer;     // Number of extra node creations to buffer as margin in matrices
+	int64_t delta_max_pending_changes; // number of pending changed befor RG_Matrix flushed
+	Config_on_change cb;               // callback function which being called when config param changed
+	bool cmd_info_on;                  // If true, the GRAPH.INFO is enabled.
+	uint64_t effects_threshold;        // replicate via effects when runtime exceeds threshold
+	uint32_t max_info_queries_count;   // Maximum number of query info elements.
 } RG_Config;
 
 RG_Config config; // global module configuration
@@ -381,6 +392,36 @@ static uint64_t Config_node_creation_buffer_get(void) {
 }
 
 //------------------------------------------------------------------------------
+// cmd info
+//------------------------------------------------------------------------------
+
+static bool Config_cmd_info_get(void) {
+	return config.cmd_info_on;
+}
+
+static void Config_cmd_info_set
+(
+	const bool cmd_info_on
+) {
+	config.cmd_info_on = cmd_info_on;
+}
+
+static uint32_t Config_cmd_info_max_queries_get(void) {
+	return config.max_info_queries_count;
+}
+
+static void Config_cmd_info_max_queries_set
+(
+	const uint32_t count
+) {
+	if (count > CMD_INFO_QUERIES_MAX_COUNT_DEFAULT) {
+		config.max_info_queries_count = CMD_INFO_QUERIES_MAX_COUNT_DEFAULT;
+	} else {
+		config.max_info_queries_count = count;
+	}
+}
+
+//------------------------------------------------------------------------------
 // effects threshold
 //------------------------------------------------------------------------------
 
@@ -428,6 +469,12 @@ bool Config_Contains_field
 		f = Config_DELTA_MAX_PENDING_CHANGES;
 	} else if(!(strcasecmp(field_str, NODE_CREATION_BUFFER))) {
 		f = Config_NODE_CREATION_BUFFER;
+	} else if(!(strcasecmp(field_str, ASYNC_DELETE))) {
+		f = Config_ASYNC_DELETE;
+	} else if(!(strcasecmp(field_str, CMD_INFO))) {
+		f = Config_CMD_INFO;
+	} else if(!(strcasecmp(field_str, CMD_INFO_MAX_QUERIES_COUNT_OPTION_NAME))) {
+		f = Config_CMD_INFO_MAX_QUERY_COUNT;
 	} else if (!(strcasecmp(field_str, EFFECTS_THRESHOLD))) {
 		f = Config_EFFECTS_THRESHOLD;
 	} else {
@@ -496,6 +543,14 @@ const char *Config_Field_name
 			name = NODE_CREATION_BUFFER;
 			break;
 
+		case Config_CMD_INFO:
+			name = CMD_INFO;
+			break;
+
+		case Config_CMD_INFO_MAX_QUERY_COUNT:
+			name = CMD_INFO_MAX_QUERIES_COUNT_OPTION_NAME;
+      break;
+
 		case Config_EFFECTS_THRESHOLD:
 			name = EFFECTS_THRESHOLD;
 			break;
@@ -558,6 +613,12 @@ static void _Config_SetToDefaults(void) {
 
 	// the amount of empty space to reserve for node creations in matrices
 	config.node_creation_buffer = NODE_CREATION_BUFFER_DEFAULT;
+
+	// GRAPH.INFO command on/off.
+	config.cmd_info_on = CMD_INFO_DEFAULT;
+
+	// GRAPH.INFO maximum queries count.
+	config.max_info_queries_count = CMD_INFO_QUERIES_MAX_COUNT_DEFAULT;
 
 	// replicate effects if avg change time μs > effects_threshold μs
 	config.effects_threshold = 300 ;
@@ -827,6 +888,34 @@ bool Config_Option_get
 		break;
 
 		//----------------------------------------------------------------------
+		// cmd info
+		//----------------------------------------------------------------------
+
+		case Config_CMD_INFO: {
+			va_start(ap, field);
+			bool *cmd_info_on = va_arg(ap, bool *);
+			va_end(ap);
+
+			ASSERT(cmd_info_on != NULL);
+			(*cmd_info_on) = Config_cmd_info_get();
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// cmd info maximum queries count
+		//----------------------------------------------------------------------
+
+		case Config_CMD_INFO_MAX_QUERY_COUNT: {
+			va_start(ap, field);
+			uint32_t *count = va_arg(ap, uint32_t *);
+			va_end(ap);
+
+			ASSERT(count != NULL);
+			(*count) = Config_cmd_info_max_queries_get();
+      }
+      break;
+
+		//----------------------------------------------------------------------
 		// effects threshold
 		//----------------------------------------------------------------------
 
@@ -1042,6 +1131,32 @@ bool Config_Option_set
 		break;
 
 		//----------------------------------------------------------------------
+		// cmd info
+		//----------------------------------------------------------------------
+
+		case Config_CMD_INFO: {
+			bool cmd_info_on = false;
+			if (!_Config_ParseYesNo(val, &cmd_info_on)) {
+				return false;
+			}
+
+			Config_cmd_info_set(cmd_info_on);
+		}
+		break;
+
+		//----------------------------------------------------------------------
+		// cmd info max queries count
+		//----------------------------------------------------------------------
+
+		case Config_CMD_INFO_MAX_QUERY_COUNT: {
+			long long count = 0;
+			if (!_Config_ParseNonNegativeInteger(val, &count)) return false;
+
+			// A downcast from <long long> to <uint32_t>.
+			Config_cmd_info_max_queries_set(count);
+      }
+  		break;
+
 		// effects threshold
 		//----------------------------------------------------------------------
 				

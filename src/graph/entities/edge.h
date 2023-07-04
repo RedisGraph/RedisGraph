@@ -14,17 +14,16 @@ typedef int RelationID;
 
 #define EDGE_LENGTH_INF UINT_MAX - 2
 
+
 // instantiate a new edge with relation data
 #define GE_NEW_LABELED_EDGE(r_str, r_id)    \
 (Edge) {                                    \
-	.attributes = &NULL_ATTRIBUTE_SET,      \
-	.id = INVALID_ENTITY_ID,                \
+	.attributes   = &NULL_ATTRIBUTE_SET,    \
+	.id           = INVALID_ENTITY_ID,      \
 	.relationship = (r_str),                \
-	.relationID = (r_id),                   \
-	.src = NULL,                            \
-	.dest = NULL,                           \
-	.srcNodeID = INVALID_ENTITY_ID,         \
-	.destNodeID = INVALID_ENTITY_ID         \
+	.relationID   = (r_id),                 \
+	.src_id       = INVALID_ENTITY_ID,      \
+	.dest_id      = INVALID_ENTITY_ID       \
 }
 
 // resolves to relationship-type ID of the given edge
@@ -37,17 +36,13 @@ __extension__({                                                                 
 	(e)->relationID;                                                                       \
 })
 
-/* TODO: note it is possible to get into an inconsistency
- * if we set src and srcNodeID to different nodes. */
 struct Edge {
 	AttributeSet *attributes;   // MUST be the first member
 	EntityID id;                // Unique id, MUST be the second member
 	const char *relationship;   // Label attached to edge
 	RelationID relationID;      // Relation ID
-	Node *src;                  // Pointer to source node
-	Node *dest;                 // Pointer to destination node
-	NodeID srcNodeID;           // Source node ID
-	NodeID destNodeID;          // Destination node ID
+	NodeID src_id;              // Source node ID
+	NodeID dest_id;             // Destination node ID
 };
 
 typedef struct Edge Edge;
@@ -70,30 +65,18 @@ int Edge_GetRelationID
 	const Edge *edge
 );
 
-// retrieve edge source node
-Node *Edge_GetSrcNode
-(
-	Edge *e
-);
-
-// retrieve edge destination node
-Node *Edge_GetDestNode
-(
-	Edge *e
-);
-
 // sets edge source node
-void Edge_SetSrcNode
+void Edge_SetSrcNodeID
 (
 	Edge *e,
-	Node *src
+	NodeID id
 );
 
 // sets edge destination node
-void Edge_SetDestNode
+void Edge_SetDestNodeID
 (
 	Edge *e,
-	Node *dest
+	NodeID id
 );
 
 // sets edge relation type

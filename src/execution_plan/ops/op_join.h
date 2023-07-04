@@ -13,6 +13,9 @@ typedef struct {
 	OpBase op;
 	OpBase *stream;          // Current stream to pull from.
 	int streamIdx;           // Current stream index.
+	bool update_column_map;  // Update column map.
 } OpJoin;
 
 OpBase *NewJoinOp(const ExecutionPlan *plan);
+
+bool JoinGetUpdateColumnMap(const OpBase *op);

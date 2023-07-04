@@ -12,10 +12,10 @@
 #include "../../util/rmalloc.h"
 
 // forward declarations
+static void AggregateFree(OpBase *opBase);
 static Record AggregateConsume(OpBase *opBase);
 static OpResult AggregateReset(OpBase *opBase);
 static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase);
-static void AggregateFree(OpBase *opBase);
 
 // fake hash function
 // hash of key is simply key
@@ -368,6 +368,33 @@ static OpBase *AggregateClone
 	return NewAggregateOp(plan, exps);
 }
 
+// bind the Aggregate operation to the execution plan
+void AggregateBindToPlan
+(
+	OpBase *opBase,            // op to bind
+	const ExecutionPlan *plan  // plan to bind the op to
+) {
+	OpAggregate *op = (OpAggregate *)opBase;
+	opBase->plan = plan;
+
+	// introduce the projected aliases to the plan record-mapping, and reset the
+	// record offsets to the correct indexes
+	array_clear(op->record_offsets);
+
+	for(uint i = 0; i < op->key_count; i ++) {
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		int record_idx = OpBase_Modifies((OpBase *)op, op->key_exps[i]->resolved_name);
+		array_append(op->record_offsets, record_idx);
+	}
+	for(uint i = 0; i < op->aggregate_count; i++) {
+		// store the index of each aggregating expression
+		int record_idx = OpBase_Modifies((OpBase *)op,
+				op->aggregate_exps[i]->resolved_name);
+		array_append(op->record_offsets, record_idx);
+	}
+}
+
 static void AggregateFree
 (
 	OpBase *opBase
@@ -408,4 +435,3 @@ static void AggregateFree
 		op->record_offsets = NULL;
 	}
 }
-
