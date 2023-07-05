@@ -126,10 +126,12 @@ class testIndexDeletionFlow():
         g = Graph(self.env.getConnection(), GRAPH_ID)
 
         # create data
-        """
-        UNWIND range(1, 1000) AS x
-        CREATE (:X {uid: toString(x)})-[:R]->(y:Y {v: x})
-        """
+        g.query(
+            """
+            UNWIND range(1, 1000) AS x
+            CREATE (:X {uid: toString(x)})-[:R]->(y:Y {v: x})
+            """
+        )
 
         # create an index
         create_node_exact_match_index(g, 'X', 'uid', sync=True)
