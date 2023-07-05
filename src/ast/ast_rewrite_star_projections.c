@@ -95,6 +95,7 @@ static void replace_clause
 	// e.g.
 	// MATCH () RETURN *
 	// MATCH () WITH * RETURN *
+	// CALL db.labels() RETURN *
 	if(nprojections == 0) {
 		if(t == CYPHER_AST_RETURN) {
 			// error if this is a RETURN clause with no aliases
@@ -331,29 +332,21 @@ bool AST_RewriteStarProjections
 		} else if(type == CYPHER_AST_CALL) {
 			collect_call_projections(clause, identifiers);
 		} else if(type == CYPHER_AST_WITH) {
-
 			if(cypher_ast_with_has_include_existing(clause)) {
-
 				// clause contains a star projection, replace it
 				replace_clause((cypher_astnode_t *)root,
 					(cypher_astnode_t *)clause, scope_start, i, identifiers);
-
-				// update identifiers after replacing the projection
-				const cypher_astnode_t *newclause =	cypher_ast_query_get_clause(root, i);
-				raxFree(identifiers);
-				identifiers = raxNew();
-				collect_with_projections(newclause, identifiers);
-
+				clause = cypher_ast_query_get_clause(root, i);
 				rewritten = true;
-			} else {
-				raxFree(identifiers);
-				identifiers = raxNew();
-				collect_with_projections(clause, identifiers);
 			}
+			// update new scope identifiers
+			raxFree(identifiers);
+			identifiers = raxNew();
+			collect_with_projections(clause, identifiers);
+			// update scope start
+			scope_start = i;
 		} else if(type == CYPHER_AST_RETURN) {
-
 			if(cypher_ast_return_has_include_existing(clause)) {
-
 				// clause contains a star projection, replace it
 				replace_clause((cypher_astnode_t *)root,
 					(cypher_astnode_t *)clause, scope_start, i, identifiers);
@@ -364,6 +357,8 @@ bool AST_RewriteStarProjections
 			raxFree(identifiers);
 			identifiers = raxNew();
 			collect_return_projections(clause, identifiers);
+			// update scope start
+			scope_start = i;
 		}
 	}
 	raxFree(identifiers);
