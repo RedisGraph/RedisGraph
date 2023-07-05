@@ -352,14 +352,6 @@ void collect_call_projections(
 ) {
 	uint yield_count = cypher_ast_call_nprojections(call_clause);
 
-	if(yield_count == 0) {
-		// error if this is a RETURN clause with no aliases
-		// e.g.
-		// CALL db.indexes() RETURN *
-		ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope (CALL_PROJECTION)");
-		return;
-	}
-
 	for(uint i = 0; i < yield_count; i ++) {
 		const cypher_astnode_t *projection = cypher_ast_call_get_projection(call_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
