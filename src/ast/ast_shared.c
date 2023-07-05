@@ -231,7 +231,7 @@ void UpdateCtx_Free
 	rm_free(ctx);
 }
 
-static void _collect_aliases_in_path
+void collect_aliases_in_path
 (
 	const cypher_astnode_t *path,
 	rax *identifiers
@@ -279,19 +279,19 @@ static void _collect_aliases_in_path
 	}
 }
 
-static void _collect_aliases_in_pattern
+void collect_aliases_in_pattern
 (
 	const cypher_astnode_t *pattern,
 	rax *identifiers
 ) {
 	uint path_count = cypher_ast_pattern_npaths(pattern);
 	for(uint i = 0; i < path_count; i ++) {
-		_collect_aliases_in_path(cypher_ast_pattern_get_path(pattern, i),
+		collect_aliases_in_path(cypher_ast_pattern_get_path(pattern, i),
 			identifiers);
 	}
 }
 
-static void _collect_with_projections
+void collect_with_projections
 (
 	const cypher_astnode_t *with_clause,
 	rax *identifiers
@@ -318,7 +318,35 @@ static void _collect_with_projections
 	}
 }
 
-static void _collect_call_projections(
+void collect_return_projections
+(
+	const cypher_astnode_t *return_clause,
+	rax *identifiers
+) {
+	uint projection_count = cypher_ast_return_nprojections(return_clause);
+	for(uint i = 0; i < projection_count; i ++) {
+		const cypher_astnode_t *projection =
+			cypher_ast_return_get_projection(return_clause, i);
+		const cypher_astnode_t *identifier_node =
+			cypher_ast_projection_get_alias(projection);
+		if(identifier_node == NULL) {
+			// the projection was not aliased
+			// so the projection itself must be an identifier
+			identifier_node = cypher_ast_projection_get_expression(projection);
+			ASSERT(cypher_astnode_type(identifier_node) == CYPHER_AST_IDENTIFIER);
+		} else {
+			// TODO: ??
+			// do not include empty projections, which may have been made to
+			// handle the MATCH () WITH * case
+			if(!strcmp(cypher_ast_identifier_get_name(identifier_node), "")) continue;
+		}
+		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
+		raxTryInsert(identifiers, (unsigned char *)identifier,
+			strlen(identifier), (void *)identifier_node, NULL);
+	}
+}
+
+void collect_call_projections(
 	const cypher_astnode_t *call_clause,
 	rax *identifiers
 ) {
@@ -328,7 +356,7 @@ static void _collect_call_projections(
 		// error if this is a RETURN clause with no aliases
 		// e.g.
 		// CALL db.indexes() RETURN *
-		ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
+		ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope (CALL_PROJECTION)");
 		return;
 	}
 
@@ -346,7 +374,7 @@ static void _collect_call_projections(
 }
 
 // collect aliases from a CALL {} clause
-static void _collect_call_subquery_projections
+void collect_call_subquery_projections
 (
 	const cypher_astnode_t *clause,
 	rax *identifiers
@@ -407,22 +435,22 @@ void collect_aliases_in_scope
 		if(type == CYPHER_AST_WITH) {
 			// the WITH clause contains either
 			// aliases or its own STAR projection
-			_collect_with_projections(clause, identifiers);
+			collect_with_projections(clause, identifiers);
 		} else if(type == CYPHER_AST_MATCH) {
 			// the MATCH clause contains one pattern of N paths
 			const cypher_astnode_t *pattern =
 				cypher_ast_match_get_pattern(clause);
-			_collect_aliases_in_pattern(pattern, identifiers);
+			collect_aliases_in_pattern(pattern, identifiers);
 		} else if(type == CYPHER_AST_CREATE) {
 			// the CREATE clause contains one pattern of N paths
 			const cypher_astnode_t *pattern =
 				cypher_ast_create_get_pattern(clause);
-			_collect_aliases_in_pattern(pattern, identifiers);
+			collect_aliases_in_pattern(pattern, identifiers);
 		} else if(type == CYPHER_AST_MERGE) {
 			// the MERGE clause contains one path
 			const cypher_astnode_t *path =
 				cypher_ast_merge_get_pattern_path(clause);
-			_collect_aliases_in_path(path, identifiers);
+			collect_aliases_in_path(path, identifiers);
 		} else if(type == CYPHER_AST_UNWIND) {
 			// the UNWIND clause introduces one alias
 			const cypher_astnode_t *unwind_alias =
@@ -432,9 +460,9 @@ void collect_aliases_in_scope
 			raxTryInsert(identifiers, (unsigned char *)identifier,
 				strlen(identifier), (void *)unwind_alias, NULL);
 		} else if(type == CYPHER_AST_CALL) {
-			_collect_call_projections(clause, identifiers);
+			collect_call_projections(clause, identifiers);
 		} else if(type == CYPHER_AST_CALL_SUBQUERY) {
-			_collect_call_subquery_projections(clause, identifiers);
+			collect_call_subquery_projections(clause, identifiers);
 		}
 	}
 }

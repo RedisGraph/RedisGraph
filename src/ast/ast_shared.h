@@ -122,3 +122,45 @@ void collect_aliases_in_scope
 	uint scope_end,                // end index of scope
 	rax *identifiers               // rax to populate with identifiers
 );
+
+// collect aliases defined in a pattern
+void collect_aliases_in_pattern
+(
+	const cypher_astnode_t *pattern,
+	rax *identifiers
+);
+
+// collect aliases defined in a path
+void collect_aliases_in_path
+(
+	const cypher_astnode_t *path,
+	rax *identifiers
+);
+
+// collect aliases defined in a projection
+void collect_call_projections(
+	const cypher_astnode_t *call_clause,
+	rax *identifiers
+);
+
+// collect aliases from a CALL {} clause
+void collect_call_subquery_projections
+(
+	const cypher_astnode_t *clause,
+	rax *identifiers
+);
+
+// collect aliases defined in a WITH clause
+void collect_with_projections
+(
+	const cypher_astnode_t *with_clause,
+	rax *identifiers
+);
+
+// collect aliases defined in a RETURN clause
+void collect_return_projections
+(
+	const cypher_astnode_t *return_clause,
+	rax *identifiers
+);
+
