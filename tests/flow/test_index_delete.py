@@ -116,3 +116,34 @@ class testIndexDeletionFlow():
                 indicies = list_indicies(g).result_set
                 self.env.assertEquals(len(indicies), 0)
 
+    def test06_reset_order(self):
+        """Tests that the reset order is correct, i.e., that the reading ops are
+        reset before the writing ops (otherwise we write while a read-lock is
+        held --> deadlock)."""
+
+        # clear the db
+        self.env.flush()
+        g = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create data
+        """
+        UNWIND range(1, 1000) AS Uid
+        CREATE (x:X {uid: toString(Uid)})-[:R]->(y:Y {v: Uid})
+        """
+
+        # create an index
+        create_node_exact_match_index(g, 'X', 'Uid', sync=True)
+        create_node_exact_match_index(g, 'Y', 'v', sync=True)
+
+        # utilize the index for a scan, followed by a deletion of the indexed
+        # entity and setting of a property on the other entity
+        res = g.query(
+            """
+            MATCH (x:X {Uid: 55})-[:R]->(y:Y)
+            DELETE y
+            SET x.v = 1
+            """
+        )
+
+        # validate results
+        self.env.assertEquals(len(res.result_set), 0)
