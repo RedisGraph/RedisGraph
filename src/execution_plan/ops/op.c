@@ -173,8 +173,10 @@ void OpBase_PropagateReset
 	uint write_op_count = array_len(write_ops);
 	for(uint i = 0; i < write_op_count; i++) {
 		OpBase *write_op = write_ops[i];
-		OpResult res = write_op->reset(write_op);
-		ASSERT(res == OP_OK);
+		if(write_op->reset) {
+			OpResult res = op->reset(op);
+			ASSERT(res == OP_OK);
+		}
 	}
 
 	array_free(write_ops);
