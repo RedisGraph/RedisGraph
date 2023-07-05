@@ -127,23 +127,26 @@ class testIndexDeletionFlow():
 
         # create data
         """
-        UNWIND range(1, 1000) AS Uid
-        CREATE (x:X {uid: toString(Uid)})-[:R]->(y:Y {v: Uid})
+        UNWIND range(1, 1000) AS x
+        CREATE (:X {uid: toString(x)})-[:R]->(y:Y {v: x})
         """
 
         # create an index
-        create_node_exact_match_index(g, 'X', 'Uid', sync=True)
+        create_node_exact_match_index(g, 'X', 'uid', sync=True)
         create_node_exact_match_index(g, 'Y', 'v', sync=True)
 
         # utilize the index for a scan, followed by a deletion of the indexed
         # entity and setting of a property on the other entity
         res = g.query(
             """
-            MATCH (x:X {Uid: 55})-[:R]->(y:Y)
+            MATCH (x:X {uid: '55'})-[:R]->(y:Y)
             DELETE y
-            SET x.v = 1
+            SET x.uid = '1'
+            RETURN x
             """
         )
 
         # validate results
-        self.env.assertEquals(len(res.result_set), 0)
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0],
+            Node(label='X', properties={'uid': '1'}))
