@@ -42,13 +42,13 @@ class testIndexDeletionFlow():
 
     def test04_drop_fulltext_node_index(self):
         # create an index over L:title
-        create_fulltext_index(g, 'L', 'title', sync=True)
+        create_fulltext_index(redis_graph, 'L', 'title', sync=True)
 
         # delete index
-        drop_fulltext_index(g, 'L')
+        drop_fulltext_index(redis_graph, 'L')
 
         # validate no indexes in graph
-        result = list_indicies(g)
+        result = list_indicies(redis_graph)
         self.env.assertEquals(len(result.result_set), 0)
 
     def test05_drop_index_during_population(self):
@@ -60,10 +60,10 @@ class testIndexDeletionFlow():
 
         # populate a graph
         q = "UNWIND range(0, 1000) AS x CREATE (:N{v:x})"
-        g.query(q)
+        redis_graph.query(q)
 
         # create an index and wait for it to be sync
-        create_node_exact_match_index(g, 'N', 'v', sync=True)
+        create_node_exact_match_index(redis_graph, 'N', 'v', sync=True)
 
         # constantly update indexed entities
         # drop index
@@ -73,26 +73,26 @@ class testIndexDeletionFlow():
         for i in range(start_idx, end_idx):
             # update indexed entities
             q = f"MATCH (n:N) WHERE n.v = {i} SET n.v = -n.v"
-            g.query(q)
+            redis_graph.query(q)
 
             if i < end_idx / 2:
                 # validate execution-plan + indexes report
-                plan = g.execution_plan(q)
+                plan = redis_graph.execution_plan(q)
                 self.env.assertIn("Index", plan)
 
-                indicies = list_indicies(g).result_set
+                indicies = list_indicies(redis_graph).result_set
                 self.env.assertEquals(len(indicies), 1)
 
             elif i == end_idx / 2:
                 # drop index
-                drop_exact_match_index(g, 'N', 'v')
+                drop_exact_match_index(redis_graph, 'N', 'v')
 
             else:
                 # validate execution-plan + indexes report
-                plan = g.execution_plan(q)
+                plan = redis_graph.execution_plan(q)
                 self.env.assertNotIn("Index", plan)
 
-                indicies = list_indicies(g).result_set
+                indicies = list_indicies(redis_graph).result_set
                 self.env.assertEquals(len(indicies), 0)
 
     def test06_reset_order(self):
@@ -102,10 +102,10 @@ class testIndexDeletionFlow():
 
         # clear the db
         self.env.flush()
-        g = Graph(self.env.getConnection(), GRAPH_ID)
+        redis_graph = Graph(self.env.getConnection(), GRAPH_ID)
 
         # create data
-        g.query(
+        redis_graph.query(
             """
             WITH 1 AS x
             CREATE (:X {uid: toString(x)})-[:R]->(y:Y {v: x})
@@ -113,12 +113,12 @@ class testIndexDeletionFlow():
         )
 
         # create an index
-        create_node_exact_match_index(g, 'X', 'uid', sync=True)
-        create_node_exact_match_index(g, 'Y', 'v', sync=True)
+        create_node_exact_match_index(redis_graph, 'X', 'uid', sync=True)
+        create_node_exact_match_index(redis_graph, 'Y', 'v', sync=True)
 
         # utilize the index for a scan, followed by a deletion of the indexed
         # entity and setting of a property on the other entity
-        res = g.query(
+        res = redis_graph.query(
             """
             MATCH (x:X {uid: '1'})-[:R]->(y:Y)
             DELETE y
