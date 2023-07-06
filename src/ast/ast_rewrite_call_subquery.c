@@ -130,6 +130,7 @@ static void _replace_with_clause
 	const cypher_astnode_t *clause = cypher_ast_query_get_clause(query,
 		clause_idx);
 
+	bool include_existing = cypher_ast_with_has_include_existing(clause);
 	uint existing_projections_count = cypher_ast_with_nprojections(clause);
 	uint n_projections = array_len(inter_names) + existing_projections_count;
 	uint proj_idx = 0;
@@ -187,8 +188,8 @@ static void _replace_with_clause
 
 	// build the replacement clause
 	cypher_astnode_t *new_clause;
-	new_clause = cypher_ast_with(distinct, false, projections, n_projections,
-		order_by, skip, limit, pred, children, nchildren, range);
+	new_clause = cypher_ast_with(distinct, include_existing, projections,
+		n_projections, order_by, skip, limit, pred, children, nchildren, range);
 
 	// replace original clause with fully populated one
 	cypher_ast_query_replace_clauses(query, new_clause, clause_idx,

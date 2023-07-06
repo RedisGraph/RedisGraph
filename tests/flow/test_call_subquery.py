@@ -1939,27 +1939,84 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][1], 2)
         self.env.assertEquals(res.result_set[0][2], Node(label='N'))
 
-        # TODO: This test fails: (error) 'n' not defined
-        # # Create node and project it with star
-        # res = graph.query(
-        #     """
-        #     WITH 1 AS a, 2 AS b
-        #     CALL {
-        #         WITH *
-        #         CREATE (n:C)
-        #         WITH *
-        #         RETURN n
-        #     }
-        #     RETURN a, b, n
-        #     """
-        # )
+        # create node and project it with star
+        res = graph.query(
+            """
+            WITH 1 AS a, 2 AS b
+            CALL {
+                WITH *
+                CREATE (n:C)
+                WITH *
+                RETURN n
+            }
+            RETURN a, b, n
+            """
+        )
 
-        # # assert results
-        # self.env.assertEquals(len(res.result_set), 1)
-        # self.env.assertEquals(len(res.result_set[0]), 3)
-        # self.env.assertEquals(res.result_set[0][0], 1)
-        # self.env.assertEquals(res.result_set[0][1], 2)
-        # self.env.assertEquals(res.result_set[0][2], Node(label='C'))
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 3)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[0][1], 2)
+        self.env.assertEquals(res.result_set[0][2], Node(label='C'))
+
+        # merge node and project it with star
+        res = graph.query(
+            """
+            WITH 1 AS a, 2 AS b
+            CALL {
+                WITH *
+                MERGE (n:C)
+                WITH *
+                RETURN n
+            }
+            RETURN a, b, n
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 3)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[0][1], 2)
+        self.env.assertEquals(res.result_set[0][2], Node(label='C'))
+
+        # unwind and project the var with star
+        res = graph.query(
+            """
+            WITH 1 AS a, 2 AS b
+            CALL {
+                UNWIND [3, 4] AS x
+                WITH *
+                RETURN x
+            }
+            RETURN a, b, x
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0], [1, 2, 3])
+        self.env.assertEquals(res.result_set[1], [1, 2, 4])
+
+        # call procedure and project the result with star
+        res = graph.query(
+            """
+            WITH 1 AS a
+            CALL {
+                CALL db.labels() YIELD label
+                WITH *
+                RETURN *
+            }
+            RETURN a, label
+            ORDER BY label ASC
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 2)
+        self.env.assertEquals(res.result_set[0], [1, 'C'])
+        self.env.assertEquals(res.result_set[1], [1, 'N'])
 
     def test30_surrounding_matches(self):
         """Tests that in case the call {} is surrounded by matches, the

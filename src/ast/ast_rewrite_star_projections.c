@@ -267,6 +267,18 @@ static bool _rewrite_call_subquery_star_projections
 				cypher_ast_merge_get_pattern_path(clause);
 			collect_aliases_in_path(path, local_identifiers);
 			last_is_union = false;
+		} else if(t == CYPHER_AST_UNWIND) {
+			// the UNWIND clause introduces one alias
+			const cypher_astnode_t *unwind_alias =
+				cypher_ast_unwind_get_alias(clause);
+			const char *identifier =
+				cypher_ast_identifier_get_name(unwind_alias);
+			raxTryInsert(local_identifiers, (unsigned char *)identifier,
+							strlen(identifier), (void *)unwind_alias, NULL);
+			last_is_union = false;
+		} else if(t == CYPHER_AST_CALL) {
+			collect_call_projections(clause, local_identifiers);
+			last_is_union = false;
 		} else if(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN) {
 			// check whether the clause contains a star projection
 			bool has_star = (t == CYPHER_AST_WITH) ?
@@ -298,7 +310,6 @@ static bool _rewrite_call_subquery_star_projections
 					} else {
 						collect_return_projections(clause, local_identifiers);
 					}
-
 					replace_clause(query, clause, first_in_scope, i,
 						local_identifiers);
 				}
