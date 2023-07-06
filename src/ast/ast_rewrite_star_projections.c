@@ -27,6 +27,7 @@ static void replace_clause
 	rax *identifiers           // bound vars
 ) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
+	uint64_t nidentifiers = raxSize(identifiers);
 
 	//--------------------------------------------------------------------------
 	// determine number of projections
@@ -101,8 +102,9 @@ static void replace_clause
 			// error if this is a RETURN clause with no aliases
 			// e.g.
 			// MATCH () RETURN *
-			ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
-			//raxFree(identifiers);
+			if(nidentifiers == 0) {
+				ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
+			}
 			return;
 		} else {
 			// build an empty projection
@@ -218,8 +220,11 @@ static bool _rewrite_call_subquery_star_projections
 (
 	const cypher_astnode_t *wrapping_clause,  // wrapping clause
 	uint scope_start,                         // start scope in wrapping clause
-	uint idx                                  // index of the call subquery
+	uint idx,                                 // index of the call subquery
+	rax *identifiers                          // bound vars
 ) {
+	rax *clone_identifiers = raxClone(identifiers);
+	rax *local_identifiers = raxNew();
 	bool rewritten = false;
 
 	// get the call subquery clause
@@ -244,6 +249,24 @@ static bool _rewrite_call_subquery_star_projections
 				cypher_ast_call_subquery_get_query(call_subquery);
 			rewritten |= AST_RewriteStarProjections(inner_query);
 			last_is_union = false;
+		} else if(t == CYPHER_AST_MATCH) {
+			// the MATCH clause contains one pattern of N paths
+			const cypher_astnode_t *pattern =
+				cypher_ast_match_get_pattern(clause);
+			collect_aliases_in_pattern(pattern, local_identifiers);
+			last_is_union = false;
+		} else if(t == CYPHER_AST_CREATE) {
+			// the CREATE clause contains one pattern of N paths
+			const cypher_astnode_t *pattern =
+				cypher_ast_create_get_pattern(clause);
+			collect_aliases_in_pattern(pattern, local_identifiers);
+			last_is_union = false;
+		} else if(t == CYPHER_AST_MERGE) {
+			// the MERGE clause contains one path
+			const cypher_astnode_t *path =
+				cypher_ast_merge_get_pattern_path(clause);
+			collect_aliases_in_path(path, local_identifiers);
+			last_is_union = false;
 		} else if(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN) {
 			// check whether the clause contains a star projection
 			bool has_star = (t == CYPHER_AST_WITH) ?
@@ -257,18 +280,37 @@ static bool _rewrite_call_subquery_star_projections
 			if(has_star) {
 				if(last_is_union && t == CYPHER_AST_WITH) {
 					// importing `WITH` clause, import vars from wrapping clause
-					rax *identifiers = raxNew();
-					if(scope_start != idx) {
-						collect_aliases_in_scope(wrapping_clause,
-							scope_start, idx, identifiers);
-					}
 					replace_clause(query, clause, first_in_scope, i,
-						identifiers);
+						clone_identifiers);
+
+					const cypher_astnode_t *newclause =
+						cypher_ast_query_get_clause(query, i);
+
+					if(t == CYPHER_AST_WITH) {
+						collect_with_projections(newclause, local_identifiers);
+					} else {
+						collect_return_projections(newclause, local_identifiers);
+					}
 				} else {
 					// intermediate `WITH` or `RETURN` clause
-					replace_clause(query, clause, first_in_scope, i, NULL);
+					if(t == CYPHER_AST_WITH) {
+						collect_with_projections(clause, local_identifiers);
+					} else {
+						collect_return_projections(clause, local_identifiers);
+					}
+
+					replace_clause(query, clause, first_in_scope, i,
+						local_identifiers);
 				}
 				rewritten = true;
+			} else {
+				raxFree(local_identifiers);
+				local_identifiers = raxNew();
+				if(t == CYPHER_AST_WITH) {	
+					collect_with_projections(clause, local_identifiers);
+				} else {
+					collect_return_projections(clause, local_identifiers);
+				}
 			}
 			first_in_scope = i;
 			last_is_union = false;
@@ -280,6 +322,8 @@ static bool _rewrite_call_subquery_star_projections
 		}
 	}
 
+	raxFree(clone_identifiers);
+	raxFree(local_identifiers);
 	return rewritten;
 }
 
@@ -303,9 +347,13 @@ bool AST_RewriteStarProjections
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 
 		if(type == CYPHER_AST_CALL_SUBQUERY) {
-			collect_call_subquery_projections(clause, identifiers);
+			// collect_call_subquery_projections(clause, identifiers);
 			rewritten |=
-				_rewrite_call_subquery_star_projections(root, scope_start, i);
+				_rewrite_call_subquery_star_projections(root, scope_start, i,
+				identifiers);
+
+			clause = cypher_ast_query_get_clause(root, i);
+			collect_call_subquery_projections(clause, identifiers);
 		} else if(type == CYPHER_AST_MATCH) {
 			// the MATCH clause contains one pattern of N paths
 			const cypher_astnode_t *pattern =
