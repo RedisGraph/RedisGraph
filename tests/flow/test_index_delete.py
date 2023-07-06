@@ -119,7 +119,7 @@ class testIndexDeletionFlow():
     def test06_reset_order(self):
         """Tests that the reset order is correct, i.e., that the reading ops are
         reset before the writing ops (otherwise we write while a read-lock is
-        held --> deadlock)."""
+        held)."""
 
         # clear the db
         self.env.flush()
@@ -128,7 +128,7 @@ class testIndexDeletionFlow():
         # create data
         g.query(
             """
-            UNWIND range(1, 1000) AS x
+            WITH 1 AS x
             CREATE (:X {uid: toString(x)})-[:R]->(y:Y {v: x})
             """
         )
@@ -141,14 +141,16 @@ class testIndexDeletionFlow():
         # entity and setting of a property on the other entity
         res = g.query(
             """
-            MATCH (x:X {uid: '55'})-[:R]->(y:Y)
+            MATCH (x:X {uid: '1'})-[:R]->(y:Y)
             DELETE y
-            SET x.uid = '1'
+            SET x.uid = '10'
             RETURN x
             """
         )
 
         # validate results
+        self.env.assertEquals(res.nodes_deleted, 1)
+        self.env.assertEquals(res.relationships_deleted, 1)
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(res.result_set[0][0],
-            Node(label='X', properties={'uid': '1'}))
+            Node(label='X', properties={'uid': '10'}))

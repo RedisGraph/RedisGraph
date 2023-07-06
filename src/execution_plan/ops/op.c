@@ -141,16 +141,20 @@ bool OpBase_Aware
 	return (rec_idx != raxNotFound);
 }
 
+// collects writing operations under `op` into `write_ops`, and resets the
+// reading ops (including `op` itself)
 static void _OpBase_PropagateReset
 (
 	OpBase *op,
 	OpBase ***write_ops
 ) {
-	if(OpBase_IsWriter(op)) {
-		array_append(*write_ops, op);
-	} else if(op->reset) {
-		OpResult res = op->reset(op);
-		ASSERT(res == OP_OK);
+	if(op->reset) {
+		if(OpBase_IsWriter(op)) {
+			array_append(*write_ops, op);
+		} else {
+			OpResult res = op->reset(op);
+			ASSERT(res == OP_OK);
+		}
 	}
 
 	// recursively reset children
@@ -173,10 +177,8 @@ void OpBase_PropagateReset
 	uint write_op_count = array_len(write_ops);
 	for(uint i = 0; i < write_op_count; i++) {
 		OpBase *write_op = write_ops[i];
-		if(write_op->reset) {
-			OpResult res = op->reset(op);
-			ASSERT(res == OP_OK);
-		}
+		OpResult res = op->reset(op);
+		ASSERT(res == OP_OK);
 	}
 
 	array_free(write_ops);
