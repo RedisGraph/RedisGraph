@@ -283,9 +283,7 @@ static bool _rewrite_call_subquery_star_projections
 				if(last_is_union && t == CYPHER_AST_WITH) {
 					// importing `WITH` clause, import vars from wrapping clause
 					replace_clause(query, clause, i, clone_identifiers);
-					const cypher_astnode_t *newclause =
-						cypher_ast_query_get_clause(query, i);
-					collect_with_projections(newclause, local_identifiers);
+					clause = cypher_ast_query_get_clause(query, i);
 				} else {
 					// intermediate `WITH` or `RETURN` clause
 					if(t == CYPHER_AST_WITH) {
@@ -294,18 +292,23 @@ static bool _rewrite_call_subquery_star_projections
 						collect_return_projections(clause, local_identifiers);
 					}
 					replace_clause(query, clause, i, local_identifiers);
+					clause = cypher_ast_query_get_clause(query, i);
 				}
 				rewritten = true;
 			} else {
+				// if the clause does not contain a star projection,
+				// the new scope only should contain the identifiers
+				// projected by the current clause
 				raxFree(local_identifiers);
 				local_identifiers = raxNew();
-				if(t == CYPHER_AST_WITH) {	
-					collect_with_projections(clause, local_identifiers);
-				} else {
-					collect_return_projections(clause, local_identifiers);
-				}
 			}
-		} 
+
+			if(t == CYPHER_AST_WITH) {
+				collect_with_projections(clause, local_identifiers);
+			} else {
+				collect_return_projections(clause, local_identifiers);
+			}
+		}
 		
 		// update last_is_union
 		if(t == CYPHER_AST_UNION) {

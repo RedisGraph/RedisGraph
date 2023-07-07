@@ -2018,6 +2018,22 @@ updating clause.")
         self.env.assertEquals(res.result_set[0], [1, 'C'])
         self.env.assertEquals(res.result_set[1], [1, 'N'])
 
+        # intermediate WITH * including new variable
+        res = graph.query(
+            """
+            CALL {
+                WITH 1 AS a 
+                WITH *, 2 AS b 
+                RETURN *
+            } 
+            RETURN *
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0], [1, 2])
+
     def test30_surrounding_matches(self):
         """Tests that in case the call {} is surrounded by matches, the
         following match does not affect the input records to the call {} op"""

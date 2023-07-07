@@ -231,6 +231,7 @@ void UpdateCtx_Free
 	rm_free(ctx);
 }
 
+// collect aliases defined in a path
 void collect_aliases_in_path
 (
 	const cypher_astnode_t *path,
@@ -279,6 +280,7 @@ void collect_aliases_in_path
 	}
 }
 
+// collect aliases defined in a pattern
 void collect_aliases_in_pattern
 (
 	const cypher_astnode_t *pattern,
@@ -291,6 +293,7 @@ void collect_aliases_in_pattern
 	}
 }
 
+// collect aliases defined in a WITH clause
 void collect_with_projections
 (
 	const cypher_astnode_t *with_clause,
@@ -318,6 +321,7 @@ void collect_with_projections
 	}
 }
 
+// collect aliases defined in a RETURN clause
 void collect_return_projections
 (
 	const cypher_astnode_t *return_clause,
@@ -335,9 +339,8 @@ void collect_return_projections
 			identifier_node = cypher_ast_projection_get_expression(projection);
 			ASSERT(cypher_astnode_type(identifier_node) == CYPHER_AST_IDENTIFIER);
 		} else {
-			// TODO: ??
 			// do not include empty projections, which may have been made to
-			// handle the MATCH () WITH * case
+			// handle the MATCH () RETURN * case
 			if(!strcmp(cypher_ast_identifier_get_name(identifier_node), "")) continue;
 		}
 		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
@@ -346,6 +349,7 @@ void collect_return_projections
 	}
 }
 
+// collect aliases defined in a CALL clause
 void collect_call_projections(
 	const cypher_astnode_t *call_clause,
 	rax *identifiers

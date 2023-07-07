@@ -137,7 +137,7 @@ void collect_aliases_in_path
 	rax *identifiers
 );
 
-// collect aliases defined in a projection
+// collect aliases defined in a CALL clause
 void collect_call_projections(
 	const cypher_astnode_t *call_clause,
 	rax *identifiers
