@@ -283,7 +283,8 @@ static bool _rewrite_call_subquery_star_projections
 				if(last_is_union && t == CYPHER_AST_WITH) {
 					// importing `WITH` clause, import vars from wrapping clause
 					replace_clause(query, clause, i, clone_identifiers);
-					clause = cypher_ast_query_get_clause(query, i);
+					clause = (cypher_astnode_t *)
+						cypher_ast_query_get_clause(query, i);
 				} else {
 					// intermediate `WITH` or `RETURN` clause
 					if(t == CYPHER_AST_WITH) {
@@ -292,7 +293,8 @@ static bool _rewrite_call_subquery_star_projections
 						collect_return_projections(clause, local_identifiers);
 					}
 					replace_clause(query, clause, i, local_identifiers);
-					clause = cypher_ast_query_get_clause(query, i);
+					clause = (cypher_astnode_t *)
+						cypher_ast_query_get_clause(query, i);
 				}
 				rewritten = true;
 			} else {
