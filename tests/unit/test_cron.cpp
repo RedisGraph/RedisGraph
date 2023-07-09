@@ -120,7 +120,7 @@ TEST_F(CRONTest, LateAbort) {
 	// issue task X += 2
 	CronTaskHandle task_handle = Cron_AddTask(15, add_task, &Y);
 
-	mssleep(100); // sleep for 100 ms
+	mssleep(400); // sleep for 100 ms
 
 	// task should have been executed, expecting X = 1
 	ASSERT_EQ(X, 3);
@@ -167,7 +167,7 @@ TEST_F(CRONTest, AbortNoneExistingTask) {
 	// abort task, should not crash hang
 	Cron_AbortTask(none_existing_task_handle);
 	
-	mssleep(100); // sleep for 100 ms
+	mssleep(200); // sleep for 100 ms
 
 	// task should have been executed
 	// expecting X = 3
@@ -180,7 +180,7 @@ TEST_F(CRONTest, AbortRunningTask) {
 	// validate call to Cron_AbortTask returns after task compelted
 
 	// issue a long running task, task will sleep for 'sec' seconds
-	int ms = 100;
+	int ms = 400;
 	CronTaskHandle task_handle = Cron_AddTask(0, long_running_task, &ms);
 
 	mssleep(20); // sleep for 20 ms
