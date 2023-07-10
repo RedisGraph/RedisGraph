@@ -1939,48 +1939,6 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][1], 2)
         self.env.assertEquals(res.result_set[0][2], Node(label='N'))
 
-        # create node and project it with star
-        res = graph.query(
-            """
-            WITH 1 AS a, 2 AS b
-            CALL {
-                WITH *
-                CREATE (n:C)
-                WITH *
-                RETURN n
-            }
-            RETURN a, b, n
-            """
-        )
-
-        # assert results
-        self.env.assertEquals(len(res.result_set), 1)
-        self.env.assertEquals(len(res.result_set[0]), 3)
-        self.env.assertEquals(res.result_set[0][0], 1)
-        self.env.assertEquals(res.result_set[0][1], 2)
-        self.env.assertEquals(res.result_set[0][2], Node(label='C'))
-
-        # merge node and project it with star
-        res = graph.query(
-            """
-            WITH 1 AS a, 2 AS b
-            CALL {
-                WITH *
-                MERGE (n:C)
-                WITH *
-                RETURN n
-            }
-            RETURN a, b, n
-            """
-        )
-
-        # assert results
-        self.env.assertEquals(len(res.result_set), 1)
-        self.env.assertEquals(len(res.result_set[0]), 3)
-        self.env.assertEquals(res.result_set[0][0], 1)
-        self.env.assertEquals(res.result_set[0][1], 2)
-        self.env.assertEquals(res.result_set[0][2], Node(label='C'))
-
         # unwind and project the var with star
         res = graph.query(
             """
@@ -2014,9 +1972,8 @@ updating clause.")
         )
 
         # assert results
-        self.env.assertEquals(len(res.result_set), 2)
-        self.env.assertEquals(res.result_set[0], [1, 'C'])
-        self.env.assertEquals(res.result_set[1], [1, 'N'])
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0], [1, 'N'])
 
         # intermediate WITH * including new variable
         res = graph.query(

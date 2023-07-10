@@ -26,7 +26,7 @@ static void replace_clause
 	rax *identifiers           // bound vars
 ) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
-	uint64_t nidentifiers = raxSize(identifiers);
+	uint64_t original_identifiers_count = raxSize(identifiers);
 
 	//--------------------------------------------------------------------------
 	// determine number of projections
@@ -101,7 +101,7 @@ static void replace_clause
 			// error if this is a RETURN clause with no aliases
 			// e.g.
 			// MATCH () RETURN *
-			if(nidentifiers == 0) {
+			if(original_identifiers_count == 0) {
 				ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
 			}
 			return;
@@ -220,7 +220,6 @@ static bool _rewrite_call_subquery_star_projections
 	uint idx,                                 // index of the call subquery
 	rax *identifiers                          // bound vars
 ) {
-	rax *clone_identifiers = raxClone(identifiers);
 	rax *local_identifiers = raxNew();
 	bool rewritten = false;
 
@@ -282,9 +281,11 @@ static bool _rewrite_call_subquery_star_projections
 			if(has_star) {
 				if(last_is_union && t == CYPHER_AST_WITH) {
 					// importing `WITH` clause, import vars from wrapping clause
+					rax *clone_identifiers = raxClone(identifiers);
 					replace_clause(query, clause, i, clone_identifiers);
 					clause = (cypher_astnode_t *)
 						cypher_ast_query_get_clause(query, i);
+					raxFree(clone_identifiers);
 				} else {
 					// intermediate `WITH` or `RETURN` clause
 					if(t == CYPHER_AST_WITH) {
@@ -300,7 +301,9 @@ static bool _rewrite_call_subquery_star_projections
 			} else {
 				// if the clause does not contain a star projection,
 				// the new scope only should contain the identifiers
-				// projected by the current clause
+				// projected by the current clause.
+				// Example: Second WITH inside CALL {} in the following query
+				// WITH 1 AS a CALL { WITH * WITH a AS c RETURN *} RETURN *
 				raxFree(local_identifiers);
 				local_identifiers = raxNew();
 			}
@@ -320,7 +323,6 @@ static bool _rewrite_call_subquery_star_projections
 		}
 	}
 
-	raxFree(clone_identifiers);
 	raxFree(local_identifiers);
 	return rewritten;
 }
