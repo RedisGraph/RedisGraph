@@ -1332,14 +1332,15 @@ references to outside variables");
 		nclauses-1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
 
-	// save a copy of identifiers of the last RETURN *
 	rax *star_identifiers = NULL;
 	if(is_returning && cypher_ast_return_has_include_existing(last_clause)) {
-		star_identifiers = raxClone(vctx->defined_identifiers);
+		// save a copy of identifiers of the last RETURN *
+		star_identifiers = vctx->defined_identifiers;
+	} else {
+		// free the temporary environment
+		raxFree(vctx->defined_identifiers);
 	}
 
-	// free the temporary environment
-	raxFree(vctx->defined_identifiers);
 	vctx->defined_identifiers = in_env;
 
 	if(is_returning) {
@@ -1378,7 +1379,7 @@ references to outside variables");
 					ErrorCtx_SetError(
 						"Variable `%s` already declared in outer scope",
 						var_name);
-					return VISITOR_BREAK;
+					goto cleanup;
 			}
 
 			// remove identifier from star projections
@@ -1398,19 +1399,21 @@ references to outside variables");
 						ErrorCtx_SetError(
 							"Variable `%.*s` already declared in outer scope",
 							it.key_len, it.key);
-						return VISITOR_BREAK;
+						raxStop(&it);
+						goto cleanup;
 					}
 			}
 			raxStop(&it);
 		}
 	}
 
+cleanup:
 	if(star_identifiers != NULL) {
 		raxFree(star_identifiers);
 	}
 
 	// don't traverse children
-	return VISITOR_CONTINUE;
+	return ErrorCtx_EncounteredError() ? VISITOR_BREAK : VISITOR_CONTINUE;
 }
 
 // returns true if the clause is an updating clause, false otherwise
