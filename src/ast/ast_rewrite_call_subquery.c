@@ -183,12 +183,13 @@ static void _replace_with_clause
 	if(limit)    limit    = children[nchildren++] = cypher_ast_clone(limit);
 	if(order_by) order_by = children[nchildren++] = cypher_ast_clone(order_by);
 
+	bool include_existing = cypher_ast_with_has_include_existing(clause);
 	struct cypher_input_range range = cypher_astnode_range(clause);
 
 	// build the replacement clause
 	cypher_astnode_t *new_clause;
-	new_clause = cypher_ast_with(distinct, false, projections, n_projections,
-		order_by, skip, limit, pred, children, nchildren, range);
+	new_clause = cypher_ast_with(distinct, include_existing, projections,
+		n_projections, order_by, skip, limit, pred, children, nchildren, range);
 
 	// replace original clause with fully populated one
 	cypher_ast_query_replace_clauses(query, new_clause, clause_idx,
@@ -340,12 +341,13 @@ static void _replace_return_clause
 	if(limit)    limit    = children[nchildren++] = cypher_ast_clone(limit);
 	if(order_by) order_by = children[nchildren++] = cypher_ast_clone(order_by);
 
+	bool include_existing = cypher_ast_return_has_include_existing(clause);
 	struct cypher_input_range range = cypher_astnode_range(clause);
 
 	// build the replacement clause
 	cypher_astnode_t *new_clause;
 	new_clause = cypher_ast_return(distinct,
-								false,
+								include_existing,
 								projections,
 								n_projections,
 								order_by,
