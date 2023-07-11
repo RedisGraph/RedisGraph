@@ -1328,13 +1328,19 @@ references to outside variables");
 		}
 	}
 
-	// free the temporary environment
-	raxFree(vctx->defined_identifiers);
-	vctx->defined_identifiers = in_env;
-
 	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(body,
 		nclauses-1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
+
+	rax *star_identifiers = raxNew();
+	
+	if(is_returning && cypher_ast_return_has_include_existing(last_clause)) {
+		star_identifiers = raxClone(vctx->defined_identifiers);
+	}
+
+	// free the temporary environment
+	raxFree(vctx->defined_identifiers);
+	vctx->defined_identifiers = in_env;
 
 	if(is_returning) {
 		// merge projected aliases from in_env into vctx->defined_identifiers
@@ -1374,7 +1380,20 @@ references to outside variables");
 					return VISITOR_BREAK;
 			}
 		}
+
+		// Project star variables to outer scope
+		// TODO: Validate if they are part of the outer scope
+		raxIterator it;
+		raxStart(&it, star_identifiers);
+		raxSeek(&it, "^", NULL, 0);
+		while(raxNext(&it)) {
+			raxTryInsert(vctx->defined_identifiers, (unsigned char *)it.key,
+				it.key_len, NULL, NULL);
+		}
+		raxStop(&it);
 	}
+
+	raxFree(star_identifiers);
 
 	// don't traverse children
 	return VISITOR_CONTINUE;
@@ -1716,8 +1735,10 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 			return VISITOR_BREAK;
 	}
 
-	if(!cypher_ast_return_has_include_existing(n)) {
-		// check for duplicate column names
+	// check for duplicate column names
+	// WITH 1 AS a RETURN a, a
+	// WITH 1 AS a RETURN *, a, a
+	if(num_return_projections > 1) {
 		rax           *rax          = raxNew();
 		const char   **columns      = AST_BuildReturnColumnNames(n);
 		uint           column_count = array_len(columns);
@@ -1754,6 +1775,19 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 		}
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+	}
+
+	// error if this is a RETURN clause with no aliases
+	if(cypher_ast_return_has_include_existing(n)) {
+		// e.g.
+		// MATCH () RETURN *
+		// MATCH () WITH * RETURN *
+		// CALL db.labels() RETURN *
+		if(num_return_projections == 0 &&
+			raxSize(vctx->defined_identifiers) == 0) {
+			ErrorCtx_SetError("RETURN * is not allowed when there are no \
+variables in scope");
+		}
 	}
 
 	// visit ORDER BY clause

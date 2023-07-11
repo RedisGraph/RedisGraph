@@ -26,7 +26,6 @@ static void replace_clause
 	rax *identifiers           // bound vars
 ) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
-	uint64_t original_identifiers_count = raxSize(identifiers);
 
 	//--------------------------------------------------------------------------
 	// determine number of projections
@@ -91,34 +90,19 @@ static void replace_clause
 	//--------------------------------------------------------------------------
 	// handle no projections
 	//--------------------------------------------------------------------------
-
-	// e.g.
-	// MATCH () RETURN *
-	// MATCH () WITH * RETURN *
-	// CALL db.labels() RETURN *
-	if(nprojections == 0) {
-		if(t == CYPHER_AST_RETURN) {
-			// error if this is a RETURN clause with no aliases
-			// e.g.
-			// MATCH () RETURN *
-			if(original_identifiers_count == 0) {
-				ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
-			}
-			return;
-		} else {
-			// build an empty projection
-			// to make variable-less WITH clauses work:
-			// MATCH () WITH * CREATE ()
-			struct cypher_input_range range = { 0 };
-			// build a null node to project and an empty identifier as its alias
-			cypher_astnode_t *expression = cypher_ast_null(range);
-			cypher_astnode_t *identifier = cypher_ast_identifier("", 1, range);
-			cypher_astnode_t *children[2];
-			children[0] = expression;
-			children[1] = identifier;
-			projections[proj_idx++] = cypher_ast_projection(expression,
-					identifier, children, 2, range);
-		}
+	if(nprojections == 0 && t == CYPHER_AST_WITH) {
+		// build an empty projection
+		// to make variable-less WITH clauses work:
+		// MATCH () WITH * CREATE ()
+		struct cypher_input_range range = { 0 };
+		// build a null node to project and an empty identifier as its alias
+		cypher_astnode_t *expression = cypher_ast_null(range);
+		cypher_astnode_t *identifier = cypher_ast_identifier("", 1, range);
+		cypher_astnode_t *children[2];
+		children[0] = expression;
+		children[1] = identifier;
+		projections[proj_idx++] = cypher_ast_projection(expression,
+				identifier, children, 2, range);
 	}
 
 	//--------------------------------------------------------------------------
