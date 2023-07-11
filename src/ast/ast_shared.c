@@ -341,7 +341,9 @@ void collect_return_projections
 		} else {
 			// do not include empty projections, which may have been made to
 			// handle the MATCH () RETURN * case
-			if(!strcmp(cypher_ast_identifier_get_name(identifier_node), "")) continue;
+			if(!strcmp(cypher_ast_identifier_get_name(identifier_node), "")) {
+				continue;
+			}
 		}
 		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
 		raxTryInsert(identifiers, (unsigned char *)identifier,

@@ -1332,8 +1332,8 @@ references to outside variables");
 		nclauses-1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
 
-	rax *star_identifiers = raxNew();
-	
+	// save a copy of identifiers of the last RETURN *
+	rax *star_identifiers = NULL;
 	if(is_returning && cypher_ast_return_has_include_existing(last_clause)) {
 		star_identifiers = raxClone(vctx->defined_identifiers);
 	}
@@ -1372,28 +1372,42 @@ references to outside variables");
 				var_name = cypher_ast_identifier_get_name(exp);
 			}
 
+			size_t len = strlen(var_name);
 			if(!raxTryInsert(vctx->defined_identifiers,
-				(unsigned char *)var_name, strlen(var_name), NULL, NULL)) {
+				(unsigned char *)var_name, len, NULL, NULL)) {
 					ErrorCtx_SetError(
 						"Variable `%s` already declared in outer scope",
 						var_name);
 					return VISITOR_BREAK;
 			}
+
+			// remove identifier from star projections
+			if(star_identifiers != NULL && raxSize(star_identifiers) > 0) {
+				raxRemove(star_identifiers, (unsigned char *)var_name, len, NULL);
+			}
 		}
 
-		// Project star variables to outer scope
-		// TODO: Validate if they are part of the outer scope
-		raxIterator it;
-		raxStart(&it, star_identifiers);
-		raxSeek(&it, "^", NULL, 0);
-		while(raxNext(&it)) {
-			raxTryInsert(vctx->defined_identifiers, (unsigned char *)it.key,
-				it.key_len, NULL, NULL);
+		// Project remaining star projection variables to outer scope
+		if(star_identifiers != NULL && raxSize(star_identifiers) > 0) {
+			raxIterator it;
+			raxStart(&it, star_identifiers);
+			raxSeek(&it, "^", NULL, 0);
+			while(raxNext(&it)) {
+				if(!raxTryInsert(vctx->defined_identifiers, (unsigned char *)it.key,
+					it.key_len, NULL, NULL)) {
+						ErrorCtx_SetError(
+							"Variable `%.*s` already declared in outer scope",
+							it.key_len, it.key);
+						return VISITOR_BREAK;
+					}
+			}
+			raxStop(&it);
 		}
-		raxStop(&it);
 	}
 
-	raxFree(star_identifiers);
+	if(star_identifiers != NULL) {
+		raxFree(star_identifiers);
+	}
 
 	// don't traverse children
 	return VISITOR_CONTINUE;

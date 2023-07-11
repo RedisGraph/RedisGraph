@@ -25,6 +25,7 @@ static void replace_clause
 	int scope_end,             // ending of scope
 	rax *identifiers           // bound vars
 ) {
+	ASSERT(identifiers != NULL);
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 
 	//--------------------------------------------------------------------------
