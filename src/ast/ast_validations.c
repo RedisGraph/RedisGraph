@@ -1398,7 +1398,7 @@ references to outside variables");
 					it.key_len, NULL, NULL)) {
 						ErrorCtx_SetError(
 							"Variable `%.*s` already declared in outer scope",
-							it.key_len, it.key);
+							(int)it.key_len, it.key);
 						raxStop(&it);
 						goto cleanup;
 					}
