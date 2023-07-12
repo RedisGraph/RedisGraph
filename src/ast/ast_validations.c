@@ -1328,20 +1328,13 @@ references to outside variables");
 		}
 	}
 
+	// free the temporary environment
+	raxFree(vctx->defined_identifiers);
+	vctx->defined_identifiers = in_env;
+
 	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(body,
 		nclauses-1);
 	bool is_returning = cypher_astnode_type(last_clause) == CYPHER_AST_RETURN;
-
-	rax *star_identifiers = NULL;
-	if(is_returning && cypher_ast_return_has_include_existing(last_clause)) {
-		// save a copy of identifiers of the last RETURN *
-		star_identifiers = vctx->defined_identifiers;
-	} else {
-		// free the temporary environment
-		raxFree(vctx->defined_identifiers);
-	}
-
-	vctx->defined_identifiers = in_env;
 
 	if(is_returning) {
 		// merge projected aliases from in_env into vctx->defined_identifiers
@@ -1373,47 +1366,18 @@ references to outside variables");
 				var_name = cypher_ast_identifier_get_name(exp);
 			}
 
-			size_t len = strlen(var_name);
 			if(!raxTryInsert(vctx->defined_identifiers,
-				(unsigned char *)var_name, len, NULL, NULL)) {
+				(unsigned char *)var_name, strlen(var_name), NULL, NULL)) {
 					ErrorCtx_SetError(
 						"Variable `%s` already declared in outer scope",
 						var_name);
-					goto cleanup;
-			}
-
-			// remove identifier from star projections
-			if(star_identifiers != NULL && raxSize(star_identifiers) > 0) {
-				raxRemove(star_identifiers, (unsigned char *)var_name, len, NULL);
+					return VISITOR_BREAK;
 			}
 		}
-
-		// Project remaining star projection variables to outer scope
-		if(star_identifiers != NULL && raxSize(star_identifiers) > 0) {
-			raxIterator it;
-			raxStart(&it, star_identifiers);
-			raxSeek(&it, "^", NULL, 0);
-			while(raxNext(&it)) {
-				if(!raxTryInsert(vctx->defined_identifiers, (unsigned char *)it.key,
-					it.key_len, NULL, NULL)) {
-						ErrorCtx_SetError(
-							"Variable `%.*s` already declared in outer scope",
-							(int)it.key_len, it.key);
-						raxStop(&it);
-						goto cleanup;
-					}
-			}
-			raxStop(&it);
-		}
-	}
-
-cleanup:
-	if(star_identifiers != NULL) {
-		raxFree(star_identifiers);
 	}
 
 	// don't traverse children
-	return ErrorCtx_EncounteredError() ? VISITOR_BREAK : VISITOR_CONTINUE;
+	return VISITOR_CONTINUE;
 }
 
 // returns true if the clause is an updating clause, false otherwise
@@ -1795,7 +1759,8 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 	}
 
 	// error if this is a RETURN clause with no aliases
-	if(cypher_ast_return_has_include_existing(n)) {
+	if(cypher_ast_return_has_include_existing(n) &&
+		vctx->ignore_identifiers == false) {
 		// e.g.
 		// MATCH () RETURN *
 		// MATCH () WITH * RETURN *
