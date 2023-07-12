@@ -123,23 +123,12 @@ void collect_aliases_in_scope
 	rax *identifiers               // rax to populate with identifiers
 );
 
-// collect aliases defined in a pattern
-void collect_aliases_in_pattern
+// collect aliases of clauses that don't contain star projections:
+// CYPHER_AST_MATCH, CYPHER_AST_CREATE, CYPHER_AST_MERGE, CYPHER_AST_UNWIND,
+// and CYPHER_AST_CALL
+void collect_non_star_projections
 (
-	const cypher_astnode_t *pattern,
-	rax *identifiers
-);
-
-// collect aliases defined in a path
-void collect_aliases_in_path
-(
-	const cypher_astnode_t *path,
-	rax *identifiers
-);
-
-// collect aliases defined in a CALL clause
-void collect_call_projections(
-	const cypher_astnode_t *call_clause,
+	const cypher_astnode_t *clause,
 	rax *identifiers
 );
 
