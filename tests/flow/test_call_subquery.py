@@ -2013,6 +2013,69 @@ updating clause.")
         self.env.assertEquals(res.result_set[0][1], 2)
         self.env.assertEquals(res.result_set[0][2], Node(label='N'))
 
+        # create node and project it with star
+        res = graph.query(
+            """
+            WITH 1 AS a, 2 AS b
+            CALL {
+                WITH *
+                CREATE (n:C)
+                WITH *
+                RETURN n
+            }
+            RETURN a, b, n
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 3)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[0][1], 2)
+        self.env.assertEquals(res.result_set[0][2], Node(label='C'))
+
+        # merge node and project it with star
+        res = graph.query(
+            """
+            WITH 1 AS a, 2 AS b
+            CALL {
+                WITH *
+                MERGE (n:C)
+                WITH *
+                RETURN n
+            }
+            RETURN a, b, n
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 3)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[0][1], 2)
+        self.env.assertEquals(res.result_set[0][2], Node(label='C'))
+
+        # create node and return it with star
+        res = graph.query(
+            """
+            WITH 1 AS a, 2 AS b
+            CALL {
+                WITH *
+                CREATE (n:C)
+                WITH n
+                RETURN *
+            }
+            RETURN a, b, n
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(len(res.result_set[0]), 3)
+        self.env.assertEquals(res.result_set[0][0], 1)
+        self.env.assertEquals(res.result_set[0][1], 2)
+        self.env.assertEquals(res.result_set[0][2], Node(label='C'))
+
     def test30_surrounding_matches(self):
         """Tests that in case the call {} is surrounded by matches, the
         following match does not affect the input records to the call {} op"""
