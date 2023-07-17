@@ -212,8 +212,7 @@ static bool _rewrite_call_subquery_star_projections
 	cypher_astnode_t *call_subquery = (cypher_astnode_t *)
 		cypher_ast_query_get_clause(wrapping_clause, idx);
 	// get the query node
-	cypher_astnode_t *query = (cypher_astnode_t *)
-		cypher_ast_call_subquery_get_query(call_subquery);
+	cypher_astnode_t *query = cypher_ast_call_subquery_get_query(call_subquery);
 
 	uint n_clauses = cypher_ast_query_nclauses(query);
 
