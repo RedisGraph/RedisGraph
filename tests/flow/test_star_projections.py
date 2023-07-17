@@ -189,3 +189,14 @@ class testStarProjections():
         actual_result = redis_graph.query(query)
         expected = [[n, []]]
         self.env.assertEqual(actual_result.result_set, expected)
+
+    def test06_star_after_union(self):
+        query = "RETURN 1 AS num UNION WITH * WITH * RETURN 1 AS num"
+        actual_result = redis_graph.query(query)
+        expected = [[1]]
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        query = "RETURN 1 AS num UNION WITH *, 2 AS a WITH * RETURN a AS num"
+        actual_result = redis_graph.query(query)
+        expected = [[1], [2]]
+        self.env.assertEqual(actual_result.result_set, expected)

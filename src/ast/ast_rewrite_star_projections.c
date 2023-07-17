@@ -302,6 +302,7 @@ bool AST_RewriteStarProjections
 	uint clause_count = cypher_ast_query_nclauses(root);
 	rax *identifiers  = raxNew();
 
+	bool last_is_union = false;
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
@@ -313,7 +314,8 @@ bool AST_RewriteStarProjections
 			clause = cypher_ast_query_get_clause(root, i);
 			collect_call_subquery_projections(clause, identifiers);
 		} else if(type == CYPHER_AST_WITH) {
-			if(cypher_ast_with_has_include_existing(clause)) {
+			if(cypher_ast_with_has_include_existing(clause) &&
+				last_is_union == false) {
 				// clause contains a star projection, replace it
 				replace_clause((cypher_astnode_t *)root,
 					(cypher_astnode_t *)clause, i, identifiers);
@@ -338,6 +340,13 @@ bool AST_RewriteStarProjections
 			collect_return_projections(clause, identifiers);
 		} else {
 			collect_non_star_projections(clause, identifiers);
+		}
+
+		// update last_is_union
+		if(type == CYPHER_AST_UNION) {
+			last_is_union = true;
+		} else {
+			last_is_union = false;
 		}
 	}
 	raxFree(identifiers);
