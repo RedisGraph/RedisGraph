@@ -320,12 +320,20 @@ bool AST_RewriteStarProjections
 			clause = cypher_ast_query_get_clause(root, i);
 			collect_call_subquery_projections(clause, identifiers);
 		} else if(type == CYPHER_AST_WITH) {
-			if(cypher_ast_with_has_include_existing(clause) &&
-				last_is_union == false) {
+			if(cypher_ast_with_has_include_existing(clause)) {
 				// clause contains a star projection, replace it
-				replace_clause((cypher_astnode_t *)root,
-					(cypher_astnode_t *)clause, i, identifiers);
-				clause = cypher_ast_query_get_clause(root, i);
+				if(last_is_union) {
+					rax *clone_identifiers = raxNew();
+					replace_clause((cypher_astnode_t *)root,
+						(cypher_astnode_t *)clause, i, clone_identifiers);
+						clause = (cypher_astnode_t *)
+					cypher_ast_query_get_clause(root, i);
+					raxFree(clone_identifiers);
+				} else {
+					replace_clause((cypher_astnode_t *)root,
+						(cypher_astnode_t *)clause, i, identifiers);
+					clause = cypher_ast_query_get_clause(root, i);
+				}
 				rewritten = true;
 			}
 			// update new scope identifiers
