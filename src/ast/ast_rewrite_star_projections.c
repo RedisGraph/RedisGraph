@@ -227,18 +227,16 @@ static bool _rewrite_call_subquery_star_projections
 			cypher_astnode_t *inner_query =
 				cypher_ast_call_subquery_get_query(call_subquery);
 			rewritten |= AST_RewriteStarProjections(inner_query);
-		} else if(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN) {
+		} else if(t == CYPHER_AST_WITH) {
 			// check whether the clause contains a star projection
-			bool has_star = (t == CYPHER_AST_WITH) ?
-				cypher_ast_with_has_include_existing(clause) :
-				cypher_ast_return_has_include_existing(clause);
+			bool has_star = cypher_ast_with_has_include_existing(clause);
 
-			// if so, rewrite the clause in a way corresponding to its type and
-			// position. If this is an importing `WITH` clause, collect the
+			// if so, rewrite the clause in a way corresponding to its position.
+			// If this is an importing `WITH` clause, collect the
 			// aliases in the wrapping clause to be imported. Otherwise, just
 			// rewrite the clause regularly.
 			if(has_star) {
-				if(last_is_union && t == CYPHER_AST_WITH) {
+				if(last_is_union) {
 					// importing `WITH` clause, import vars from wrapping clause
 					rax *clone_identifiers = raxClone(identifiers);
 					replace_clause(query, clause, i, clone_identifiers);
@@ -246,12 +244,6 @@ static bool _rewrite_call_subquery_star_projections
 						cypher_ast_query_get_clause(query, i);
 					raxFree(clone_identifiers);
 				} else {
-					// intermediate `WITH` or `RETURN` clause
-					if(t == CYPHER_AST_WITH) {
-						collect_with_projections(clause, local_identifiers);
-					} else {
-						collect_return_projections(clause, local_identifiers);
-					}
 					replace_clause(query, clause, i, local_identifiers);
 					clause = (cypher_astnode_t *)
 						cypher_ast_query_get_clause(query, i);
@@ -266,12 +258,26 @@ static bool _rewrite_call_subquery_star_projections
 				raxFree(local_identifiers);
 				local_identifiers = raxNew();
 			}
+			collect_with_projections(clause, local_identifiers);
+		} else if(t == CYPHER_AST_RETURN) {
+			// check whether the clause contains a star projection
+			bool has_star = cypher_ast_return_has_include_existing(clause);
 
-			if(t == CYPHER_AST_WITH) {
-				collect_with_projections(clause, local_identifiers);
+			// if so, rewrite the clause in a way corresponding to its position.
+			if(has_star && last_is_union == false) {
+				replace_clause(query, clause, i, local_identifiers);
+				clause = (cypher_astnode_t *)
+					cypher_ast_query_get_clause(query, i);
+				rewritten = true;
 			} else {
-				collect_return_projections(clause, local_identifiers);
+				// if the clause does not contain a star projection,
+				// the new scope only should contain the identifiers
+				// projected by the current clause.
+				raxFree(local_identifiers);
+				local_identifiers = raxNew();
 			}
+			// we don't need to collect projections here, becase they are
+			// collected out after rewritting all subquery clause
 		} else {
 			collect_non_star_projections(clause, local_identifiers);
 		}

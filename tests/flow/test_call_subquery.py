@@ -2070,6 +2070,43 @@ updating clause.")
         self.env.assertEquals(len(res.result_set), 1)
         self.env.assertEquals(res.result_set[0], [1, 2])
 
+        # UNION and single WITH *
+        res = graph.query(
+            """
+            WITH 1 AS one
+            CALL {
+                WITH *
+                RETURN one AS num
+                UNION
+                WITH *
+                RETURN one AS num
+            } RETURN num
+            """
+        )
+        
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0], [1])
+
+        # UNION and multiple WITH *
+        res = graph.query(
+            """
+            WITH 1 AS one
+            CALL {
+                WITH *
+                RETURN one AS num
+                UNION
+                WITH *
+                WITH *
+                RETURN one AS num
+            } RETURN num
+            """
+        )
+        
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0], [1])
+
     def test30_surrounding_matches(self):
         """Tests that in case the call {} is surrounded by matches, the
         following match does not affect the input records to the call {} op"""
