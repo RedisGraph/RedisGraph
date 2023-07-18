@@ -326,8 +326,7 @@ bool AST_RewriteStarProjections
 					rax *clone_identifiers = raxNew();
 					replace_clause((cypher_astnode_t *)root,
 						(cypher_astnode_t *)clause, i, clone_identifiers);
-						clause = (cypher_astnode_t *)
-					cypher_ast_query_get_clause(root, i);
+					clause = cypher_ast_query_get_clause(root, i);
 					raxFree(clone_identifiers);
 				} else {
 					replace_clause((cypher_astnode_t *)root,
