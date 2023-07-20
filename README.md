@@ -1,26 +1,8 @@
-[![Release](https://img.shields.io/github/release/RedisGraph/RedisGraph.svg?sort=semver)](https://github.com/RedisGraph/RedisGraph/releases/latest)
-[![CircleCI](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master)
-[![Dockerhub](https://img.shields.io/docker/pulls/redis/redis-stack-server?label=redis-stack-server)](https://img.shields.io/docker/pulls/redis/redis-stack-server)
-[![Codecov](https://codecov.io/gh/RedisGraph/RedisGraph/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisGraph/RedisGraph)
-[![Bounty](https://img.shields.io/bountysource/team/redislabsmodules/activity)](https://app.bountysource.com/teams/redislabsmodules/issues)
-
-# RedisGraph
-## A graph database module for Redis
-[![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
-[![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
-
----
-### RedisGraph is now in maintenance mode.
-
-### As of July 5th, 2023 RedisGraph is no longer under active development. We do not plan to release new features (2.12 is the last feature-bearing release), but we will continue to release patches until January 31, 2025.
-
-### We are grateful to the RedisGraph community for their interest and support.
-
-### You can read more about the end of life of RedisGraph [here](https://redis.com/blog/redisgraph-eol/).
+# FalkorDB
 
 ---
 
-RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
+FalkorBD is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
 
 Primary features:
 * Adopting the [Property Graph Model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
@@ -31,27 +13,24 @@ Primary features:
 * [OpenCypher](http://www.opencypher.org/) with proprietary extensions as a query language
   * Queries are translated into linear algebra expressions
 
-To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
-To read the docs, visit [redis.io](https://redis.io/docs/stack/graph/).
+To see FalkorDB in action, visit [Demos](https://github.com/FalkorDB/FalkorDB/tree/master/demo).
 
 ## Quickstart
 
-1. [Trying RedisGraph](#trying-redisgraph)
+1. [Trying FalkorDB](#trying-falkordb)
 2. [Docker](#docker)
 3. [Build](#building)
-4. [Start](#loading-redisgraph-into-redis)
-5. [Use from any client](#using-redisgraph)
+4. [Start](#loading-falkordb-into-redis)
+5. [Use from any client](#using-falkordb)
 
 ### Give it a try
 
-Once loaded you can interact with RedisGraph using redis-cli.
+Once loaded you can interact with FalkorDB using redis-cli.
 
 Here we'll quickly create a small graph representing a subset of motorcycle riders and teams taking part in the MotoGP league,
 once created we'll start querying our data.
 
 ### With `redis-cli`
-
-The format of results through `redis-cli` is described in [the RedisGraph documentation](https://redis.io/docs/stack/graph/design/result_structure/).
 
 ```sh
 $ redis-cli
@@ -90,7 +69,7 @@ How many riders represent team Ducati?
 
 Requirements:
 
-* The RedisGraph repository: `git clone --recurse-submodules -j8 https://github.com/RedisGraph/RedisGraph.git`
+* The FalkorDB repository: `git clone --recurse-submodules -j8 https://github.com/FalkorDB/FalkorDB.git`
 
 * On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf python3`
 
@@ -99,7 +78,7 @@ Requirements:
 
 To build, run `make` in the project's directory.
 
-Congratulations! You can find the compiled binary at `src/redisgraph.so`.
+Congratulations! You can find the compiled binary at `bin/<arch>/src/falkordb.so`.
 
 ### Running tests
 
@@ -113,50 +92,50 @@ For more verbose output, run ```make test V=1```.
 
 ### Building in a docker
 
-The RedisGraph build system runs within docker. For detailed instructions on building, please [see here](docs/docker-examples/README.md).
+The FalkorDB build system runs within docker. For detailed instructions on building, please [see here](docs/docker-examples/README.md).
 
-## Loading RedisGraph into Redis
+## Loading FalkorDB into Redis
 
-RedisGraph is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server. [Redis 6.2](https://redis.io/download) is required for RedisGraph 2.12.
+FalkorDB is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server. [Redis 6.2](https://redis.io/download) is required for FalkorDB 2.12.
 
-We recommend having Redis load RedisGraph during startup by adding the following to your redis.conf file:
+We recommend having Redis load FalkorDB during startup by adding the following to your redis.conf file:
 
 ```
-loadmodule /path/to/module/src/redisgraph.so
+loadmodule /path/to/module/src/falkordb.so
 ```
 
-In the line above, replace `/path/to/module/src/redisgraph.so` with the actual path to RedisGraph's library.
+In the line above, replace `/path/to/module/src/falkordb.so` with the actual path to FalkorDB's library.
 If Redis is running as a service, you must ensure that the `redis` user (default) has the necessary file/folder permissions
-to access `redisgraph.so`.
+to access `falkordb.so`.
 
-Alternatively, you can have Redis load RedisGraph using the following command line argument syntax:
+Alternatively, you can have Redis load FalkorDB using the following command line argument syntax:
 
 ```sh
-~/$ redis-server --loadmodule /path/to/module/src/redisgraph.so
+~/$ redis-server --loadmodule /path/to/module/src/falkordb.so
 ```
 
 Lastly, you can also use the [`MODULE LOAD`](http://redis.io/commands/module-load) command. Note, however, that `MODULE LOAD` is a dangerous command and may be blocked/deprecated in the future due to security considerations.
 
-Once you've successfully loaded RedisGraph your Redis log should have lines similar to:
+Once you've successfully loaded FalkorDB your Redis log should have lines similar to:
 
 ```
 ...
-30707:M 20 Jun 02:08:12.314 * Module 'graph' loaded from <redacted>/src/redisgraph.so
+30707:M 20 Jun 02:08:12.314 * Module 'graph' loaded from <redacted>/src/falkordb.so
 ...
 ```
 
 If the server fails to launch with output similar to:
 
 ```
-# Module /usr/lib/redis/modules/redisgraph.so failed to load: libgomp.so.1: cannot open shared object file: No such file or directory
-# Can't load module from /usr/lib/redis/modules/redisgraph.so: server aborting
+# Module /usr/lib/redis/modules/falkordb.so failed to load: libgomp.so.1: cannot open shared object file: No such file or directory
+# Can't load module from /usr/lib/redis/modules/falkordb.so: server aborting
 ```
 
 The system is missing the run-time dependency OpenMP. This can be installed on Ubuntu with `apt-get install libgomp1`, on RHEL/CentOS with `yum install libgomp`, and on OSX with `brew install libomp`.
 
-## Using RedisGraph
+## Using FalkorDB
 
-You can call RedisGraph's commands from any Redis client.
+You can call FalkorDB's commands from any Redis client.
 
 ### With `redis-cli`
 
@@ -167,13 +146,13 @@ $ redis-cli
 
 ### With any other client
 
-You can interact with RedisGraph using your client's ability to send raw Redis commands.
+You can interact with FalkorDB using your client's ability to send raw Redis commands.
 
 Depending on your client of choice, the exact method for doing that may vary.
 
 #### Python example
 
-This code snippet shows how to use RedisGraph with raw Redis commands from Python via
+This code snippet shows how to use FalkorDB with raw Redis commands from Python via
 [redis-py](https://github.com/andymccurdy/redis-py):
 
 ```Python
@@ -185,7 +164,7 @@ reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi',
 
 ### Client libraries
 
-Some languages have client libraries that provide support for RedisGraph's commands:
+Some languages have client libraries that provide support for FalkorDB's commands:
 
 | Project                                                   | Language   | License | Author                                      | Stars                                                             | Package | Comment    |
 | --------------------------------------------------------- | ---------- | ------- | ------------------------------------------- | ----------------------------------------------------------------- | ------- | ---------- |
@@ -286,14 +265,6 @@ Some languages have client libraries that provide support for RedisGraph's comma
 [rustis-url]: https://github.com/dahomey-technologies/rustis
 [rustis-author]: https://github.com/dahomey-technologies
 [rustis-stars]: https://img.shields.io/github/stars/dahomey-technologies/rustis.svg?style=social&amp;label=Star&amp;maxAge=2592000
-
-## Documentation
-
-Read the docs at [redisgraph.io](http://redisgraph.io).
-
-## Mailing List / Forum
-
-Got questions? Feel free to ask at the [RedisGraph forum](https://forum.redislabs.com/c/modules/redisgraph).
 
 ## License
 
