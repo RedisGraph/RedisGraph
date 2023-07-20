@@ -9,6 +9,17 @@
 [![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
 [![Discord](https://img.shields.io/discord/697882427875393627?style=flat-square)](https://discord.gg/gWBRT6P)
 
+---
+### RedisGraph is now in maintenance mode.
+
+### As of July 5th, 2023 RedisGraph is no longer under active development. We do not plan to release new features (2.12 is the last feature-bearing release), but we will continue to release patches until January 31, 2025.
+
+### We are grateful to the RedisGraph community for their interest and support.
+
+### You can read more about the end of life of RedisGraph [here](https://redis.com/blog/redisgraph-eol/).
+
+---
+
 RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
 
 Primary features:
@@ -30,18 +41,6 @@ To read the docs, visit [redis.io](https://redis.io/docs/stack/graph/).
 3. [Build](#building)
 4. [Start](#loading-redisgraph-into-redis)
 5. [Use from any client](#using-redisgraph)
-
-## Trying RedisGraph
-
-To try RedisGraph, either use the RedisGraph Docker image, or [create a free Redis Cloud Essentials account](https://redislabs.com/try-free/) to get a RedisGraph instance in the cloud.
-
-## Docker
-
-To quickly tryout RedisGraph, launch an instance using docker:
-
-```sh
-docker run -p 6379:6379 -it --rm redis/redis-stack-server:latest
-```
 
 ### Give it a try
 
@@ -118,7 +117,7 @@ The RedisGraph build system runs within docker. For detailed instructions on bui
 
 ## Loading RedisGraph into Redis
 
-RedisGraph is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server: running [Redis v5.0.7 or above](https://redis.io/download).
+RedisGraph is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server. [Redis 6.2](https://redis.io/download) is required for RedisGraph 2.12.
 
 We recommend having Redis load RedisGraph during startup by adding the following to your redis.conf file:
 
@@ -177,7 +176,7 @@ Depending on your client of choice, the exact method for doing that may vary.
 This code snippet shows how to use RedisGraph with raw Redis commands from Python via
 [redis-py](https://github.com/andymccurdy/redis-py):
 
-```python
+```Python
 import redis
 
 r = redis.StrictRedis()

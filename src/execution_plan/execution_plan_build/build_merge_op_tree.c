@@ -4,11 +4,12 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "execution_plan_construct.h"
-#include "execution_plan_modify.h"
-#include "../execution_plan.h"
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
+#include "../execution_plan.h"
+#include "execution_plan_util.h"
+#include "execution_plan_modify.h"
+#include "execution_plan_construct.h"
 #include "../../util/rax_extensions.h"
 #include "../../ast/ast_build_op_contexts.h"
 
@@ -63,7 +64,7 @@ void buildMergeOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause,
 		bound_vars = raxNew();
 		// Rather than cloning the record map, collect the bound variables along with their
 		// parser-generated constant strings.
-		ExecutionPlan_BoundVariables(plan->root, bound_vars);
+		ExecutionPlan_BoundVariables(plan->root, bound_vars, plan);
 		// Collect the variable names from bound_vars to populate the Argument ops we will build.
 		arguments = (const char **)raxValues(bound_vars);
 	}

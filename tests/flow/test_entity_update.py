@@ -393,7 +393,7 @@ class testEntityUpdate():
                 graph.query(query)
                 self.env.assertTrue(False)
             except ResponseError as e:
-                self.env.assertContains("x not defined", str(e))
+                self.env.assertContains("'x' not defined", str(e))
 
 
     def test_25_fail_update_labels_for_edge(self):

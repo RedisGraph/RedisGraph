@@ -6,13 +6,15 @@
 
 #include "op.h"
 #include "RG.h"
+#include "op_project.h"
+#include "op_aggregate.h"
 #include "../../util/rmalloc.h"
 #include "../../util/simple_timer.h"
 
 // forward declarations
 Record ExecutionPlan_BorrowRecord(struct ExecutionPlan *plan);
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
-void ExecutionPlan_ReturnRecord(struct ExecutionPlan *plan, Record r);
+void ExecutionPlan_ReturnRecord(const struct ExecutionPlan *plan, Record r);
 
 void OpBase_Init
 (
@@ -80,11 +82,13 @@ int OpBase_Modifies
 	return (intptr_t)id;
 }
 
+// adds an alias to an existing modifier
+// such that record[modifier] = record[alias]
 int OpBase_AliasModifier
 (
-	OpBase *op,
-	const char *modifier,
-	const char *alias
+	OpBase *op,            // op
+	const char *modifier,  // existing alias
+	const char *alias      // new alias
 ) {
 	rax *mapping = ExecutionPlan_GetMappings(op->plan);
 	void *id = raxFind(mapping, (unsigned char *)modifier, strlen(modifier));
@@ -137,15 +141,47 @@ bool OpBase_Aware
 	return (rec_idx != raxNotFound);
 }
 
+// collects writing operations under `op` into `write_ops`, and resets the
+// reading ops (including `op` itself)
+static void _OpBase_PropagateReset
+(
+	OpBase *op,
+	OpBase ***write_ops
+) {
+	if(op->reset) {
+		if(OpBase_IsWriter(op)) {
+			array_append(*write_ops, op);
+		} else {
+			OpResult res = op->reset(op);
+			ASSERT(res == OP_OK);
+		}
+	}
+
+	// recursively reset children
+	for(int i = 0; i < op->childCount; i++) {
+		_OpBase_PropagateReset(op->children[i], write_ops);
+	}
+}
+
 void OpBase_PropagateReset
 (
 	OpBase *op
 ) {
-	if(op->reset) {
+	// hold write operations until the read operations have been reset
+	OpBase **write_ops = array_new(OpBase *, 0);
+
+	// reset read operations
+	_OpBase_PropagateReset(op, &write_ops);
+
+	// reset write operations
+	uint write_op_count = array_len(write_ops);
+	for(uint i = 0; i < write_op_count; i++) {
+		OpBase *write_op = write_ops[i];
 		OpResult res = op->reset(op);
 		ASSERT(res == OP_OK);
 	}
-	for(int i = 0; i < op->childCount; i++) OpBase_PropagateReset(op->children[i]);
+
+	array_free(write_ops);
 }
 
 static void _OpBase_StatsToString
@@ -205,6 +241,24 @@ void OpBase_UpdateConsume
 	else op->consume = consume;
 }
 
+// updates the plan of an operation
+void OpBase_BindOpToPlan
+(
+	OpBase *op,
+	const struct ExecutionPlan *plan
+) {
+	ASSERT(op != NULL);
+
+	OPType type = OpBase_Type(op);
+	if(type == OPType_PROJECT) {
+		ProjectBindToPlan(op, plan);
+	} else if(type == OPType_AGGREGATE) {
+		AggregateBindToPlan(op, plan);
+	} else {
+		op->plan = plan;
+	}
+}
+
 inline Record OpBase_CreateRecord
 (
 	const OpBase *op
@@ -236,6 +290,26 @@ inline OPType OpBase_Type
 ) {
 	ASSERT(op != NULL);
 	return op->type;
+}
+
+// returns the number of children of the op
+inline uint OpBase_ChildCount
+(
+	const OpBase *op
+) {
+	ASSERT(op != NULL);
+	return op->childCount;
+}
+
+// returns the i'th child of the op
+OpBase *OpBase_GetChild
+(
+	OpBase *op,  // op
+	uint i       // child index
+) {
+	ASSERT(op != NULL);
+	ASSERT(i < op->childCount);
+	return op->children[i];
 }
 
 inline void OpBase_DeleteRecord

@@ -258,7 +258,8 @@ static void _UndoLog_Rollback_Delete_Node
 
 		// re-introduce node to indices
 		_index_node(ctx, &n);
-		// Cleanup after undo rollback, as the op D'tor is not called.
+
+		// cleanup after undo rollback, as the op D'tor is not called
 		rm_free(delete_op->labels);
 	}
 }
@@ -317,7 +318,6 @@ static void _UndoLog_Rollback_Add_Attribute
 ) {
 	UndoOp *undo_list = ctx->undo_log;
 	for(int i = seq_start; i > seq_end; --i) {
-		Edge e;
 		UndoOp *op = undo_list + i;
 		UndoAddAttributeOp attribute_op = op->attribute_op;
 		int attribute_id = attribute_op.attribute_id;

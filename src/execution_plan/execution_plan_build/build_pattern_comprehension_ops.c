@@ -4,10 +4,11 @@
  * the Server Side Public License v1 (SSPLv1).
  */
 
-#include "execution_plan_construct.h"
 #include "RG.h"
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
+#include "execution_plan_util.h"
+#include "execution_plan_construct.h"
 #include "../../util/rax_extensions.h"
 #include "../../ast/ast_build_filter_tree.h"
 #include "../execution_plan_build/execution_plan_modify.h"
@@ -63,7 +64,8 @@ void buildPatternComprehensionOps
 	if(root->childCount > 0) {
 		// get the bound variable to use when building the traversal ops
 		rax *bound_vars = raxNew();
-		ExecutionPlan_BoundVariables(root->children[0], bound_vars);
+		ExecutionPlan_BoundVariables(root->children[0], bound_vars,
+			root->children[0]->plan);
 		arguments = (const char **)raxValues(bound_vars);
 		raxFree(bound_vars);
 	}
@@ -186,7 +188,8 @@ void buildPatternPathOps
 	if(root->childCount > 0) {
 		// get the bound variable to use when building the traversal ops
 		rax *bound_vars = raxNew();
-		ExecutionPlan_BoundVariables(root->children[0], bound_vars);
+		ExecutionPlan_BoundVariables(root->children[0], bound_vars,
+			root->children[0]->plan);
 		arguments = (const char **)raxValues(bound_vars);
 		raxFree(bound_vars);
 	}

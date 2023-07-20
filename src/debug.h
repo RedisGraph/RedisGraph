@@ -8,6 +8,9 @@
 
 #include "redismodule.h"
 
-// Register sigsegv signal hander
-void setupCrashHandlers(RedisModuleCtx *ctx);
+// register sigsegv signal hander
+void setupCrashHandlers
+(
+	RedisModuleCtx *ctx
+);
 

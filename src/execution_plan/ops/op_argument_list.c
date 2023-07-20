@@ -52,9 +52,6 @@ static Record ArgumentListConsume
 		return array_pop(op->records);
 	}
 
-	// depleted
-	array_free(op->records);
-	op->records = NULL;
 	return NULL;
 }
 
