@@ -280,13 +280,12 @@ Index GraphContext_GetIndex
 
 bool GraphContext_AddExactMatchIndex
 (
-	Index *idx,                 // [input/output] index created
-	GraphContext *gc,           // graph context
-	SchemaType schema_type,     // type of entities to index nodes/edges
-	const char *label,          // label of indexed entities
-	const char **fields_str,    // fields to index
-	uint fields_count,          // number of fields to index
-	bool should_reply           // should reply to client
+	Index *idx,              // [input/output] index created
+	GraphContext *gc,        // graph context
+	SchemaType schema_type,  // type of entities to index nodes/edges
+	const char *label,       // label of indexed entities
+	const char **attrs,      // attributes to index
+	uint attrs_count         // number of attributes to index
 );
 
 // create a full text index for the given label and attribute
@@ -295,13 +294,24 @@ bool GraphContext_AddFullTextIndex
 	Index *idx,              // [input/output] index created
 	GraphContext *gc,        // graph context
 	const char *label,       // label of indexed entities
-	const char **fields,     // fields to index
-	uint fields_count,       // number of fields to index
+	const char **attrs,      // attributes to index
+	uint attrs_count,        // number of attributes to index
 	double *weights,         // fields weights
 	bool *nostems,           //
 	const char **phonetics,  //
 	char **stopwords,
 	const char *language
+);
+
+// create a vector index for the given label and attribute
+bool GraphContext_AddVectorIndex
+(
+	Index *idx,                   // [input/output] index created
+	GraphContext *gc,             // graph context
+	GraphEntityType entity_type,  // node/edge
+	const char *label,            // label of indexed entities
+	const char *attr,             // attribute to index
+	uint32_t dimension            // vector dimension
 );
 
 // remove and free an index

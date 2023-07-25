@@ -232,7 +232,7 @@ static void _index_operation_create
 	Index idx;
 	// add fields to index
 	if(GraphContext_AddExactMatchIndex(&idx, gc, schema_type, label, fields,
-				nprops, true)) {
+				nprops)) {
 		Schema *s = GraphContext_GetSchema(gc, label, schema_type);
 		Indexer_PopulateIndex(gc, s, idx);
 	}

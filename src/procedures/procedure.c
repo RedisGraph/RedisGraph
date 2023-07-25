@@ -43,6 +43,9 @@ void Proc_Register() {
 	_procRegister("db.idx.fulltext.drop", Proc_FulltextDropIdxGen);
 	_procRegister("db.idx.fulltext.queryNodes", Proc_FulltextQueryNodeGen);
 	_procRegister("db.idx.fulltext.createNodeIndex", Proc_FulltextCreateNodeIdxGen);
+
+	// register vector search generator
+	_procRegister("db.idx.vector.createIndex", Proc_VectorCreateIdxGen);
 }
 
 ProcedureCtx *ProcCtxNew(const char *name,
@@ -55,14 +58,16 @@ ProcedureCtx *ProcCtxNew(const char *name,
 						 bool readOnly) {
 
 	ProcedureCtx *ctx = rm_malloc(sizeof(ProcedureCtx));
-	ctx->argc = argc;
-	ctx->name = name;
-	ctx->Step = fStep;
-	ctx->Free = fFree;
-	ctx->output = output;
-	ctx->Invoke = fInvoke;
+
+	ctx->argc        = argc;
+	ctx->name        = name;
+	ctx->Step        = fStep;
+	ctx->Free        = fFree;
+	ctx->output      = output;
+	ctx->Invoke      = fInvoke;
 	ctx->privateData = privateData;
-	ctx->readOnly = readOnly;
+	ctx->readOnly    = readOnly;
+
 	return ctx;
 }
 
@@ -149,10 +154,15 @@ bool Procedure_IsReadOnly(const ProcedureCtx *proc) {
 }
 
 void Proc_Free(ProcedureCtx *proc) {
-	if(!proc) return;
+	if(proc == NULL) {
+		return;
+	}
+
 	proc->Free(proc);
 
-	if(proc->output) array_free(proc->output);
+	if(proc->output != NULL) {
+		array_free(proc->output);
+	}
 
 	rm_free(proc);
 }

@@ -35,15 +35,24 @@ static void _RdbLoadFullTextIndex
 
 	uint fields_count = RedisModule_LoadUnsigned(rdb);
 	for(uint i = 0; i < fields_count; i++) {
-		char    *field_name  =  RedisModule_LoadStringBuffer(rdb, NULL);
-		double  weight       =  RedisModule_LoadDouble(rdb);
-		bool    nostem       =  RedisModule_LoadUnsigned(rdb);
-		char    *phonetic    =  RedisModule_LoadStringBuffer(rdb, NULL);
+		char   *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
+		double weight      = RedisModule_LoadDouble(rdb);
+		bool   nostem      = RedisModule_LoadUnsigned(rdb);
+		char   *phonetic   = RedisModule_LoadStringBuffer(rdb, NULL);
 
 		if(!already_loaded) {
 			IndexField field;
-			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
-			IndexField_New(&field, field_id, field_name, weight, nostem, phonetic);
+			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc,
+					field_name, NULL);
+
+			// create new index field
+			IndexField_NewFullTextField(&field, field_name, field_id);
+
+			// set field options
+			IndexField_SetWeight(&field, weight);
+			IndexField_SetStemming(&field, nostem);
+			IndexField_SetPhonetic(&field, phonetic);
+
 			Schema_AddIndex(&idx, s, &field, IDX_FULLTEXT);
 		}
 
@@ -80,9 +89,7 @@ static void _RdbLoadExactMatchIndex
 		if(!already_loaded) {
 			IndexField field;
 			Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
-			IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
-				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
-
+			IndexField_NewExactMatchField(&field, field_name, field_id);
 			Schema_AddIndex(&idx, s, &field, IDX_EXACT_MATCH);
 		}
 		RedisModule_Free(field_name);

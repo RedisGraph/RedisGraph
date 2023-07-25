@@ -29,9 +29,19 @@ static Schema *_RdbLoadSchema
 		IndexType type = RedisModule_LoadUnsigned(rdb);
 		char *field_name = RedisModule_LoadStringBuffer(rdb, NULL);
 		IndexField field;
-		Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name, NULL);
-		IndexField_New(&field, field_id, field_name, INDEX_FIELD_DEFAULT_WEIGHT,
-				INDEX_FIELD_DEFAULT_NOSTEM, INDEX_FIELD_DEFAULT_PHONETIC);
+		Attribute_ID field_id = GraphContext_FindOrAddAttribute(gc, field_name,
+				NULL);
+
+		if(type == IDX_EXACT_MATCH) {
+			IndexField_NewExactMatchField(&field, field_name, field_id);
+		} else if(type == IDX_FULLTEXT) {
+			IndexField_NewFullTextField(&field, field_name, field_id);
+		} else {
+			RedisModule_LogIOError(rdb, "warning", "Unknown index type %d",
+								   type);
+			assert(false);
+		}
+
 		Schema_AddIndex(&idx, s, &field, type);
 		RedisModule_Free(field_name);
 	}

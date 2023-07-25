@@ -61,9 +61,10 @@ static inline void _RdbSaveFullTextIndexData
 		// encode field
 		const IndexField *f = fields + i;
 		RedisModule_SaveStringBuffer(rdb, f->name, strlen(f->name) + 1);
-		RedisModule_SaveDouble(rdb, f->weight);
-		RedisModule_SaveUnsigned(rdb, f->nostem);
-		RedisModule_SaveStringBuffer(rdb, f->phonetic, strlen(f->phonetic) + 1);
+		RedisModule_SaveDouble(rdb, f->options.weight);
+		RedisModule_SaveUnsigned(rdb, f->options.nostem);
+		RedisModule_SaveStringBuffer(rdb, f->options.phonetic,
+				strlen(f->options.phonetic) + 1);
 	}
 }
 

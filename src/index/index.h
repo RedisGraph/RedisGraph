@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "index_field.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
 #include "../graph/entities/graph_entity.h"
@@ -15,16 +16,6 @@
 #define INDEX_OK 1
 #define INDEX_FAIL 0
 #define INDEX_SEPARATOR '\1'  // can't use '\0', RediSearch will terminate on \0
-#define INDEX_FIELD_NONE_INDEXED "NONE_INDEXABLE_FIELDS"
-
-#define INDEX_FIELD_DEFAULT_WEIGHT 1.0
-#define INDEX_FIELD_DEFAULT_NOSTEM false
-#define INDEX_FIELD_DEFAULT_PHONETIC "no"
-
-// initialize index field with default values
-#define IndexField_Default(field, id, name) IndexField_New(field, id, name,  \
-		INDEX_FIELD_DEFAULT_WEIGHT, INDEX_FIELD_DEFAULT_NOSTEM,              \
-		INDEX_FIELD_DEFAULT_PHONETIC)
 
 // forward declaration
 typedef struct _Index _Index;
@@ -41,31 +32,6 @@ typedef struct {
 	EntityID dest_id;
 	EntityID edge_id;
 } EdgeIndexKey;
-
-typedef struct {
-	char *name;        // field name
-	Attribute_ID id;   // field id
-	double weight;     // the importance of text
-	bool nostem;       // disable stemming of the text
-	char *phonetic;    // phonetic search of text
-} IndexField;
-
-// create new index field
-void IndexField_New
-(
-	IndexField *field,    // field to initialize
-	Attribute_ID id,      // field id
-	const char *name,     // field name
-	double weight,        // the importance of text
-	bool nostem,          // disable stemming of the text
-	const char *phonetic  // phonetic search of text
-);
-
-// free index field
-void IndexField_Free
-(
-	IndexField *field  // index field to be freed
-);
 
 // create a new index
 Index Index_New

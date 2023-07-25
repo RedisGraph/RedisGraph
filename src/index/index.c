@@ -29,35 +29,7 @@ struct _Index {
 	uint _Atomic pending_changes;  // number of pending changes
 };
 
-static void _Index_ConstructFullTextStructure
-(
-	Index idx,
-	RSIndex *rsIdx
-) {
-	ASSERT(idx != NULL);
-	ASSERT(rsIdx != NULL);
-
-	uint fields_count = array_len(idx->fields);
-
-	for(uint i = 0; i < fields_count; i++) {
-		IndexField *field = idx->fields + i;
-		// introduce text field
-		unsigned options = RSFLDOPT_NONE;
-		if(field->nostem) {
-			options |= RSFLDOPT_TXTNOSTEM;
-		}
-
-		if(strcmp(field->phonetic, INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
-			options |= RSFLDOPT_TXTPHONETIC;
-		}
-
-		RSFieldID fieldID = RediSearch_CreateField(rsIdx, field->name,
-				RSFLDTYPE_FULLTEXT, options);
-		RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->weight);
-	}
-}
-
-static void _Index_ConstructExactMatchStructure
+static void _Index_ConstructStructure
 (
 	Index idx,
 	RSIndex *rsIdx
@@ -67,24 +39,67 @@ static void _Index_ConstructExactMatchStructure
 
 	RSFieldID fieldID;
 	uint fields_count = array_len(idx->fields);
-	unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
 
 	for(uint i = 0; i < fields_count; i++) {
 		IndexField *field = idx->fields + i;
-		// introduce both text, numeric and geo fields
-		fieldID = RediSearch_CreateField(rsIdx, field->name, types,
-				RSFLDOPT_NONE);
-		RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
-		RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+
+		//----------------------------------------------------------------------
+		// full text field
+		//----------------------------------------------------------------------
+
+		if(field->type & INDEX_FLD_FULLTEXT) {
+
+			// introduce text field
+			unsigned options = RSFLDOPT_NONE;
+
+			if(field->options.nostem) {
+				options |= RSFLDOPT_TXTNOSTEM;
+			}
+
+			if(strcmp(field->options.phonetic,
+						INDEX_FIELD_DEFAULT_PHONETIC) != 0) {
+				options |= RSFLDOPT_TXTPHONETIC;
+			}
+
+			fieldID = RediSearch_CreateField(rsIdx, field->name,
+					RSFLDTYPE_FULLTEXT, options);
+
+			RediSearch_TextFieldSetWeight(rsIdx, fieldID, field->options.weight);
+
+			continue;
+		}
+
+		//----------------------------------------------------------------------
+		// vector field
+		//----------------------------------------------------------------------
+
+		if(field->type & INDEX_FLD_VECTOR) {
+			fieldID = RediSearch_CreateVectorField(rsIdx, field->name);
+			//RediSearch_VectorFieldSetDim(rsIdx, fieldID, field->options.dimension);
+			continue;
+		}
+
+		//----------------------------------------------------------------------
+		// numeric, string and geo fields
+		//----------------------------------------------------------------------
+
+		if(field->type & (INDEX_FLD_NUMERIC | INDEX_FLD_STR | INDEX_FLD_GEO)) {
+
+			unsigned types = RSFLDTYPE_NUMERIC | RSFLDTYPE_GEO | RSFLDTYPE_TAG;
+
+			// introduce both text, numeric and geo fields
+			fieldID = RediSearch_CreateField(rsIdx, field->name, types,
+					RSFLDOPT_NONE);
+			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
+			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+
+			continue;
+		}
 	}
 
-	// introduce edge src and dest node ids as additional index fields
-	if(idx->entity_type == GETYPE_EDGE) {
-		RediSearch_CreateField(rsIdx, "_src_id", RSFLDTYPE_NUMERIC,
-				RSFLDOPT_NONE);
-		RediSearch_CreateField(rsIdx, "_dest_id", RSFLDTYPE_NUMERIC,
-				RSFLDOPT_NONE);
-	}
+	//--------------------------------------------------------------------------
+	// none indexable types
+	//--------------------------------------------------------------------------
 
 	// for none indexable types e.g. Array introduce an additional field
 	// "none_indexable_fields" which will hold a list of attribute names
@@ -93,6 +108,18 @@ static void _Index_ConstructExactMatchStructure
 			RSFLDTYPE_TAG, RSFLDOPT_NONE);
 	RediSearch_TagFieldSetSeparator(rsIdx, fieldID, INDEX_SEPARATOR);
 	RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+
+	//--------------------------------------------------------------------------
+	// edge index specifics
+	//--------------------------------------------------------------------------
+
+	// introduce edge src and dest node ids as additional index fields
+	if(idx->entity_type == GETYPE_EDGE) {
+		RediSearch_CreateField(rsIdx, "_src_id", RSFLDTYPE_NUMERIC,
+				RSFLDOPT_NONE);
+		RediSearch_CreateField(rsIdx, "_dest_id", RSFLDTYPE_NUMERIC,
+				RSFLDOPT_NONE);
+	}
 }
 
 // responsible for creating the index structure only!
@@ -127,11 +154,7 @@ void Index_ConstructStructure
 	RediSearch_FreeIndexOptions(idx_options);
 
 	// create indexed fields
-	if(idx->type == IDX_FULLTEXT) {
-		_Index_ConstructFullTextStructure(idx, rsIdx);
-	} else {
-		_Index_ConstructExactMatchStructure(idx, rsIdx);
-	}
+	_Index_ConstructStructure(idx, rsIdx);
 
 	// set RediSearch index
 	ASSERT(idx->rsIdx == NULL);
@@ -246,36 +269,6 @@ RSDoc *Index_IndexGraphEntity
 	return doc;
 }
 
-void IndexField_New
-(
-	IndexField *field,    // field to initialize
-	Attribute_ID id,      // attribute ID
-	const char *name,     // field name
-	double weight,        // field weight
-	bool nostem,          // no stemming
-	const char *phonetic  // phonetic
-) {
-	ASSERT(name     != NULL);
-	ASSERT(field    != NULL);
-	ASSERT(phonetic != NULL);
-
-	field->id       = id;
-	field->name     = rm_strdup(name);
-	field->weight   = weight;
-	field->nostem   = nostem;
-	field->phonetic = rm_strdup(phonetic);
-}
-
-void IndexField_Free
-(
-	IndexField *field
-) {
-	ASSERT(field != NULL);
-
-	rm_free(field->name);
-	rm_free(field->phonetic);
-}
-
 // create a new index
 Index Index_New
 (
@@ -333,7 +326,7 @@ Index Index_Clone
 	for(int i = 0; i < n; i++) {
 		IndexField _f;
 		IndexField *f = idx->fields + i;
-		IndexField_New(&_f, f->id, f->name, f->weight, f->nostem, f->phonetic);
+		IndexField_Clone(f, &_f);
 		array_append(clone->fields, _f);
 	}
 
