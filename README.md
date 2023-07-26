@@ -7,7 +7,7 @@
 > 
 > * Working in the open with the community
 > * Always provide superior performance.
-> *Easy to adapt
+> * Easy to adapt
 
 
 
