@@ -32,7 +32,7 @@
 
 // minimal supported Redis version
 #define MIN_REDIS_VERION_MAJOR 6
-#define MIN_REDIS_VERION_MINOR 0
+#define MIN_REDIS_VERION_MINOR 2
 #define MIN_REDIS_VERION_PATCH 0
 
 static int _RegisterDataTypes(RedisModuleCtx *ctx) {
