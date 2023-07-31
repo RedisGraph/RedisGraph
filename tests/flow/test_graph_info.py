@@ -83,24 +83,33 @@ class testGraphInfo(FlowTestsBase):
 
         self.env.assertEquals(t, "stream")
 
-        # consume entire stream
-        events = self.conn.xrevrange(stream, '+', '-')
-
         # convert stream events to LoggedQueries
-        logged_queries = [LoggedQuery(e[1]) for e in events]
+        logged_queries = []
+        streams = {stream: '0-0'}
 
-        # wait until `n_items` events are consumed
         elapsed = 10
         while len(logged_queries) < n_items and elapsed > 0:
+            # read messages from the stream
+            messages = self.conn.xread(streams, block=0)
+
+            # process each message received
+            stream_messages = messages[0][1]
+            for message_id, message_payload in stream_messages:
+                # logged_queries.insert(0, LoggedQuery(message_payload))
+                logged_queries.append(LoggedQuery(message_payload))
+
+            if stream_messages:
+                # update stream last ID
+                streams[stream] = stream_messages[-1][0]
+
             time.sleep(0.2)
             elapsed -= 0.2
-
-            events = self.conn.xrevrange(stream, '+', '-')
-            logged_queries = [LoggedQuery(e[1]) for e in events]
 
         # drop stream
         if drop:
             self.conn.delete(stream)
+
+        logged_queries.reverse()
 
         return logged_queries
 
@@ -183,7 +192,8 @@ class testGraphInfo(FlowTestsBase):
             t.join()
 
         # read stream
-        logged_queries = self.consumeStream(StreamName(self.graph), n_items=1200)
+        # set n_items to 1, so that we read from a populated stream exactly once
+        logged_queries = self.consumeStream(StreamName(self.graph), n_items=1)
 
         # make sure number of logged queries is capped
         self.env.assertLess(len(logged_queries), 1200)
