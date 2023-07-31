@@ -74,7 +74,7 @@ class testGraphInfo(FlowTestsBase):
         self.conn = self.env.getConnection()
         self.graph = Graph(self.conn, GRAPH_ID)
 
-    def consumeStream(self, stream, drop=True):
+    def consumeStream(self, stream, drop=True, n_items=1):
         # wait for telemetry stream to be created
         t = 'none' # type of stream_key
 
@@ -88,6 +88,15 @@ class testGraphInfo(FlowTestsBase):
 
         # convert stream events to LoggedQueries
         logged_queries = [LoggedQuery(e[1]) for e in events]
+
+        # wait until `n_items` events are consumed
+        elapsed = 10
+        while len(logged_queries) < n_items and elapsed > 0:
+            time.sleep(0.2)
+            elapsed -= 0.2
+
+            events = self.conn.xrevrange(stream, '+', '-')
+            logged_queries = [LoggedQuery(e[1]) for e in events]
 
         # drop stream
         if drop:
@@ -114,7 +123,7 @@ class testGraphInfo(FlowTestsBase):
             self.graph.query(q)
 
         # read stream
-        logged_queries = self.consumeStream(StreamName(self.graph))
+        logged_queries = self.consumeStream(StreamName(self.graph), n_items=3)
 
         # validate events
         self.env.assertEquals(len(logged_queries), 3)
@@ -132,7 +141,7 @@ class testGraphInfo(FlowTestsBase):
                 self.graph.query(q)
 
         # read stream
-        logged_queries = self.consumeStream(StreamName(self.graph))
+        logged_queries = self.consumeStream(StreamName(self.graph), n_items=6)
 
         # validate events
         self.env.assertEquals(len(logged_queries), 6)
@@ -174,7 +183,7 @@ class testGraphInfo(FlowTestsBase):
             t.join()
 
         # read stream
-        logged_queries = self.consumeStream(StreamName(self.graph))
+        logged_queries = self.consumeStream(StreamName(self.graph), n_items=1200)
 
         # make sure number of logged queries is capped
         self.env.assertLess(len(logged_queries), 1200)
