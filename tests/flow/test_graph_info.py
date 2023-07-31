@@ -192,8 +192,7 @@ class testGraphInfo(FlowTestsBase):
             t.join()
 
         # read stream
-        # set n_items to 1, so that we read from a populated stream exactly once
-        logged_queries = self.consumeStream(StreamName(self.graph), n_items=1)
+        logged_queries = self.consumeStream(StreamName(self.graph))
 
         # make sure number of logged queries is capped
         self.env.assertLess(len(logged_queries), 1200)
