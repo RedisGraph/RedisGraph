@@ -11,9 +11,6 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: true
-    - run: |
-        git config --global --add safe.directory '*'
-        git submodule update --init --recursive
     - name: Setup
       run: |
         ./sbin/setup
@@ -22,7 +19,6 @@ jobs:
     - name: Build
       run: |
         make
-        make pack
     - name: Unit tests
       run: |
         make unit-tests CLEAR_LOGS=0
