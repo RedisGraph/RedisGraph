@@ -92,13 +92,12 @@ class testGraphInfo(FlowTestsBase):
             # read messages from the stream
             messages = self.conn.xread(streams, block=0)
 
-            # process each message received
-            stream_messages = messages[0][1]
-            for message_id, message_payload in stream_messages:
-                # logged_queries.insert(0, LoggedQuery(message_payload))
-                logged_queries.append(LoggedQuery(message_payload))
+            if len(messages) > 0:
+                # process each message received
+                stream_messages = messages[0][1]
+                for message_id, message_payload in stream_messages:
+                    logged_queries.append(LoggedQuery(message_payload))
 
-            if stream_messages:
                 # update stream last ID
                 streams[stream] = stream_messages[-1][0]
 
@@ -109,6 +108,7 @@ class testGraphInfo(FlowTestsBase):
         if drop:
             self.conn.delete(stream)
 
+        # reverse order to match expected order of events
         logged_queries.reverse()
 
         return logged_queries
