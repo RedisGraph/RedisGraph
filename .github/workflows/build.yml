@@ -17,8 +17,9 @@ jobs:
       uses: actions/cache@v3.3.1
       with:
         path: |
-          ./deps/GraphBLAS
-        key: graphblas
+          ./bin/linux-x64-release/GraphBLAS
+        restore-keys: |
+          graphblas-${{ hashFiles('./deps/GraphBLAS/Include/GraphBLAS.h') }}
     - name: Setup
       run: |
         ./sbin/setup
