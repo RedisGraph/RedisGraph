@@ -27,15 +27,47 @@ jobs:
     - name: Build
       run: |
         make
-    - name: Unit tests
-      run: |
-        make unit-tests CLEAR_LOGS=0
-    - name: Flow tests
-      run: |
-        make flow-tests CLEAR_LOGS=0
-    - name: TCK tests
-      run: |
-        make tck-tests CLEAR_LOGS=0
-    - name: Fuzzer tests
-      run: |
-        make fuzz
+    - uses: actions/upload-artifact@v3
+      with:
+        name: ubuntu-falkorDB
+        path: ./bin
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: ubuntu-falkorDB
+      - name: Unit tests
+        run: |
+          make unit-tests CLEAR_LOGS=0
+  flow-tests:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: ubuntu-falkorDB
+      - name: Flow tests
+        run: |
+          make flow-tests CLEAR_LOGS=0
+  tck-tests:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: ubuntu-falkorDB
+      - name: TCK tests
+        run: |
+          make tck-tests CLEAR_LOGS=0
+  fuzz-tests:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: ubuntu-falkorDB
+      - name: Fuzz tests
+        run: |
+          make fuzz
