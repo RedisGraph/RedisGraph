@@ -41,6 +41,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
+          path: .
       - name: Setup
         run: |
           ./sbin/setup
@@ -60,6 +61,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
+          path: .
       - name: Setup
         run: |
           ./sbin/setup
@@ -79,6 +81,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
+          path: .
       - name: Setup
         run: |
           ./sbin/setup
@@ -98,6 +101,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
+          path: .
       - name: Setup
         run: |
           ./sbin/setup
