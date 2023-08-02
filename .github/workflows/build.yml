@@ -10,10 +10,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
+        set-safe-directory: '*'
         submodules: true
-    - run: |
-        git config --global --add safe.directory '*'
-        git submodule update --init --recursive
     - name: Cache
       id: graphblas
       uses: actions/cache@v3.3.1
