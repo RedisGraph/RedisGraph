@@ -23,7 +23,6 @@ jobs:
       run: |
         ./sbin/setup
         export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
-        ./deps/readies/bin/getredis --with-github-token
     - name: Build
       run: |
         make
@@ -35,9 +34,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
+      - name: Setup
+        run: |
+          ./sbin/setup
+          export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          ./deps/readies/bin/getredis --with-github-token
       - name: Unit tests
         run: |
           make unit-tests CLEAR_LOGS=0
@@ -45,9 +50,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
+      - name: Setup
+        run: |
+          ./sbin/setup
+          export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          ./deps/readies/bin/getredis --with-github-token
       - name: Flow tests
         run: |
           make flow-tests CLEAR_LOGS=0
@@ -55,9 +66,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
+      - name: Setup
+        run: |
+          ./sbin/setup
+          export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          ./deps/readies/bin/getredis --with-github-token
       - name: TCK tests
         run: |
           make tck-tests CLEAR_LOGS=0
@@ -65,9 +82,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
+      - name: Setup
+        run: |
+          ./sbin/setup
+          export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          ./deps/readies/bin/getredis --with-github-token
       - name: Fuzz tests
         run: |
           make fuzz
