@@ -18,8 +18,7 @@ jobs:
       with:
         path: |
           ./bin/linux-x64-release/GraphBLAS
-        restore-keys: |
-          graphblas-${{ hashFiles('./deps/GraphBLAS/Include/GraphBLAS.h') }}
+        key: graphblas-${{ hashFiles('./deps/GraphBLAS/Include/GraphBLAS.h') }}
     - name: Setup
       run: |
         ./sbin/setup
