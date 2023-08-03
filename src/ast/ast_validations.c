@@ -1015,14 +1015,9 @@ static AST_Validation _ValidateUnion_Clauses
 		const char *projections[proj_count];
 
 		for(uint j = 0; j < proj_count; j++) {
-			const cypher_astnode_t *proj = cypher_ast_return_get_projection(return_clause, j);
-			const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj);
-			if(alias_node == NULL)  {
-				// The projection was not aliased, so the projection itself must be an identifier.
-				alias_node = cypher_ast_projection_get_expression(proj);
-				ASSERT(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
-			}
-			const char *alias = cypher_ast_identifier_get_name(alias_node);
+			const cypher_astnode_t *proj =
+				cypher_ast_return_get_projection(return_clause, j);
+			const char *alias = AST_GetProjectionAlias(proj);
 			projections[j] = alias;
 		}
 
@@ -1035,15 +1030,10 @@ static AST_Validation _ValidateUnion_Clauses
 			}
 
 			for(uint j = 0; j < proj_count; j++) {
-				const cypher_astnode_t *proj = cypher_ast_return_get_projection(return_clause, j);
-				const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj);
-				if(alias_node == NULL)  {
-					// The projection was not aliased, so the projection itself must be an identifier.
-					alias_node = cypher_ast_projection_get_expression(proj);
-					ASSERT(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
-				}
-				const char *alias = cypher_ast_identifier_get_name(alias_node);
-				if(strcmp(projections[j], alias) != 0) {
+				const cypher_astnode_t *proj =
+					cypher_ast_return_get_projection(return_clause, j);
+				const char *alias = AST_GetProjectionAlias(proj);
+				if(projections[j] == NULL || strcmp(projections[j], alias) != 0) {
 					ErrorCtx_SetError("All sub queries in a UNION must have the same column names.");
 					res = AST_INVALID;
 					goto cleanup;
@@ -1349,23 +1339,22 @@ references to outside variables");
 		for(uint i = 0; i < n_projections; i++) {
 			const cypher_astnode_t *proj =
 				cypher_ast_return_get_projection(return_clause, i);
-			const char *var_name;
-			const cypher_astnode_t *identifier =
-				cypher_ast_projection_get_alias(proj);
 			const cypher_astnode_t *exp =
 					cypher_ast_projection_get_expression(proj);
-			if(identifier) {
-				var_name = cypher_ast_identifier_get_name(identifier);
-				if(exp &&
-				   cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER &&
-				   cypher_ast_identifier_get_name(exp)[0] == '@') {
-					// this is an artificial projection, skip it
-					continue;
-				}
-			} else {
-				var_name = cypher_ast_identifier_get_name(exp);
+
+			if(cypher_ast_projection_is_aliased(proj) == false) {
+				ErrorCtx_SetError("Return projection in CALL {} must be aliased");
+				return VISITOR_BREAK;
 			}
 
+			if(exp &&
+			   cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER &&
+			   cypher_ast_identifier_get_name(exp)[0] == '@') {
+				// this is an artificial projection, skip it
+				continue;
+			}
+
+			const char *var_name = AST_GetProjectionAlias(proj);
 			if(!raxTryInsert(vctx->defined_identifiers,
 				(unsigned char *)var_name, strlen(var_name), NULL, NULL)) {
 					ErrorCtx_SetError(
@@ -1747,13 +1736,10 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 
 	// introduce bound vars
 	for(uint i = 0; i < num_return_projections; i ++) {
-		const cypher_astnode_t *child = cypher_ast_return_get_projection(n, i);
-		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
-		if(alias_node == NULL) {
-			continue;
-		}
-		const char *alias = cypher_ast_identifier_get_name(alias_node);
-		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+		const cypher_astnode_t *proj = cypher_ast_return_get_projection(n, i);
+		const char *alias = AST_GetProjectionAlias(proj);
+		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias),
+      NULL, NULL);
 	}
 
 	// visit ORDER BY clause

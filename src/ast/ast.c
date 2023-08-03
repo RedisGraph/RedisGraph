@@ -580,6 +580,25 @@ bool AST_ClauseContainsAggregation
 	return aggregated;
 }
 
+// returns the alias of a projection
+const char *AST_GetProjectionAlias
+(
+	const cypher_astnode_t* projection
+) {
+	ASSERT(cypher_astnode_type(projection) == CYPHER_AST_PROJECTION);
+
+	const cypher_astnode_t *ast_alias =
+		cypher_ast_projection_get_alias(projection);
+
+	if(ast_alias != NULL) {
+		return cypher_ast_identifier_get_name(ast_alias);
+	} else {
+		const cypher_astnode_t *exp =
+			cypher_ast_projection_get_expression(projection);
+		return cypher_ast_identifier_get_name(exp);
+	}
+}
+
 const char **AST_BuildReturnColumnNames
 (
 	const cypher_astnode_t *return_clause
@@ -591,11 +610,9 @@ const char **AST_BuildReturnColumnNames
 	uint projection_count = cypher_ast_return_nprojections(return_clause);
 	const char **columns = array_new(const char *, projection_count);
 	for(uint i = 0; i < projection_count; i++) {
-		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
-		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(projection);
-		// If the projection was not aliased, the projection itself is an identifier.
-		if(ast_alias == NULL) ast_alias = cypher_ast_projection_get_expression(projection);
-		const char *alias = cypher_ast_identifier_get_name(ast_alias);
+		const cypher_astnode_t *projection =
+			cypher_ast_return_get_projection(return_clause, i);
+		const char *alias = AST_GetProjectionAlias(projection);
 		array_append(columns, alias);
 	}
 
@@ -611,21 +628,10 @@ const char **AST_BuildCallColumnNames
 	if(yield_count > 0) {
 		proc_output_columns = array_new(const char *, yield_count);
 		for(uint i = 0; i < yield_count; i ++) {
-			const cypher_astnode_t *projection = cypher_ast_call_get_projection(call_clause, i);
-			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
-
-			const char *identifier = NULL;
-			const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
-			if(alias_node) {
-				// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
-				identifier = cypher_ast_identifier_get_name(alias_node);
-			} else {
-				// This expression did not have an alias, so it must be an identifier
-				ASSERT(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
-				// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
-				identifier = cypher_ast_identifier_get_name(ast_exp);
-			}
-			array_append(proc_output_columns, identifier);
+			const cypher_astnode_t *projection =
+        cypher_ast_call_get_projection(call_clause, i);
+		  const char *alias = AST_GetProjectionAlias(projection);
+			array_append(proc_output_columns, alias);
 		}
 	} else {
 		// If the procedure call is missing its yield part, include procedure outputs.

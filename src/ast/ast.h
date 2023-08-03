@@ -212,6 +212,12 @@ bool AST_ClauseContainsAggregation
 	const cypher_astnode_t *clause
 );
 
+// returns the alias of a projection
+const char *AST_GetProjectionAlias
+(
+	const cypher_astnode_t* projection
+);
+
 // collect the aliases from a RETURN clause to populate ResultSet column names
 const char **AST_BuildReturnColumnNames
 (
