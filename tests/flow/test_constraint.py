@@ -554,6 +554,7 @@ class testConstraintEdges():
     def __init__(self):
         self.env = Env(decodeResponses=True)
         self.con = self.env.getConnection()
+        self.con.flushall() # clear DB
         self.g = Graph(self.con, GRAPH_ID)
         self.populate_graph()
 
@@ -576,13 +577,13 @@ class testConstraintEdges():
         create_unique_edge_constraint(self.g, 'Person', 'height')
 
         # create unique edge constraint over Person name and age
-        create_unique_edge_constraint(self.g, 'Person', 'name', 'age')
+        create_unique_edge_constraint(self.g, 'Person', 'name', 'age', sync=True)
 
         # validate constrains
         constraints = list_constraints(self.g)
         self.env.assertEqual(len(constraints), 3)
         for c in constraints:
-            self.env.assertTrue(c.status != 'FAILED')
+            self.env.assertTrue(c.status == 'OPERATIONAL')
 
     def test02_edge_constraint_violations(self):
         # active constrains:
@@ -966,17 +967,6 @@ class testConstraintEdges():
 MONITOR_ATTACHED = False
 
 class testConstraintReplication():
-    def monitor_thread(self):
-        global MONITOR_ATTACHED
-        try:
-            with self.replica.monitor() as m:
-                MONITOR_ATTACHED = True
-                for cmd in m.listen():
-                    if 'GRAPH.CONSTRAINT' in cmd['command']:
-                        self.monitor.append(cmd)
-        except:
-            pass
-
     def __init__(self):
         self.env = Env(decodeResponses=True, env='oss', useSlaves=True)
         self.source = self.env.getConnection()
@@ -997,6 +987,17 @@ class testConstraintReplication():
         # the WAIT command forces master slave sync to complete
         self.source.execute_command("WAIT", 1, 0)
 
+    def monitor_thread(self):
+        global MONITOR_ATTACHED
+        try:
+            with self.replica.monitor() as m:
+                MONITOR_ATTACHED = True
+                for cmd in m.listen():
+                    if 'GRAPH.CONSTRAINT' in cmd['command']:
+                        self.monitor.append(cmd)
+        except:
+            pass
+
     def test_01_constraint_replication(self):
         # create mandatory node constraint over Person height
         create_mandatory_node_constraint(self.g, 'Person', 'height')
@@ -1010,21 +1011,28 @@ class testConstraintReplication():
         # create unique node constraint over Person loc
         create_unique_node_constraint(self.g, 'Person', 'loc')
 
-        # create mandatory edge constraint over
+        # create mandatory edge constraint over Knows since
         create_mandatory_edge_constraint(self.g, 'Knows', 'since')
 
-        # create unique edge constraint over
-        create_unique_edge_constraint(self.g, 'Knows', 'since')
+        # create unique edge constraint over Knows since
+        create_unique_edge_constraint(self.g, 'Knows', 'since', sync=True)
 
         # validate constrains
         constraints = list_constraints(self.g)
         self.env.assertEqual(len(constraints), 6)
         for c in constraints:
-            self.env.assertTrue(c.status != 'FAILED')
+            self.env.assertEqual(c.status, 'OPERATIONAL')
 
         # each constraint should be replicated twice from source to replica:
         # 1. upon creation
         # 2. upon constraint becoming activate
         self.source.execute_command("WAIT", 1, 0)
+
+        # wait for all 12 GRAPH.CONSTRAINT commands to be replicated
+        elapsed = 10
+        while len(self.monitor) < 12 and elapsed > 0:
+            time.sleep(0.2)
+            elapsed -= 0.2
+
         self.env.assertEqual(len(self.monitor), 12)
 
