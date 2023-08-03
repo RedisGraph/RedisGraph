@@ -675,3 +675,13 @@ class testGraphMergeFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             assert("can't be redeclared in a MERGE clause" in str(e))
+
+    def test32_reset_op(self):
+        redis_con = self.env.getConnection()
+        graph = Graph(redis_con, "reset_op")
+
+        res = graph.query("CREATE (a:A), (b:B)")
+        self.env.assertEquals(res.nodes_created, 2)
+
+        res = graph.query("MATCH (a:A), (b:B) SET a:X MERGE (c:C) MERGE (d:D)")
+        self.env.assertEquals(res.nodes_created, 2)
