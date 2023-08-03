@@ -412,6 +412,11 @@ void UpdateNodeLabels
 				continue;
 			}
 
+			if(!Graph_IsNodeLabeled(gc->g, node->id, Schema_GetID(s))) {
+				// skip removal of none existing label
+				continue;
+			}
+
 			// append label id
 			remove_labels_ids[remove_labels_index++] = Schema_GetID(s);
 			// remove node from index
