@@ -22,19 +22,11 @@ static void replace_clause
 (
 	cypher_astnode_t *root,    // ast root
 	cypher_astnode_t *clause,  // clause being replaced
-	int scope_start,           // beginning of scope
 	int scope_end,             // ending of scope
 	rax *identifiers           // bound vars
 ) {
+	ASSERT(identifiers != NULL);
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
-
-	//--------------------------------------------------------------------------
-	// collect identifiers
-	//--------------------------------------------------------------------------
-	if(identifiers == NULL) {
-		identifiers = raxNew();
-		collect_aliases_in_scope(root, scope_start, scope_end, identifiers);
-	}
 
 	//--------------------------------------------------------------------------
 	// determine number of projections
@@ -99,32 +91,19 @@ static void replace_clause
 	//--------------------------------------------------------------------------
 	// handle no projections
 	//--------------------------------------------------------------------------
-
-	// e.g.
-	// MATCH () RETURN *
-	// MATCH () WITH * RETURN *
-	if(nprojections == 0) {
-		if(t == CYPHER_AST_RETURN) {
-			// error if this is a RETURN clause with no aliases
-			// e.g.
-			// MATCH () RETURN *
-			ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
-			raxFree(identifiers);
-			return;
-		} else {
-			// build an empty projection
-			// to make variable-less WITH clauses work:
-			// MATCH () WITH * CREATE ()
-			struct cypher_input_range range = { 0 };
-			// build a null node to project and an empty identifier as its alias
-			cypher_astnode_t *expression = cypher_ast_null(range);
-			cypher_astnode_t *identifier = cypher_ast_identifier("", 1, range);
-			cypher_astnode_t *children[2];
-			children[0] = expression;
-			children[1] = identifier;
-			projections[proj_idx++] = cypher_ast_projection(expression,
-					identifier, children, 2, range);
-		}
+	if(nprojections == 0 && t == CYPHER_AST_WITH) {
+		// build an empty projection
+		// to make variable-less WITH clauses work:
+		// MATCH () WITH * CREATE ()
+		struct cypher_input_range range = { 0 };
+		// build a null node to project and an empty identifier as its alias
+		cypher_astnode_t *expression = cypher_ast_null(range);
+		cypher_astnode_t *identifier = cypher_ast_identifier("", 1, range);
+		cypher_astnode_t *children[2];
+		children[0] = expression;
+		children[1] = identifier;
+		projections[proj_idx++] = cypher_ast_projection(expression,
+				identifier, children, 2, range);
 	}
 
 	//--------------------------------------------------------------------------
@@ -150,7 +129,6 @@ static void replace_clause
 	// update `nprojections` to actual number of projections
 	// value might be reduced due to duplicates
 	nprojections = proj_idx;
-	raxFree(identifiers);
 
 	// prepare arguments for new return clause node
 	bool                    distinct   =  false ;
@@ -224,21 +202,20 @@ static void replace_clause
 static bool _rewrite_call_subquery_star_projections
 (
 	const cypher_astnode_t *wrapping_clause,  // wrapping clause
-	uint scope_start,                         // start scope in wrapping clause
-	uint idx                                  // index of the call subquery
+	uint idx,                                 // index of the call subquery
+	rax *identifiers                          // bound vars
 ) {
+	rax *local_identifiers = raxNew();
 	bool rewritten = false;
 
 	// get the call subquery clause
 	cypher_astnode_t *call_subquery = (cypher_astnode_t *)
 		cypher_ast_query_get_clause(wrapping_clause, idx);
 	// get the query node
-	cypher_astnode_t *query = (cypher_astnode_t *)
-		cypher_ast_call_subquery_get_query(call_subquery);
+	cypher_astnode_t *query = cypher_ast_call_subquery_get_query(call_subquery);
 
 	uint n_clauses = cypher_ast_query_nclauses(query);
 
-	uint first_in_scope = 0;
 	// initialize `last_is_union` to true to rewrite the first importing `WITH`
 	bool last_is_union = true;
 	for(uint i = 0; i < n_clauses; i++) {
@@ -250,43 +227,70 @@ static bool _rewrite_call_subquery_star_projections
 			cypher_astnode_t *inner_query =
 				cypher_ast_call_subquery_get_query(call_subquery);
 			rewritten |= AST_RewriteStarProjections(inner_query);
-			last_is_union = false;
-		} else if(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN) {
+		} else if(t == CYPHER_AST_WITH) {
 			// check whether the clause contains a star projection
-			bool has_star = (t == CYPHER_AST_WITH) ?
-				cypher_ast_with_has_include_existing(clause) :
-				cypher_ast_return_has_include_existing(clause);
+			bool has_star = cypher_ast_with_has_include_existing(clause);
 
-			// if so, rewrite the clause in a way corresponding to its type and
-			// position. If this is an importing `WITH` clause, collect the
+			// if so, rewrite the clause in a way corresponding to its position.
+			// If this is an importing `WITH` clause, collect the
 			// aliases in the wrapping clause to be imported. Otherwise, just
 			// rewrite the clause regularly.
 			if(has_star) {
-				if(last_is_union && t == CYPHER_AST_WITH) {
+				if(last_is_union) {
 					// importing `WITH` clause, import vars from wrapping clause
-					rax *identifiers = raxNew();
-					if(scope_start != idx) {
-						collect_aliases_in_scope(wrapping_clause,
-							scope_start, idx, identifiers);
-					}
-					replace_clause(query, clause, first_in_scope, i,
-						identifiers);
+					rax *clone_identifiers = raxClone(identifiers);
+					replace_clause(query, clause, i, clone_identifiers);
+					clause = (cypher_astnode_t *)
+						cypher_ast_query_get_clause(query, i);
+					raxFree(clone_identifiers);
 				} else {
-					// intermediate `WITH` or `RETURN` clause
-					replace_clause(query, clause, first_in_scope, i, NULL);
+					replace_clause(query, clause, i, local_identifiers);
+					clause = (cypher_astnode_t *)
+						cypher_ast_query_get_clause(query, i);
 				}
 				rewritten = true;
+			} else {
+				// if the clause does not contain a star projection,
+				// the new scope only should contain the identifiers
+				// projected by the current clause.
+				// Example: Second WITH inside CALL {} in the following query
+				// WITH 1 AS a CALL { WITH * WITH a AS c RETURN *} RETURN *
+				raxFree(local_identifiers);
+				local_identifiers = raxNew();
 			}
-			first_in_scope = i;
-			last_is_union = false;
-		} else if(t == CYPHER_AST_UNION) {
-			first_in_scope = i + 1;
+			collect_with_projections(clause, local_identifiers);
+		} else if(t == CYPHER_AST_RETURN) {
+			// check whether the clause contains a star projection
+			bool has_star = cypher_ast_return_has_include_existing(clause);
+
+			// if so, rewrite the clause in a way corresponding to its position.
+			if(has_star && last_is_union == false) {
+				replace_clause(query, clause, i, local_identifiers);
+				clause = (cypher_astnode_t *)
+					cypher_ast_query_get_clause(query, i);
+				rewritten = true;
+			} else {
+				// if the clause does not contain a star projection,
+				// the new scope only should contain the identifiers
+				// projected by the current clause.
+				raxFree(local_identifiers);
+				local_identifiers = raxNew();
+			}
+			// we don't need to collect projections here, becase they are
+			// collected out after rewritting all subquery clause
+		} else {
+			collect_non_star_projections(clause, local_identifiers);
+		}
+		
+		// update last_is_union
+		if(t == CYPHER_AST_UNION) {
 			last_is_union = true;
 		} else {
 			last_is_union = false;
 		}
 	}
 
+	raxFree(local_identifiers);
 	return rewritten;
 }
 
@@ -301,38 +305,64 @@ bool AST_RewriteStarProjections
 	}
 
 	// rewrite all WITH * / RETURN * clauses to include all aliases
-	uint scope_start  = 0;
 	uint clause_count = cypher_ast_query_nclauses(root);
+	rax *identifiers  = raxNew();
 
+	bool last_is_union = false;
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(root, i);
-		cypher_astnode_type_t t = cypher_astnode_type(clause);
+		cypher_astnode_type_t type = cypher_astnode_type(clause);
 
-		if(t == CYPHER_AST_CALL_SUBQUERY) {
+		if(type == CYPHER_AST_CALL_SUBQUERY) {
+			// rewrite the CALL{} before collecting the identifiers
 			rewritten |=
-				_rewrite_call_subquery_star_projections(root, scope_start, i);
-			continue;
+				_rewrite_call_subquery_star_projections(root, i, identifiers);
+			clause = cypher_ast_query_get_clause(root, i);
+			collect_call_subquery_projections(clause, identifiers);
+		} else if(type == CYPHER_AST_WITH) {
+			if(cypher_ast_with_has_include_existing(clause)) {
+				// clause contains a star projection, replace it
+				if(last_is_union) {
+					rax *clone_identifiers = raxNew();
+					replace_clause((cypher_astnode_t *)root,
+						(cypher_astnode_t *)clause, i, clone_identifiers);
+					clause = cypher_ast_query_get_clause(root, i);
+					raxFree(clone_identifiers);
+				} else {
+					replace_clause((cypher_astnode_t *)root,
+						(cypher_astnode_t *)clause, i, identifiers);
+					clause = cypher_ast_query_get_clause(root, i);
+				}
+				rewritten = true;
+			}
+			// update new scope identifiers
+			raxFree(identifiers);
+			identifiers = raxNew();
+			collect_with_projections(clause, identifiers);
+		} else if(type == CYPHER_AST_RETURN) {
+			if(cypher_ast_return_has_include_existing(clause)) {
+				// clause contains a star projection, replace it
+				replace_clause((cypher_astnode_t *)root,
+					(cypher_astnode_t *)clause, i, identifiers);
+				clause = cypher_ast_query_get_clause(root, i);
+				rewritten = true;
+			}
+			// update new scope identifiers
+			raxFree(identifiers);
+			identifiers = raxNew();
+			collect_return_projections(clause, identifiers);
+		} else {
+			collect_non_star_projections(clause, identifiers);
 		}
 
-		if(t != CYPHER_AST_WITH && t != CYPHER_AST_RETURN) {
-			continue;
+		// update last_is_union
+		if(type == CYPHER_AST_UNION) {
+			last_is_union = true;
+		} else {
+			last_is_union = false;
 		}
-
-		bool has_include_existing = (t == CYPHER_AST_WITH) ?
-									cypher_ast_with_has_include_existing(clause) :
-									cypher_ast_return_has_include_existing(clause);
-
-		if(has_include_existing) {
-			// clause contains a star projection, replace it
-			replace_clause((cypher_astnode_t *)root, (cypher_astnode_t *)clause,
-						   scope_start, i, NULL);
-			rewritten = true;
-		}
-
-		// update scope start
-		scope_start = i;
 	}
-
+	raxFree(identifiers);
 	return rewritten;
 }
 

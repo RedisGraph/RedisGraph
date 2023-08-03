@@ -1716,8 +1716,10 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 			return VISITOR_BREAK;
 	}
 
-	if(!cypher_ast_return_has_include_existing(n)) {
-		// check for duplicate column names
+	// check for duplicate column names
+	// WITH 1 AS a RETURN a, a
+	// WITH 1 AS a RETURN *, a, a
+	if(num_return_projections > 1) {
 		rax           *rax          = raxNew();
 		const char   **columns      = AST_BuildReturnColumnNames(n);
 		uint           column_count = array_len(columns);
@@ -1754,6 +1756,20 @@ static VISITOR_STRATEGY _Validate_RETURN_Clause
 		}
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
 		raxInsert(vctx->defined_identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+	}
+
+	// error if this is a RETURN clause with no aliases
+	if(cypher_ast_return_has_include_existing(n) &&
+		vctx->ignore_identifiers == false) {
+		// e.g.
+		// MATCH () RETURN *
+		// MATCH () WITH * RETURN *
+		// CALL db.labels() RETURN *
+		if(num_return_projections == 0 &&
+			raxSize(vctx->defined_identifiers) == 0) {
+			ErrorCtx_SetError("RETURN * is not allowed when there are no \
+variables in scope");
+		}
 	}
 
 	// visit ORDER BY clause

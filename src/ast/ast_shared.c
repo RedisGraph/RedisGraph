@@ -231,6 +231,7 @@ void UpdateCtx_Free
 	rm_free(ctx);
 }
 
+// collect aliases defined in a path
 static void _collect_aliases_in_path
 (
 	const cypher_astnode_t *path,
@@ -279,6 +280,7 @@ static void _collect_aliases_in_path
 	}
 }
 
+// collect aliases defined in a pattern
 static void _collect_aliases_in_pattern
 (
 	const cypher_astnode_t *pattern,
@@ -291,7 +293,8 @@ static void _collect_aliases_in_pattern
 	}
 }
 
-static void _collect_with_projections
+// collect aliases defined in a WITH clause
+void collect_with_projections
 (
 	const cypher_astnode_t *with_clause,
 	rax *identifiers
@@ -318,19 +321,36 @@ static void _collect_with_projections
 	}
 }
 
-static void _collect_call_projections(
+// collect aliases defined in a RETURN clause
+void collect_return_projections
+(
+	const cypher_astnode_t *return_clause,
+	rax *identifiers
+) {
+	uint projection_count = cypher_ast_return_nprojections(return_clause);
+	for(uint i = 0; i < projection_count; i ++) {
+		const cypher_astnode_t *projection =
+			cypher_ast_return_get_projection(return_clause, i);
+		const cypher_astnode_t *identifier_node =
+			cypher_ast_projection_get_alias(projection);
+		if(identifier_node == NULL) {
+			// the projection was not aliased
+			// so the projection itself must be an identifier
+			identifier_node = cypher_ast_projection_get_expression(projection);
+			ASSERT(cypher_astnode_type(identifier_node) == CYPHER_AST_IDENTIFIER);
+		}
+		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
+		raxTryInsert(identifiers, (unsigned char *)identifier,
+			strlen(identifier), (void *)identifier_node, NULL);
+	}
+}
+
+// collect aliases defined in a CALL clause
+void collect_call_projections(
 	const cypher_astnode_t *call_clause,
 	rax *identifiers
 ) {
 	uint yield_count = cypher_ast_call_nprojections(call_clause);
-
-	if(yield_count == 0) {
-		// error if this is a RETURN clause with no aliases
-		// e.g.
-		// CALL db.indexes() RETURN *
-		ErrorCtx_SetError("RETURN * is not allowed when there are no variables in scope");
-		return;
-	}
 
 	for(uint i = 0; i < yield_count; i ++) {
 		const cypher_astnode_t *projection = cypher_ast_call_get_projection(call_clause, i);
@@ -345,8 +365,47 @@ static void _collect_call_projections(
 	}
 }
 
+// collect aliases of clauses which don't contain star projections:
+// CYPHER_AST_MATCH, CYPHER_AST_CREATE, CYPHER_AST_MERGE, CYPHER_AST_UNWIND,
+// and CYPHER_AST_CALL
+void collect_non_star_projections
+(
+	const cypher_astnode_t *clause,
+	rax *identifiers
+) {
+
+	cypher_astnode_type_t type = cypher_astnode_type(clause);
+
+	if(type == CYPHER_AST_MATCH) {
+		// the MATCH clause contains one pattern of N paths
+		const cypher_astnode_t *pattern =
+			cypher_ast_match_get_pattern(clause);
+		_collect_aliases_in_pattern(pattern, identifiers);
+	} else if(type == CYPHER_AST_CREATE) {
+		// the CREATE clause contains one pattern of N paths
+		const cypher_astnode_t *pattern =
+			cypher_ast_create_get_pattern(clause);
+		_collect_aliases_in_pattern(pattern, identifiers);
+	} else if(type == CYPHER_AST_MERGE) {
+		// the MERGE clause contains one path
+		const cypher_astnode_t *path =
+			cypher_ast_merge_get_pattern_path(clause);
+		_collect_aliases_in_path(path, identifiers);
+	} else if(type == CYPHER_AST_UNWIND) {
+		// the UNWIND clause introduces one alias
+		const cypher_astnode_t *unwind_alias =
+			cypher_ast_unwind_get_alias(clause);
+		const char *identifier =
+			cypher_ast_identifier_get_name(unwind_alias);
+		raxTryInsert(identifiers, (unsigned char *)identifier,
+						strlen(identifier), (void *)unwind_alias, NULL);
+	} else if(type == CYPHER_AST_CALL) {
+		collect_call_projections(clause, identifiers);
+	}
+}
+
 // collect aliases from a CALL {} clause
-static void _collect_call_subquery_projections
+void collect_call_subquery_projections
 (
 	const cypher_astnode_t *clause,
 	rax *identifiers
@@ -407,34 +466,11 @@ void collect_aliases_in_scope
 		if(type == CYPHER_AST_WITH) {
 			// the WITH clause contains either
 			// aliases or its own STAR projection
-			_collect_with_projections(clause, identifiers);
-		} else if(type == CYPHER_AST_MATCH) {
-			// the MATCH clause contains one pattern of N paths
-			const cypher_astnode_t *pattern =
-				cypher_ast_match_get_pattern(clause);
-			_collect_aliases_in_pattern(pattern, identifiers);
-		} else if(type == CYPHER_AST_CREATE) {
-			// the CREATE clause contains one pattern of N paths
-			const cypher_astnode_t *pattern =
-				cypher_ast_create_get_pattern(clause);
-			_collect_aliases_in_pattern(pattern, identifiers);
-		} else if(type == CYPHER_AST_MERGE) {
-			// the MERGE clause contains one path
-			const cypher_astnode_t *path =
-				cypher_ast_merge_get_pattern_path(clause);
-			_collect_aliases_in_path(path, identifiers);
-		} else if(type == CYPHER_AST_UNWIND) {
-			// the UNWIND clause introduces one alias
-			const cypher_astnode_t *unwind_alias =
-				cypher_ast_unwind_get_alias(clause);
-			const char *identifier =
-				cypher_ast_identifier_get_name(unwind_alias);
-			raxTryInsert(identifiers, (unsigned char *)identifier,
-				strlen(identifier), (void *)unwind_alias, NULL);
-		} else if(type == CYPHER_AST_CALL) {
-			_collect_call_projections(clause, identifiers);
+			collect_with_projections(clause, identifiers);
 		} else if(type == CYPHER_AST_CALL_SUBQUERY) {
-			_collect_call_subquery_projections(clause, identifiers);
+			collect_call_subquery_projections(clause, identifiers);
+		} else {
+			collect_non_star_projections(clause, identifiers);
 		}
 	}
 }

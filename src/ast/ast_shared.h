@@ -122,3 +122,34 @@ void collect_aliases_in_scope
 	uint scope_end,                // end index of scope
 	rax *identifiers               // rax to populate with identifiers
 );
+
+// collect aliases of clauses that don't contain star projections:
+// CYPHER_AST_MATCH, CYPHER_AST_CREATE, CYPHER_AST_MERGE, CYPHER_AST_UNWIND,
+// and CYPHER_AST_CALL
+void collect_non_star_projections
+(
+	const cypher_astnode_t *clause,
+	rax *identifiers
+);
+
+// collect aliases from a CALL {} clause
+void collect_call_subquery_projections
+(
+	const cypher_astnode_t *clause,
+	rax *identifiers
+);
+
+// collect aliases defined in a WITH clause
+void collect_with_projections
+(
+	const cypher_astnode_t *with_clause,
+	rax *identifiers
+);
+
+// collect aliases defined in a RETURN clause
+void collect_return_projections
+(
+	const cypher_astnode_t *return_clause,
+	rax *identifiers
+);
+
