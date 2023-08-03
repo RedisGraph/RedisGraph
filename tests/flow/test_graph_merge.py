@@ -686,3 +686,13 @@ class testGraphMergeFlow(FlowTestsBase):
 
         res = graph.query("MATCH (a:A), (b:B) SET a:X MERGE (c:C) MERGE (d:D)")
         self.env.assertEquals(res.nodes_created, 2)
+    
+    def test33_merge_create_reserve_id(self):
+        redis_con = self.env.getConnection()
+        graph = Graph(redis_con, "merge_create_reserve_id")
+
+        res = graph.query("UNWIND range(0, 10) AS i CREATE (:A {id: i}) MERGE (:B {id: i % 10})")
+        self.env.assertEquals(res.nodes_created, 21)
+
+        res = graph.query("UNWIND range(0, 10) AS i CREATE (:A {id: i}) MERGE (:B {id: i % 10})")
+        self.env.assertEquals(res.nodes_created, 11)
