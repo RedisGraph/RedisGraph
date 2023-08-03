@@ -677,6 +677,7 @@ class testGraphMergeFlow(FlowTestsBase):
             assert("can't be redeclared in a MERGE clause" in str(e))
 
     def test32_reset_op(self):
+        # MERGE operation register a reset function validate that it works as expected
         redis_con = self.env.getConnection()
         graph = Graph(redis_con, "reset_op")
 
