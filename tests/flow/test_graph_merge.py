@@ -688,11 +688,14 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(res.nodes_created, 2)
     
     def test33_merge_create_reserve_id(self):
+        # MERGE and CREATE node id reservation should be done only if new node is created
         redis_con = self.env.getConnection()
         graph = Graph(redis_con, "merge_create_reserve_id")
 
+        # ensure that only 21 nodes are created
         res = graph.query("UNWIND range(0, 10) AS i CREATE (:A {id: i}) MERGE (:B {id: i % 10})")
         self.env.assertEquals(res.nodes_created, 21)
 
+        # ensure that only 11 nodes are created and no crash
         res = graph.query("UNWIND range(0, 10) AS i CREATE (:A {id: i}) MERGE (:B {id: i % 10})")
         self.env.assertEquals(res.nodes_created, 11)

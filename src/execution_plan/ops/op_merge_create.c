@@ -217,10 +217,13 @@ static bool _CreateEntities(OpMergeCreate *op, Record r, GraphContext *gc) {
 											   sizeof(hash), NULL, NULL);
 	// If no entity to be created is unique, roll back all the creations that have just been prepared.
 	if(should_create_entities) {
+		// reserve node ids for edges creation
 		for(uint i = 0; i < nodes_to_create_count; i++) {
 			Node *n = op->pending.created_nodes[already_created_nodes + i];
 			Graph_ReserveNode(gc->g, n);
 		}
+
+		// updated edges with reserved node ids
 		for(uint i = 0; i < edges_to_create_count; i++) {
 			EdgeCreateCtx *ctx = op->pending.edges_to_create + i;
 
