@@ -76,7 +76,7 @@ class testGraphCreationFlow(FlowTestsBase):
             redis_graph.query(query)
             self.env.assertTrue(False)
         except redis.exceptions.ResponseError as e:
-            self.env.assertIn("undefined attribute", str(e))
+            self.env.assertIn("'a' not defined", str(e))
 
     def test06_create_project_volatile_value(self):
         # The path e is volatile; verify that it can be projected after entity creation.
@@ -94,14 +94,16 @@ class testGraphCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 1)
         self.env.assertEquals(result.result_set, expected_result)
 
-    # Fail when a property is a complex type nested within an array type
+    # Fail when a property is a complex type or complex type nested within an array type
     def test07_create_invalid_complex_type_in_array(self):
         # Test combinations of invalid types with nested and top-level arrays
         # Invalid types are NULL, maps, nodes, edges, and paths
         queries = ["CREATE (a), (b) SET a.v = [b]",
-                   "CREATE (a {v: ['str', [1, NULL]]})",
                    "CREATE (a {v: [[{k: 'v'}]]})",
-                   "CREATE (a:L)-[e:R]->(:L {v: [e]})"]
+                   "CREATE (a {v: ['str', [1, NULL]]})",
+                   "CREATE (a:L)-[e:R]->(:L {v: [{}]})",
+                   "CREATE (a), (b)-[:R {k:[{}]}]->(c)",
+                ]
         for query in queries:
             try:
                 redis_graph.query(query)
@@ -194,3 +196,153 @@ class testGraphCreationFlow(FlowTestsBase):
             result = redis_graph.query(query)
             expected_result = [[0]]
             self.env.assertEquals(result.result_set, expected_result)
+
+    # test referencing entities defined previously in the same query
+    # the "intermediate" entities and their properties will be evaluated as NULL
+    def test11_use_intermediate_entities(self):
+
+        # test using functions with invalid arguments
+        queries = [
+            # invalid argument to predicate functions, which expect a list,
+            # but is being called with an empty map
+            "CREATE (a), (b)-[:R]->(c {k:any(x IN {} WHERE x = 0)})",
+            "CREATE (a), (b)-[:R]->(c {k:none(x IN {} WHERE x = 0)})",
+            "CREATE (a), (b)-[:R {k:single(x IN {} WHERE x = 0)}]->()",
+            "CREATE (a), (b)-[:R {k:single(x IN {} WHERE x = 0)}]->()",
+            # invalid argument to function floor(), which expects an Integer,
+            # Float, or Null but is called with a boolean
+            "CREATE (a:A {v:floor(true)})"
+        ]
+
+        for query in queries:
+            try:
+                redis_graph.query(query)
+                self.env.assertTrue(False)
+            except redis.exceptions.ResponseError as e:
+                self.env.assertContains("Type mismatch", str(e), depth=1)
+
+        # invalid input
+        queries = [
+            "MATCH ({v:()}) RETURN 0",
+            "MERGE ({v:()}) RETURN 0",
+            "CREATE ({v:()}) RETURN 0",
+        ]
+        expected_error = "Invalid input"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # pattern path as a property value
+        queries = [
+            "MATCH (a {v:()-[]->()}) RETURN a",
+            "MERGE (a {v:()-[]->()}) RETURN a",
+            "CREATE (a {v:()-[]->()}) return n",
+        ]
+        expected_error = "Encountered unhandled type in inlined properties"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # using a not defined entity
+        queries = [
+            # reference to intermediate node
+            "MERGE (a:A {v:a})",
+            "CREATE (a:A {v:a})",
+            "CREATE (a:A {v:1}), (b {v:a})",
+            "CREATE (a:A)-[:R]->(b {v:a})",
+            "MERGE (a:A)-[:R]->(b {v:a})",
+
+            # reference to intermediate edge
+            "MERGE ()-[r:R {v:r}]->()",
+            "MERGE ()-[r:R]->({v:r})",
+            "CREATE ()-[r:R {v:r}]->()",
+            "CREATE ()-[r:R]->({v:r})",
+            "CREATE ()-[r:R1]->(), ()-[:R2]->({v:r})",
+
+            # reference to property of intermediate node
+            "CREATE (a {v:1}), (b {v:a.v})",
+            "CREATE (a {v:0})-[:R]->(b {v:a.v})",
+            "MERGE (a {v:3})-[:R]->(b {v:a.v})",
+
+            # reference to property of intermediate edge
+            "CREATE ()-[r:R {v:2}]->(b:B {v:r.v})",
+            "CREATE ()-[r:R {v:1}]->(), (a {v:r.v})",
+            "MERGE ()-[r:R {v:2}]->(b:B {v:r.v})",
+
+            # intermediate entities as function arguments
+            "CREATE (a {v:0}), ()-[:R {k:toJSON(a)}]->()",
+            "CREATE (a {v:0}), ()-[:R]->({k:toJSON(a)})",
+            "MERGE (a:NewNode)-[r:R {k:toJSON(a)}]->()",
+            "MERGE (a:NewNode)-[:R]->(b {k:toJSON(a)})",
+        ]
+        expected_error = "not defined"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+    def test12_redeclaring_matched_vars(self):
+
+        # redeclare node/relationship
+        queries = [
+            "MATCH ()-[n]->() CREATE (n)-[:R]->()",
+            "MATCH ()-[n]->() MERGE (n)-[:R]->()",
+            "MATCH ()-[n]->() MATCH (n)-[:R]->() RETURN 0",
+            "MATCH (n)-[:R]->() MATCH ()-[n:R]->() RETURN 0",
+        ]
+        expected_error = "The alias 'n' was specified for both a node and a relationship"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # redeclare path/relationship
+        queries = [
+            "MATCH ()-[n]->() MATCH n=() RETURN 0",
+        ]
+        expected_error = "The alias 'n' was specified for both a path and a relationship"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # redeclare path/node
+        queries = [
+            "MATCH n=() MERGE (n)-[:R]->()",
+            "MATCH n=() CREATE (n)-[:R]->()",
+            "MATCH n=() MATCH (n)-[:R]->() RETURN 0",
+            "MATCH (n)-[:R]->() MATCH n=() RETURN 0",
+        ]
+        expected_error = "The alias 'n' was specified for both a path and a node"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # redeclare variable in MERGE clause
+        queries = [
+            "MATCH ()-[n]->() MERGE ()-[n:R]->()",
+            "MATCH (n)-[:R]->() MERGE ()-[n:R]->()",
+            "MATCH ()-[n]->() MERGE ()-[n {v:2}]->()",
+        ]
+        expected_error = "The bound variable 'n' can't be redeclared in a MERGE clause"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # redeclare variable in CREATE clause
+        queries = [
+            "MATCH (n)-[:R]->() CREATE ()-[n:R]->()",
+            "MATCH ()-[n]->() CREATE ()-[n:R]->()",
+            "MATCH ()-[n]->() CREATE ()-[n {v:1}]->()",
+        ]
+        expected_error = "The bound variable 'n' can't be redeclared in a CREATE clause"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # modify matched entity in MERGE clause
+        queries = [
+            "MATCH (n)-[:R]->() MERGE (n:L)-[:R]->()",
+            "MATCH (n)-[:R]->() MERGE (n {v:1})-[:R]->()",
+        ]
+        expected_error = "The bound node 'n' can't be redeclared in a MERGE clause"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # # modify matched entity in CREATE clause
+        # queries = [
+        #     "MATCH (n)-[]->() CREATE (n:L)-[:R]->()",
+        #     "MATCH (n)-[]->() CREATE (n {v:1})-[:R]->()",
+        # ]
+        # expected_error = "The bound node 'n' can't be redeclared in a CREATE clause"
+        # for query in queries:
+        #     self._assert_exception(redis_graph, query, expected_error)

@@ -9,7 +9,7 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 
-/* Forward declarations. */
+// forward declarations
 static Record MergeCreateConsume(OpBase *opBase);
 static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static OpResult MergeCreateInit(OpBase* opBase);
@@ -111,9 +111,14 @@ static OpResult MergeCreateInit(OpBase* opBase) {
 }
 
 // prepare all creations associated with the current Record
-// returns false and do not buffer data if every entity to create for this Record
-// has been created in a previous call
-static bool _CreateEntities(OpMergeCreate *op, Record r, GraphContext *gc) {
+// returns false and do not buffer data if every entity to create for
+// this Record has been created in a previous call
+static bool _CreateEntities
+(
+	OpMergeCreate *op,
+	Record r,
+	GraphContext *gc
+) {
 	XXH_errorcode res = XXH64_reset(op->hash_state, 0); // reset hash state
 	UNUSED(res);
 	ASSERT(res != XXH_ERROR);
@@ -182,20 +187,23 @@ static bool _CreateEntities(OpMergeCreate *op, Record r, GraphContext *gc) {
 			ConvertPropertyMap(gc, &converted_attr, r, map, true);
 		}
 
-		// Update the hash code with this entity, an edge is represented by its
+		// update the hash code with this entity, an edge is represented by its
 		// relation, properties, source and destination nodes.
-		// note: unbounded nodes were already presented to the hash.
-		// incase node has its internal attribute-set, this means the node has been retrieved from the graph
+		// note: unbounded nodes were already presented to the hash
+		// incase node has its internal attribute-set, this means:
+		// the node has been retrieved from the graph
 		// i.e. bounded node
 		_IncrementalHashEntity(op->hash_state, &e->relation, 1, &converted_attr);
-		if(src_node->attributes != NULL) {
+
+		if(src_node->attributes != &NULL_ATTRIBUTE_SET) {
 			EntityID id = ENTITY_GET_ID(src_node);
 			void *data = &id;
 			size_t len = sizeof(id);
 			res = XXH64_update(op->hash_state, data, len);
 			ASSERT(res != XXH_ERROR);
 		}
-		if(dest_node->attributes != NULL) {
+
+		if(dest_node->attributes != &NULL_ATTRIBUTE_SET) {
 			EntityID id = ENTITY_GET_ID(dest_node);
 			void *data = &id;
 			size_t len = sizeof(id);
@@ -203,10 +211,10 @@ static bool _CreateEntities(OpMergeCreate *op, Record r, GraphContext *gc) {
 			ASSERT(res != XXH_ERROR);
 		}
 
-		/* Save edge for later insertion. */
+		// save edge for later insertion
 		array_append(op->pending.created_edges, edge_ref);
 
-		/* Save attributes to insert with node. */
+		// save attributes to insert with node
 		array_append(op->pending.edge_attributes, converted_attr);
 	}
 

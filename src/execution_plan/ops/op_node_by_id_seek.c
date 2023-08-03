@@ -23,8 +23,8 @@ static inline void NodeByIdSeekToString(const OpBase *ctx, sds *buf) {
 
 // Checks to see if operation index is within its bounds.
 static inline bool _outOfBounds(NodeByIdSeek *op) {
-	/* Because currentId starts at minimum and only increases
-	 * we only care about top bound. */
+	// because currentId starts at minimum and only increases
+	// we only care about top bound
 	if(op->currentId > op->maxId) return true;
 	return false;
 }
@@ -63,20 +63,20 @@ static OpResult NodeByIdSeekInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-static inline Node _SeekNextNode(NodeByIdSeek *op) {
-	Node n = GE_NEW_NODE();
-
-	/* As long as we're within range bounds
-	 * and we've yet to get a node. */
+static inline bool _SeekNextNode
+(
+	NodeByIdSeek *op,
+	Node *n
+) {
+	// as long as we're within range bounds
+	// and we've yet to get a node
 	while(!_outOfBounds(op)) {
-		if(Graph_GetNode(op->g, op->currentId, &n)) break;
-		op->currentId++;
+		if(Graph_GetNode(op->g, op->currentId++, n)) {
+			return true;
+		}
 	}
 
-	// Advance id for next consume call.
-	op->currentId++;
-
-	return n;
+	return false;
 }
 
 static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
@@ -88,18 +88,21 @@ static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
 		else NodeByIdSeekReset(opBase);
 	}
 
-	Node n = _SeekNextNode(op);
+	Node n = GE_NEW_NODE();
+	bool found = _SeekNextNode(op, &n);
 
-	if(n.attributes == NULL) { // Failed to retrieve a node.
-		OpBase_DeleteRecord(op->child_record); // Free old record.
-		// Pull a new record from child.
+	if(!found) { // failed to retrieve a node
+		OpBase_DeleteRecord(op->child_record); // free old record
+		// pull a new record from child
 		op->child_record = OpBase_Consume(op->op.children[0]);
-		if(op->child_record == NULL) return NULL; // Child depleted.
+		if(op->child_record == NULL) return NULL; // child depleted
 
-		// Reset iterator and evaluate again.
+		// reset iterator and evaluate again
 		NodeByIdSeekReset(opBase);
-		n = _SeekNextNode(op);
-		if(n.attributes == NULL) return NULL; // Empty iterator; return immediately.
+		found = _SeekNextNode(op, &n);
+		if(!found) {
+			return NULL; // empty iterator; return immediately
+		}
 	}
 
 	// Clone the held Record, as it will be freed upstream.
@@ -114,13 +117,17 @@ static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
 static Record NodeByIdSeekConsume(OpBase *opBase) {
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
 
-	Node n = _SeekNextNode(op);
-	if(n.attributes == NULL) return NULL; // Failed to retrieve a node.
+	Node n = GE_NEW_NODE();
+	bool found = _SeekNextNode(op, &n);
 
-	// Create a new Record.
+	if(!found) {
+		return NULL; // failed to retrieve a node
+	}
+
+	// create a new Record
 	Record r = OpBase_CreateRecord(opBase);
 
-	// Populate the Record with the actual node.
+	// populate the Record with the actual node
 	Record_AddNode(r, op->nodeRecIdx, n);
 
 	return r;

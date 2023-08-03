@@ -18,10 +18,10 @@ typedef int LabelID;
 	label_count = Graph_GetNodeLabels((g), (n), labels, (label_count))
 
 // instantiate a new unpopulated node
-#define GE_NEW_NODE()           \
-(Node) {                        \
-	.attributes = NULL,         \
-	.id = INVALID_ENTITY_ID,    \
+#define GE_NEW_NODE()                  \
+(Node) {                               \
+	.attributes = &NULL_ATTRIBUTE_SET, \
+	.id = INVALID_ENTITY_ID,           \
 }
 
 // struct representing a node in the graph

@@ -460,7 +460,7 @@ SIValue AR_TOSTRING(SIValue *argv, int argc, void *private_data) {
 	}
 }
 
-// Returns a JSON string representation of a map value.
+// returns a JSON string representation of a map value
 SIValue AR_TOJSON(SIValue *argv, int argc, void *private_data) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *buf = JsonEncoder_SIValue(argv[0]);

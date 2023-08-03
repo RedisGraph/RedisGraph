@@ -40,6 +40,9 @@ typedef struct {
 
 typedef _AttributeSet* AttributeSet;
 
+// variable representing the empty attribute-set
+static AttributeSet NULL_ATTRIBUTE_SET = NULL;
+
 // retrieves a value from set
 // NOTE: if the key does not exist
 //       we return the special constant value ATTRIBUTE_NOTFOUND

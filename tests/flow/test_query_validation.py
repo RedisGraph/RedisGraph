@@ -500,7 +500,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            self.env.assertIn("undefined attribute", str(e))
+            self.env.assertIn("'a' not defined", str(e))
 
         # MATCH clauses should be able to use self-referential properties as existential filters.
         query = """MATCH (a {age: a.age}) RETURN a.age"""
@@ -674,6 +674,7 @@ class testQueryValidationFlow(FlowTestsBase):
 
         # invalid usage of undefined variables in a `RETURN` clause
         invalid_queries = [
+            "RETURN a + 1",
             "RETURN a AS a",
             "RETURN [a] AS a",
             "RETURN [a[a[a]]] AS a",

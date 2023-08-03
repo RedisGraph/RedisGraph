@@ -267,3 +267,85 @@ class testWithClause(FlowTestsBase):
         query = """WITH 1 AS x MATCH (a:label_a), (b:label_b) RETURN a.v, b.v"""
         actual_result = redis_graph.query(query)
         self.env.assertEqual(len(actual_result.result_set), 36)
+
+    def test13_projected_type_validation(self):
+        # verify the type of the projected vars are validated correctly
+
+        # redeclare node/relationship
+        queries = [
+            "MATCH (n)-[:R]->() WITH n MATCH ()-[n:R]->() RETURN 0",
+            "MATCH (n)-[:R]->() WITH n WHERE ()-[n:R]->() RETURN 0",
+            "MATCH (m)-[:R]->() WITH m AS n MATCH ()-[n:R]->() RETURN 0",
+            "MATCH (m)-[:R]->() WITH m AS n WHERE ()-[n:R]->() RETURN 0",
+            "MATCH ()-[n]->() WITH n CREATE (n)-[:R]->()",
+            "MATCH ()-[n]->() WITH n MERGE (n)-[:R]->()",
+            "MATCH ()-[n]->() WITH n MATCH (n)-[:R]->() RETURN 0",
+            "MATCH ()-[n]->() WITH n WHERE (n)-[:R]->() RETURN 0",
+            "MATCH ()-[r]->() WITH r AS n CREATE (n)-[:R]->()",
+            "MATCH ()-[r]->() WITH r AS n MERGE (n)-[:R]->()",
+            "MATCH ()-[r]->() WITH r AS n MATCH (n)-[:R]->() RETURN 0",
+            "MATCH ()-[r]->() WITH r AS n WHERE (n)-[:R]->() RETURN 0",
+        ]
+        expected_error = "The alias 'n' was specified for both a node and a relationship"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # redeclare path/relationship
+        queries = [
+            "MATCH p=() WITH p MATCH ()-[p:R]->() RETURN 0",
+            "MATCH p=() WITH p WHERE ()-[p:R]->() RETURN 0",
+            "MATCH p0=() WITH p0 AS p MATCH ()-[p:R]->() RETURN 0",
+            "MATCH p0=() WITH p0 AS p WHERE ()-[p:R]->() RETURN 0",
+        ]
+        expected_error = "The alias 'p' was specified for both a path and a relationship"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # redeclare path/node
+        queries = [
+            "MATCH p=() WITH p CREATE (p)-[:R]->()",
+            "MATCH p=() WITH p MERGE ()-[:R]->(p)",
+            "MATCH p=() WITH p MATCH (p)-[:R]->() RETURN 0",
+            "MATCH p=() WITH p WHERE (p)-[:R]->() RETURN 0",
+            "MATCH p0=() WITH p0 AS p WHERE (p)-[:R]->() RETURN 0",
+            "MATCH p0=() WITH p0 AS p MERGE (p)-[:R]->()",
+            "MATCH p0=() WITH p0 AS p CREATE (p)-[:R]->()",
+            "MATCH p0=() WITH p0 AS p MATCH (p)-[:R]->() RETURN 0",
+        ]
+        expected_error = "The alias 'p' was specified for both a path and a node"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # redeclare variable in MERGE clause
+        queries = [
+            "MATCH (m)-[:R]->() WITH m AS n MERGE ()-[n:R]->()",
+            "MATCH (n)-[:R]->() WITH n MERGE ()-[n:R]->()",
+        ]
+        expected_error = "The bound variable 'n' can't be redeclared in a MERGE clause"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # redeclare variable in CREATE clause
+        queries = [
+            "MATCH (n)-[:R]->() WITH n CREATE ()-[n:R]->()",
+            "MATCH (m)-[:R]->() WITH m AS n CREATE ()-[n:R]->()",
+            "MATCH n=() WITH n CREATE (n)",
+            "MATCH p=() WITH p AS n CREATE (n)",
+        ]
+        expected_error = "The bound variable 'n' can't be redeclared in a CREATE clause"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+
+        # project a variable and use it as invalid property value
+        queries = [
+            "CREATE (a) WITH a CREATE (b {v:a})",
+            "CREATE (a) WITH a CREATE (a)-[:R]->(b {v:a})",
+            "CREATE ()-[r:R]->() WITH r CREATE ()-[:R {v:r}]->()",
+            "CREATE ()-[r:R]->() WITH r CREATE ()-[:R]->({v:r})",
+            "CREATE p=() WITH p CREATE ({v:p})",
+            "CREATE p=() WITH p CREATE ()-[:R {v:p}]->()",
+        ]
+        expected_error = "Property values can only be of primitive types or arrays of primitive types"
+        for query in queries:
+            self._assert_exception(redis_graph, query, expected_error)
+

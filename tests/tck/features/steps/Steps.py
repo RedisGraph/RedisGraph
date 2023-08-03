@@ -225,7 +225,7 @@ def step_impl(context):
 def step_impl(context):
     global exception
     assert exception != None
-    assert "must have the same column names." in str(exception)
+    assert "must have the same column names" in str(exception)
 
 @then(u'a SyntaxError should be raised at compile time: InvalidClauseComposition')
 def step_impl(context):
@@ -309,4 +309,4 @@ def step_imp(context):
 def step_imp(context):
     global exception
     assert exception != None
-    assert "Multiple result columns with the same name are not supported." in str(exception)
+    assert "Multiple result columns with the same name are not supported" in str(exception)

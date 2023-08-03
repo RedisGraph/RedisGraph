@@ -339,7 +339,7 @@ class testRelationPattern(FlowTestsBase):
         ]
         for query in queries:
             self._assert_exception(g, query,
-                "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.")
+                "Variable length path, maximum number of hops must be greater or equal to minimum number of hops")
 
     def test13_return_var_len_edge_array(self):
         # Construct a simple graph:
