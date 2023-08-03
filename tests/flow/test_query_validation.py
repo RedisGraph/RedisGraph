@@ -279,7 +279,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Type mismatch: expected Map, Node, Edge, Null, or Point but was Path" in str(e))
+            assert("Type mismatch on operator '.' left argument: expected Map, Node, Edge, Point, or Null but was Path" in str(e))
             pass
 
     # Comments should not affect query functionality.
@@ -364,7 +364,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
-            assert("Type mismatch: expected Map, Node, Edge, Null, or Point but was Path" in str(e))
+            assert("Type mismatch on operator '.' left argument: expected Map, Node, Edge, Point, or Null but was Path" in str(e))
             pass
 
     # invalid predicates should raise errors.

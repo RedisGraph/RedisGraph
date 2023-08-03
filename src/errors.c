@@ -148,6 +148,56 @@ void Error_SITypeMismatch(SIValue received, SIType expected) {
 					  SIType_ToString(SI_TYPE(received)));
 }
 
+static char _GetFunctionOperator(const char* function_name) {
+	if(strcmp(function_name, "add") == 0) {
+		return '+';
+	} else if(strcmp(function_name, "div") == 0) {
+		return '/';
+	} else if(strcmp(function_name, "mod") == 0) {
+		return '%';
+	} else if(strcmp(function_name, "mul") == 0) {
+		return '*';
+	} else if(strcmp(function_name, "pow") == 0) {
+		return '^';
+	} else if(strcmp(function_name, "sub") == 0) {
+		return '-';
+	} else if(strcmp(function_name, "property") == 0) {
+		return '.';
+	}
+	return 0;
+}
+
+void Error_FunctionArgumentSITypeMismatch(
+	SIValue received,
+	SIType expected,
+	const char* function_name,
+	int arg_number,
+	int elem_number
+) {
+	size_t bufferLen = MULTIPLE_TYPE_STRING_BUFFER_SIZE;
+	char buf[bufferLen];
+	char operator = _GetFunctionOperator(function_name);
+
+	SIType_ToMultipleTypeString(expected, buf, bufferLen);
+	if(elem_number == 0) {
+		if(operator != 0) {
+			if(arg_number == 1) {
+				ErrorCtx_SetError("Type mismatch on operator '%c' left argument: expected %s but was %s", 
+					operator, buf, SIType_ToString(SI_TYPE(received)));
+			} else {
+				ErrorCtx_SetError("Type mismatch on operator '%c' right argument: expected %s but was %s", 
+					operator, buf, SIType_ToString(SI_TYPE(received)));
+			}
+		} else {
+			ErrorCtx_SetError("Type mismatch on function '%s' argument %d: expected %s but was %s", 
+				function_name, arg_number, buf, SIType_ToString(SI_TYPE(received)));
+		}
+	} else {
+		ErrorCtx_RaiseRuntimeException("Type mismatch on function '%s' argument %d, element %d: expected %s but was %s", 
+			function_name, arg_number, elem_number, buf, SIType_ToString(SI_TYPE(received)));
+	}
+}
+
 void Error_UnsupportedASTNodeType(const cypher_astnode_t *node) {
 	ASSERT(node != NULL);
 

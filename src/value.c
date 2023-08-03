@@ -278,35 +278,56 @@ void SIType_ToMultipleTypeString(SIType t, char *buf, size_t bufferLen) {
 	ASSERT(bufferLen >= MULTIPLE_TYPE_STRING_BUFFER_SIZE);
 
 	uint   count		= __builtin_popcount(t);
+	char  *prevComma    = count > 2 ? ", " : "";
 	char  *comma        = count > 2 ? ", or " : " or ";
 	SIType currentType  = 1;
 	size_t bytesWritten = 0;
+	bool   nullIsValid  = false;
 
 	// Find first type
 	while((t & currentType) == 0) {
 		currentType = currentType << 1;
 	}
-	bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s", SIType_ToString(currentType));
-	if(count == 1) return;
 
-	count--;
-	// Iterate over the possible SITypes except last one
-	while(count > 1) {
-		currentType = currentType << 1;
-		if(t & currentType) {
-			bytesWritten += snprintf(buf + bytesWritten, bufferLen, ", %s", SIType_ToString(currentType));
-			count--;
-		}
+	if(count == 1) {
+		bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s", SIType_ToString(currentType));
+		return;
+	}
+	
+	// Detect if T_NULL is in the list of possible types, and remove it to print it at last position
+	if(T_NULL & t) {
+		nullIsValid = true;
+		t = t & ~(T_NULL);
+		count--;
 	}
 
-	// Find last type
-	do {
-		currentType = currentType << 1;
-	} while((t & currentType) == 0);
+	if(count > 1) {
+		bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s", SIType_ToString(currentType));
+		count--;
+		// Iterate over the possible SITypes except last one
+		while(count > 1) {
+			currentType = currentType << 1;
+			if(t & currentType) {
+				bytesWritten += snprintf(buf + bytesWritten, bufferLen, ", %s", SIType_ToString(currentType));
+				count--;
+			}
+		}
+
+		// Find last type
+		do {
+			currentType = currentType << 1;
+		} while((t & currentType) == 0);
+	}
 
 	// Concatenate "or" before the last SIType name
 	// If there are more than two, the last comma should be present
-	bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s%s", comma, SIType_ToString(currentType));
+	if (nullIsValid) {
+		// If T_NULL is valid, print currentType and print T_NULL at last position
+		// If there are more than two, print a comma before last SIType different from T_NULL
+		bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s%s%s%s", prevComma, SIType_ToString(currentType), comma, SIType_ToString(T_NULL));
+	} else {
+		bytesWritten += snprintf(buf + bytesWritten, bufferLen, "%s%s", comma, SIType_ToString(currentType));
+	}
 }
 
 void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {

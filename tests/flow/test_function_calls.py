@@ -624,11 +624,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Test has labels using functions mismatch type
-        query = """MATCH (n) WHERE hasLabels(n, ['person', 1]) RETURN n.name"""
-        try:
-            graph.query(query)
-        except redis.ResponseError as e:
-            self.env.assertContains("Type mismatch: expected String but was Integer", str(e))
+        queries_with_errors = {
+            "MATCH (n) WHERE hasLabels(n, ['person', 1]) RETURN n.name": "Type mismatch on function 'hasLabels' argument 2, element 2: expected String but was Integer",
+            "MATCH (n) WHERE hasLabels(n, ['a', 'b', 1]) RETURN n.name": "Type mismatch on function 'hasLabels' argument 2, element 3: expected String but was Integer",
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)
 
     def test20_keys(self):
         # Test retrieving keys of a nested map
@@ -2213,12 +2214,20 @@ class testFunctionCallsFlow(FlowTestsBase):
         # A list of queries and errors which are expected to occur with the
         # specified query.
         queries_with_errors = {
-            "RETURN tail(1)": "Type mismatch: expected List or Null but was Integer",
-            "CREATE (n) RETURN hasLabels(n, 1)": "Type mismatch: expected List but was Integer",
-            "CREATE ()-[r:R]->() RETURN hasLabels(r, ['abc', 'def'])": "Type mismatch: expected Node or Null but was Edge",
-            "RETURN toBoolean(1.2)": "Type mismatch: expected String, Boolean, Integer, or Null but was Float",
-            "RETURN isEmpty(1)": "Type mismatch: expected Map, List, String, or Null but was Integer",
-            "CREATE ()-[r:R]->() RETURN toString(r)": "Type mismatch: expected Datetime, Duration, String, Boolean, Integer, Float, Null, or Point but was Edge",
+            "RETURN tail(1)" : "Type mismatch on function 'tail' argument 1: expected List or Null but was Integer",
+            "CREATE (n) RETURN hasLabels(n, 1)" : "Type mismatch on function 'hasLabels' argument 2: expected List but was Integer",
+            "CREATE ()-[r:R]->() RETURN hasLabels(r, ['abc', 'def'])" : "Type mismatch on function 'hasLabels' argument 1: expected Node or Null but was Edge",
+            "RETURN toBoolean(1.2)" : "Type mismatch on function 'toBoolean' argument 1: expected String, Boolean, Integer, or Null but was Float",
+            "RETURN isEmpty(1)" : "Type mismatch on function 'isEmpty' argument 1: expected Map, List, String, or Null but was Integer",
+            "CREATE ()-[r:R]->() RETURN toString(r)" : "Type mismatch on function 'tostring' argument 1: expected Datetime, Duration, String, Boolean, Integer, Float, Point, or Null but was Edge",
+            "MERGE p=() RETURN p.name" : "Type mismatch on operator '.' left argument: expected Map, Node, Edge, Point, or Null but was Path",
+            "MERGE p=() RETURN p + 1" : "Type mismatch on operator '+' left argument: expected List, String, Boolean, Integer, Float, or Null but was Path",
+            "RETURN -'a'" : "Type mismatch on operator '-' right argument: expected Integer, Float, or Null but was String",
+            "RETURN 'a' - 2" : "Type mismatch on operator '-' left argument: expected Integer, Float, or Null but was String",
+            "RETURN 1 * 'a'" : "Type mismatch on operator '*' right argument: expected Integer, Float, or Null but was String",
+            "RETURN 2 ^ 'a'" : "Type mismatch on operator '^' right argument: expected Integer, Float, or Null but was String",
+            "RETURN 'a' / 2" : "Type mismatch on operator '/' left argument: expected Integer, Float, or Null but was String",
+            "RETURN 'a' % 2" : "Type mismatch on operator '%' left argument: expected Integer, Float, or Null but was String",
         }
         for query, error in queries_with_errors.items():
             self.expect_error(query, error)

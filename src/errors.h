@@ -58,6 +58,15 @@ void Error_InvalidFilterPlacement(rax *entitiesRax);
 // Report an error when an SIValue resolves to an unhandled type.
 void Error_SITypeMismatch(SIValue received, SIType expected);
 
+
+// @brief  Report an error when a function argument resolves to an unhandled type.
+// @param  received: the value received
+// @param  expected: expected type
+// @param  function_name: function name where error was detected
+// @param  arg_number: argument number
+// @param  elem_number: element number in case of the error occurs in an array, 0 if there is not elements
+void Error_FunctionArgumentSITypeMismatch(SIValue received, SIType expected, const char* function_name, int arg_number, int elem_number);
+
 // Report an error on receiving an unhandled AST node type.
 void Error_UnsupportedASTNodeType(const cypher_astnode_t *node);
 
