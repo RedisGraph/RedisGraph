@@ -14,29 +14,26 @@ jobs:
         submodules: recursive
     - name: Cache
       id: graphblas
-      uses: actions/cache@v3.3.1
+      uses: actions/cache@v3
       with:
-        path: |
-          ./bin/linux-x64-release/GraphBLAS
+        path: ./bin/linux-x64-release/GraphBLAS
         key: graphblas-${{ hashFiles('./deps/GraphBLAS/Include/GraphBLAS.h') }}
     - name: Setup
       run: |
         ./sbin/setup
         export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
     - name: Build
-      run: |
-        make
+      run: make
     - uses: actions/upload-artifact@v3
       with:
         name: ubuntu-falkorDB
-        path: ./bin
+        path: ./bin/
   unit-tests:
     runs-on: ubuntu-latest
     needs: build
     steps:
       - uses: actions/checkout@v3
         with:
-          set-safe-directory: '*'
           submodules: recursive
       - uses: actions/download-artifact@v3
         with:
@@ -55,6 +52,8 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
@@ -72,6 +71,8 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
@@ -89,6 +90,8 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
