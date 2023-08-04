@@ -55,9 +55,6 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v3
-        with:
-          set-safe-directory: '*'
-          submodules: recursive
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
@@ -75,9 +72,6 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v3
-        with:
-          set-safe-directory: '*'
-          submodules: recursive
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
@@ -95,9 +89,6 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v3
-        with:
-          set-safe-directory: '*'
-          submodules: recursive
       - uses: actions/download-artifact@v3
         with:
           name: ubuntu-falkorDB
