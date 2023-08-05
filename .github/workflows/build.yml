@@ -44,6 +44,8 @@ jobs:
           ./sbin/setup
           export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
           ./deps/readies/bin/getredis --with-github-token
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
       - name: Unit tests
         run: make unit-tests CLEAR_LOGS=0
   flow-tests:
