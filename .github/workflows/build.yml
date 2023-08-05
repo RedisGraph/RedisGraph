@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: swilly22/falkorbd-build:latest
+    container: aviavni/falkordb-build
     steps:
     - uses: actions/checkout@v3
       with:
@@ -37,7 +37,7 @@ jobs:
         path: ./bin/
   unit-tests:
     runs-on: ubuntu-latest
-    container: swilly22/falkorbd-build:latest
+    container: aviavni/falkordb-build
     needs: build
     steps:
       - uses: actions/checkout@v3
@@ -55,7 +55,7 @@ jobs:
         run: make unit-tests CLEAR_LOGS=0
   flow-tests:
     runs-on: ubuntu-latest
-    container: swilly22/falkorbd-build:latest
+    container: aviavni/falkordb-build
     needs: build
     steps:
       - uses: actions/checkout@v3
@@ -73,7 +73,7 @@ jobs:
         run: make flow-tests CLEAR_LOGS=0
   tck-tests:
     runs-on: ubuntu-latest
-    container: swilly22/falkorbd-build:latest
+    container: aviavni/falkordb-build
     needs: build
     steps:
       - uses: actions/checkout@v3
@@ -91,7 +91,7 @@ jobs:
         run: make tck-tests CLEAR_LOGS=0
   fuzz-tests:
     runs-on: ubuntu-latest
-    container: swilly22/falkorbd-build:latest
+    container: aviavni/falkordb-build
     needs: build
     steps:
       - uses: actions/checkout@v3
