@@ -23,7 +23,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ./bin/linux-x64-release/libcypher-parser
-        key: graphblas-${{ hashFiles('./deps/libcypher-parser/lib/src/parser.c') }}
+        key: parser-${{ hashFiles('./deps/libcypher-parser/lib/src/parser.c') }}
     - name: Setup
       run: |
         ./sbin/setup
