@@ -30,9 +30,9 @@ jobs:
         export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
     - name: Build
       run: make
-    - name: Upload artifacts 
-      uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v3
       with:
+        name: bin
         path: ./bin/
   unit-tests:
     runs-on: ubuntu-latest
@@ -43,7 +43,7 @@ jobs:
           submodules: recursive
       - uses: actions/download-artifact@v3
         with:  
-          path: ./bin/
+          path: ./
       - name: 'Echo download path'
         run: echo ${{steps.download.outputs.download-path}}
       - name: Setup
@@ -64,7 +64,7 @@ jobs:
           submodules: recursive
       - uses: actions/download-artifact@v3
         with:  
-          path: ./bin/
+          path: ./
       - name: Setup
         run: |
           ./sbin/setup
@@ -83,7 +83,7 @@ jobs:
           submodules: recursive
       - uses: actions/download-artifact@v3
         with:  
-          path: ./bin/
+          path: ./
       - name: Setup
         run: |
           ./sbin/setup
@@ -100,7 +100,7 @@ jobs:
           submodules: recursive
       - uses: actions/download-artifact@v3
         with:  
-          path: ./bin/
+          path: ./
       - name: Setup
         run: |
           ./sbin/setup
