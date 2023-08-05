@@ -7,6 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: swilly22/falkorbd-build:latest
     steps:
     - uses: actions/checkout@v3
       with:
@@ -24,10 +25,10 @@ jobs:
       with:
         path: ./bin/linux-x64-release/libcypher-parser
         key: parser-${{ hashFiles('./deps/libcypher-parser/lib/src/parser.c') }}
-    - name: Setup
-      run: |
-        ./sbin/setup
-        export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+    #- name: Setup
+    #  run: |
+    #    ./sbin/setup
+    #    export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
     - name: Build
       run: make
     - uses: actions/upload-artifact@v3
@@ -36,6 +37,7 @@ jobs:
         path: ./bin/
   unit-tests:
     runs-on: ubuntu-latest
+    container: swilly22/falkorbd-build:latest
     needs: build
     steps:
       - uses: actions/checkout@v3
@@ -44,15 +46,16 @@ jobs:
       - uses: actions/download-artifact@v3
         with:  
           path: ./      
-      - name: Setup
-        run: |
-          ./sbin/setup
-          export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          ./deps/readies/bin/getredis --with-github-token      
+      #- name: Setup
+      #  run: |
+      #    ./sbin/setup
+      #    export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+      #    ./deps/readies/bin/getredis --with-github-token      
       - name: Unit tests
         run: make unit-tests CLEAR_LOGS=0
   flow-tests:
     runs-on: ubuntu-latest
+    container: swilly22/falkorbd-build:latest
     needs: build
     steps:
       - uses: actions/checkout@v3
@@ -61,15 +64,16 @@ jobs:
       - uses: actions/download-artifact@v3
         with:  
           path: ./
-      - name: Setup
-        run: |
-          ./sbin/setup
-          export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          ./deps/readies/bin/getredis --with-github-token      
+      #- name: Setup
+      #  run: |
+      #    ./sbin/setup
+      #    export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+      #    ./deps/readies/bin/getredis --with-github-token      
       - name: Flow tests
         run: make flow-tests CLEAR_LOGS=0
   tck-tests:
     runs-on: ubuntu-latest
+    container: swilly22/falkorbd-build:latest
     needs: build
     steps:
       - uses: actions/checkout@v3
@@ -78,15 +82,16 @@ jobs:
       - uses: actions/download-artifact@v3
         with:  
           path: ./
-      - name: Setup
-        run: |
-          ./sbin/setup
-          export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          ./deps/readies/bin/getredis --with-github-token
+      #- name: Setup
+      #  run: |
+      #    ./sbin/setup
+      #    export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+      #    ./deps/readies/bin/getredis --with-github-token
       - name: TCK tests
         run: make tck-tests CLEAR_LOGS=0
   fuzz-tests:
     runs-on: ubuntu-latest
+    container: swilly22/falkorbd-build:latest
     needs: build
     steps:
       - uses: actions/checkout@v3
@@ -95,10 +100,10 @@ jobs:
       - uses: actions/download-artifact@v3
         with:  
           path: ./
-      - name: Setup
-        run: |
-          ./sbin/setup
-          export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          ./deps/readies/bin/getredis --with-github-token
+      #- name: Setup
+      #  run: |
+      #    ./sbin/setup
+      #    export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+      #    ./deps/readies/bin/getredis --with-github-token
       - name: Fuzz tests
         run: make fuzz
