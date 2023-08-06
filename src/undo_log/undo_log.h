@@ -109,7 +109,7 @@ typedef struct {
 } UndoOp;
 
 // container for undo_list
-typedef UndoOp *UndoLog;
+typedef DataBlock *UndoLog;
 
 // create a new undo-log
 UndoLog UndoLog_New(void);
@@ -127,35 +127,35 @@ uint UndoLog_Length
 // undo node creation
 void UndoLog_CreateNode
 (
-	UndoLog *log,  // undo log
+	UndoLog log,   // undo log
 	Node *node     // node created
 );
 
 // undo edge creation
 void UndoLog_CreateEdge
 (
-	UndoLog *log,  // undo log
+	UndoLog log,   // undo log
 	Edge *edge     // edge created
 );
 
 // undo node deletion
 void UndoLog_DeleteNode
 (
-	UndoLog *log,  // undo log
+	UndoLog log,   // undo log
 	Node *node     // node deleted
 );
 
 // undo edge deletion
 void UndoLog_DeleteEdge
 (
-	UndoLog *log,  // undo log
+	UndoLog log,   // undo log
 	Edge *edge     // edge deleted
 );
 
 // undo entity update
 void UndoLog_UpdateEntity
 (
-	UndoLog *log,                // undo log
+	UndoLog log,                 // undo log
 	GraphEntity *ge,             // updated entity
 	AttributeSet set,            // old attribute set
 	GraphEntityType entity_type  // entity type
@@ -164,7 +164,7 @@ void UndoLog_UpdateEntity
 // undo node add label
 void UndoLog_AddLabels
 (
-	UndoLog *log,                // undo log
+	UndoLog log,                // undo log
 	Node *node,                  // updated node
 	int *label_ids,              // added labels
 	size_t labels_count          // number of removed labels
@@ -173,7 +173,7 @@ void UndoLog_AddLabels
 // undo node remove label
 void UndoLog_RemoveLabels
 (
-	UndoLog *log,                // undo log
+	UndoLog log,                 // undo log
 	Node *node,                  // updated node
 	int *label_ids,              // removed labels
 	size_t labels_count          // number of removed labels
@@ -182,7 +182,7 @@ void UndoLog_RemoveLabels
 // undo schema addition
 void UndoLog_AddSchema
 (
-	UndoLog *log,                // undo log
+	UndoLog log,                 // undo log
 	int schema_id,               // id of the schema
 	SchemaType t                 // type of the schema
 );
@@ -190,20 +190,14 @@ void UndoLog_AddSchema
 // undo attribute addition
 void UndoLog_AddAttribute
 (
-	UndoLog *log,                // undo log
+	UndoLog log,                 // undo log
 	Attribute_ID attribute_id    // id of the attribute
 );
 
 // rollback all modifications tracked by this undo log
 void UndoLog_Rollback
 (
-	UndoLog log
-);
-
-// clears undo-log from all entries
-void UndoLog_Clear
-(
-	UndoLog log  // log to clear
+	UndoLog *log
 );
 
 // free undo-operation

@@ -17,7 +17,6 @@
 // forward declarations
 static Record DeleteConsume(OpBase *opBase);
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
-static OpResult DeleteReset(OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
 static int entity_cmp
@@ -129,6 +128,8 @@ static void _DeleteEntities
 	// clean up
 	array_free(distinct_nodes);
 	array_free(distinct_edges);
+	array_clear(op->deleted_nodes);
+	array_clear(op->deleted_edges);
 }
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
@@ -139,20 +140,17 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->exp_count = array_len(exps);
 	op->deleted_nodes = array_new(Node, 32);
 	op->deleted_edges = array_new(Edge, 32);
+	op->records = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
-				DeleteReset, NULL, DeleteClone, DeleteFree, true, plan);
+				NULL, NULL, DeleteClone, DeleteFree, true, plan);
 
 	return (OpBase *)op;
 }
 
-static Record DeleteConsume(OpBase *opBase) {
+static void _CollectDeletedEntities(Record r, OpBase *opBase) {
 	OpDelete *op = (OpDelete *)opBase;
-	OpBase *child = op->op.children[0];
-
-	Record r = OpBase_Consume(child);
-	if(!r) return NULL;
 
 	// Expression should be evaluated to either a node, an edge or a path
 	// which will be marked for deletion, if an expression is evaluated
@@ -201,8 +199,52 @@ static Record DeleteConsume(OpBase *opBase) {
 			break;
 		}
 	}
+}
 
-	return r;
+// Return mode, emit a populated Record.
+static Record _handoff(OpDelete *op) {
+	return array_pop(op->records);
+}
+
+static Record DeleteConsume(OpBase *opBase) {
+	OpDelete *op = (OpDelete *)opBase;
+	Record r;
+
+	// Return mode, all data was consumed.
+	if(op->records) return _handoff(op);
+
+	// Consume mode.
+	op->records = array_new(Record, 32);
+	// initialize the records array with NULL, which will terminate execution
+	// upon depletion
+	array_append(op->records, NULL);
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	ASSERT(op->op.childCount > 0);
+	// Pull data until child is depleted.
+	OpBase *child = op->op.children[0];
+	while((r = OpBase_Consume(child))) {
+		/* Persist scalars from previous ops before storing the record,
+		* as those ops will be freed before the records are handed off. */
+		Record_PersistScalars(r);
+
+		// save record for later use
+		array_append(op->records, r);
+
+		// delete entities
+		_CollectDeletedEntities(r, opBase);
+	}
+
+	/* Done reading, we're not going to call consume any longer
+	 * there might be operations e.g. index scan that need to free
+	 * index R/W lock, as such free all execution plan operation up the chain. */
+	if(child) OpBase_PropagateReset(child);
+
+	// delete entities.
+	_DeleteEntities(op);
+
+	// Return record.
+	return _handoff(op);
 }
 
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
@@ -213,26 +255,13 @@ static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	return NewDeleteOp(plan, exps);
 }
 
-static OpResult DeleteReset(OpBase *opBase) {
-	OpDelete *op = (OpDelete *)opBase;
-
-	_DeleteEntities(op);
-
-	if(op->deleted_nodes) {
-		array_clear(op->deleted_nodes);
-	}
-
-	if(op->deleted_edges) {
-		array_clear(op->deleted_edges);
-	}
-
-	return OP_OK;
-}
-
 static void DeleteFree(OpBase *opBase) {
 	OpDelete *op = (OpDelete *)opBase;
 
-	_DeleteEntities(op);
+	if(op->records) {
+		array_free(op->records);
+		op->records = NULL;
+	}
 
 	if(op->deleted_nodes) {
 		array_free(op->deleted_nodes);
