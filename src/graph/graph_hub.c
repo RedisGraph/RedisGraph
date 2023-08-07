@@ -43,7 +43,7 @@ static void _DeleteEdgeFromIndices
 	Schema  *s  =  NULL;
 	Graph   *g  =  gc->g;
 
-	int relation_id = EDGE_GET_RELATION_ID(e, g);
+	int relation_id = Edge_GetRelationID(e);
 
 	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
 
@@ -81,7 +81,7 @@ static void _AddEdgeToIndices(GraphContext *gc, Edge *e) {
 	Schema  *s  =  NULL;
 	Graph   *g  =  gc->g;
 
-	int relation_id = EDGE_GET_RELATION_ID(e, g);
+	int relation_id = Edge_GetRelationID(e);
 
 	s = GraphContext_GetSchemaByID(gc, relation_id, SCHEMA_EDGE);
 	ASSERT(s != NULL);

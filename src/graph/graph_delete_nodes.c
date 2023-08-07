@@ -59,7 +59,7 @@ void Graph_DeleteNodes
 	//--------------------------------------------------------------------------
 
 	GrB_Index j;            // iterated entry col idx
-	GrB_Matrix s;           // empty scalar
+	GrB_Matrix s;           // empty matrix
 	GrB_Matrix M;           // delta M
 	GrB_Matrix DP;          // delta plus
 	GrB_Matrix DM;          // delta minus
@@ -79,6 +79,8 @@ void Graph_DeleteNodes
 	ASSERT(info == GrB_SUCCESS);
 	info = GrB_Matrix_new(&lbls_mask, GrB_BOOL, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
+
+	// create an empty matrix
 	info = GrB_Matrix_new(&s, GrB_BOOL, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
 

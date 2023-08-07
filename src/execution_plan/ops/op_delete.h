@@ -17,7 +17,7 @@
 typedef struct {
 	OpBase op;
 	GraphContext *gc;
-	Record *records;        // Array of Records created by this operation.
+	Record *records;        // Eagerly collected records.
 	AR_ExpNode **exps;      // Expressions evaluated to an entity about to be deleted.
 	uint exp_count;         // Number of expressions.
 	Node *deleted_nodes;    // Array of nodes to be removed.

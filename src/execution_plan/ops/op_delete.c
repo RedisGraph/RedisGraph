@@ -142,33 +142,34 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->deleted_edges = array_new(Edge, 32);
 	op->records = NULL;
 
-	// Set our Op operations
+	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
 				NULL, NULL, DeleteClone, DeleteFree, true, plan);
 
 	return (OpBase *)op;
 }
 
-static void _CollectDeletedEntities(Record r, OpBase *opBase) {
+// collect nodes and edges to be deleted
+static inline void _CollectDeletedEntities(Record r, OpBase *opBase) {
 	OpDelete *op = (OpDelete *)opBase;
 
-	// Expression should be evaluated to either a node, an edge or a path
+	// expression should be evaluated to either a node, an edge or a path
 	// which will be marked for deletion, if an expression is evaluated
-	// to a different value type e.g. Numeric a run-time exception is thrown. */
+	// to a different value type e.g. Numeric a run-time exception is thrown.
 	for(int i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
 		SIValue value = AR_EXP_Evaluate(exp, r);
 		SIType type = SI_TYPE(value);
-		/* Enqueue entities for deletion. */
+		// enqueue entities for deletion
 		if(type & T_NODE) {
 			Node *n = (Node *)value.ptrval;
 			array_append(op->deleted_nodes, *n);
-			// If evaluating the expression allocated any memory, free it.
+			// if evaluating the expression allocated any memory, free it.
 			SIValue_Free(value);
 		} else if(type & T_EDGE) {
 			Edge *e = (Edge *)value.ptrval;
 			array_append(op->deleted_edges, *e);
-			// If evaluating the expression allocated any memory, free it.
+			// if evaluating the expression allocated any memory, free it.
 			SIValue_Free(value);
 		} else if(type & T_PATH) {
 			Path *p = (Path *)value.ptrval;
@@ -187,11 +188,11 @@ static void _CollectDeletedEntities(Record r, OpBase *opBase) {
 
 			SIValue_Free(value);
 		} else if(!(type & T_NULL)) {
-			/* Expression evaluated to a non-graph entity type
-			 * clear pending deletions and raise an exception. */
+			// expression evaluated to a non-graph entity type
+			// clear pending deletions and raise an exception
 			array_clear(op->deleted_nodes);
 			array_clear(op->deleted_edges);
-			// If evaluating the expression allocated any memory, free it.
+			// if evaluating the expression allocated any memory, free it.
 			SIValue_Free(value);
 			// free the Record this operation acted on
 			OpBase_DeleteRecord(r);
@@ -201,7 +202,6 @@ static void _CollectDeletedEntities(Record r, OpBase *opBase) {
 	}
 }
 
-// Return mode, emit a populated Record.
 static Record _handoff(OpDelete *op) {
 	return array_pop(op->records);
 }
@@ -210,22 +210,22 @@ static Record DeleteConsume(OpBase *opBase) {
 	OpDelete *op = (OpDelete *)opBase;
 	Record r;
 
-	// Return mode, all data was consumed.
+	// return mode, all data was consumed
 	if(op->records) return _handoff(op);
 
-	// Consume mode.
+	// consume mode
 	op->records = array_new(Record, 32);
-	// initialize the records array with NULL, which will terminate execution
-	// upon depletion
+	// initialize the records array with NULL
+	// which will terminate execution upon depletion
 	array_append(op->records, NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	ASSERT(op->op.childCount > 0);
-	// Pull data until child is depleted.
+	// pull data until child is depleted
 	OpBase *child = op->op.children[0];
 	while((r = OpBase_Consume(child))) {
-		/* Persist scalars from previous ops before storing the record,
-		* as those ops will be freed before the records are handed off. */
+		// persist scalars from previous ops before storing the record
+		// as those ops will be freed before the records are handed off
 		Record_PersistScalars(r);
 
 		// save record for later use
@@ -235,15 +235,15 @@ static Record DeleteConsume(OpBase *opBase) {
 		_CollectDeletedEntities(r, opBase);
 	}
 
-	/* Done reading, we're not going to call consume any longer
-	 * there might be operations e.g. index scan that need to free
-	 * index R/W lock, as such free all execution plan operation up the chain. */
+	// done reading, we're not going to call consume any longer
+	// there might be operations e.g. index scan that need to free
+	// index R/W lock, as such free all execution plan operation up the chain.
 	if(child) OpBase_PropagateReset(child);
 
-	// delete entities.
+	// delete entities
 	_DeleteEntities(op);
 
-	// Return record.
+	// return record
 	return _handoff(op);
 }
 
