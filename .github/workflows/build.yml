@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: aviavni/falkordb-build
+    container: swilly22/falkorbd-build:latest
     steps:
     - name: Safe dir
       run: git config --global --add safe.directory '*'
@@ -39,7 +39,7 @@ jobs:
         path: ./bin/
   unit-tests:
     runs-on: ubuntu-latest
-    container: aviavni/falkordb-build
+    container: swilly22/falkorbd-build:latest
     needs: build
     steps:
       - uses: actions/checkout@v3
@@ -57,7 +57,7 @@ jobs:
         run: make unit-tests CLEAR_LOGS=0
   flow-tests:
     runs-on: ubuntu-latest
-    container: aviavni/falkordb-build
+    container: swilly22/falkorbd-build:latest
     needs: build
     steps:
       - uses: actions/checkout@v3
@@ -75,7 +75,7 @@ jobs:
         run: make flow-tests CLEAR_LOGS=0
   tck-tests:
     runs-on: ubuntu-latest
-    container: aviavni/falkordb-build
+    container: swilly22/falkorbd-build:latest
     needs: build
     steps:
       - uses: actions/checkout@v3
@@ -93,7 +93,7 @@ jobs:
         run: make tck-tests CLEAR_LOGS=0
   fuzz-tests:
     runs-on: ubuntu-latest
-    container: aviavni/falkordb-build
+    container: swilly22/falkorbd-build:latest
     needs: build
     steps:
       - uses: actions/checkout@v3
