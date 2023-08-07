@@ -14,8 +14,7 @@
 #define UNDOLOG_INIT_SIZE 32
 #define UNDOLOG_GET_ITEM(log, i) DataBlock_GetItem(log, i)
 #define UNDOLOG_ADD_OP(log, op) \
-	UndoOp *item = DataBlock_AllocateItem(log, NULL); \
-	*item = op;
+	*(UndoOp*)DataBlock_AllocateItem((log), NULL) = op;
 
 static void _index_node
 (
