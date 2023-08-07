@@ -55,6 +55,9 @@ jobs:
         with:
           name: bin
 
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
+
       - name: Unit tests
         run: make unit-tests CLEAR_LOGS=0
   flow-tests:
