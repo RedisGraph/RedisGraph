@@ -59,6 +59,7 @@ jobs:
         run: make unit-tests CLEAR_LOGS=0
   flow-tests:
     runs-on: ubuntu-latest
+    container: swilly22/falkordb-build:latest
     needs: build
     steps:
       - uses: actions/checkout@v3
@@ -69,9 +70,6 @@ jobs:
         uses: ./.github/actions/download-artifact
         with:
           name: bin
-
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
 
       - name: Flow tests
         run: make flow-tests CLEAR_LOGS=0
