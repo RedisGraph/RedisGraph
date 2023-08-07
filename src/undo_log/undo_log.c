@@ -537,7 +537,10 @@ void UndoLog_Rollback
 
 	Graph_ResetReservedNode(ctx->gc->g);
 
-	if(count == 0) return;
+	if(count == 0) {
+		DataBlock_Free(log);
+		return;
+	}
 
 	// apply undo operations in reverse order for rollback correctness
 	// find sequences of the same operation and rollback them as a bulk
