@@ -253,11 +253,20 @@ Graph *QueryCtx_GetGraph(void) {
 }
 
 // retrieve undo log
-UndoLog *QueryCtx_GetUndoLog(void) {
+UndoLog QueryCtx_GetUndoLog(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ASSERT(ctx != NULL && ctx->undo_log != NULL);
 	
-	return &ctx->undo_log;
+	return ctx->undo_log;
+}
+
+// rollback the current command
+void QueryCtx_Rollback(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ASSERT(ctx != NULL && ctx->undo_log != NULL);
+	
+	UndoLog_Rollback(ctx->undo_log);
+	ctx->undo_log = NULL;
 }
 
 // retrieve effects-buffer

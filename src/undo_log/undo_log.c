@@ -528,12 +528,12 @@ void UndoLog_AddAttribute
 
 void UndoLog_Rollback
 (
-	UndoLog *log
+	UndoLog log
 ) {
 	ASSERT(log != NULL);
 
 	QueryCtx *ctx  = QueryCtx_GetQueryCtx();
-	uint64_t count = DataBlock_ItemCount(*log);
+	uint64_t count = DataBlock_ItemCount(log);
 
 	Graph_ResetReservedNode(ctx->gc->g);
 
@@ -543,12 +543,12 @@ void UndoLog_Rollback
 	// find sequences of the same operation and rollback them as a bulk
 	int seq_end = count - 1;
 	while (seq_end >= 0) {
-		UndoOp *op = UNDOLOG_GET_ITEM(*log, seq_end);
+		UndoOp *op = UNDOLOG_GET_ITEM(log, seq_end);
 		UndoOpType cur_type = op->type;
 		int seq_start = seq_end;
 		seq_end--;
 		while(seq_end >= 0) {
-			op = UNDOLOG_GET_ITEM(*log, seq_end);
+			op = UNDOLOG_GET_ITEM(log, seq_end);
 			if(op->type != cur_type) break;
 			seq_end--;
 		}
@@ -586,8 +586,7 @@ void UndoLog_Rollback
 		}
  	}
 
-	DataBlock_Free(*log);
-	*log = NULL;
+	DataBlock_Free(log);
 }
 
 void UndoLog_FreeOp

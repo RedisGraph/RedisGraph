@@ -197,7 +197,7 @@ void UndoLog_AddAttribute
 // rollback all modifications tracked by this undo log
 void UndoLog_Rollback
 (
-	UndoLog *log
+	UndoLog log
 );
 
 // free undo-operation
