@@ -86,8 +86,8 @@ jobs:
           name: bin
 
       - name: Flow tests
-        run: make flow-tests CLEAR_LOGS=0
-          #run: MODULE=$GITHUB_WORKSPACE/bin/linux-x64-release/src/redisgraph.so BINROOT=$GITHUB_WORKSPACE/bin/linux-x64-release PARALLEL=1 GEN= AOF= TCK=0 ./tests/flow/tests.sh
+        run: make BUILD=0 CLEAR_LOGS=0 flow-tests
+
   tck-tests:
     runs-on: ubuntu-latest
     container: swilly22/falkordb-build:latest
@@ -106,7 +106,8 @@ jobs:
           name: bin
 
       - name: TCK tests
-        run: make tck-tests CLEAR_LOGS=0
+        run: make BUILD=0 CLEAR_LOGS=0 tck-tests
+
   fuzz-tests:
     runs-on: ubuntu-latest
     container: swilly22/falkordb-build:latest
@@ -125,4 +126,4 @@ jobs:
           name: bin
 
       - name: Fuzz tests
-        run: make fuzz
+        run: BUILD=0 make fuzz
