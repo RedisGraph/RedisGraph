@@ -53,9 +53,12 @@ jobs:
     container: swilly22/falkordb-build:latest
     needs: build
     steps:
+
+      - name: Safe dir
+        run: git config --global --add safe.directory '*'
+
       - uses: actions/checkout@v3
         with:
-          set-safe-directory: '*'
           submodules: recursive
 
       - name: Download build artifacts
@@ -71,9 +74,11 @@ jobs:
     container: swilly22/falkordb-build:latest
     needs: build
     steps:
+      - name: Safe dir
+        run: git config --global --add safe.directory '*'
+
       - uses: actions/checkout@v3
         with:
-          set-safe-directory: '*'
           submodules: recursive
 
       - name: Download build artifacts
@@ -89,9 +94,11 @@ jobs:
     container: swilly22/falkordb-build:latest
     needs: build
     steps:
+      - name: Safe dir
+        run: git config --global --add safe.directory '*'
+
       - uses: actions/checkout@v3
         with:
-          set-safe-directory: '*'
           submodules: recursive
 
       - name: Download build artifacts
@@ -107,9 +114,11 @@ jobs:
     container: swilly22/falkordb-build:latest
     needs: build
     steps:
+      - name: Safe dir
+        run: git config --global --add safe.directory '*'
+
       - uses: actions/checkout@v3
         with:
-          set-safe-directory: '*'
           submodules: recursive
 
       - name: Download build artifacts
