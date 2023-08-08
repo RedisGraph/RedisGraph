@@ -71,7 +71,7 @@ jobs:
     needs: build
     steps:
       - name: Unit tests
-        working-directory: ./FalkorDB
+        working-directory: /FalkorDB
         run: make unit-tests CLEAR_LOGS=0
 
           #  flow-tests:
