@@ -32,6 +32,13 @@ jobs:
         path: ./bin/linux-x64-release/libcypher-parser
         key: parser-${{ hashFiles('./deps/libcypher-parser/lib/src/parser.c') }}
 
+    - name: Cache search
+      id: cache_search
+      uses: actions/cache@v3
+      with:
+        path: ./bin/linux-x64-release/search-static
+        key: search-${{ hashFiles('./deps/RediSearch/src/version.h') }}
+
     - name: Build
       run: make
 
