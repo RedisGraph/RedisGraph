@@ -42,74 +42,83 @@ jobs:
     - name: Build
       run: make
 
+        #- name: Upload build artifacts
+        #  uses: ./.github/actions/upload-artifact
+        #  with:
+        #    name: module
+        #    path: ./bin/linux-x64-release/src/redisgraph.so
+
     - name: Upload build artifacts
       uses: ./.github/actions/upload-artifact
       with:
-        name: module
-        path: ./bin/linux-x64-release/src/redisgraph.so
+        name: repo
+        path: .
 
   unit-tests:
     runs-on: ubuntu-latest
     container: swilly22/falkordb-build:latest
     needs: build
     steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
+      #- uses: actions/checkout@v3
+      #  with:
+      #    submodules: recursive
 
       - name: Download build artifacts
         uses: ./.github/actions/download-artifact
         with:
-          name: module
+          name: repo
 
       - name: Unit tests
         run: make unit-tests CLEAR_LOGS=0
+
   flow-tests:
     runs-on: ubuntu-latest
     container: swilly22/falkordb-build:latest
     needs: build
     steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
+      #- uses: actions/checkout@v3
+      #  with:
+      #    submodules: recursive
 
       - name: Download build artifacts
         uses: ./.github/actions/download-artifact
         with:
-          name: module
+          name: repo
 
       - name: Flow tests
-        #run: make flow-tests CLEAR_LOGS=0
-        run: MODULE=$GITHUB_WORKSPACE/bin/linux-x64-release/src/redisgraph.so BINROOT=$GITHUB_WORKSPACE/bin/linux-x64-release PARALLEL=1 GEN= AOF= TCK=0 ./tests/flow/tests.sh
+        run: make flow-tests CLEAR_LOGS=0
+          #run: MODULE=$GITHUB_WORKSPACE/bin/linux-x64-release/src/redisgraph.so BINROOT=$GITHUB_WORKSPACE/bin/linux-x64-release PARALLEL=1 GEN= AOF= TCK=0 ./tests/flow/tests.sh
+
   tck-tests:
     runs-on: ubuntu-latest
     container: swilly22/falkordb-build:latest
     needs: build
     steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
+      #- uses: actions/checkout@v3
+      #  with:
+      #    submodules: recursive
 
       - name: Download build artifacts
         uses: ./.github/actions/download-artifact
         with:
-          name: bin
+          name: repo
 
       - name: TCK tests
         run: make tck-tests CLEAR_LOGS=0
+
   fuzz-tests:
     runs-on: ubuntu-latest
     container: swilly22/falkordb-build:latest
     needs: build
     steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
+      #- uses: actions/checkout@v3
+      #  with:
+      #    submodules: recursive
 
       - name: Download build artifacts
         uses: ./.github/actions/download-artifact
         with:
-          name: bin
+          name: repo
 
       - name: Fuzz tests
         run: make fuzz
