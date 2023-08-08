@@ -53,6 +53,9 @@ static void _DeleteEntities
 	qsort(nodes, node_count, sizeof(Node),
 			(int(*)(const void*, const void*))entity_cmp);
 
+	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
+	Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
+
 	for(uint i = 0; i < node_count; i++) {
 		while(i < node_count - 1 &&
 			  ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) {
@@ -72,6 +75,9 @@ static void _DeleteEntities
 		Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION,
 				&op->deleted_edges);
 	}
+
+	// restore matrix sync policy
+	Graph_SetMatrixPolicy(g, policy);
 
 	node_count = array_len(distinct_nodes);
 	edge_count = array_len(op->deleted_edges);
