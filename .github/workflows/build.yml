@@ -55,10 +55,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          set-safe-directory: '*'
           submodules: recursive
-
-      - name: Silence all safe.directory warnings
-        run: git config --global --add safe.directory '*'
 
       - name: Download build artifacts
         uses: ./.github/actions/download-artifact
@@ -75,10 +73,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          set-safe-directory: '*'
           submodules: recursive
-
-      - name: Silence all safe.directory warnings
-        run: git config --global --add safe.directory '*'
 
       - name: Download build artifacts
         uses: ./.github/actions/download-artifact
@@ -95,10 +91,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          set-safe-directory: '*'
           submodules: recursive
-
-      - name: Silence all safe.directory warnings
-        run: git config --global --add safe.directory '*'
 
       - name: Download build artifacts
         uses: ./.github/actions/download-artifact
@@ -115,10 +109,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          set-safe-directory: '*'
           submodules: recursive
-
-      - name: Silence all safe.directory warnings
-        run: git config --global --add safe.directory '*'
 
       - name: Download build artifacts
         uses: ./.github/actions/download-artifact
