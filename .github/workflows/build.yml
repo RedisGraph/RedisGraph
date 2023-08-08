@@ -86,7 +86,7 @@ jobs:
           name: bin
 
       - name: Flow tests
-        run: make BUILD=0 CLEAR_LOGS=0 flow-tests
+        run: make BUILD=0 CLEAR_LOGS=0 PARALLEL=4 flow-tests
 
   tck-tests:
     runs-on: ubuntu-latest
