@@ -15,6 +15,6 @@ clientconfig:
     - connections: 1
     - requests: 1000
     - queries:
-        - { q: "MATCH (n:N)-[e]->() DELETE e RETURN 1 LIMIT 1", ratio: 1 }
+        - { q: "MATCH (n:N)-[e]->() WITH e LIMIT 1 DELETE e RETURN 1", ratio: 1 }
 kpis:
   - le: { $.OverallGraphInternalLatencies.Total.q50: 40.0 }
