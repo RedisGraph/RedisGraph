@@ -1,0 +1,4 @@
+FROM swilly22/falkordb-build:latest
+
+ADD . /FalkorDB
+

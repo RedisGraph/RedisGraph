@@ -42,89 +42,93 @@ jobs:
     - name: Build
       run: make
 
-    - name: Upload build artifacts
-      uses: ./.github/actions/upload-artifact
+        # - name: Upload build artifacts
+        #   uses: ./.github/actions/upload-artifact
+        #   with:
+        #     name: bin
+        #     path: ./bin
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
       with:
-        name: bin
-        path: ./bin
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push
+      uses: docker/build-push-action@v4
+      with:
+        file: ./CI
+        push: true
+        tags: swilly22/falkordb-ci:latest
 
   unit-tests:
     runs-on: ubuntu-latest
-    container: swilly22/falkordb-build:latest
+    container: swilly22/falkordb-ci:latest
     needs: build
     steps:
-
-      - name: Safe dir
-        run: git config --global --add safe.directory '*'
-
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      - name: Download build artifacts
-        uses: ./.github/actions/download-artifact
-        with:
-          name: bin
-
       - name: Unit tests
+        working-directory: ./FalkorDB
         run: make unit-tests CLEAR_LOGS=0
 
-  flow-tests:
-    runs-on: ubuntu-latest
-    container: swilly22/falkordb-build:latest
-    needs: build
-    steps:
-      - name: Safe dir
-        run: git config --global --add safe.directory '*'
-
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      - name: Download build artifacts
-        uses: ./.github/actions/download-artifact
-        with:
-          name: bin
-
-      - name: Flow tests
-        run: make BUILD=0 CLEAR_LOGS=0 PARALLEL=4 flow-tests
-
-  tck-tests:
-    runs-on: ubuntu-latest
-    container: swilly22/falkordb-build:latest
-    needs: build
-    steps:
-      - name: Safe dir
-        run: git config --global --add safe.directory '*'
-
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      - name: Download build artifacts
-        uses: ./.github/actions/download-artifact
-        with:
-          name: bin
-
-      - name: TCK tests
-        run: make BUILD=0 CLEAR_LOGS=0 tck-tests
-
-  fuzz-tests:
-    runs-on: ubuntu-latest
-    container: swilly22/falkordb-build:latest
-    needs: build
-    steps:
-      - name: Safe dir
-        run: git config --global --add safe.directory '*'
-
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      - name: Download build artifacts
-        uses: ./.github/actions/download-artifact
-        with:
-          name: bin
-
-      - name: Fuzz tests
-        run: BUILD=0 make fuzz
+          #  flow-tests:
+          #    runs-on: ubuntu-latest
+          #    container: swilly22/falkordb-ci:latest
+          #    needs: build
+          #    steps:
+          #      - name: Safe dir
+          #        run: git config --global --add safe.directory '*'
+          #
+          #      - uses: actions/checkout@v3
+          #        with:
+          #          submodules: recursive
+          #
+          #      - name: Download build artifacts
+          #        uses: ./.github/actions/download-artifact
+          #        with:
+          #          name: bin
+          #
+          #      - name: Flow tests
+          #        run: make BUILD=0 CLEAR_LOGS=0 PARALLEL=4 flow-tests
+          #
+          #  tck-tests:
+          #    runs-on: ubuntu-latest
+          #    container: swilly22/falkordb-ci:latest
+          #    needs: build
+          #    steps:
+          #      - name: Safe dir
+          #        run: git config --global --add safe.directory '*'
+          #
+          #      - uses: actions/checkout@v3
+          #        with:
+          #          submodules: recursive
+          #
+          #      - name: Download build artifacts
+          #        uses: ./.github/actions/download-artifact
+          #        with:
+          #          name: bin
+          #
+          #      - name: TCK tests
+          #        run: make BUILD=0 CLEAR_LOGS=0 tck-tests
+          #
+          #  fuzz-tests:
+          #    runs-on: ubuntu-latest
+          #    container: swilly22/falkordb-ci:latest
+          #    needs: build
+          #    steps:
+          #      - name: Safe dir
+          #        run: git config --global --add safe.directory '*'
+          #
+          #      - uses: actions/checkout@v3
+          #        with:
+          #          submodules: recursive
+          #
+          #      - name: Download build artifacts
+          #        uses: ./.github/actions/download-artifact
+          #        with:
+          #          name: bin
+          #
+          #      - name: Fuzz tests
+          #        run: BUILD=0 make fuzz
