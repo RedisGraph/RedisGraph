@@ -79,7 +79,8 @@ jobs:
           name: module
 
       - name: Flow tests
-        run: make flow-tests CLEAR_LOGS=0
+        #run: make flow-tests CLEAR_LOGS=0
+        run: MODULE=$GITHUB_WORKSPACE/bin/linux-x64-release/src/redisgraph.so BINROOT=$GITHUB_WORKSPACE/bin/linux-x64-release PARALLEL=1 GEN= AOF= TCK=0 ./tests/flow/tests.sh
   tck-tests:
     runs-on: ubuntu-latest
     container: swilly22/falkordb-build:latest
