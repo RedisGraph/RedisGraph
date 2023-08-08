@@ -59,7 +59,7 @@ void Graph_DeleteNodes
 	//--------------------------------------------------------------------------
 
 	GrB_Index j;            // iterated entry col idx
-	GrB_Matrix s;           // empty matrix
+	GrB_Scalar s;           // empty scalar
 	GrB_Matrix M;           // delta M
 	GrB_Matrix DP;          // delta plus
 	GrB_Matrix DM;          // delta minus
@@ -68,6 +68,9 @@ void Graph_DeleteNodes
 	GrB_Index ncols;        // lbls col count
 	GrB_Matrix lbls_mask;   // lbls mask
 	RG_MatrixTupleIter it;  // matrix iterator
+
+	// create empty scalar
+	GrB_Scalar_new(&s, GrB_BOOL);
 
 	// get labels matrix
 	RG_Matrix lbls = Graph_GetNodeLabelMatrix(g);
@@ -78,10 +81,6 @@ void Graph_DeleteNodes
 	info = RG_Matrix_ncols(&ncols, lbls);
 	ASSERT(info == GrB_SUCCESS);
 	info = GrB_Matrix_new(&lbls_mask, GrB_BOOL, nrows, ncols);
-	ASSERT(info == GrB_SUCCESS);
-
-	// create an empty matrix
-	info = GrB_Matrix_new(&s, GrB_BOOL, nrows, ncols);
 	ASSERT(info == GrB_SUCCESS);
 
 	// attach iterator to lbls matrix
@@ -128,7 +127,7 @@ void Graph_DeleteNodes
 	DP = RG_MATRIX_DELTA_PLUS(lbls);
 	DM = RG_MATRIX_DELTA_MINUS(lbls);
 
-	info = GrB_Matrix_assign(DP, lbls_mask, NULL, s, GrB_ALL, nrows,
+	info = GrB_Matrix_assign_Scalar(DP, lbls_mask, NULL, s, GrB_ALL, nrows,
 			GrB_ALL, ncols, GrB_DESC_S);
 	ASSERT(info == GrB_SUCCESS);
 
