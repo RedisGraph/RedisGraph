@@ -1,4 +1,6 @@
 FROM swilly22/falkordb-build:latest
 
+WORKDIR /FalkorDB
+
 ADD . /FalkorDB
 
