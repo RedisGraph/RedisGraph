@@ -101,7 +101,7 @@ jobs:
         key: search-${{ hashFiles('./deps/RediSearch/src/version.h') }}
 
     - name: Build
-      run: make SAN=address NPROC=16
+      run: make CLANG=1 SAN=address NPROC=16
 
   unit-tests:
     runs-on: ubuntu-latest
