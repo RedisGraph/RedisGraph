@@ -83,25 +83,37 @@ jobs:
       id: cache_graphblas
       uses: actions/cache@v3
       with:
-        path: ./bin/linux-x64-release/GraphBLAS
-        key: graphblas-${{ hashFiles('./deps/GraphBLAS/Include/GraphBLAS.h') }}
+        path: ./bin/linux-x64-debug-asan/GraphBLAS
+        key: graphblas-sanitizer-${{ hashFiles('./deps/GraphBLAS/Include/GraphBLAS.h') }}
 
     - name: Cache parser
       id: cache_parser
       uses: actions/cache@v3
       with:
-        path: ./bin/linux-x64-release/libcypher-parser
-        key: parser-${{ hashFiles('./deps/libcypher-parser/lib/src/parser.c') }}
+        path: ./bin/linux-x64-debug-asan/libcypher-parser
+        key: parser-sanitizer-${{ hashFiles('./deps/libcypher-parser/lib/src/parser.c') }}
 
     - name: Cache search
       id: cache_search
       uses: actions/cache@v3
       with:
-        path: ./bin/linux-x64-release/search-static
-        key: search-${{ hashFiles('./deps/RediSearch/src/version.h') }}
+        path: ./bin/linux-x64-debug-asan/search-static
+        key: search-sanitizer-${{ hashFiles('./deps/RediSearch/src/version.h') }}
 
     - name: Build
       run: make CLANG=1 SAN=address NPROC=16
+
+    - name: Unit tests
+      run: make unit-tests CLEAR_LOGS=0 SAN=address
+
+    - name: Flow tests
+      run: make flow-tests CLEAR_LOGS=0 SAN=address
+
+    - name: TCK tests
+      run: make tck-tests CLEAR_LOGS=0 SAN=address
+
+    - name: Fuzz tests
+      run: make fuzz CLEAR_LOGS=0 SAN=address
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -119,7 +131,7 @@ jobs:
     steps:
       - name: Flow tests
         working-directory: /FalkorDB
-        run: make BUILD=0 CLEAR_LOGS=0 PARALLEL=4 flow-tests
+        run: make CLEAR_LOGS=0 PARALLEL=4 flow-tests
 
   tck-tests:
     runs-on: ubuntu-latest
@@ -128,7 +140,7 @@ jobs:
     steps:
       - name: TCK tests
         working-directory: /FalkorDB
-        run: make BUILD=0 CLEAR_LOGS=0 tck-tests
+        run: make CLEAR_LOGS=0 tck-tests
 
   fuzz-tests:
     runs-on: ubuntu-latest
@@ -137,4 +149,4 @@ jobs:
     steps:
       - name: Fuzz tests
         working-directory: /FalkorDB
-        run: BUILD=0 make fuzz
+        run: make fuzz
