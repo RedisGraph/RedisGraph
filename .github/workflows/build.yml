@@ -18,6 +18,10 @@ jobs:
         set-safe-directory: '*'
         submodules: recursive
 
+          #- name: Symlink
+          #run: |
+          #ln -s $GITHUB_WORKSPACE /FalkorDB
+    
     - name: Cache GraphBLAS
       id: cache_graphblas
       uses: actions/cache@v3
@@ -39,7 +43,13 @@ jobs:
         path: ./bin/linux-x64-release/search-static
         key: search-${{ hashFiles('./deps/RediSearch/src/version.h') }}
 
+    - name: Relocate source
+      run: |
+        mv $GITHUB_WORKSPACE /FalkorDB
+        mkdir $GITHUB_WORKSPACE
+
     - name: Build
+      working-directory: /FalkorDB
       run: make
 
         # - name: Upload build artifacts
@@ -60,8 +70,8 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
-        context: .
-        file: ./CI
+        context: /FalkorDB
+        file: /FalkorDB/CI
         platforms: linux/amd64,linux/arm64
         push: true
         tags: swilly22/falkordb-ci:latest
