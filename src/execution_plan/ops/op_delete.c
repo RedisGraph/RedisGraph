@@ -53,9 +53,6 @@ static void _DeleteEntities
 	qsort(nodes, node_count, sizeof(Node),
 			(int(*)(const void*, const void*))entity_cmp);
 
-	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
-	Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
-
 	for(uint i = 0; i < node_count; i++) {
 		while(i < node_count - 1 &&
 			  ENTITY_GET_ID(nodes + i) == ENTITY_GET_ID(nodes + i + 1)) {
@@ -75,9 +72,6 @@ static void _DeleteEntities
 		Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION,
 				&op->deleted_edges);
 	}
-
-	// restore matrix sync policy
-	Graph_SetMatrixPolicy(g, policy);
 
 	node_count = array_len(distinct_nodes);
 	edge_count = array_len(op->deleted_edges);
@@ -134,8 +128,6 @@ static void _DeleteEntities
 	// clean up
 	array_free(distinct_nodes);
 	array_free(distinct_edges);
-	array_clear(op->deleted_nodes);
-	array_clear(op->deleted_edges);
 }
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
@@ -194,10 +186,6 @@ static inline void _CollectDeletedEntities(Record r, OpBase *opBase) {
 
 			SIValue_Free(value);
 		} else if(!(type & T_NULL)) {
-			// expression evaluated to a non-graph entity type
-			// clear pending deletions and raise an exception
-			array_clear(op->deleted_nodes);
-			array_clear(op->deleted_edges);
 			// if evaluating the expression allocated any memory, free it.
 			SIValue_Free(value);
 			// free the Record this operation acted on

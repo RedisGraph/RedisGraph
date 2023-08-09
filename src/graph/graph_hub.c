@@ -164,23 +164,35 @@ void DeleteNodes
 	ASSERT(gc != NULL);
 	ASSERT(nodes != NULL);
 
-	UndoLog undo_log  = (log == true) ? QueryCtx_GetUndoLog() : NULL;
-	EffectsBuffer *eb = (log == true) ? QueryCtx_GetEffectsBuffer() : NULL;
 	bool has_indices = GraphContext_HasIndices(gc);
 
-	if(log == true || has_indices) {
-		for(uint i = 0; i < n; i++) {
-			Node *n = nodes + i;
+	if(log) {
+		UndoLog undo_log  = QueryCtx_GetUndoLog();
+		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
+		if(has_indices) {
+			for(uint i = 0; i < n; i++) {
+				Node *n = nodes + i;
 
-			if(log == true) {
+				// add node deletion operation to undo log
+				UndoLog_DeleteNode(undo_log, n);
+				EffectsBuffer_AddDeleteNodeEffect(eb, n);
+
+				_DeleteNodeFromIndices(gc, n);
+			}
+		} else {
+			for(uint i = 0; i < n; i++) {
+				Node *n = nodes + i;
+
 				// add node deletion operation to undo log
 				UndoLog_DeleteNode(undo_log, n);
 				EffectsBuffer_AddDeleteNodeEffect(eb, n);
 			}
+		}	
+	} else if(has_indices) {
+		for(uint i = 0; i < n; i++) {
+			Node *n = nodes + i;
 
-			if(has_indices) {
-				_DeleteNodeFromIndices(gc, n);
-			}
+			_DeleteNodeFromIndices(gc, n);
 		}
 	}
 
