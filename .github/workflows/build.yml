@@ -66,6 +66,43 @@ jobs:
         push: true
         tags: swilly22/falkordb-ci:latest
 
+  sanitize-test:
+    runs-on: ubuntu-latest
+    container: swilly22/falkordb-build:latest
+    steps:
+
+    - name: Safe dir
+      run: git config --global --add safe.directory '*'
+
+    - uses: actions/checkout@v3
+      with:
+        set-safe-directory: '*'
+        submodules: recursive
+
+    - name: Cache GraphBLAS
+      id: cache_graphblas
+      uses: actions/cache@v3
+      with:
+        path: ./bin/linux-x64-release/GraphBLAS
+        key: graphblas-${{ hashFiles('./deps/GraphBLAS/Include/GraphBLAS.h') }}
+
+    - name: Cache parser
+      id: cache_parser
+      uses: actions/cache@v3
+      with:
+        path: ./bin/linux-x64-release/libcypher-parser
+        key: parser-${{ hashFiles('./deps/libcypher-parser/lib/src/parser.c') }}
+
+    - name: Cache search
+      id: cache_search
+      uses: actions/cache@v3
+      with:
+        path: ./bin/linux-x64-release/search-static
+        key: search-${{ hashFiles('./deps/RediSearch/src/version.h') }}
+
+    - name: Build
+      run: make SAN=address NPROC=16
+
   unit-tests:
     runs-on: ubuntu-latest
     container: swilly22/falkordb-ci:latest
