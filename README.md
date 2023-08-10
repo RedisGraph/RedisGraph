@@ -33,6 +33,7 @@ To see FalkorDB in action, visit [Demos](https://github.com/FalkorDB/FalkorDB/tr
 3. [Build](#building)
 4. [Start](#loading-falkordb-into-redis)
 5. [Use from any client](#using-falkordb)
+6. [Documentation](https://docs.falkordb.com/)
 
 ### Give it a try
 
