@@ -431,7 +431,7 @@ jobs:
       - run:
           name: Flow tests
           shell: /bin/bash -l -eo pipefail
-          command: make flow-tests CLEAR_LOGS=0 SAN=<<parameters.san-type>>
+          command: make flow-tests CLEAR_LOGS=0 SAN=<<parameters.san-type>> PARALLEL=8
           no_output_timeout: 45m
       - run:
           name: TCK tests
