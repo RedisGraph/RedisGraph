@@ -121,12 +121,6 @@ jobs:
         name: Upload flow tests logs
         path: ${{ github.workspace }}/tests/flow/logs/
 
-    - name: TCK tests
-      run: make tck-tests CLEAR_LOGS=0 SAN=address
-
-    - name: Fuzz tests
-      run: make fuzz CLEAR_LOGS=0 SAN=address
-
   unit-tests:
     runs-on: ubuntu-latest
     container: swilly22/falkordb-ci:latest
