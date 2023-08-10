@@ -796,7 +796,7 @@ void EffectsBuffer_Free
 (
 	EffectsBuffer *eb
 ) {
-	ASSERT(eb != NULL);
+	if(eb == NULL) return;
 
 	// free blocks
 	struct EffectsBufferBlock *b = eb->head;

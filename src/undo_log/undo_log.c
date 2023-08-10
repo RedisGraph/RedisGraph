@@ -535,8 +535,6 @@ void UndoLog_Rollback
 	QueryCtx *ctx  = QueryCtx_GetQueryCtx();
 	uint64_t count = DataBlock_ItemCount(log);
 
-	Graph_ResetReservedNode(ctx->gc->g);
-
 	if(count == 0) {
 		DataBlock_Free(log);
 		return;
