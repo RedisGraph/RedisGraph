@@ -111,6 +111,7 @@ jobs:
       with:
         name: Upload unit tests logs
         path: ${{ github.workspace }}/tests/unit/logs/
+        retention-days: 7
 
     - name: Flow tests
       run: make flow-tests CLEAR_LOGS=0 SAN=address
@@ -120,6 +121,16 @@ jobs:
       with:
         name: Upload flow tests logs
         path: ${{ github.workspace }}/tests/flow/logs/
+        retention-days: 7
+
+    - name: TCK tests
+      run: make tck-tests CLEAR_LOGS=0 SAN=address
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: Upload TCK tests logs
+        path: ${{ github.workspace }}/tests/tck/logs/
+        retention-days: 7
 
   unit-tests:
     runs-on: ubuntu-latest
