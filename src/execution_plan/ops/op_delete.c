@@ -196,7 +196,7 @@ static inline void _CollectDeletedEntities(Record r, OpBase *opBase) {
 	}
 }
 
-static Record _handoff(OpDelete *op) {
+static inline Record _handoff(OpDelete *op) {
 	return array_pop(op->records);
 }
 
