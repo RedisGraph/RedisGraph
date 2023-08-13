@@ -203,6 +203,7 @@ static Record _handoff(OpDelete *op) {
 static Record DeleteConsume(OpBase *opBase) {
 	OpDelete *op = (OpDelete *)opBase;
 	Record r;
+	ASSERT(op->op.childCount > 0);
 
 	// return mode, all data was consumed
 	if(op->records) return _handoff(op);
@@ -214,7 +215,6 @@ static Record DeleteConsume(OpBase *opBase) {
 	array_append(op->records, NULL);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	ASSERT(op->op.childCount > 0);
 	// pull data until child is depleted
 	OpBase *child = op->op.children[0];
 	while((r = OpBase_Consume(child))) {
@@ -225,14 +225,14 @@ static Record DeleteConsume(OpBase *opBase) {
 		// save record for later use
 		array_append(op->records, r);
 
-		// delete entities
+		// collect entities to be deleted
 		_CollectDeletedEntities(r, opBase);
 	}
 
 	// done reading, we're not going to call consume any longer
 	// there might be operations e.g. index scan that need to free
-	// index R/W lock, as such free all execution plan operation up the chain.
-	if(child) OpBase_PropagateReset(child);
+	// index R/W lock, as such reset all execution plan operation up the chain
+	OpBase_PropagateReset(child);
 
 	// delete entities
 	_DeleteEntities(op);
@@ -243,6 +243,7 @@ static Record DeleteConsume(OpBase *opBase) {
 
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	ASSERT(opBase->type == OPType_DELETE);
+
 	OpDelete *op = (OpDelete *)opBase;
 	AR_ExpNode **exps;
 	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
@@ -253,6 +254,8 @@ static void DeleteFree(OpBase *opBase) {
 	OpDelete *op = (OpDelete *)opBase;
 
 	if(op->records) {
+		uint rec_count = array_len(op->records);
+		for(uint i = 1; i < rec_count; i++) OpBase_DeleteRecord(op->records[i]);
 		array_free(op->records);
 		op->records = NULL;
 	}

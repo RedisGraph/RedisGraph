@@ -164,9 +164,9 @@ void UndoLog_UpdateEntity
 // undo node add label
 void UndoLog_AddLabels
 (
-	UndoLog log,                // undo log
+	UndoLog log,                 // undo log
 	Node *node,                  // updated node
-	int *label_ids,              // added labels
+	LabelID *label_ids,          // added labels
 	size_t labels_count          // number of removed labels
 );
 
@@ -175,7 +175,7 @@ void UndoLog_RemoveLabels
 (
 	UndoLog log,                 // undo log
 	Node *node,                  // updated node
-	int *label_ids,              // removed labels
+	LabelID *label_ids,          // removed labels
 	size_t labels_count          // number of removed labels
 );
 
@@ -198,12 +198,6 @@ void UndoLog_AddAttribute
 void UndoLog_Rollback
 (
 	UndoLog log
-);
-
-// free undo-operation
-void UndoLog_FreeOp
-(
-	UndoOp *op  // operation to free
 );
 
 // free UndoLog

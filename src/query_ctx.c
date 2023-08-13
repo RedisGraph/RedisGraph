@@ -25,6 +25,7 @@ static inline QueryCtx *_QueryCtx_GetCreateCtx(void) {
 		// set a new thread-local QueryCtx if one has not been created
 		ctx = rm_calloc(1, sizeof(QueryCtx));
 
+		// created lazily only when needed
 		ctx->undo_log       = NULL;
 		ctx->effects_buffer = NULL;
 		ctx->stage          = QueryStage_WAITING;  // initial query stage

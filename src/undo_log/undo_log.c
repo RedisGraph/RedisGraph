@@ -11,7 +11,9 @@
 #include "../execution_plan/ops/shared/create_functions.h"
 #include "../graph/entities/attribute_set.h"
 
+// initial number of entries in undo-log
 #define UNDOLOG_INIT_SIZE 32
+
 #define UNDOLOG_GET_ITEM(log, i) DataBlock_GetItem(log, i)
 #define UNDOLOG_ADD_OP(log, op) \
 	*(UndoOp*)DataBlock_AllocateItem((log), NULL) = op;
@@ -206,10 +208,10 @@ static void _UndoLog_Rollback_Create_Node
 
 	Node *nodes = rm_malloc(sizeof(Node) * node_count);
 
-	for(int i = 0; i < node_count; i++) {
-		UndoOp *op = UNDOLOG_GET_ITEM(ctx->undo_log, seq_start - i);
+	for(int i = seq_start; i > seq_end; --i) {
+		UndoOp *op = UNDOLOG_GET_ITEM(ctx->undo_log, i);
 		Node *n = &op->create_op.n;
-		nodes[i] = *n;
+		nodes[seq_start - i] = *n;
 		_index_delete_node(ctx, n);
 	}
 
@@ -230,10 +232,10 @@ static void _UndoLog_Rollback_Create_Edge
 
 	Edge *edges = rm_malloc(sizeof(Edge) * edge_count);
 
-	for(int i = 0; i < edge_count; i++) {
-		UndoOp *op = UNDOLOG_GET_ITEM(ctx->undo_log, seq_start - i);
+	for(int i = seq_start; i > seq_end; --i) {
+		UndoOp *op = UNDOLOG_GET_ITEM(ctx->undo_log, i);
 		Edge *e = &op->create_op.e;
-		edges[i] = *e;
+		edges[seq_start - i] = *e;
 		_index_delete_edge(ctx, e);
 	}
 
@@ -455,7 +457,7 @@ void UndoLog_AddLabels
 (
 	UndoLog log,                 // undo log
 	Node *node,                  // updated node
-	int *label_ids,              // added labels
+	LabelID *label_ids,          // added labels
 	size_t labels_count          // number of removed labels
 ) {
 	ASSERT(node != NULL);
@@ -465,8 +467,8 @@ void UndoLog_AddLabels
 
 	op.type = UNDO_SET_LABELS;
 	op.labels_op.node = *node;
-	op.labels_op.label_ids = array_new(int, labels_count);
-	memcpy(op.labels_op.label_ids, label_ids, sizeof(int)*labels_count);
+	op.labels_op.label_ids = array_new(LabelID, labels_count);
+	memcpy(op.labels_op.label_ids, label_ids, sizeof(LabelID)*labels_count);
 	op.labels_op.labels_count = labels_count;
 	UNDOLOG_ADD_OP(log, op);
 }
@@ -476,7 +478,7 @@ void UndoLog_RemoveLabels
 (
 	UndoLog log,                 // undo log
 	Node *node,                  // updated node
-	int *label_ids,              // removed labels
+	LabelID *label_ids,          // removed labels
 	size_t labels_count          // number of removed labels
 ) {
 	ASSERT(node != NULL);
@@ -486,8 +488,8 @@ void UndoLog_RemoveLabels
 
 	op.type = UNDO_REMOVE_LABELS;
 	op.labels_op.node = *node;
-	op.labels_op.label_ids = array_new(int, labels_count);
-	memcpy(op.labels_op.label_ids, label_ids, sizeof(int)*labels_count);
+	op.labels_op.label_ids = array_new(LabelID, labels_count);
+	memcpy(op.labels_op.label_ids, label_ids, sizeof(LabelID)*labels_count);
 	op.labels_op.labels_count = labels_count;
 	UNDOLOG_ADD_OP(log, op);
 }
@@ -590,7 +592,7 @@ void UndoLog_Rollback
 	DataBlock_Free(log);
 }
 
-void UndoLog_FreeOp
+static void UndoLog_FreeOp
 (
 	UndoOp *op
 ) {
