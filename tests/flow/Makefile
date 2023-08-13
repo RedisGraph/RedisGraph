@@ -1,7 +1,7 @@
 .PHONY: test
 
 ROOT:=$(realpath ../..)
-TARGET=$(ROOT)/src/redisgraph.so)
+TARGET=$(ROOT)/src/falkordb.so)
 
 DOCKER_VG=0
 ifeq ($(VALGRIND),)
@@ -16,5 +16,5 @@ ifeq ($(DOCKER_VG),0)
 else
 	# valgrind in docker
 	@echo running docker to run valgrind flow test on MacOS
-	@docker run -ti  mac_os_test_docker bash -c "cd tests/flow/; MODULE=../../src/redisgraph.so ./test.sh"
+	@docker run -ti  mac_os_test_docker bash -c "cd tests/flow/; MODULE=../../src/falkordb.so ./test.sh"
 endif

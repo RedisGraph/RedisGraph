@@ -3,7 +3,7 @@ title: "Configuration Parameters"
 linkTitle: "Configuration"
 weight: 3
 description: >
-    RedisGraph supports multiple module configuration parameters. Some of these parameters can only be set at load-time, while other parameters can be set either on load-time or on run-time.
+    FalkorDB supports multiple module configuration parameters. Some of these parameters can only be set at load-time, while other parameters can be set either on load-time or on run-time.
 ---
 
 ## Setting configuration parameters on module load
@@ -13,24 +13,24 @@ Setting configuration parameters at load-time is done by appending arguments aft
 In [redis.conf](/docs/manual/config/):
 
 ```sh
-loadmodule ./redisgraph.so [OPT VAL]...
+loadmodule ./falkordb.so [OPT VAL]...
 ```
 
 From the [Redis CLI](/docs/manual/cli/), using the [MODULE LOAD](/commands/module-load/) command:
 
 ```
-127.0.0.6379> MODULE LOAD redisgraph.so [OPT VAL]...
+127.0.0.6379> MODULE LOAD falkordb.so [OPT VAL]...
 ```
 
 From the command line:
 
 ```sh
-$ redis-server --loadmodule ./redisgraph.so [OPT VAL]...
+$ redis-server --loadmodule ./falkordb.so [OPT VAL]...
 ```
 
 ## Setting configuration parameters at run-time (for supported parameters)
 
-RedisGraph exposes the `GRAPH.CONFIG` endpoint to allowing for the setting and retrieval of configuration parameters at run-time.
+FalkorDB exposes the `GRAPH.CONFIG` endpoint to allowing for the setting and retrieval of configuration parameters at run-time.
 
 To set the value of a configuration parameter at run-time (for supported parameters), simply run:
 
@@ -47,7 +47,7 @@ GRAPH.CONFIG GET *
 
 Values set using `GRAPH.CONFIG SET` are not persisted after server restart.
 
-## RedisGraph configuration parameters
+## FalkorDB configuration parameters
 
 The following table summarizes which configuration parameters can be set at module load-time and which can be set on run-time:
 
@@ -58,9 +58,9 @@ The following table summarizes which configuration parameters can be set at modu
 | [OMP_THREAD_COUNT](#omp_thread_count)                        | :white_check_mark: | :white_large_square: |
 | [NODE_CREATION_BUFFER](#node_creation_buffer)                | :white_check_mark: | :white_large_square: |
 | [MAX_QUEUED_QUERIES](#max_queued_queries)                    | :white_check_mark: | :white_check_mark:   |
-| [TIMEOUT](#timeout) (deprecated in RedisGraph v2.10)         | :white_check_mark: | :white_check_mark:   |
-| [TIMEOUT_MAX](#timeout_max) (since RedisGraph v2.10)         | :white_check_mark: | :white_check_mark:   |
-| [TIMEOUT_DEFAULT](#timeout_default) (since RedisGraph v2.10) | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT](#timeout) (deprecated in FalkorDB v2.10)           | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT_MAX](#timeout_max) (since FalkorDB v2.10)           | :white_check_mark: | :white_check_mark:   |
+| [TIMEOUT_DEFAULT](#timeout_default) (since FalkorDB v2.10)   | :white_check_mark: | :white_check_mark:   |
 | [RESULTSET_SIZE](#resultset_size)                            | :white_check_mark: | :white_check_mark:   |
 | [QUERY_MEM_CAPACITY](#query_mem_capacity)                    | :white_check_mark: | :white_check_mark:   |
 | [VKEY_MAX_ENTITY_COUNT](#vkey_max_entity_count)              | :white_check_mark: | :white_check_mark:   |
@@ -70,7 +70,7 @@ The following table summarizes which configuration parameters can be set at modu
 
 ### THREAD_COUNT
 
-The number of threads in RedisGraph's thread pool. This is equivalent to the maximum number of queries that can be processed concurrently.
+The number of threads in FalkorDB's thread pool. This is equivalent to the maximum number of queries that can be processed concurrently.
 
 #### Default
 
@@ -79,14 +79,14 @@ The number of threads in RedisGraph's thread pool. This is equivalent to the max
 #### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so THREAD_COUNT 4
+$ redis-server --loadmodule ./falkordb.so THREAD_COUNT 4
 ```
 
 ---
 
 ### CACHE_SIZE
 
-The max number of queries for RedisGraph to cache. When a new query is encountered and the cache is full, meaning the cache has reached the size of `CACHE_SIZE`, it will evict the least recently used (LRU) entry.
+The max number of queries for FalkorDB to cache. When a new query is encountered and the cache is full, meaning the cache has reached the size of `CACHE_SIZE`, it will evict the least recently used (LRU) entry.
 
 #### Default
 
@@ -95,7 +95,7 @@ The max number of queries for RedisGraph to cache. When a new query is encounter
 #### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so CACHE_SIZE 10
+$ redis-server --loadmodule ./falkordb.so CACHE_SIZE 10
 ```
 
 ---
@@ -111,7 +111,7 @@ The maximum number of threads that OpenMP may use for computation per query. The
 #### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so OMP_THREAD_COUNT 1
+$ redis-server --loadmodule ./falkordb.so OMP_THREAD_COUNT 1
 ```
 
 ---
@@ -137,7 +137,7 @@ The minimum value for `NODE_CREATION_BUFFER` is 128. Values lower than this will
 #### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so NODE_CREATION_BUFFER 200
+$ redis-server --loadmodule ./falkordb.so NODE_CREATION_BUFFER 200
 ```
 
 ---
@@ -153,7 +153,7 @@ Setting the maximum number of queued queries allows the server to reject incomin
 #### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so MAX_QUEUED_QUERIES 500
+$ redis-server --loadmodule ./falkordb.so MAX_QUEUED_QUERIES 500
 
 $ redis-cli GRAPH.CONFIG SET MAX_QUEUED_QUERIES 500
 ```
@@ -162,7 +162,7 @@ $ redis-cli GRAPH.CONFIG SET MAX_QUEUED_QUERIES 500
 
 ### TIMEOUT
 
-(Deprecated in RedisGraph v2.10 It is recommended to use `TIMEOUT_MAX` and `TIMEOUT_DEFAULT` instead)
+(Deprecated in FalkorDB v2.10 It is recommended to use `TIMEOUT_MAX` and `TIMEOUT_DEFAULT` instead)
 
 The `TIMEOUT` configuration parameter specifies the default maximal execution time for read queries, in milliseconds. Write queries do not timeout.
 
@@ -172,20 +172,20 @@ The `TIMEOUT` query parameter of the `GRAPH.QUERY`, `GRAPH.RO_QUERY`, and `GRAPH
 
 #### Default
 
-- Before RedisGraph v2.10: `TIMEOUT` is off (set to `0`).
-- Since RedisGraph v2.10: `TIMEOUT` is not specified; `TIMEOUT_MAX` and `TIMEOUT_DEFAULT` are specified instead.
+- Before FalkorDB v2.10: `TIMEOUT` is off (set to `0`).
+- Since FalkorDB v2.10: `TIMEOUT` is not specified; `TIMEOUT_MAX` and `TIMEOUT_DEFAULT` are specified instead.
 
 #### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so TIMEOUT 1000
+$ redis-server --loadmodule ./falkordb.so TIMEOUT 1000
 ```
 
 ---
 
 ### TIMEOUT_MAX
 
-(Since RedisGraph v2.10)
+(Since FalkorDB v2.10)
 
 The `TIMEOUT_MAX` configuration parameter specifies the maximum execution time for both read and write queries, in milliseconds.
 
@@ -195,20 +195,20 @@ When a query execution time exceeds the maximal execution time, the query is abo
 
 #### Default
 
-- Before RedisGraph v2.10: unspecified and unsupported.
-- Since RedisGraph v2.10: `TIMEOUT_MAX` is off (set to `0`).
+- Before FalkorDB v2.10: unspecified and unsupported.
+- Since FalkorDB v2.10: `TIMEOUT_MAX` is off (set to `0`).
 
 #### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so TIMEOUT_MAX 1000
+$ redis-server --loadmodule ./falkordb.so TIMEOUT_MAX 1000
 ```
 
 ---
 
 ### TIMEOUT_DEFAULT
 
-(Since RedisGraph v2.10)
+(Since FalkorDB v2.10)
 
 The `TIMEOUT_DEFAULT` configuration parameter specifies the default maximal execution time for both read and write queries, in milliseconds.
 
@@ -216,13 +216,13 @@ For a given query, this default maximal execution time can be overridden by the 
 
 #### Default
 
-- Before RedisGraph v2.10: unspecified and unsupported.
-- Since RedisGraph v2.10: `TIMEOUT_DEFAULT` is equal to `TIMEOUT_MAX` (set to `0`).
+- Before FalkorDB v2.10: unspecified and unsupported.
+- Since FalkorDB v2.10: `TIMEOUT_DEFAULT` is equal to `TIMEOUT_MAX` (set to `0`).
 
 #### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so TIMEOUT_MAX 2000 TIMEOUT_DEFAULT 1000
+$ redis-server --loadmodule ./falkordb.so TIMEOUT_MAX 2000 TIMEOUT_DEFAULT 1000
 ```
 
 ---
@@ -265,7 +265,7 @@ The configuration argument is the maximum number of bytes that can be allocated 
 #### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so QUERY_MEM_CAPACITY 1048576 // 1 megabyte limit
+$ redis-server --loadmodule ./falkordb.so QUERY_MEM_CAPACITY 1048576 // 1 megabyte limit
 
 $ redis-cli GRAPH.CONFIG SET QUERY_MEM_CAPACITY 1048576
 ```
@@ -275,7 +275,7 @@ $ redis-cli GRAPH.CONFIG SET QUERY_MEM_CAPACITY 1048576
 ### VKEY_MAX_ENTITY_COUNT
 
 To lower the time Redis is blocked when replicating large graphs,
-RedisGraph serializes the graph in a number of virtual keys.
+FalkorDB serializes the graph in a number of virtual keys.
 
 One virtual key is created for every N graph entities,
 where N is the value defined by this configuration.
@@ -312,11 +312,11 @@ A number within the range [0, 1000]
 
 ### Query Timeout
 
-- Before RedisGraph v2.10, or if `TIMEOUT_DEFAULT` and `TIMEOUT_MAX` are not specified:
+- Before FalkorDB v2.10, or if `TIMEOUT_DEFAULT` and `TIMEOUT_MAX` are not specified:
 
   `TIMEOUT` allows overriding the `TIMEOUT` configuration parameter for a single read query. Write queries do not timeout.
 
-- Since RedisGraph v2.10, if either `TIMEOUT_DEFAULT` or `TIMEOUT_MAX` are specified:
+- Since FalkorDB v2.10, if either `TIMEOUT_DEFAULT` or `TIMEOUT_MAX` are specified:
 
   `TIMEOUT` allows overriding the `TIMEOUT_DEFAULT` configuration parameter value for a single `GRAPH.QUERY`, `GRAPH.RO_QUERY`, or `GRAPH.PROFILE` command. The `TIMEOUT` value cannot exceed the `TIMEOUT_MAX` value (the command would abort with a `(error) The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value` reply).
 

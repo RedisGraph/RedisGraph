@@ -6,4 +6,4 @@ ADD . /FalkorDB
 
 EXPOSE 6379/tcp
 
-CMD ["redis-server", "--loadmodule /FalkorDB/bin/linux-x64-release/src/RedisGraph.so"]
+CMD ["redis-server", "--loadmodule /FalkorDB/bin/linux-x64-release/src/falkordb.so"]
