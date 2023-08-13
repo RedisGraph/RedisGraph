@@ -64,7 +64,7 @@ jobs:
         file: /FalkorDB/CI
         platforms: linux/amd64,linux/arm64
         push: true
-        tags: swilly22/falkordb-ci:latest
+        tags: falkordb/falkordb:edge
 
   sanitize-test:
     runs-on: ubuntu-latest
@@ -134,7 +134,7 @@ jobs:
 
   unit-tests:
     runs-on: ubuntu-latest
-    container: swilly22/falkordb-ci:latest
+    container: falkordb/falkordb:edge
     needs: build
     steps:
       - name: Unit tests
@@ -143,7 +143,7 @@ jobs:
 
   flow-tests:
     runs-on: ubuntu-latest
-    container: swilly22/falkordb-ci:latest
+    container: falkordb/falkordb:edge
     needs: build
     steps:
       - name: Flow tests
@@ -152,7 +152,7 @@ jobs:
 
   tck-tests:
     runs-on: ubuntu-latest
-    container: swilly22/falkordb-ci:latest
+    container: falkordb/falkordb:edge
     needs: build
     steps:
       - name: TCK tests
@@ -161,7 +161,7 @@ jobs:
 
   fuzz-tests:
     runs-on: ubuntu-latest
-    container: swilly22/falkordb-ci:latest
+    container: falkordb/falkordb:edge
     needs: build
     steps:
       - name: Fuzz tests
