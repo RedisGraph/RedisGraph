@@ -1,6 +1,9 @@
-FROM swilly22/falkordb-build:latest
+FROM falkordb/falkordb:edge
 
 WORKDIR /FalkorDB
 
 ADD . /FalkorDB
 
+EXPOSE 6379/tcp
+
+CMD ["redis-server", "--loadmodule /FalkorDB/bin/linux-x64-release/src/RedisGraph.so"]
