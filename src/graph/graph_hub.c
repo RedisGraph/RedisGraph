@@ -166,8 +166,8 @@ void DeleteNodes
 
 	bool has_indices = GraphContext_HasIndices(gc);
 
-	UndoLog undo_log  = (log == NULL) ? NULL : QueryCtx_GetUndoLog();
-	EffectsBuffer *eb = (log == NULL) ? NULL : QueryCtx_GetEffectsBuffer();
+	UndoLog undo_log  = (log) ? QueryCtx_GetUndoLog() : NULL;
+	EffectsBuffer *eb = (log) ? QueryCtx_GetEffectsBuffer() : NULL;
 	for(uint i = 0; i < n; i++) {
 		Node *n = nodes + i;
 
