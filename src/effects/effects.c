@@ -554,7 +554,7 @@ static void EffectsBuffer_AddEdgeUpdateEffect
 	//--------------------------------------------------------------------------
 
 	Graph *g = QueryCtx_GetGraph();
-	RelationID r = EDGE_GET_RELATION_ID(edge, g);
+	RelationID r = Edge_GetRelationID(edge);
 	EffectsBuffer_WriteBytes(&r, sizeof(RelationID), buff);
 
 	//--------------------------------------------------------------------------
@@ -796,7 +796,7 @@ void EffectsBuffer_Free
 (
 	EffectsBuffer *eb
 ) {
-	ASSERT(eb != NULL);
+	if(eb == NULL) return;
 
 	// free blocks
 	struct EffectsBufferBlock *b = eb->head;
