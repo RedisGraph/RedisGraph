@@ -64,77 +64,11 @@ jobs:
         file: /FalkorDB/CI
         platforms: linux/amd64,linux/arm64
         push: true
-        tags: falkordb/falkordb:edge
-
-  sanitize-test:
-    runs-on: ubuntu-latest
-    container: swilly22/falkordb-build:latest
-    steps:
-
-    - name: Safe dir
-      run: git config --global --add safe.directory '*'
-
-    - uses: actions/checkout@v3
-      with:
-        set-safe-directory: '*'
-        submodules: recursive
-
-    - name: Cache GraphBLAS
-      id: cache_graphblas
-      uses: actions/cache@v3
-      with:
-        path: ./bin/linux-x64-debug-asan/GraphBLAS
-        key: graphblas-sanitizer-${{ hashFiles('./deps/GraphBLAS/Include/GraphBLAS.h') }}
-
-    - name: Cache parser
-      id: cache_parser
-      uses: actions/cache@v3
-      with:
-        path: ./bin/linux-x64-debug-asan/libcypher-parser
-        key: parser-sanitizer-${{ hashFiles('./deps/libcypher-parser/lib/src/parser.c') }}
-
-    - name: Cache search
-      id: cache_search
-      uses: actions/cache@v3
-      with:
-        path: ./bin/linux-x64-debug-asan/search-static
-        key: search-sanitizer-${{ hashFiles('./deps/RediSearch/src/version.h') }}
-
-    - name: Build
-      run: make CLANG=1 SAN=address NPROC=16
-
-    - name: Unit tests
-      run: make unit-tests CLEAR_LOGS=0 SAN=address
-      continue-on-error: true
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: Upload unit tests logs
-        path: ${{ github.workspace }}/tests/unit/logs/
-        retention-days: 7
-
-    - name: Flow tests
-      run: make flow-tests CLEAR_LOGS=0 SAN=address
-      continue-on-error: true
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: Upload flow tests logs
-        path: ${{ github.workspace }}/tests/flow/logs/
-        retention-days: 7
-
-    - name: TCK tests
-      run: make tck-tests CLEAR_LOGS=0 SAN=address
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: Upload TCK tests logs
-        path: ${{ github.workspace }}/tests/tck/logs/
-        retention-days: 7
+        tags: falkordb/falkordb:${{ github.sha }}
 
   unit-tests:
     runs-on: ubuntu-latest
-    container: falkordb/falkordb:edge
+    container: falkordb/falkordb:${{ github.sha }}
     needs: build
     steps:
       - name: Unit tests
@@ -143,7 +77,7 @@ jobs:
 
   flow-tests:
     runs-on: ubuntu-latest
-    container: falkordb/falkordb:edge
+    container: falkordb/falkordb:${{ github.sha }}
     needs: build
     steps:
       - name: Flow tests
@@ -152,7 +86,7 @@ jobs:
 
   tck-tests:
     runs-on: ubuntu-latest
-    container: falkordb/falkordb:edge
+    container: falkordb/falkordb:${{ github.sha }}
     needs: build
     steps:
       - name: TCK tests
@@ -161,7 +95,7 @@ jobs:
 
   fuzz-tests:
     runs-on: ubuntu-latest
-    container: falkordb/falkordb:edge
+    container: falkordb/falkordb:${{ github.sha }}
     needs: build
     steps:
       - name: Fuzz tests

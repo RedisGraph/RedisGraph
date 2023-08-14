@@ -21,5 +21,19 @@ jobs:
         submodules: recursive
 
     - name: Build
-      working-directory: /FalkorDB
       run: make
+
+    - name: Unit tests
+      run: make unit-tests CLEAR_LOGS=0 SAN=address
+      continue-on-error: true
+
+    - name: Flow tests
+      run: make flow-tests CLEAR_LOGS=0 SAN=address
+      continue-on-error: true
+
+    - name: TCK tests
+      run: make tck-tests CLEAR_LOGS=0 SAN=address
+
+    - name: Fuzzer tests
+      run: make fuzz
+
