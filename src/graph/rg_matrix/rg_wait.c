@@ -51,14 +51,16 @@ static void RG_Matrix_sync_additions
 	GrB_Matrix dp = RG_MATRIX_DELTA_PLUS(C);
 
 	GrB_Info info;
+	GrB_Index nrows;
+	GrB_Index ncols;
 
-	GrB_Type t;
-	GrB_Semiring s;
-	info = GxB_Matrix_type(&t, m);
+	info = GrB_Matrix_nrows(&nrows, m);
+	ASSERT(info == GrB_SUCCESS);
+	info = GrB_Matrix_ncols(&ncols, m);
 	ASSERT(info == GrB_SUCCESS);
 
-	s = (t == GrB_BOOL) ? GxB_ANY_PAIR_BOOL : GxB_ANY_PAIR_UINT64;
-	info = GrB_Matrix_eWiseAdd_Semiring(m, NULL, NULL, s, m, dp, NULL);
+	info = GrB_Matrix_assign(m, dp, NULL, dp, GrB_ALL, nrows, GrB_ALL, ncols,
+		GrB_DESC_S);
 	ASSERT(info == GrB_SUCCESS);
 
 	// clear delta plus
