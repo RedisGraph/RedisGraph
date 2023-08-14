@@ -50,7 +50,6 @@ void Graph_DeleteNodes
 		// validate assumption
 		Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &es);
 		ASSERT(array_len(es) == 0);
-		array_clear(es);
 	}
 	array_free(es);
 #endif

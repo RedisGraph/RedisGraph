@@ -273,8 +273,7 @@ void QueryCtx_Rollback(void) {
 
 	if(ctx->undo_log == NULL) return;
 	
-	UndoLog_Rollback(ctx->undo_log);
-	ctx->undo_log = NULL;
+	UndoLog_Rollback(&ctx->undo_log);
 }
 
 // retrieve effects-buffer
@@ -455,7 +454,7 @@ void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ASSERT(ctx != NULL);
 
-	UndoLog_Free(ctx->undo_log);
+	UndoLog_Free(&ctx->undo_log);
 	EffectsBuffer_Free(ctx->effects_buffer);
 
 	if(ctx->query_data.params != NULL) {

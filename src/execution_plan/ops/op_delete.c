@@ -131,14 +131,13 @@ static void _DeleteEntities
 }
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
-	OpDelete *op = rm_malloc(sizeof(OpDelete));
+	OpDelete *op = rm_calloc(1, sizeof(OpDelete));
 
 	op->gc = QueryCtx_GetGraphCtx();
 	op->exps = exps;
 	op->exp_count = array_len(exps);
 	op->deleted_nodes = array_new(Node, 32);
 	op->deleted_edges = array_new(Edge, 32);
-	op->records = NULL;
 
 	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
@@ -162,13 +161,9 @@ static inline void _CollectDeletedEntities(Record r, OpBase *opBase) {
 		if(type & T_NODE) {
 			Node *n = (Node *)value.ptrval;
 			array_append(op->deleted_nodes, *n);
-			// if evaluating the expression allocated any memory, free it.
-			SIValue_Free(value);
 		} else if(type & T_EDGE) {
 			Edge *e = (Edge *)value.ptrval;
 			array_append(op->deleted_edges, *e);
-			// if evaluating the expression allocated any memory, free it.
-			SIValue_Free(value);
 		} else if(type & T_PATH) {
 			Path *p = (Path *)value.ptrval;
 			size_t nodeCount = Path_NodeCount(p);
@@ -183,16 +178,15 @@ static inline void _CollectDeletedEntities(Record r, OpBase *opBase) {
 				Edge *e = Path_GetEdge(p, i);
 				array_append(op->deleted_edges, *e);
 			}
-
-			SIValue_Free(value);
 		} else if(!(type & T_NULL)) {
 			// if evaluating the expression allocated any memory, free it.
 			SIValue_Free(value);
-			// free the Record this operation acted on
-			OpBase_DeleteRecord(r);
 			ErrorCtx_RaiseRuntimeException("Delete type mismatch, expecting either Node or Relationship.");
 			break;
 		}
+
+		// if evaluating the expression allocated any memory, free it.
+		SIValue_Free(value);
 	}
 }
 

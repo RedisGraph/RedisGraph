@@ -326,7 +326,11 @@ static void _UndoLog_Rollback_Add_Attribute
 }
 
 UndoLog UndoLog_New(void) {
-	return (UndoLog)DataBlock_New(UNDOLOG_INIT_SIZE, UNDOLOG_INIT_SIZE, sizeof(UndoOp), NULL);
+	return (UndoLog)DataBlock_New(
+		UNDOLOG_INIT_SIZE,
+		UNDOLOG_INIT_SIZE,
+		sizeof(UndoOp),
+		NULL);
 }
 
 // returns number of entries in log
@@ -530,28 +534,26 @@ void UndoLog_AddAttribute
 
 void UndoLog_Rollback
 (
-	UndoLog log
+	UndoLog *log
 ) {
 	ASSERT(log != NULL);
 
-	QueryCtx *ctx  = QueryCtx_GetQueryCtx();
-	uint64_t count = DataBlock_ItemCount(log);
+	UndoLog _log = *log;
+	if(_log == NULL) return;
 
-	if(count == 0) {
-		DataBlock_Free(log);
-		return;
-	}
+	QueryCtx *ctx  = QueryCtx_GetQueryCtx();
+	uint64_t count = DataBlock_ItemCount(_log);
 
 	// apply undo operations in reverse order for rollback correctness
 	// find sequences of the same operation and rollback them as a bulk
 	int seq_end = count - 1;
 	while (seq_end >= 0) {
-		UndoOp *op = UNDOLOG_GET_ITEM(log, seq_end);
+		UndoOp *op = UNDOLOG_GET_ITEM(_log, seq_end);
 		UndoOpType cur_type = op->type;
 		int seq_start = seq_end;
 		seq_end--;
 		while(seq_end >= 0) {
-			op = UNDOLOG_GET_ITEM(log, seq_end);
+			op = UNDOLOG_GET_ITEM(_log, seq_end);
 			if(op->type != cur_type) break;
 			seq_end--;
 		}
@@ -589,7 +591,8 @@ void UndoLog_Rollback
 		}
  	}
 
-	DataBlock_Free(log);
+	DataBlock_Free(_log);
+	*log = NULL;
 }
 
 static void UndoLog_FreeOp
@@ -627,16 +630,20 @@ static void UndoLog_FreeOp
 
 void UndoLog_Free
 (
-	UndoLog log
+	UndoLog *log
 ) {
-	if(log == NULL) return;
+	ASSERT(log != NULL);
 
-	DataBlockIterator *iter = DataBlock_Scan(log);
+	UndoLog _log = *log;
+	if(_log == NULL) return;
+
+	DataBlockIterator *iter = DataBlock_Scan(_log);
 	UndoOp *op;
 	while((op = DataBlockIterator_Next(iter, NULL))) {
 		UndoLog_FreeOp(op);
 	}
 	DataBlockIterator_Free(iter);
-	DataBlock_Free(log);
+	DataBlock_Free(_log);
+	*log = NULL;
 }
 

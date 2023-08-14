@@ -33,7 +33,8 @@ int Edge_GetRelationID
 	const Edge *edge
 ) {
 	ASSERT(edge);
-	ASSERT(edge->relationID != GRAPH_UNKNOWN_RELATION && edge->relationID != GRAPH_NO_RELATION);
+	ASSERT(edge->relationID != GRAPH_NO_RELATION);
+	ASSERT(edge->relationID != GRAPH_UNKNOWN_RELATION);
 	return edge->relationID;
 }
 
