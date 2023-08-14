@@ -1,4 +1,4 @@
-FROM falkordb/falkordb:edge
+FROM swilly22/falkordb-build:latest
 
 WORKDIR /FalkorDB
 
