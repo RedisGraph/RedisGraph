@@ -6,8 +6,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, macos-latest] # runners
+
     container: swilly22/falkordb-build:latest
+
     steps:
 
     - name: Safe dir
