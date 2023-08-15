@@ -446,10 +446,10 @@ Graph *Graph_New
 	fpDestructor cb = (fpDestructor)AttributeSet_Free;
 	Graph *g = rm_calloc(1, sizeof(Graph));
 
-	g->nodes      =  DataBlock_New(node_cap, node_cap, sizeof(AttributeSet), cb);
-	g->edges      =  DataBlock_New(edge_cap, edge_cap, sizeof(AttributeSet), cb);
-	g->labels     =  array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
-	g->relations  =  array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+	g->nodes     = DataBlock_New(node_cap, node_cap, sizeof(AttributeSet), cb);
+	g->edges     = DataBlock_New(edge_cap, edge_cap, sizeof(AttributeSet), cb);
+	g->labels    = array_new(RG_Matrix, GRAPH_DEFAULT_LABEL_CAP);
+	g->relations = array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
 	GrB_Info info;
 	UNUSED(info);
@@ -660,16 +660,22 @@ void Graph_ResetReservedNode
 	g->reserved_node_count = 0;
 }
 
-void Graph_ReserveNode
+Node Graph_ReserveNode
 (
-	Graph *g,               // graph for which nodes will be added
-	Node *n                 // node to reserve
+	Graph *g  // graph for which nodes will be added
 ) {
 	ASSERT(g != NULL);
-	ASSERT(n != NULL);
-	ASSERT(n->id == INVALID_ENTITY_ID);
 
-	n->id = DataBlock_GetReservedIdx(g->nodes, g->reserved_node_count++);
+	// reserve node ID
+	NodeID id = DataBlock_GetReservedIdx(g->nodes, g->reserved_node_count);
+
+	// increment reserved node count
+	g->reserved_node_count++;
+
+	// create node
+	Node n = (Node) { .attributes = NULL, .id = id };
+
+	return n;
 }
 
 void Graph_CreateNode
@@ -683,12 +689,16 @@ void Graph_CreateNode
 	ASSERT(n != NULL);
 	ASSERT(label_count == 0 || (label_count > 0 && labels != NULL));
 
-	NodeID id = n->id;
-	n->attributes = DataBlock_AllocateItem(g->nodes, &n->id);
-	ASSERT(id == INVALID_ENTITY_ID || id == n->id);
-	*n->attributes = NULL;
+	NodeID id      = n->id;  // save node ID
+	n->attributes  = DataBlock_AllocateItem(g->nodes, &n->id);
+	*n->attributes = NULL;   // initialize attributes to NULL
 
-	g->reserved_node_count--;
+	// node ID was reserved, make reserved ID was assigned
+	if(id != INVALID_ENTITY_ID) {
+		ASSERT(id == n->id);
+		g->reserved_node_count--;
+		ASSERT(g->reserved_node_count >= 0);
+	}
 
 	if(label_count > 0) {
 		Graph_LabelNode(g, ENTITY_GET_ID(n), labels, label_count);
