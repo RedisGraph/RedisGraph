@@ -99,4 +99,4 @@ jobs:
     steps:
       - name: Fuzz tests
         working-directory: /FalkorDB
-        run: make fuzz
+        run: make fuzz TIMEOUT=180
