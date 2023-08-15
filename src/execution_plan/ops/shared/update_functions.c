@@ -5,9 +5,9 @@
  */
 
 #include "update_functions.h"
-#include "../../../errors.h"
 #include "../../../query_ctx.h"
 #include "../../../datatypes/map.h"
+#include "../../../errors/errors.h"
 #include "../../../datatypes/array.h"
 #include "../../../graph/graph_hub.h"
 #include "../../../graph/entities/node.h"

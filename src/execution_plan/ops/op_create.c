@@ -6,9 +6,9 @@
 
 #include "op_create.h"
 #include "RG.h"
-#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../errors/errors.h"
 
 // forward declarations
 static Record CreateConsume(OpBase *opBase);

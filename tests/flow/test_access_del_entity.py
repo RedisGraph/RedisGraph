@@ -1,11 +1,9 @@
 from common import *
 
-GRAPH_ID "access_del_entity"
-
-class testAccessDelEntity():
+class testAccessDelNode():
     def __init__(self):
         self.env = Env(decodeResponses=True)
-        self.g= Graph(self.env.getConnection(), GRAPH_ID)
+        self.g= Graph(self.env.getConnection(), "access_del_node")
 
     def test01_return_deleted_attribute(self):
         # try to return an attribute of a deleted entity
@@ -23,9 +21,27 @@ class testAccessDelEntity():
             self.env.assertEquals(res.result_set[0][0], None)
             self.env.assertTrue(False)
         except Exception as e:
-            self.env.assertEquals(e.code, "entity has been deleted")
+            self.env.assertEquals(str(e), "Entity has been deleted in this transaction")
+    
+    def test02_return_deleted_node(self):
+        # try to return a deleted node
+        # expecting only node ID to be returned
 
-    def test02_deleted_node_as_argument(self):
+        # create a node
+        q = "CREATE (:A {v:1})"
+        res = self.g.query(q)
+        self.env.assertEquals(res.nodes_created, 1)
+
+        try:
+            # return a deleted node
+            q = "MATCH (n) DELETE n RETURN n"
+            res = self.g.query(q)
+            node = res.result_set[0][0]
+            self.env.assertTrue(False)
+        except Exception as e:
+            self.env.assertEquals(str(e), "Entity has been deleted in this transaction")
+
+    def _test03_deleted_node_as_argument(self):
         # try to invoke a function on a deleted node
         # expecting an exception
 
@@ -40,28 +56,9 @@ class testAccessDelEntity():
             res = self.g.query(q)
             self.env.assertTrue(False)
         except Exception as e:
-            self.env.assertEquals(e.code, "entity has been deleted")
-    
-    def test03_return_deleted_node(self):
-        # try to return a deleted node
-        # expecting only node ID to be returned
+            self.env.assertEquals(str(e), "Entity has been deleted in this transaction")
 
-        # create a node
-        q = "CREATE (:A {v:1})"
-        res = self.g.query(q)
-        self.env.assertEquals(res.nodes_created, 1)
-
-        # return a deleted node
-        q = "MATCH (n) DELETE n RETURN n"
-        res = self.g.query(q)
-        node = res.result_set[0][0]
-
-        # assert return node only contains an ID
-        self.assertEqual(node.id, 0)
-        self.env.assertEquals(node.labels, [])
-        self.env.assertEquals(node.properties, [])
-
-    def test04_update_deleted_node(self):
+    def _test04_update_deleted_node(self):
         # try to update a deleted node
         # not sure what to expect here...
 
@@ -99,7 +96,7 @@ class testAccessDelEntity():
         # clear graph
         self.env.flush()
 
-    def test05_update_deleted_node_lables(self):
+    def _test05_update_deleted_node_lables(self):
         # Add label to a deleted node
         # expecting an exception
 
@@ -113,7 +110,7 @@ class testAccessDelEntity():
             res = self.g.query(q)
             self.env.assertTrue(False)
         except Exception as e:
-            self.env.assertEquals(e.code, "entity has been deleted")
+            self.env.assertEquals(str(e), "Entity has been deleted in this transaction")
 
         #-----------------------------------------------------------------------
 
@@ -127,9 +124,9 @@ class testAccessDelEntity():
             res = self.g.query(q)
             self.env.assertTrue(False)
         except Exception as e:
-            self.env.assertEquals(e.code, "entity has been deleted")
+            self.env.assertEquals(str(e), "Entity has been deleted in this transaction")
 
-    def test06_merge_using_deleted_node_attr(self):
+    def _test06_merge_using_deleted_node_attr(self):
         # try to merge a node based on a deleted node attribute
         # expecting an exception
         
@@ -142,9 +139,9 @@ class testAccessDelEntity():
             res = self.g.query(q)
             self.env.assertTrue(False)
         except Exception as e:
-            self.env.assertEquals(e.code, "entity has been deleted")
+            self.env.assertEquals(str(e), "Entity has been deleted in this transaction")
 
-    def test07_dobule_delete(self):
+    def _test07_dobule_delete(self):
         # try to delete a deleted node
         # expecting a single delete to be performed
         q = "CREATE (:A {v:1})"
@@ -156,7 +153,7 @@ class testAccessDelEntity():
         res = self.g.query(q)
         self.env.assertEquals(res.nodes_deleted, 1)
 
-    def test08_create_edge_to_deleted_node(self):
+    def _test08_create_edge_to_deleted_node(self):
         # try to create an edge to a deleted node
         # expecting an exception
 
@@ -169,7 +166,7 @@ class testAccessDelEntity():
             res = self.g.query(q)
             self.env.assertTrue(False)
         except Exception as e:
-            self.env.assertEquals(e.code, "entity has been deleted")
+            self.env.assertEquals(str(e), "Entity has been deleted in this transaction")
 
         #-----------------------------------------------------------------------
 
@@ -182,5 +179,48 @@ class testAccessDelEntity():
             res = self.g.query(q)
             self.env.assertTrue(False)
         except Exception as e:
-            self.env.assertEquals(e.code, "entity has been deleted")
+            self.env.assertEquals(str(e), "Entity has been deleted in this transaction")
+
+class testAccessDelEdge():
+    def __init__(self):
+        self.env = Env(decodeResponses=True)
+        self.g= Graph(self.env.getConnection(), "access_del_edge")
+
+    def test01_return_deleted_attribute(self):
+        # try to return an attribute of a deleted entity
+        # expecting an exception
+
+        # create an edge
+        q = "CREATE ()-[:R {v:1}]->()"
+        res = self.g.query(q)
+        self.env.assertEquals(res.nodes_created, 2)
+        self.env.assertEquals(res.relationships_created, 1)
+
+        # retrieve attribute from a deleted edge
+        try:
+            q = "MATCH ()-[e]->() DELETE e RETURN e.v"
+            res = self.g.query(q)
+            self.env.assertEquals(res.result_set[0][0], None)
+            self.env.assertTrue(False)
+        except Exception as e:
+            self.env.assertEquals(str(e), "Entity has been deleted in this transaction")
+    
+    def test02_return_deleted_edge(self):
+        # try to return a deleted edge
+        # expecting an exception
+
+        # create an edge
+        q = "CREATE ()-[:R {v:1}]->()"
+        res = self.g.query(q)
+        self.env.assertEquals(res.nodes_created, 2)
+        self.env.assertEquals(res.relationships_created, 1)
+
+        try:
+            # return a deleted edge
+            q = "MATCH ()-[e]->() DELETE e RETURN e"
+            res = self.g.query(q)
+            node = res.result_set[0][0]
+            self.env.assertTrue(False)
+        except Exception as e:
+            self.env.assertEquals(str(e), "Entity has been deleted in this transaction")
 

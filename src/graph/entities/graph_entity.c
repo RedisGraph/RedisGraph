@@ -5,10 +5,10 @@
  */
 
 #include "graph_entity.h"
-#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../graphcontext.h"
 #include "../../util/rmalloc.h"
+#include "../../errors/errors.h"
 #include "../../datatypes/map.h"
 #include "../../datatypes/array.h"
 

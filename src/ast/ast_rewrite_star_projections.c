@@ -5,11 +5,11 @@
  */
 
 #include "ast.h"
-#include "../errors.h"
 #include "ast_shared.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/sds/sds.h"
+#include "../errors/errors.h"
 #include "../util/rax_extensions.h"
 #include "../procedures/procedure.h"
 

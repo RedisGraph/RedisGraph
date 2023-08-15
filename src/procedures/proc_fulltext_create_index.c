@@ -6,10 +6,10 @@
 
 #include "proc_fulltext_create_index.h"
 #include "../value.h"
-#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../index/index.h"
+#include "../errors/errors.h"
 #include "../index/indexer.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"

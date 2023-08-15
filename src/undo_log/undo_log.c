@@ -394,14 +394,21 @@ void UndoLog_DeleteNode
 
 	// take ownership over node's attribute-set
 	op.delete_node_op.set = *node->attributes;
-	*node->attributes = NULL;
+	
+	// mark node's attribute-set as deleted
+	//*node->attributes = NULL;
+	*node->attributes =
+		(AttributeSet)ATTRIBUTE_SET_MARK_DELETED(*node->attributes);
 
 	Graph *g = QueryCtx_GetGraph();
 	NODE_GET_LABELS(g, node, op.delete_node_op.label_count);
-	op.delete_node_op.labels = rm_malloc(sizeof(LabelID) * op.delete_node_op.label_count);
-	for (uint i = 0; i < op.delete_node_op.label_count; i++) {
-		op.delete_node_op.labels[i] = labels[i];
-	}
+
+	// save node's labels
+	op.delete_node_op.labels =
+		rm_malloc(sizeof(LabelID) * op.delete_node_op.label_count);
+
+	memcpy(op.delete_node_op.labels, labels,
+			sizeof(LabelID) * op.delete_node_op.label_count);
 
 	UNDOLOG_ADD_OP(log, op);
 }
@@ -425,7 +432,9 @@ void UndoLog_DeleteEdge
 
 	// take ownership over edge's attribute-set
 	op.delete_edge_op.set = *edge->attributes;
-	*edge->attributes = NULL;
+	//*edge->attributes = NULL;
+	*edge->attributes =
+		(AttributeSet)ATTRIBUTE_SET_MARK_DELETED(*edge->attributes);
 
 	UNDOLOG_ADD_OP(log, op);
 }

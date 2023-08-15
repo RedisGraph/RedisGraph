@@ -1159,7 +1159,8 @@ inline bool Graph_EntityIsDeleted
 (
 	const GraphEntity *e
 ) {
-	return DataBlock_ItemIsDeleted(e->attributes);
+	return ATTRIBUTE_SET_IS_DELETED(*e->attributes);
+	//return DataBlock_ItemIsDeleted(e->attributes);
 }
 
 static void _Graph_FreeRelationMatrices

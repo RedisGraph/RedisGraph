@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "RG.h"
 #include "../../value.h"
 
 // indicates a none existing attribute ID
@@ -13,6 +14,15 @@
 
 // indicates all attributes for SET clauses that replace a property map
 #define ATTRIBUTE_ID_ALL USHRT_MAX - 1
+
+// mark attribute-set as deleted
+#define ATTRIBUTE_SET_MARK_DELETED(set) ((intptr_t)SET_MSB((intptr_t)(set)))
+
+// mark attribute-set as undeleted
+#define ATTRIBUTE_SET_MARK_UNDELETED(set) ((intptr_t)(set) & MSB_MASK_CMP)
+
+// check if attribute-set is marked as deleted
+#define ATTRIBUTE_SET_IS_DELETED(set) !!((intptr_t)(set) & MSB_MASK)
 
 // returns number of attribute within the set
 #define ATTRIBUTE_SET_COUNT(attributes) \

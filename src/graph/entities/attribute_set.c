@@ -9,9 +9,12 @@
 #include "RG.h"
 #include "attribute_set.h"
 #include "../../util/rmalloc.h"
+#include "../../errors/errors.h"
 
 // compute size of attribute set in bytes
-#define ATTRIBUTESET_BYTE_SIZE(set) ((set) == NULL ? sizeof(_AttributeSet) : sizeof(_AttributeSet) + sizeof(Attribute) * (set)->attr_count)
+#define ATTRIBUTESET_BYTE_SIZE(set) ((set) == NULL ? \
+		sizeof(_AttributeSet) :                      \
+		sizeof(_AttributeSet) + sizeof(Attribute) * (set)->attr_count)
 
 // determine if set is empty
 #define ATTRIBUTESET_EMPTY(set) (set) == NULL
@@ -74,6 +77,12 @@ SIValue *AttributeSet_Get
 	Attribute_ID attr_id     // attribute identifier
 ) {
 	if(set == NULL) return ATTRIBUTE_NOTFOUND;
+	
+	// accessing a deleted attribute-set
+	if(unlikely(ATTRIBUTE_SET_IS_DELETED(set))) {
+		ErrorCtx_SetError(ERR_ACCESS_DEL_ENTITY);
+		return ATTRIBUTE_NOTFOUND;
+	}
 
 	if(attr_id == ATTRIBUTE_ID_NONE) return ATTRIBUTE_NOTFOUND;
 
@@ -372,6 +381,9 @@ void AttributeSet_Free
 	AttributeSet _set = *set;
 
 	if(_set == NULL) return;
+
+	// do not free an attribute-set marked as deleted
+	if(unlikely(ATTRIBUTE_SET_IS_DELETED(_set))) return;
 
 	// free all allocated properties
 	for(uint16_t i = 0; i < _set->attr_count; ++i) {

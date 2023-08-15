@@ -6,12 +6,12 @@
 
 #include "string_funcs.h"
 #include "../func_desc.h"
-#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../util/uuid.h"
 #include "utf8proc/utf8proc.h"
 #include "../../util/rmalloc.h"
 #include "../../util/strutil.h"
+#include "../../errors/errors.h"
 #include "../../datatypes/array.h"
 #include "../../util/json_encoder.h"
 #include "../deps/oniguruma/src/oniguruma.h"

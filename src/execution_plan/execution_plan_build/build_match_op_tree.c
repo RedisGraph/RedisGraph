@@ -5,9 +5,9 @@
  */
 
 #include "../ops/ops.h"
-#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "../execution_plan.h"
+#include "../../errors/errors.h"
 #include "execution_plan_util.h"
 #include "execution_plan_modify.h"
 #include "execution_plan_construct.h"
