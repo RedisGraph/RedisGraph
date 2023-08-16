@@ -63,11 +63,11 @@ jobs:
         context: /FalkorDB
         file: /FalkorDB/CI
         push: true
-        tags: falkordb/falkordb:${{ github.sha }}
+        tags: falkordb/falkordb:${{ github.ref_name }}
 
   unit-tests:
     runs-on: ubuntu-latest
-    container: falkordb/falkordb:${{ github.sha }}
+    container: falkordb/falkordb:${{ github.ref_name }}
     needs: build
     steps:
       - name: Unit tests
@@ -76,7 +76,7 @@ jobs:
 
   flow-tests:
     runs-on: ubuntu-latest
-    container: falkordb/falkordb:${{ github.sha }}
+    container: falkordb/falkordb:${{ github.ref_name }}
     needs: build
     steps:
       - name: Flow tests
@@ -85,7 +85,7 @@ jobs:
 
   tck-tests:
     runs-on: ubuntu-latest
-    container: falkordb/falkordb:${{ github.sha }}
+    container: falkordb/falkordb:${{ github.ref_name }}
     needs: build
     steps:
       - name: TCK tests
@@ -94,7 +94,7 @@ jobs:
 
   fuzz-tests:
     runs-on: ubuntu-latest
-    container: falkordb/falkordb:${{ github.sha }}
+    container: falkordb/falkordb:${{ github.ref_name }}
     needs: build
     steps:
       - name: Fuzz tests
