@@ -61,7 +61,7 @@ jobs:
       uses: docker/build-push-action@v4
       with:
         context: /FalkorDB
-        file: /FalkorDB/CI
+        file: /FalkorDB/build/docker/Dockerfile
         push: true
         tags: falkordb/falkordb:${{ github.ref_name }}
 
