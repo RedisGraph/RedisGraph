@@ -835,5 +835,4 @@ class testEffects():
         # wait for replica and master to sync
         self.master.wait(1, 0)
         self.assert_graph_eq()
-        print("Done")
 
