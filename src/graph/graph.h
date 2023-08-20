@@ -79,13 +79,6 @@ void Graph_ReleaseLock
 	Graph *g
 );
 
-// choose the current matrix synchronization policy
-void Graph_SetMatrixPolicy
-(
-	Graph *g,
-	MATRIX_POLICY policy
-);
-
 // synchronize and resize all matrices in graph
 void Graph_ApplyAllPending
 (
@@ -100,7 +93,7 @@ MATRIX_POLICY Graph_GetMatrixPolicy
 );
 
 // choose the current matrix synchronization policy
-void Graph_SetMatrixPolicy
+MATRIX_POLICY Graph_SetMatrixPolicy
 (
 	Graph *g,
 	MATRIX_POLICY policy

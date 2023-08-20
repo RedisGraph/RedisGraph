@@ -86,9 +86,7 @@ static void ApplyCreateNode
 	//--------------------------------------------------------------------------
 
 	LabelID labels[lbl_count];
-	for(ushort i = 0; i < lbl_count; i++) {
-		fread_assert(labels + i, sizeof(LabelID), stream);
-	}
+	fread_assert(labels, lbl_count * sizeof(LabelID), stream);
 
 	//--------------------------------------------------------------------------
 	// read attributes
@@ -191,7 +189,8 @@ static void ApplyLabels
 	Node  n;
 	Graph *g = gc->g;
 
-	Graph_GetNode(g, id, &n);
+	bool found = Graph_GetNode(g, id, &n);
+	ASSERT(found == true);
 
 	//--------------------------------------------------------------------------
 	// read labels count
@@ -285,8 +284,9 @@ static void ApplyAddAttribute
 	const char attr[l];
 	fread_assert(attr, l, stream);
 
-	// TODO: debug make sure attr isn't part of the graph
-	
+	// attr should not exist
+	ASSERT(GraphContext_GetAttributeID(gc, attr) == ATTRIBUTE_ID_NONE);
+
 	// add attribute
 	FindOrAddAttribute(gc, attr, false);
 }
@@ -526,6 +526,9 @@ void Effects_Apply
 	Graph *g = GraphContext_GetGraph(gc);
 	Graph_AcquireWriteLock(g);
 
+	// update graph sync policy
+	MATRIX_POLICY policy = Graph_SetMatrixPolicy(g, SYNC_POLICY_RESIZE);
+
 	// as long as there's data in stream
 	while(ftell(stream) < l) {
 		// read effect type
@@ -566,6 +569,9 @@ void Effects_Apply
 				break;
 		}
 	}
+
+	// restore graph sync policy
+	Graph_SetMatrixPolicy(g, policy);
 
 	// release write lock
 	Graph_ReleaseLock(g);
