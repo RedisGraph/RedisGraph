@@ -280,11 +280,13 @@ MATRIX_POLICY Graph_GetMatrixPolicy
 }
 
 // define the current behavior for matrix creations and retrievals on this graph
-void Graph_SetMatrixPolicy
+MATRIX_POLICY Graph_SetMatrixPolicy
 (
 	Graph *g,
 	MATRIX_POLICY policy
 ) {
+	MATRIX_POLICY prev_policy = Graph_GetMatrixPolicy(g);
+
 	switch(policy) {
 		case SYNC_POLICY_FLUSH_RESIZE:
 			// Default behavior; forces execution of pending GraphBLAS operations
@@ -303,6 +305,8 @@ void Graph_SetMatrixPolicy
 		default:
 			ASSERT(false);
 	}
+
+	return prev_policy;
 }
 
 // synchronize and resize all matrices in graph
@@ -316,11 +320,8 @@ void Graph_ApplyAllPending
 	uint       n  =  0;
 	RG_Matrix  M  =  NULL;
 
-	// backup previous sync policy
-	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
-
-	// set matrix sync policy
-	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+	// set matrix sync policy, backup previous sync policy
+	MATRIX_POLICY policy = Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
 
 	//--------------------------------------------------------------------------
 	// sync every matrix
@@ -468,7 +469,7 @@ Graph *Graph_New
 	g->_writelocked = false;
 
 	// force GraphBLAS updates and resize matrices to node count by default
-	Graph_SetMatrixPolicy(g, SYNC_POLICY_FLUSH_RESIZE);
+	g->SynchronizeMatrix = _MatrixSynchronize;
 
 	return g;
 }
@@ -1102,8 +1103,7 @@ void Graph_DeleteEdges
 	GrB_Info    info;
 	bool        entry_deleted;
 
-	MATRIX_POLICY policy = Graph_GetMatrixPolicy(g);
-	Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
+	MATRIX_POLICY policy = Graph_SetMatrixPolicy(g, SYNC_POLICY_NOP);
 
 	for (uint i = 0; i < n; i++) {
 		Edge       *e         =  edges + i;

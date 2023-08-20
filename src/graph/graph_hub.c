@@ -368,7 +368,8 @@ void UpdateNodeLabels
 			}
 
 			int  schema_id = Schema_GetID(s);
-			bool node_labeled = Graph_IsNodeLabeled(gc->g, ENTITY_GET_ID(node), schema_id);
+			bool node_labeled = Graph_IsNodeLabeled(gc->g, ENTITY_GET_ID(node),
+					schema_id);
 
 			if(!node_labeled) {
 				// sync matrix
@@ -385,7 +386,8 @@ void UpdateNodeLabels
 
 		if(add_labels_index > 0) {
 			// update node's labels
-			Graph_LabelNode(gc->g, ENTITY_GET_ID(node) ,add_labels_ids, add_labels_index);
+			Graph_LabelNode(gc->g, ENTITY_GET_ID(node), add_labels_ids,
+					add_labels_index);
 			if(log == true) {
 				UndoLog_AddLabels(undo_log, node, add_labels_ids,
 						add_labels_index);
@@ -466,7 +468,9 @@ Attribute_ID FindOrAddAttribute
 	ASSERT(attribute != NULL);
 
 	bool created;
-	Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attribute, &created);
+	Attribute_ID attr_id = GraphContext_FindOrAddAttribute(gc, attribute,
+			&created);
+
 	// in case there was an append, the latest id should be tracked
 	if(created == true && log == true) {
 		UndoLog undo_log = QueryCtx_GetUndoLog();
@@ -474,6 +478,7 @@ Attribute_ID FindOrAddAttribute
 		EffectsBuffer *eb = QueryCtx_GetEffectsBuffer();
 		EffectsBuffer_AddNewAttributeEffect(eb, attribute);
 	}
+
 	return attr_id;
 }
 
