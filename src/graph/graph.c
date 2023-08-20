@@ -280,11 +280,13 @@ MATRIX_POLICY Graph_GetMatrixPolicy
 }
 
 // define the current behavior for matrix creations and retrievals on this graph
-void Graph_SetMatrixPolicy
+MATRIX_POLICY Graph_SetMatrixPolicy
 (
 	Graph *g,
 	MATRIX_POLICY policy
 ) {
+	MATRIX_POLICY prev_policy = Graph_GetMatrixPolicy(g);
+
 	switch(policy) {
 		case SYNC_POLICY_FLUSH_RESIZE:
 			// Default behavior; forces execution of pending GraphBLAS operations
@@ -303,6 +305,8 @@ void Graph_SetMatrixPolicy
 		default:
 			ASSERT(false);
 	}
+
+	return prev_policy;
 }
 
 // synchronize and resize all matrices in graph

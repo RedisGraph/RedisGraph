@@ -247,6 +247,7 @@ EffectsBuffer *EffectsBuffer_New
 	void
 ) {
 	size_t n = 62500;  // initial size of buffer
+	//size_t n = 100000000;  // initial size of buffer
 	EffectsBuffer *eb = rm_malloc(sizeof(EffectsBuffer));
 
 	struct EffectsBufferBlock *b = EffectsBufferBlock_New(n);
@@ -553,7 +554,6 @@ static void EffectsBuffer_AddEdgeUpdateEffect
 	// write relation ID
 	//--------------------------------------------------------------------------
 
-	Graph *g = QueryCtx_GetGraph();
 	RelationID r = Edge_GetRelationID(edge);
 	EffectsBuffer_WriteBytes(&r, sizeof(RelationID), buff);
 
