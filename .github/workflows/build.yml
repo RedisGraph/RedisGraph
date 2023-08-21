@@ -43,6 +43,7 @@ jobs:
     # and always the same for the CMake cache
     - name: Relocate source
       run: |
+        mkdir -p /FalkorDB
         mv $GITHUB_WORKSPACE/* /FalkorDB
 
     - name: Build
