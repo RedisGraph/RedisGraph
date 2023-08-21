@@ -398,7 +398,7 @@ void UndoLog_DeleteNode
 	// mark node's attribute-set as deleted
 	//*node->attributes = NULL;
 	*node->attributes =
-		(AttributeSet)ATTRIBUTE_SET_MARK_DELETED(*node->attributes);
+		(AttributeSet)ATTRIBUTE_SET_MARK_READONLY(*node->attributes);
 
 	Graph *g = QueryCtx_GetGraph();
 	NODE_GET_LABELS(g, node, op.delete_node_op.label_count);
@@ -434,7 +434,7 @@ void UndoLog_DeleteEdge
 	op.delete_edge_op.set = *edge->attributes;
 	//*edge->attributes = NULL;
 	*edge->attributes =
-		(AttributeSet)ATTRIBUTE_SET_MARK_DELETED(*edge->attributes);
+		(AttributeSet)ATTRIBUTE_SET_MARK_READONLY(*edge->attributes);
 
 	UNDOLOG_ADD_OP(log, op);
 }

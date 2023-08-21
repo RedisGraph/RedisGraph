@@ -81,11 +81,6 @@ static Record ProjectConsume(OpBase *opBase) {
 		// ensure that the allocation is freed here
 		if((v.type & SI_GRAPHENTITY)) {
 			SIValue_Free(v);
-
-			// make sure the entity hasn't been deleted
-			if(unlikely(Graph_EntityIsDeleted(v.ptrval))) {
-				ErrorCtx_RaiseRuntimeException(ERR_ACCESS_DEL_ENTITY);
-			}
 		}
 	}
 

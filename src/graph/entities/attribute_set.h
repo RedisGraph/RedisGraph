@@ -15,18 +15,11 @@
 // indicates all attributes for SET clauses that replace a property map
 #define ATTRIBUTE_ID_ALL USHRT_MAX - 1
 
-// mark attribute-set as deleted
-#define ATTRIBUTE_SET_MARK_DELETED(set) ((intptr_t)SET_MSB((intptr_t)(set)))
+// mark attribute-set as read-only
+#define ATTRIBUTE_SET_MARK_READONLY(set) ((intptr_t)SET_MSB((intptr_t)(set)))
 
-// mark attribute-set as undeleted
-#define ATTRIBUTE_SET_MARK_UNDELETED(set) ((intptr_t)(set) & MSB_MASK_CMP)
-
-// check if attribute-set is marked as deleted
-#define ATTRIBUTE_SET_IS_DELETED(set) !!((intptr_t)(set) & MSB_MASK)
-
-// returns number of attribute within the set
-#define ATTRIBUTE_SET_COUNT(attributes) \
-	(attributes == NULL ? 0 : ((attributes)->attr_count))
+// check if attribute-set is read-only
+#define ATTRIBUTE_SET_IS_READONLY(set) ((intptr_t)(set) & MSB_MASK)
 
 typedef unsigned short Attribute_ID;
 
@@ -49,6 +42,12 @@ typedef struct {
 } _AttributeSet;
 
 typedef _AttributeSet* AttributeSet;
+
+// returns number of attributes within the set
+uint16_t AttributeSet_Count
+(
+	const AttributeSet set  // set to query
+);
 
 // retrieves a value from set
 // NOTE: if the key does not exist
@@ -111,12 +110,6 @@ bool AttributeSet_Update
 	AttributeSet *set,     // set to update
 	Attribute_ID attr_id,  // attribute identifier
 	SIValue value          // new value
-);
-
-// clones attribute set
-AttributeSet AttributeSet_Clone
-(
-	const AttributeSet set  // set to clone
 );
 
 // clones attribute set without si values

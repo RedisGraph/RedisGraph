@@ -6,5 +6,5 @@
 
 #pragma once
 
-#define ERR_ACCESS_DEL_ENTITY "Entity has been deleted in this transaction"
+// TODO: migrate error messages here
 
