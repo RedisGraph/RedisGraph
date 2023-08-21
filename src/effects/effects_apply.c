@@ -86,7 +86,9 @@ static void ApplyCreateNode
 	//--------------------------------------------------------------------------
 
 	LabelID labels[lbl_count];
-	fread_assert(labels, lbl_count * sizeof(LabelID), stream);
+	for(ushort i = 0; i < lbl_count; i++) {
+		fread_assert(labels + i, sizeof(LabelID), stream);
+	}
 
 	//--------------------------------------------------------------------------
 	// read attributes
