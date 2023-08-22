@@ -212,6 +212,12 @@ commands:
     parameters:
       platform:
         type: string
+      redis_version:
+        type: string
+        default: "7"
+      getredis_params:
+        type: string
+        default: ""
       official:
         type: string
         default: "1"
@@ -220,6 +226,10 @@ commands:
       - setup-executor
       - checkout-all
       - setup-automation
+      - run:
+          name: Install Redis
+          shell: /bin/bash -l -eo pipefail
+          command: ./deps/readies/bin/getredis -v '<<parameters.redis_version>>' --force <<parameters.getredis_params>>
       - run:
           name: Build for platform
           shell: /bin/bash -l -eo pipefail
@@ -247,6 +257,12 @@ commands:
     parameters:
       platform:
         type: string
+      redis_version:
+        type: string
+        default: "7"
+      getredis_params:
+        type: string
+        default: ""
       official:
         type: string
         default: "1"
@@ -258,6 +274,10 @@ commands:
           name: Install Docker
           shell: /bin/bash -l -eo pipefail
           command: ./deps/readies/bin/getdocker
+      - run:
+          name: Install Redis
+          shell: /bin/bash -l -eo pipefail
+          command: ./deps/readies/bin/getredis -v '<<parameters.redis_version>>' --force <<parameters.getredis_params>>
       - run:
           name: Build for platform
           command: |
