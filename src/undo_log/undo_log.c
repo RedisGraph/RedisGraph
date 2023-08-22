@@ -395,8 +395,7 @@ void UndoLog_DeleteNode
 	// take ownership over node's attribute-set
 	op.delete_node_op.set = *node->attributes;
 	
-	// mark node's attribute-set as deleted
-	//*node->attributes = NULL;
+	// mark node's attribute-set as read-only
 	*node->attributes =
 		(AttributeSet)ATTRIBUTE_SET_MARK_READONLY(*node->attributes);
 
@@ -432,7 +431,8 @@ void UndoLog_DeleteEdge
 
 	// take ownership over edge's attribute-set
 	op.delete_edge_op.set = *edge->attributes;
-	//*edge->attributes = NULL;
+
+	// mark edge's attribute-set as read-only
 	*edge->attributes =
 		(AttributeSet)ATTRIBUTE_SET_MARK_READONLY(*edge->attributes);
 

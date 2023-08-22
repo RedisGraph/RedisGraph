@@ -20,7 +20,7 @@ class testAccessDelNode():
     
     def test02_return_deleted_node(self):
         # try to return a deleted node
-        # expecting only node ID to be returned
+        # expecting node ID and attributes to be returned
 
         # create a node
         n = Node(label="A", properties = {'v':1})
@@ -48,6 +48,19 @@ class testAccessDelNode():
         res = self.g.query(q)
         self.env.assertEquals(res.result_set[0][0], [])
 
+        #-----------------------------------------------------------------------
+
+        # create a node
+        q = "CREATE (:A {a:1, b:'str', c:[1,2,3]})"
+        res = self.g.query(q)
+        self.env.assertEquals(res.nodes_created, 1)
+
+        # invoke function on a deleted node
+        q = "MATCH (n) DELETE n RETURN properties(n)"
+        res = self.g.query(q)
+        properties = {'a': 1, 'b': 'str', 'c': [1,2,3]}
+        self.env.assertEquals(res.result_set[0][0], properties)
+
     def test04_update_deleted_node(self):
         # try to update a deleted node
 
@@ -56,9 +69,10 @@ class testAccessDelNode():
         self.env.assertEquals(res.nodes_created, 1)
 
         # update a deleted node
-        q = "MATCH (n) DELETE n SET n.v = 1"
+        q = "MATCH (n) DELETE n SET n.v = 2 RETURN n.v"
         res = self.g.query(q)
         self.env.assertEquals(res.properties_set, 0)
+        self.env.assertEquals(res.result_set[0][0], 1)
 
         #-----------------------------------------------------------------------
 
@@ -171,6 +185,44 @@ class testAccessDelNode():
         except Exception as e:
             self.env.assertEquals(str(e), "Failed to create relationship; endpoint was not found.")
 
+        # clear graph
+        self.env.flush()
+
+    def test09_path_with_deleted_node(self):
+        # test path with deleted node
+        # create a 3 nodes path (a)->(b)->(c)
+        a = Node(label="A", properties = {'v':'a'})
+        b = Node(label="B", properties = {'v':'b'})
+        c = Node(label="C", properties = {'v':'c'})
+        self.g.add_node(a)
+        self.g.add_node(b)
+        self.g.add_node(c)
+
+        r1 = Edge(a, 'R', b)
+        r2 = Edge(b, 'R', c)
+
+        self.g.add_edge(r1)
+        self.g.add_edge(r2)
+
+        self.g.flush()
+
+        # delete the middle node on the path
+        q = "MATCH p = (a:A)-[:R]->(b:B)-[:R]->(c:C) DELETE b RETURN nodes(p)"
+        res = self.g.query(q)
+        self.env.assertEquals(res.nodes_deleted, 1)
+        nodes = res.result_set[0][0]
+        self.env.assertEquals(len(nodes), 3)
+
+        # assert individual nodes
+        self.env.assertEquals(nodes[0].properties['v'], 'a')
+        self.env.assertEquals(nodes[0].label, 'A')
+
+        self.env.assertEquals(nodes[1].properties['v'], 'b')
+        self.env.assertIsNone(nodes[1].label)
+
+        self.env.assertEquals(nodes[2].properties['v'], 'c')
+        self.env.assertEquals(nodes[2].label, 'C')
+
 class testAccessDelEdge():
     def __init__(self):
         self.env = Env(decodeResponses=True)
@@ -240,9 +292,10 @@ class testAccessDelEdge():
         self.env.assertEquals(res.relationships_created, 1)
 
         # update a deleted edge
-        q = "MATCH ()-[e]->() DELETE e SET e.v = 1"
+        q = "MATCH ()-[e]->() DELETE e SET e.v = 2 RETURN e.v"
         res = self.g.query(q)
         self.env.assertEquals(res.properties_set, 0)
+        self.env.assertEquals(res.result_set[0][0], 1)
 
         # clear graph
         self.env.flush()
@@ -321,4 +374,36 @@ class testAccessDelEdge():
         q = "MATCH ()-[e]->() DELETE e WITH e DELETE e"
         res = self.g.query(q)
         self.env.assertEquals(res.relationships_deleted, 1)
+
+    def test08_path_with_deleted_edge(self):
+        # test path with deleted edge
+        # create a 3 nodes path (a)->(b)->(c)
+        a = Node(label="A", properties = {'v':'a'})
+        b = Node(label="B", properties = {'v':'b'})
+        c = Node(label="C", properties = {'v':'c'})
+        self.g.add_node(a)
+        self.g.add_node(b)
+        self.g.add_node(c)
+
+        r1 = Edge(a, 'R1', b, properties = {'v':1})
+        r2 = Edge(b, 'R2', c, properties = {'v':2})
+
+        self.g.add_edge(r1)
+        self.g.add_edge(r2)
+
+        self.g.flush()
+
+        # delete the middle node on the path
+        q = "MATCH p = (:A)-[e1:R1]->(:B)-[e2:R2]->(:C) DELETE e1 RETURN relationships(p)"
+        res = self.g.query(q)
+        self.env.assertEquals(res.relationships_deleted, 1)
+        edges = res.result_set[0][0]
+        self.env.assertEquals(len(edges), 2)
+
+        # assert individual edges
+        self.env.assertEquals(edges[0].properties['v'], 1)
+        self.env.assertEquals(edges[0].relation, 'R1')
+
+        self.env.assertEquals(edges[1].properties['v'], 2)
+        self.env.assertEquals(edges[1].relation, 'R2')
 

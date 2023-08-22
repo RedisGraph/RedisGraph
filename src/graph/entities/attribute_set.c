@@ -17,7 +17,7 @@
 		sizeof(_AttributeSet) + sizeof(Attribute) * (set)->attr_count)
 
 // mark attribute-set as mutable
-#define ATTRIBUTE_SET_CLEAR_MSB(set) ((intptr_t)(set) & MSB_MASK_CMP)
+#define ATTRIBUTE_SET_CLEAR_MSB(set) (CLEAR_MSB((intptr_t)set))
 
 // returned value for a missing attribute
 SIValue *ATTRIBUTE_NOTFOUND = &(SIValue) {
@@ -400,9 +400,7 @@ void AttributeSet_PersistValues
 	const AttributeSet set  // set to persist
 ) {
 	// return if set is read-only
-	if(unlikely(ATTRIBUTE_SET_IS_READONLY(set))) {
-		return;
-	}
+	ASSERT(ATTRIBUTE_SET_IS_READONLY(set) == false);
 
 	if(set == NULL) return;
 

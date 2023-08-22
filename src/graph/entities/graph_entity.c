@@ -44,18 +44,6 @@ SIValue *GraphEntity_GetProperty
 	return AttributeSet_Get(*e->attributes, attr_id);
 }
 
-// updates existing property value
-bool GraphEntity_SetProperty
-(
-	const GraphEntity *e,
-	Attribute_ID attr_id,
-	SIValue value
-) {
-	ASSERT(e);
-
-	return AttributeSet_Update(e->attributes, attr_id, value);
-}
-
 // returns an SIArray of all keys in graph entity properties
 SIValue GraphEntity_Keys
 (
