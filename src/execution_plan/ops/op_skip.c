@@ -6,7 +6,7 @@
 
 #include "op_skip.h"
 #include "../../RG.h"
-#include "../../errors.h"
+#include "../../errors/errors.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */

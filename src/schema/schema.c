@@ -5,10 +5,10 @@
  */
 
 #include "schema.h"
-#include "../errors.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
+#include "../errors/errors.h"
 #include "../index/indexer.h"
 #include "../graph/graphcontext.h"
 #include "../constraint/constraint.h"
