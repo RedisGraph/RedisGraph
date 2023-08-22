@@ -5,7 +5,6 @@
  */
 
 #include "RG.h"
-#include "../errors.h"
 #include "../ast/ast.h"
 #include "cmd_context.h"
 #include "../util/arr.h"
@@ -15,6 +14,7 @@
 #include "execution_ctx.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
+#include "../errors/errors.h"
 #include "../index/indexer.h"
 #include "../effects/effects.h"
 #include "../util/cache/cache.h"

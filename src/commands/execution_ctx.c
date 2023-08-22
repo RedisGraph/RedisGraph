@@ -6,8 +6,8 @@
 
 #include "execution_ctx.h"
 #include "RG.h"
-#include "../errors.h"
 #include "../query_ctx.h"
+#include "../errors/errors.h"
 #include "../execution_plan/execution_plan_clone.h"
 
 static ExecutionType _GetExecutionTypeFromAST

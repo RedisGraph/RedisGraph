@@ -7,9 +7,9 @@
 #include "proc_fulltext_drop_index.h"
 #include "../query_ctx.h"
 #include "../value.h"
-#include "../errors.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../errors/errors.h"
 #include "../index/indexer.h"
 #include "../graph/graphcontext.h"
 

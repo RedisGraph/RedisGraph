@@ -6,10 +6,10 @@
 
 #include "entity_funcs.h"
 #include "../func_desc.h"
-#include "../../errors.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../datatypes/map.h"
+#include "../../errors/errors.h"
 #include "../../datatypes/array.h"
 #include "../../graph/graphcontext.h"
 #include "../../datatypes/datatypes.h"
