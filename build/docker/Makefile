@@ -19,3 +19,6 @@ XENIAL_MODERN_OMP ?= 0
 DOCKER_VARS += XENIAL_MODERN_OMP
 
 include $(MK)/module.docker.rules
+
+verify:
+	$(SHOW)DOCKER="$(DEFAULT_TAG)" $(ROOT)/sbin/verify-docker
