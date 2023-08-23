@@ -41,7 +41,7 @@ ProcedureResult Proc_FulltextDropIndexInvoke
 	int res = GraphContext_DeleteIndex(gc, SCHEMA_NODE, l, NULL, IDX_FULLTEXT);
 
 	if(res != INDEX_OK) {
-		ErrorCtx_SetError("ERR Unable to drop index on :%s: no such index.", l);
+		ErrorCtx_SetError(EMSG_FULLTEXT_DROP_INDEX, l);
 	}
 
 	return PROCEDURE_OK;

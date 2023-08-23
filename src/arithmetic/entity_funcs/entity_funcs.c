@@ -171,7 +171,7 @@ static SIValue _AR_NodeDegree
 			}
 		} else if (SI_TYPE(argv[1]) == T_ARRAY) {
 			if(argc > 2) {
-				ErrorCtx_SetError("Received %d arguments, expected at most 2 because second argument is List", argc);
+				ErrorCtx_SetError(EMSG_NODE_DEGREE_ARGUMENTS, argc);
 			}
 			// validate signature function(NODE, ARRAY_OF_STRINGS)
 			uint len = SIArray_Length(argv[1]);

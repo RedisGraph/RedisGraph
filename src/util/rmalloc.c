@@ -47,7 +47,7 @@ static inline void _nmalloc_increment(int64_t n_bytes) {
 		n_alloced = INT32_MIN;
 
 		// throw exception cause memory limit exceeded
-		ErrorCtx_SetError("Query's mem consumption exceeded capacity");
+		ErrorCtx_SetError(EMSG_QUERY_MEM_CONSUMPTION);
 	}
 }
 

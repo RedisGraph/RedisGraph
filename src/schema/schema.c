@@ -162,7 +162,7 @@ static int _Schema_RemoveExactMatchIndex
 		if(Constraint_GetStatus(c) != CT_FAILED &&
 		   Constraint_GetType(c) == CT_UNIQUE   &&
 		   Constraint_ContainsAttribute(c, attr_id)) {
-			ErrorCtx_SetError("Index supports constraint");
+			ErrorCtx_SetError(EMSG_INDEX_SUPPORT_CONSTRAINTS);
 			return INDEX_FAIL;
 		}
 	}
