@@ -27,7 +27,7 @@ static void _eval_limit(OpLimit *op, AR_ExpNode *limit_exp) {
 
 	// Validate that the limit value is numeric and non-negative.
 	if(SI_TYPE(l) != T_INT64 || SI_GET_NUMERIC(l) < 0) {
-		ErrorCtx_SetError("Limit operates only on non-negative integers");
+		ErrorCtx_SetError(EMSG_OPERATE_ON_NON_NEGATIVE_INT, "Limit");
 	}
 
 	op->limit = SI_GET_NUMERIC(l);

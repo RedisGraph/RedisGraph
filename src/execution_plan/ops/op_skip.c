@@ -27,7 +27,7 @@ static void _eval_skip(OpSkip *op, AR_ExpNode *skip_exp) {
 
 	// Validate that the skip value is numeric and non-negative.
 	if(SI_TYPE(s) != T_INT64 || SI_GET_NUMERIC(s) < 0) {
-		ErrorCtx_SetError("Skip operates only on non-negative integers");
+		ErrorCtx_SetError(EMSG_OPERATE_ON_NON_NEGATIVE_INT, "Skip");
 	}
 
 	op->skip = SI_GET_NUMERIC(s);

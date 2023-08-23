@@ -37,7 +37,7 @@ SIValue *GraphEntity_GetProperty
 	// one which didn't had its attribute-set allocated within the graph datablock.
 	if(e->attributes == NULL) {
  		// note that this exception may cause memory to be leaked in the caller
- 		ErrorCtx_SetError("Attempted to access undefined attribute");
+ 		ErrorCtx_SetError(EMSG_ACCESS_UNDEFINED_ATTRIBUTE);
  		return ATTRIBUTE_NOTFOUND;
  	}
 

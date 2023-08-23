@@ -94,7 +94,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke
 		// RediSearch error message is allocated using `rm_strdup`
 		// QueryCtx is expecting to free `error` using `free`
 		// in which case we have no option but to clone error
-		ErrorCtx_SetError("RediSearch: %s", err);
+		ErrorCtx_SetError(EMSG_REDISEARCH, err);
 		rm_free(err);
 		// raise the exception, we expect an exception handler to be set
 		// as procedure invocation is done at runtime
