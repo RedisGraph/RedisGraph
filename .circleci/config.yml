@@ -212,6 +212,12 @@ commands:
     parameters:
       platform:
         type: string
+      redis_version:
+        type: string
+        default: "7"
+      getredis_params:
+        type: string
+        default: ""
       official:
         type: string
         default: "1"
@@ -221,11 +227,15 @@ commands:
       - checkout-all
       - setup-automation
       - run:
+          name: Install Redis
+          shell: /bin/bash -l -eo pipefail
+          command: ./deps/readies/bin/getredis -v '<<parameters.redis_version>>' --force <<parameters.getredis_params>>
+      - run:
           name: Build for platform
           shell: /bin/bash -l -eo pipefail
           command: |
             cd build/docker
-            make build OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
+            make build verify OSNICK=<<parameters.platform>> VERSION="$CIRCLE_TAG" BRANCH="$CIRCLE_BRANCH" TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
       - save-tests-logs
       - early-return-for-forked-pull-requests
       - run:
@@ -247,6 +257,12 @@ commands:
     parameters:
       platform:
         type: string
+      redis_version:
+        type: string
+        default: "7"
+      getredis_params:
+        type: string
+        default: ""
       official:
         type: string
         default: "1"
@@ -259,10 +275,14 @@ commands:
           shell: /bin/bash -l -eo pipefail
           command: ./deps/readies/bin/getdocker
       - run:
+          name: Install Redis
+          shell: /bin/bash -l -eo pipefail
+          command: ./deps/readies/bin/getredis -v '<<parameters.redis_version>>' --force <<parameters.getredis_params>>
+      - run:
           name: Build for platform
           command: |
             cd build/docker
-            make build OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
+            make build verify OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH TEST=1 OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
           no_output_timeout: 30m
       - save-tests-logs
       - early-return-for-forked-pull-requests

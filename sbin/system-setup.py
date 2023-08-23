@@ -74,8 +74,8 @@ class RedisGraphSetup(paella.Setup):
             self.install("lcov-git", aur=True)
 
         if not self.no_rmpytools:
-            self.run(f"{self.python} {READIES}/bin/getrmpytools --reinstall")
-            self.pip_install("-r tests/requirements.txt")
+            self.pip_install("-r tests/requirements.txt") # redisgraph-bulk-loader requires redis==4.6.1
+            self.run(f"{self.python} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version pypi:5.0.0")
 
     def install_peg(self):
         self.run(r"""
