@@ -656,7 +656,7 @@ void EffectsBuffer_AddEntityUpdateAttributeEffect
 void EffectsBuffer_AddSetRemoveLabelsEffect
 (
 	EffectsBuffer *buff,     // effect buffer
-	const Node *node,        // updated node
+	NodeID node_id,          // updated node id
 	const LabelID *lbl_ids,  // labels
 	uint8_t lbl_count,       // number of labels
 	EffectType t             // effect type
@@ -672,7 +672,7 @@ void EffectsBuffer_AddSetRemoveLabelsEffect
 	EffectsBuffer_WriteBytes(&t, sizeof(t), buff);
 
 	// write node ID
-	EffectsBuffer_WriteBytes(&ENTITY_GET_ID(node), sizeof(EntityID), buff); 
+	EffectsBuffer_WriteBytes(&node_id, sizeof(EntityID), buff); 
 	
 	// write labels count
 	EffectsBuffer_WriteBytes(&lbl_count, sizeof(lbl_count), buff); 
@@ -687,7 +687,7 @@ void EffectsBuffer_AddSetRemoveLabelsEffect
 void EffectsBuffer_AddLabelsEffect
 (
 	EffectsBuffer *buff,     // effect buffer
-	const Node *node,        // updated node
+	const NodeID node_id,    // updated node id
 	const LabelID *lbl_ids,  // added labels
 	size_t lbl_count         // number of removed labels
 ) {
@@ -702,7 +702,7 @@ void EffectsBuffer_AddLabelsEffect
 	QueryCtx_GetResultSetStatistics()->labels_added += lbl_count;
 
 	EffectType t = EFFECT_SET_LABELS;
-	EffectsBuffer_AddSetRemoveLabelsEffect(buff, node, lbl_ids, lbl_count, t);
+	EffectsBuffer_AddSetRemoveLabelsEffect(buff, node_id, lbl_ids, lbl_count, t);
 
 	EffectsBuffer_IncEffectCount(buff);
 }
@@ -711,7 +711,7 @@ void EffectsBuffer_AddLabelsEffect
 void EffectsBuffer_AddRemoveLabelsEffect
 (
 	EffectsBuffer *buff,     // effect buffer
-	const Node *node,        // updated node
+	NodeID node_id,          // updated node id
 	const LabelID *lbl_ids,  // removed labels
 	size_t lbl_count         // number of removed labels
 ) {
@@ -726,7 +726,7 @@ void EffectsBuffer_AddRemoveLabelsEffect
 	QueryCtx_GetResultSetStatistics()->labels_removed += lbl_count;
 
 	EffectType t = EFFECT_REMOVE_LABELS;
-	EffectsBuffer_AddSetRemoveLabelsEffect(buff, node, lbl_ids, lbl_count, t);
+	EffectsBuffer_AddSetRemoveLabelsEffect(buff, node_id, lbl_ids, lbl_count, t);
 
 	EffectsBuffer_IncEffectCount(buff);
 }

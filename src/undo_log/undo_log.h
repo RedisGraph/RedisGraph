@@ -78,7 +78,7 @@ struct UndoUpdateOp {
 
 typedef struct UndoLabelsOp UndoLabelsOp;
 struct UndoLabelsOp {
-	Node node;
+	NodeID node_id;
 	LabelID* label_ids;
 	ushort labels_count;
 };
@@ -165,7 +165,7 @@ void UndoLog_UpdateEntity
 void UndoLog_AddLabels
 (
 	UndoLog log,                 // undo log
-	Node *node,                  // updated node
+	NodeID node_id,              // updated node id
 	LabelID *label_ids,          // added labels
 	size_t labels_count          // number of removed labels
 );
@@ -174,7 +174,7 @@ void UndoLog_AddLabels
 void UndoLog_RemoveLabels
 (
 	UndoLog log,                 // undo log
-	Node *node,                  // updated node
+	NodeID node_id,              // updated node id
 	LabelID *label_ids,          // removed labels
 	size_t labels_count          // number of removed labels
 );

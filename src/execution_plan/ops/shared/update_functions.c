@@ -43,6 +43,8 @@ void CommitUpdates
 (
 	GraphContext *gc,
 	dict *updates,
+	RG_Matrix add_labels,
+	RG_Matrix remove_labels,
 	EntityType type
 ) {
 	ASSERT(gc      != NULL);
@@ -57,14 +59,13 @@ void CommitUpdates
 
 	dictEntry *entry;
 	dictIterator *it = HashTableGetIterator(updates);
-	MATRIX_POLICY policy = Graph_GetMatrixPolicy(gc->g);
-	Graph_SetMatrixPolicy(gc->g, SYNC_POLICY_NOP);
+
+	if(type == ENTITY_NODE) {
+		UpdateLabels(gc, add_labels, remove_labels, true);
+	}
 
 	while((entry = HashTableNext(it)) != NULL) {
 		PendingUpdateCtx *update = HashTableGetVal(entry);
-
-		// if entity has been deleted, perform no updates
-		if(GraphEntity_IsDeleted(update->ge)) continue;
 
 		AttributeSet_PersistValues(update->attributes);
 		
@@ -72,12 +73,6 @@ void CommitUpdates
 		UpdateEntityProperties(gc, update->ge, update->attributes,
 				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, true);
 		update->attributes = NULL;
-
-		if(type == ENTITY_NODE) {
-			UpdateNodeLabels(gc, (Node*)update->ge, update->add_labels,
-				update->remove_labels, array_len(update->add_labels),
-				array_len(update->remove_labels), true);
-		}
 
 		//----------------------------------------------------------------------
 		// enforce constraints
@@ -113,7 +108,6 @@ void CommitUpdates
 			}
 		}
 	}
-	Graph_SetMatrixPolicy(gc->g, policy);
 	HashTableReleaseIterator(it);
 }
 
@@ -125,6 +119,8 @@ void EvalEntityUpdates
 	GraphContext *gc,
 	dict *node_updates,
 	dict *edge_updates,
+	RG_Matrix *add_labels,
+	RG_Matrix *remove_labels,
 	const Record r,
 	const EntityUpdateEvalCtx *ctx,
 	bool allow_null
@@ -180,8 +176,6 @@ void EvalEntityUpdates
 		update = rm_malloc(sizeof(PendingUpdateCtx));
 		update->ge            = entity;
 		update->attributes    = AttributeSet_ShallowClone(*entity->attributes);
-		update->add_labels    = NULL;
-		update->remove_labels = NULL;
 		// add update context to updates dictionary
 		HashTableAdd(updates, (void *)ENTITY_GET_ID(entity), update);
 	} else {
@@ -189,16 +183,37 @@ void EvalEntityUpdates
 		update = (PendingUpdateCtx *)HashTableGetVal(entry);
 	}
 
-	if(array_len(ctx->add_labels) > 0 && update->add_labels == NULL) {
-		update->add_labels = array_new(const char *, array_len(ctx->add_labels));
+	if(array_len(ctx->add_labels) > 0 && *add_labels == NULL) {
+		RG_Matrix_new(add_labels, GrB_BOOL, Graph_RequiredMatrixDim(gc->g),
+			Graph_RequiredMatrixDim(gc->g));
 	}
 
-	if(array_len(ctx->remove_labels) > 0 && update->remove_labels == NULL) {
-		update->remove_labels = array_new(const char *, array_len(ctx->remove_labels));
+	if(array_len(ctx->remove_labels) > 0 && *remove_labels == NULL) {
+		RG_Matrix_new(remove_labels, GrB_BOOL, Graph_RequiredMatrixDim(gc->g),
+			Graph_RequiredMatrixDim(gc->g));
 	}
 	
-	array_union(update->add_labels, ctx->add_labels, strcmp);
-	array_union(update->remove_labels, ctx->remove_labels, strcmp);
+	for (uint i = 0; i < array_len(ctx->add_labels); i++) {
+		const char *label = ctx->add_labels[i];
+		const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+		if(s == NULL) {
+			s = AddSchema(gc, label, SCHEMA_NODE, true);
+		}
+
+		int schema_id = Schema_GetID(s);
+		RG_Matrix_setElement_BOOL(*add_labels, ENTITY_GET_ID(entity), schema_id);
+	}
+
+	for (uint i = 0; i < array_len(ctx->remove_labels); i++) {
+		const char *label = ctx->remove_labels[i];
+		const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+		if(s == NULL) {
+			s = AddSchema(gc, label, SCHEMA_NODE, true);
+		}
+
+		int schema_id = Schema_GetID(s);
+		RG_Matrix_setElement_BOOL(*remove_labels, ENTITY_GET_ID(entity), schema_id);
+	}
 
 	AttributeSet *old_attrs = entity->attributes;
 	entity->attributes = &update->attributes;
@@ -402,7 +417,5 @@ void PendingUpdateCtx_Free
 	PendingUpdateCtx *ctx
 ) {
 	AttributeSet_Free(&ctx->attributes);
-	array_free(ctx->add_labels);
-	array_free(ctx->remove_labels);
 	rm_free(ctx);
 }

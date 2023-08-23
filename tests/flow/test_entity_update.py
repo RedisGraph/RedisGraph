@@ -551,3 +551,22 @@ class testEntityUpdate():
 
         # assert results
         self.env.assertEquals(res.result_set[0][0], Node(properties={'v': 7}))
+
+    def test39_update_resize_matrix(self):
+        """Tests that updates resize matrix correctly"""
+        graph.delete()
+
+        res = graph.query("CREATE (:A)")
+        self.env.assertEquals(res.nodes_created, 1)
+
+        res = graph.query("UNWIND range(0, 1000000) as x CREATE (:B)")
+        self.env.assertEquals(res.nodes_created, 1000001)
+
+        res = graph.query("CREATE (:C)")
+        self.env.assertEquals(res.nodes_created, 1)
+
+        res = graph.query("MATCH (c:C) SET c:A")
+        self.env.assertEquals(res.labels_added, 1)
+
+        res = graph.query("MATCH (n:A) RETURN count(n)")
+        self.env.assertEquals(res.result_set[0][0], 2)

@@ -92,7 +92,8 @@ static Record UpdateConsume
 		raxSeek(&op->it, "^", NULL, 0);
 		while(raxNext(&op->it)) {
 			EntityUpdateEvalCtx *ctx = op->it.data;
-			EvalEntityUpdates(op->gc, op->node_updates, op->edge_updates, r, ctx, true);
+			EvalEntityUpdates(op->gc, op->node_updates, op->edge_updates,
+				&op->add_labels, &op->remove_labels, r, ctx, true);
 		}
 
 		array_append(op->records, r);
@@ -110,8 +111,8 @@ static Record UpdateConsume
 		// lock everything
 		QueryCtx_LockForCommit();
 
-		CommitUpdates(op->gc, op->node_updates, ENTITY_NODE);
-		CommitUpdates(op->gc, op->edge_updates, ENTITY_EDGE);
+		CommitUpdates(op->gc, op->node_updates, op->add_labels, op->remove_labels, ENTITY_NODE);
+		CommitUpdates(op->gc, op->edge_updates, NULL, NULL, ENTITY_EDGE);
 	}
 
 	HashTableEmpty(op->node_updates, NULL);
@@ -167,4 +168,12 @@ static void UpdateFree(OpBase *ctx) {
 	}
 
 	raxStop(&op->it);
+
+	if(op->add_labels) {
+		RG_Matrix_free(&op->add_labels);
+	}
+
+	if(op->remove_labels) {
+		RG_Matrix_free(&op->remove_labels);
+	}
 }

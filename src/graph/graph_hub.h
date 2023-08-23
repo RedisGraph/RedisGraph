@@ -118,6 +118,14 @@ void UpdateNodeLabels
 	bool log                     // log this operation in undo-log
 );
 
+void UpdateLabels
+(
+	GraphContext *gc,            // graph context to update the entity
+	RG_Matrix add_labels,        // labels to add to nodes
+	RG_Matrix remove_labels,     // labels to remove from nodes
+	bool log                     // log this operation in undo-log
+);
+
 // Adds a schema to the graph. The schema is tracked by the undo log
 // so in case of error it will be deleted.
 Schema *AddSchema

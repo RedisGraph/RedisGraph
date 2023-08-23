@@ -389,10 +389,10 @@ void UpdateNodeLabels
 			Graph_LabelNode(gc->g, ENTITY_GET_ID(node), add_labels_ids,
 					add_labels_index);
 			if(log == true) {
-				UndoLog_AddLabels(undo_log, node, add_labels_ids,
+				UndoLog_AddLabels(undo_log, ENTITY_GET_ID(node), add_labels_ids,
 						add_labels_index);
-				EffectsBuffer_AddLabelsEffect(eb, node, add_labels_ids,
-						add_labels_index);
+				EffectsBuffer_AddLabelsEffect(eb, ENTITY_GET_ID(node),
+					add_labels_ids, add_labels_index);
 			}
 		}
 	}
@@ -428,13 +428,131 @@ void UpdateNodeLabels
 			Graph_RemoveNodeLabels(gc->g, ENTITY_GET_ID(node),
 					remove_labels_ids, remove_labels_index);
 			if(log == true) {
-				UndoLog_RemoveLabels(undo_log, node, remove_labels_ids,
-						remove_labels_index);
-				EffectsBuffer_AddRemoveLabelsEffect(eb, node, remove_labels_ids,
-						remove_labels_index);
+				UndoLog_RemoveLabels(undo_log, ENTITY_GET_ID(node),
+						remove_labels_ids, remove_labels_index);
+				EffectsBuffer_AddRemoveLabelsEffect(eb, ENTITY_GET_ID(node),
+						remove_labels_ids, remove_labels_index);
 			}
 		}
 	}
+}
+
+void UpdateLabels
+(
+	GraphContext *gc,            // graph context to update the entity
+	RG_Matrix add_labels,        // labels to add to nodes
+	RG_Matrix remove_labels,     // labels to remove from nodes
+	bool log                     // log this operation in undo-log
+) {
+	EffectsBuffer *eb = NULL; 
+	UndoLog undo_log  = NULL;
+
+	if(log == true) {
+		eb = QueryCtx_GetEffectsBuffer();
+		undo_log = QueryCtx_GetUndoLog();
+	}
+
+	int *labels_ids = array_new(int, 0);
+	GrB_Index prev_node_id = 0;
+	GrB_Index node_id;
+	GrB_Index label_id;
+	if(add_labels != NULL) {
+		RG_MatrixTupleIter it = {};
+		RG_MatrixTupleIter_attach(&it, add_labels);
+
+		while(RG_MatrixTupleIter_next_BOOL(&it, &node_id, &label_id, NULL) == GrB_SUCCESS) {
+			if(node_id != prev_node_id && array_len(labels_ids) > 0) {
+				// update node's labels
+				Graph_LabelNode(gc->g, prev_node_id, labels_ids,
+						array_len(labels_ids));
+				if(log == true) {
+					UndoLog_AddLabels(undo_log, prev_node_id, labels_ids,
+							array_len(labels_ids));
+					EffectsBuffer_AddLabelsEffect(eb, prev_node_id, labels_ids,
+							array_len(labels_ids));
+				}
+				array_clear(labels_ids);
+			}
+			bool node_labeled = Graph_IsNodeLabeled(gc->g, node_id, label_id);
+
+			if(!node_labeled) {
+				Schema *s = GraphContext_GetSchemaByID(gc, (int)label_id, SCHEMA_NODE);
+				// append label id
+				array_append(labels_ids, label_id);
+				// add to index
+				Node n;
+				Graph_GetNode(gc->g, node_id, &n);
+				Schema_AddNodeToIndices(s, &n);
+			}
+			prev_node_id = node_id;
+		}
+
+		if(array_len(labels_ids) > 0) {
+			// update node's labels
+			Graph_LabelNode(gc->g, prev_node_id, labels_ids,
+					array_len(labels_ids));
+			if(log == true) {
+				UndoLog_AddLabels(undo_log, prev_node_id, labels_ids,
+						array_len(labels_ids));
+				EffectsBuffer_AddLabelsEffect(eb, prev_node_id, labels_ids,
+						array_len(labels_ids));
+			}
+			array_clear(labels_ids);
+		}
+	}
+
+	if(remove_labels != NULL) {
+		array_clear(labels_ids);
+		prev_node_id = 0;
+		RG_MatrixTupleIter it = {};
+		RG_MatrixTupleIter_attach(&it, remove_labels);
+
+		while(RG_MatrixTupleIter_next_BOOL(&it, &node_id, &label_id, NULL) == GrB_SUCCESS) {
+			if(node_id != prev_node_id && array_len(labels_ids) > 0) {
+				// update node's labels
+				Graph_RemoveNodeLabels(gc->g, prev_node_id, labels_ids,
+					array_len(labels_ids));
+				if(log == true) {
+					UndoLog_RemoveLabels(undo_log, prev_node_id, labels_ids,
+							array_len(labels_ids));
+					EffectsBuffer_AddRemoveLabelsEffect(eb, prev_node_id, labels_ids,
+							array_len(labels_ids));
+				}
+				array_clear(labels_ids);
+			}
+
+			const Schema *s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+
+			if(!Graph_IsNodeLabeled(gc->g, node_id, Schema_GetID(s))) {
+				// skip removal of none existing label
+				continue;
+			}
+
+			// append label id
+			array_append(labels_ids, Schema_GetID(s));
+			// remove node from index
+			Node n;
+			Graph_GetNode(gc->g, node_id, &n);
+			Schema_RemoveNodeFromIndices(s, &n);
+
+			prev_node_id = node_id;
+		}
+
+		if(array_len(labels_ids) > 0) {
+			// update node's labels
+			Graph_RemoveNodeLabels(gc->g, prev_node_id, labels_ids,
+				array_len(labels_ids));
+			if(log == true) {
+				UndoLog_RemoveLabels(undo_log, prev_node_id, labels_ids,
+						array_len(labels_ids));
+				EffectsBuffer_AddRemoveLabelsEffect(eb, prev_node_id, labels_ids,
+						array_len(labels_ids));
+			}
+			array_clear(labels_ids);
+		}
+	}
+
+	array_free(labels_ids);
 }
 
 Schema *AddSchema

@@ -119,7 +119,7 @@ void EffectsBuffer_AddEntityUpdateAttributeEffect
 void EffectsBuffer_AddLabelsEffect
 (
 	EffectsBuffer *buff,     // effect buffer
-	const Node *node,        // updated node
+	NodeID node_id,          // updated node id
 	const LabelID *lbl_ids,  // added labels
 	size_t lbl_count         // number of removed labels
 );
@@ -128,7 +128,7 @@ void EffectsBuffer_AddLabelsEffect
 void EffectsBuffer_AddRemoveLabelsEffect
 (
 	EffectsBuffer *buff,     // effect buffer
-	const Node *node,        // updated node
+	NodeID node_id,          // updated node id
 	const LabelID *lbl_ids,  // removed labels
 	size_t lbl_count         // number of removed labels
 );

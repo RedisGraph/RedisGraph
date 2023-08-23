@@ -51,6 +51,8 @@ static void _UpdateProperties
 (
 	dict *node_pending_updates,
 	dict *edge_pending_updates,
+	RG_Matrix *add_labels,
+	RG_Matrix *remove_labels,
 	raxIterator updates,
 	Record *records,
 	uint record_count
@@ -65,7 +67,7 @@ static void _UpdateProperties
 		while(raxNext(&updates)) {
 			EntityUpdateEvalCtx *ctx = updates.data;
 			EvalEntityUpdates(gc, node_pending_updates, edge_pending_updates,
-					r, ctx, true);
+					add_labels, remove_labels, r, ctx, true);
 		}
 	}
 }
@@ -129,8 +131,6 @@ OpBase *NewMergeOp
 
 	op->on_match             = on_match;
 	op->on_create            = on_create;
-	op->node_pending_updates = NULL;
-	op->edge_pending_updates = NULL;
 	
 	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume,
@@ -377,7 +377,8 @@ static Record MergeConsume
 	// if we are setting properties with ON MATCH, compute all pending updates
 	if(op->on_match && match_count > 0) {
 		_UpdateProperties(op->node_pending_updates, op->edge_pending_updates,
-			op->on_match_it, op->output_records, match_count);
+			&op->add_labels, &op->remove_labels, op->on_match_it,
+			op->output_records, match_count);
 	}
 
 	if(must_create_records) {
@@ -402,8 +403,9 @@ static Record MergeConsume
 		// to compute these changes before locking ?
 		if(op->on_create) {
 			_UpdateProperties(op->node_pending_updates,
-				op->edge_pending_updates, op->on_create_it,
-				op->output_records + match_count, create_count);
+				op->edge_pending_updates, &op->add_labels, &op->remove_labels,
+				op->on_create_it, op->output_records + match_count,
+				create_count);
 		}
 	}
 
@@ -416,9 +418,11 @@ static Record MergeConsume
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		// lock everything
 		QueryCtx_LockForCommit(); {
-			CommitUpdates(gc, op->node_pending_updates, ENTITY_NODE);
+			CommitUpdates(gc, op->node_pending_updates, op->add_labels,
+				op->remove_labels, ENTITY_NODE);
 			if(likely(!ErrorCtx_EncounteredError())) {
-				CommitUpdates(gc, op->edge_pending_updates, ENTITY_EDGE);
+				CommitUpdates(gc, op->edge_pending_updates, NULL, NULL,
+					ENTITY_EDGE);
 			}
 		}
 	}
@@ -489,6 +493,14 @@ static void MergeFree
 		raxFreeWithCallback(op->on_create, (void(*)(void *))UpdateCtx_Free);
 		op->on_create = NULL;
 		raxStop(&op->on_create_it);
+	}
+
+	if(op->add_labels) {
+		RG_Matrix_free(&op->add_labels);
+	}
+
+	if(op->remove_labels) {
+		RG_Matrix_free(&op->remove_labels);
 	}
 }
 

@@ -13,8 +13,6 @@
 typedef struct {
 	GraphEntity *ge;            // entity to be updated
 	AttributeSet attributes;    // attributes to update
-	const char **add_labels;    // labels to add to the node
-	const char **remove_labels; // labels to remove from the node
 } PendingUpdateCtx;
 
 // commit all updates described in the array of pending updates
@@ -22,6 +20,8 @@ void CommitUpdates
 (
 	GraphContext *gc,
 	dict *updates,
+	RG_Matrix add_labels,
+	RG_Matrix remove_labels,
 	EntityType type
 );
 
@@ -33,6 +33,8 @@ void EvalEntityUpdates
 	GraphContext *gc,
 	dict *node_updates,
 	dict *edge_updates,
+	RG_Matrix *add_labels,
+	RG_Matrix *remove_labels,
 	const Record r,
 	const EntityUpdateEvalCtx *ctx,
 	bool allow_null

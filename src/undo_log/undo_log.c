@@ -163,11 +163,13 @@ static void _UndoLog_Rollback_Set_Labels
 		UndoLabelsOp *update_labels_op = &(op->labels_op);
 		uint         labels_count      = update_labels_op->labels_count;
 
-		Graph_RemoveNodeLabels(g, update_labels_op->node.id,
+		Graph_RemoveNodeLabels(g, update_labels_op->node_id,
 				update_labels_op->label_ids, labels_count);
 
-		_index_delete_node_with_labels(ctx, &(update_labels_op->node),
-				update_labels_op->label_ids, labels_count);
+		Node n;
+		Graph_GetNode(g, update_labels_op->node_id, &n);
+		_index_delete_node_with_labels(ctx, &n, update_labels_op->label_ids,
+				labels_count);
 
 		array_free(update_labels_op->label_ids);
 	}
@@ -185,11 +187,13 @@ static void _UndoLog_Rollback_Remove_Labels
 		UndoLabelsOp *update_labels_op = &(op->labels_op);
 		uint         labels_count      = update_labels_op->labels_count;
 
-		Graph_LabelNode(g, update_labels_op->node.id,
+		Graph_LabelNode(g, update_labels_op->node_id,
 				update_labels_op->label_ids, labels_count);
 
-		_index_node_with_labels(ctx, &(update_labels_op->node),
-				update_labels_op->label_ids, labels_count);
+		Node n;
+		Graph_GetNode(g, update_labels_op->node_id, &n);
+		_index_node_with_labels(ctx, &n, update_labels_op->label_ids,
+				labels_count);
 
 		array_free(update_labels_op->label_ids);
 	}
@@ -469,17 +473,17 @@ void UndoLog_UpdateEntity
 void UndoLog_AddLabels
 (
 	UndoLog log,                 // undo log
-	Node *node,                  // updated node
+	NodeID node_id,              // updated node id
 	LabelID *label_ids,          // added labels
 	size_t labels_count          // number of removed labels
 ) {
-	ASSERT(node != NULL);
+	ASSERT(node_id != INVALID_ENTITY_ID);
 	ASSERT(label_ids != NULL);
 
 	UndoOp op;
 
 	op.type = UNDO_SET_LABELS;
-	op.labels_op.node = *node;
+	op.labels_op.node_id = node_id;
 	op.labels_op.label_ids = array_new(LabelID, labels_count);
 	memcpy(op.labels_op.label_ids, label_ids, sizeof(LabelID)*labels_count);
 	op.labels_op.labels_count = labels_count;
@@ -490,17 +494,17 @@ void UndoLog_AddLabels
 void UndoLog_RemoveLabels
 (
 	UndoLog log,                 // undo log
-	Node *node,                  // updated node
+	NodeID node_id,              // updated node id
 	LabelID *label_ids,          // removed labels
 	size_t labels_count          // number of removed labels
 ) {
-	ASSERT(node != NULL);
+	ASSERT(node_id != INVALID_ENTITY_ID);
 	ASSERT(label_ids != NULL);
 
 	UndoOp op;
 
 	op.type = UNDO_REMOVE_LABELS;
-	op.labels_op.node = *node;
+	op.labels_op.node_id = node_id;
 	op.labels_op.label_ids = array_new(LabelID, labels_count);
 	memcpy(op.labels_op.label_ids, label_ids, sizeof(LabelID)*labels_count);
 	op.labels_op.labels_count = labels_count;
