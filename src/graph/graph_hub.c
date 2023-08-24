@@ -439,10 +439,10 @@ void UpdateNodeLabels
 
 void UpdateLabels
 (
-	GraphContext *gc,            // graph context to update the entity
-	GrB_Matrix add_labels,       // labels to add to nodes
-	GrB_Matrix remove_labels,    // labels to remove from nodes
-	bool log                     // log this operation in undo-log
+	GraphContext *gc,          // graph context to update the entity
+	GrB_Matrix add_labels,     // labels to add to nodes
+	GrB_Matrix remove_labels,  // labels to remove from nodes
+	bool log                   // log this operation in undo-log
 ) {
 	ASSERT(gc != NULL);
 

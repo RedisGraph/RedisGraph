@@ -18,11 +18,11 @@ typedef struct {
 // commit all updates described in the array of pending updates
 void CommitUpdates
 (
-	GraphContext *gc,
-	dict *updates,
-	GrB_Matrix add_labels,
-	GrB_Matrix remove_labels,
-	EntityType type
+	GraphContext *gc,          // graph context
+	dict *updates,             // array of pending updates
+	GrB_Matrix add_labels,     // matrix of labels to add
+	GrB_Matrix remove_labels,  // matrix of labels to remove
+	EntityType type            // type of entity to update
 );
 
 // build pending updates in the 'updates' array to match all
@@ -30,14 +30,14 @@ void CommitUpdates
 // NULL values are allowed in SET clauses but not in MERGE clauses
 void EvalEntityUpdates
 (
-	GraphContext *gc,
-	dict *node_updates,
-	dict *edge_updates,
-	GrB_Matrix *add_labels,
-	GrB_Matrix *remove_labels,
-	const Record r,
-	const EntityUpdateEvalCtx *ctx,
-	bool allow_null
+	GraphContext *gc,                 // graph context
+	dict *node_updates,               // array of pending updates for nodes
+	dict *edge_updates,               // array of pending updates for edges
+	GrB_Matrix *add_labels,           // matrix of labels to add
+	GrB_Matrix *remove_labels,        // matrix of labels to remove
+	const Record r,                   // current record
+	const EntityUpdateEvalCtx *ctx,   // update context
+	bool allow_null                   // allow NULL values in SET clauses
 );
 
 void PendingUpdateCtx_Free

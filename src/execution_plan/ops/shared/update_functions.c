@@ -61,6 +61,7 @@ void CommitUpdates
 	dictIterator *it = HashTableGetIterator(updates);
 
 	if(type == ENTITY_NODE) {
+		// updating nodes labels
 		UpdateLabels(gc, add_labels, remove_labels, true);
 	}
 

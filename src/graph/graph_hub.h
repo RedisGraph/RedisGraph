@@ -124,10 +124,10 @@ void UpdateNodeLabels
 // updates the relevant indexes of the entity
 void UpdateLabels
 (
-	GraphContext *gc,            // graph context to update the entity
-	GrB_Matrix add_labels,       // labels to add to nodes
-	GrB_Matrix remove_labels,    // labels to remove from nodes
-	bool log                     // log this operation in undo-log
+	GraphContext *gc,          // graph context to update the entity
+	GrB_Matrix add_labels,     // labels to add to nodes
+	GrB_Matrix remove_labels,  // labels to remove from nodes
+	bool log                   // log this operation in undo-log
 );
 
 // Adds a schema to the graph. The schema is tracked by the undo log
