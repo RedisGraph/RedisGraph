@@ -475,6 +475,12 @@ void UpdateLabels
 				label_id = GxB_rowIterator_getColIndex(it);
 				if(!Graph_IsNodeLabeled(gc->g, node_id, label_id)) {
 					array_append(labels_ids, label_id);
+					Schema *s = GraphContext_GetSchemaByID(gc, label_id,
+							SCHEMA_NODE);
+					ASSERT(s != NULL);
+					Node node;
+					Graph_GetNode(gc->g, node_id, &node);
+					Schema_AddNodeToIndices(s, &node);
 				}
 				info = GxB_rowIterator_nextCol(it);
 			}
@@ -509,6 +515,12 @@ void UpdateLabels
 				label_id = GxB_rowIterator_getColIndex(it);
 				if(Graph_IsNodeLabeled(gc->g, node_id, label_id)) {
 					array_append(labels_ids, label_id);
+					Schema *s = GraphContext_GetSchemaByID(gc, label_id,
+							SCHEMA_NODE);
+					ASSERT(s != NULL);
+					Node node;
+					Graph_GetNode(gc->g, node_id, &node);
+					Schema_RemoveNodeFromIndices(s, &node);
 				}
 				info = GxB_rowIterator_nextCol(it);
 			}
