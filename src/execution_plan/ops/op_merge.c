@@ -51,8 +51,8 @@ static void _UpdateProperties
 (
 	dict *node_pending_updates,
 	dict *edge_pending_updates,
-	RG_Matrix *add_labels,
-	RG_Matrix *remove_labels,
+	GrB_Matrix *add_labels,
+	GrB_Matrix *remove_labels,
 	raxIterator updates,
 	Record *records,
 	uint record_count
@@ -434,6 +434,14 @@ static Record MergeConsume
 	HashTableEmpty(op->node_pending_updates, NULL);
 	HashTableEmpty(op->edge_pending_updates, NULL);
 
+	if(op->add_labels) {
+		GrB_Matrix_free(&op->add_labels);
+	}
+
+	if(op->remove_labels) {
+		GrB_Matrix_free(&op->remove_labels);
+	}
+
 	return _handoff(op);
 }
 
@@ -496,11 +504,11 @@ static void MergeFree
 	}
 
 	if(op->add_labels) {
-		RG_Matrix_free(&op->add_labels);
+		GrB_Matrix_free(&op->add_labels);
 	}
 
 	if(op->remove_labels) {
-		RG_Matrix_free(&op->remove_labels);
+		GrB_Matrix_free(&op->remove_labels);
 	}
 }
 

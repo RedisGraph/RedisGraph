@@ -118,6 +118,14 @@ static Record UpdateConsume
 	HashTableEmpty(op->node_updates, NULL);
 	HashTableEmpty(op->edge_updates, NULL);
 
+	if(op->add_labels) {
+		GrB_Matrix_free(&op->add_labels);
+	}
+
+	if(op->remove_labels) {
+		GrB_Matrix_free(&op->remove_labels);
+	}
+
 	op->updates_committed = true;
 
 	return _handoff(op);
@@ -136,6 +144,14 @@ static OpResult UpdateReset(OpBase *ctx) {
 
 	HashTableEmpty(op->node_updates, NULL);
 	HashTableEmpty(op->edge_updates, NULL);
+
+	if(op->add_labels) {
+		GrB_Matrix_free(&op->add_labels);
+	}
+
+	if(op->remove_labels) {
+		GrB_Matrix_free(&op->remove_labels);
+	}
 
 	op->updates_committed = false;
 	return OP_OK;
@@ -170,10 +186,10 @@ static void UpdateFree(OpBase *ctx) {
 	raxStop(&op->it);
 
 	if(op->add_labels) {
-		RG_Matrix_free(&op->add_labels);
+		GrB_Matrix_free(&op->add_labels);
 	}
 
 	if(op->remove_labels) {
-		RG_Matrix_free(&op->remove_labels);
+		GrB_Matrix_free(&op->remove_labels);
 	}
 }

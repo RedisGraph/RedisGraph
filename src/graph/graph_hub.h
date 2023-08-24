@@ -118,11 +118,15 @@ void UpdateNodeLabels
 	bool log                     // log this operation in undo-log
 );
 
+// this function adds/removes the labels given in the GrB_Matrix
+// i is node id j is label id
+// adds node to the label matrix
+// updates the relevant indexes of the entity
 void UpdateLabels
 (
 	GraphContext *gc,            // graph context to update the entity
-	RG_Matrix add_labels,        // labels to add to nodes
-	RG_Matrix remove_labels,     // labels to remove from nodes
+	GrB_Matrix add_labels,       // labels to add to nodes
+	GrB_Matrix remove_labels,    // labels to remove from nodes
 	bool log                     // log this operation in undo-log
 );
 

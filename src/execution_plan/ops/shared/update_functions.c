@@ -43,8 +43,8 @@ void CommitUpdates
 (
 	GraphContext *gc,
 	dict *updates,
-	RG_Matrix add_labels,
-	RG_Matrix remove_labels,
+	GrB_Matrix add_labels,
+	GrB_Matrix remove_labels,
 	EntityType type
 ) {
 	ASSERT(gc      != NULL);
@@ -119,8 +119,8 @@ void EvalEntityUpdates
 	GraphContext *gc,
 	dict *node_updates,
 	dict *edge_updates,
-	RG_Matrix *add_labels,
-	RG_Matrix *remove_labels,
+	GrB_Matrix *add_labels,
+	GrB_Matrix *remove_labels,
 	const Record r,
 	const EntityUpdateEvalCtx *ctx,
 	bool allow_null
@@ -184,13 +184,19 @@ void EvalEntityUpdates
 	}
 
 	if(array_len(ctx->add_labels) > 0 && *add_labels == NULL) {
-		RG_Matrix_new(add_labels, GrB_BOOL, Graph_RequiredMatrixDim(gc->g),
+		GrB_Matrix_new(add_labels, GrB_BOOL, Graph_RequiredMatrixDim(gc->g),
 			Graph_RequiredMatrixDim(gc->g));
+		GrB_Info info;
+		info = GxB_set(*add_labels, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
+		ASSERT(info == GrB_SUCCESS);
 	}
 
 	if(array_len(ctx->remove_labels) > 0 && *remove_labels == NULL) {
-		RG_Matrix_new(remove_labels, GrB_BOOL, Graph_RequiredMatrixDim(gc->g),
+		GrB_Matrix_new(remove_labels, GrB_BOOL, Graph_RequiredMatrixDim(gc->g),
 			Graph_RequiredMatrixDim(gc->g));
+		GrB_Info info;
+		info = GxB_set(*remove_labels, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
+		ASSERT(info == GrB_SUCCESS);
 	}
 	
 	for (uint i = 0; i < array_len(ctx->add_labels); i++) {
@@ -201,18 +207,18 @@ void EvalEntityUpdates
 		}
 
 		int schema_id = Schema_GetID(s);
-		RG_Matrix_setElement_BOOL(*add_labels, ENTITY_GET_ID(entity), schema_id);
+		GrB_Matrix_setElement_BOOL(*add_labels, true, ENTITY_GET_ID(entity), schema_id);
 	}
 
 	for (uint i = 0; i < array_len(ctx->remove_labels); i++) {
 		const char *label = ctx->remove_labels[i];
 		const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 		if(s == NULL) {
-			s = AddSchema(gc, label, SCHEMA_NODE, true);
+			continue;
 		}
 
 		int schema_id = Schema_GetID(s);
-		RG_Matrix_setElement_BOOL(*remove_labels, ENTITY_GET_ID(entity), schema_id);
+		GrB_Matrix_setElement_BOOL(*remove_labels, true, ENTITY_GET_ID(entity), schema_id);
 	}
 
 	AttributeSet *old_attrs = entity->attributes;

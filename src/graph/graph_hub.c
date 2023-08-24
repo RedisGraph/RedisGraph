@@ -440,10 +440,16 @@ void UpdateNodeLabels
 void UpdateLabels
 (
 	GraphContext *gc,            // graph context to update the entity
-	RG_Matrix add_labels,        // labels to add to nodes
-	RG_Matrix remove_labels,     // labels to remove from nodes
+	GrB_Matrix add_labels,       // labels to add to nodes
+	GrB_Matrix remove_labels,    // labels to remove from nodes
 	bool log                     // log this operation in undo-log
 ) {
+	ASSERT(gc != NULL);
+
+	if(add_labels == NULL && remove_labels == NULL) {
+		return;
+	}
+
 	EffectsBuffer *eb = NULL; 
 	UndoLog undo_log  = NULL;
 
@@ -453,103 +459,73 @@ void UpdateLabels
 	}
 
 	int *labels_ids = array_new(int, 0);
-	GrB_Index prev_node_id = 0;
 	GrB_Index node_id;
 	GrB_Index label_id;
 	if(add_labels != NULL) {
-		RG_MatrixTupleIter it = {};
-		RG_MatrixTupleIter_attach(&it, add_labels);
+		GxB_Iterator it;
+		GxB_Iterator_new(&it);
+		GrB_Info info = GxB_rowIterator_attach(it, add_labels, NULL);
+		ASSERT(info == GrB_SUCCESS);
+		info = GxB_rowIterator_seekRow(it, 0);
+		ASSERT(info == GrB_SUCCESS);
 
-		while(RG_MatrixTupleIter_next_BOOL(&it, &node_id, &label_id, NULL) == GrB_SUCCESS) {
-			if(node_id != prev_node_id && array_len(labels_ids) > 0) {
+		while(info != GxB_EXHAUSTED) {
+			node_id = GxB_rowIterator_getRowIndex(it);
+			while(info == GrB_SUCCESS) {
+				label_id = GxB_rowIterator_getColIndex(it);
+				if(!Graph_IsNodeLabeled(gc->g, node_id, label_id)) {
+					array_append(labels_ids, label_id);
+				}
+				info = GxB_rowIterator_nextCol(it);
+			}
+			if(array_len(labels_ids) > 0) {
 				// update node's labels
-				Graph_LabelNode(gc->g, prev_node_id, labels_ids,
-						array_len(labels_ids));
+				Graph_LabelNode(gc->g, node_id, labels_ids,
+					array_len(labels_ids));
 				if(log == true) {
-					UndoLog_AddLabels(undo_log, prev_node_id, labels_ids,
+					UndoLog_AddLabels(undo_log, node_id, labels_ids,
 							array_len(labels_ids));
-					EffectsBuffer_AddLabelsEffect(eb, prev_node_id, labels_ids,
+					EffectsBuffer_AddLabelsEffect(eb, node_id, labels_ids,
 							array_len(labels_ids));
 				}
 				array_clear(labels_ids);
 			}
-			bool node_labeled = Graph_IsNodeLabeled(gc->g, node_id, label_id);
-
-			if(!node_labeled) {
-				Schema *s = GraphContext_GetSchemaByID(gc, (int)label_id, SCHEMA_NODE);
-				// append label id
-				array_append(labels_ids, label_id);
-				// add to index
-				Node n;
-				Graph_GetNode(gc->g, node_id, &n);
-				Schema_AddNodeToIndices(s, &n);
-			}
-			prev_node_id = node_id;
+			info = GxB_rowIterator_nextRow(it);
 		}
-
-		if(array_len(labels_ids) > 0) {
-			// update node's labels
-			Graph_LabelNode(gc->g, prev_node_id, labels_ids,
-					array_len(labels_ids));
-			if(log == true) {
-				UndoLog_AddLabels(undo_log, prev_node_id, labels_ids,
-						array_len(labels_ids));
-				EffectsBuffer_AddLabelsEffect(eb, prev_node_id, labels_ids,
-						array_len(labels_ids));
-			}
-			array_clear(labels_ids);
-		}
+		GrB_free(&it);
 	}
 
 	if(remove_labels != NULL) {
 		array_clear(labels_ids);
-		prev_node_id = 0;
-		RG_MatrixTupleIter it = {};
-		RG_MatrixTupleIter_attach(&it, remove_labels);
+		GxB_Iterator it;
+		GxB_Iterator_new(&it);
+		GrB_Info info = GxB_rowIterator_attach(it, remove_labels, NULL);
+		ASSERT(info == GrB_SUCCESS);
+		info = GxB_rowIterator_seekRow(it, 0);
 
-		while(RG_MatrixTupleIter_next_BOOL(&it, &node_id, &label_id, NULL) == GrB_SUCCESS) {
-			if(node_id != prev_node_id && array_len(labels_ids) > 0) {
-				// update node's labels
-				Graph_RemoveNodeLabels(gc->g, prev_node_id, labels_ids,
-					array_len(labels_ids));
+		while(info != GxB_EXHAUSTED) {
+			node_id = GxB_rowIterator_getRowIndex(it);
+			while(info == GrB_SUCCESS) {
+				label_id = GxB_rowIterator_getColIndex(it);
+				if(Graph_IsNodeLabeled(gc->g, node_id, label_id)) {
+					array_append(labels_ids, label_id);
+				}
+				info = GxB_rowIterator_nextCol(it);
+			}
+			if(array_len(labels_ids) > 0) {
+				Graph_RemoveNodeLabels(gc->g, node_id, labels_ids,
+						array_len(labels_ids));
 				if(log == true) {
-					UndoLog_RemoveLabels(undo_log, prev_node_id, labels_ids,
+					UndoLog_RemoveLabels(undo_log, node_id, labels_ids,
 							array_len(labels_ids));
-					EffectsBuffer_AddRemoveLabelsEffect(eb, prev_node_id, labels_ids,
+					EffectsBuffer_AddRemoveLabelsEffect(eb, node_id, labels_ids,
 							array_len(labels_ids));
 				}
 				array_clear(labels_ids);
 			}
-
-			const Schema *s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
-
-			if(!Graph_IsNodeLabeled(gc->g, node_id, Schema_GetID(s))) {
-				// skip removal of none existing label
-				continue;
-			}
-
-			// append label id
-			array_append(labels_ids, Schema_GetID(s));
-			// remove node from index
-			Node n;
-			Graph_GetNode(gc->g, node_id, &n);
-			Schema_RemoveNodeFromIndices(s, &n);
-
-			prev_node_id = node_id;
+			info = GxB_rowIterator_nextRow(it);
 		}
-
-		if(array_len(labels_ids) > 0) {
-			// update node's labels
-			Graph_RemoveNodeLabels(gc->g, prev_node_id, labels_ids,
-				array_len(labels_ids));
-			if(log == true) {
-				UndoLog_RemoveLabels(undo_log, prev_node_id, labels_ids,
-						array_len(labels_ids));
-				EffectsBuffer_AddRemoveLabelsEffect(eb, prev_node_id, labels_ids,
-						array_len(labels_ids));
-			}
-			array_clear(labels_ids);
-		}
+		GrB_free(&it);
 	}
 
 	array_free(labels_ids);

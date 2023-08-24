@@ -21,8 +21,8 @@ typedef struct {
 	bool updates_committed;         // True if we've already committed updates and are now in handoff mode
 	dict *node_updates;             // Enqueued node updates
 	dict *edge_updates;             // Enqueued edge updates
-	RG_Matrix add_labels;           // Labels to add to nodes
-	RG_Matrix remove_labels;        // Labels to remove from nodes
+	GrB_Matrix add_labels;          // Labels to add to nodes
+	GrB_Matrix remove_labels;       // Labels to remove from nodes
 } OpUpdate;
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps);
