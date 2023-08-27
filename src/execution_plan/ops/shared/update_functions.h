@@ -20,7 +20,7 @@ typedef struct {
 	dict *edge_updates;        // Enqueued edge updates
 	GrB_Matrix add_labels;     // matrix of labels to add
 	GrB_Matrix remove_labels;  // matrix of labels to remove
-	rax *reserved_labels;       // labels to be reserved
+	Schema **reserved_labels;   // labels to be reserved
 } GraphUpdateCtx;
 
 // commit all updates described in the array of pending updates

@@ -108,14 +108,8 @@ void CommitUpdates
 	ASSERT(gc         != NULL);
 	ASSERT(update_ctx != NULL);
 
-	if(update_ctx->reserved_labels != NULL) {
-		raxIterator it;
-		raxStart(&it, update_ctx->reserved_labels);
-		raxSeek(&it, "^", NULL, 0);
-		while(raxNext(&it)) {
-			Schema *s = raxFind(update_ctx->reserved_labels, (unsigned char *)it.key, it.key_len);
-			AddSchema(gc, s->name, SCHEMA_NODE, true);
-		}
+	for(int i = 0; i < array_len(update_ctx->reserved_labels); i ++) {
+		AddSchema(gc, update_ctx->reserved_labels[i]->name, SCHEMA_NODE, true);
 	}
 
 	// updating nodes labels
@@ -478,15 +472,18 @@ Schema *GraphUpdateCtx_ReserveLabel
 	ASSERT(label != NULL);
 
 	if(ctx->reserved_labels == NULL) {
-		ctx->reserved_labels = raxNew();
+		ctx->reserved_labels = array_new(Schema *, 1);
 	}
 
-	Schema *s = raxFind(ctx->reserved_labels, (unsigned char *)label, strlen(label));
-	if(s == raxNotFound) {
-		int schema_id = GraphContext_SchemaCount(gc, SCHEMA_NODE) + raxSize(ctx->reserved_labels);
-		s = Schema_New(SCHEMA_NODE, schema_id, label);
-		raxInsert(ctx->reserved_labels, (unsigned char *)label, strlen(label), s, NULL);
+	for(int i = 0; i < array_len(ctx->reserved_labels); i++) {
+		if(strcmp(ctx->reserved_labels[i]->name, label) == 0) {
+			return ctx->reserved_labels[i];
+		}
 	}
+	
+	int schema_id = GraphContext_SchemaCount(gc, SCHEMA_NODE) + array_len(ctx->reserved_labels);
+	Schema *s = Schema_New(SCHEMA_NODE, schema_id, label);
+	array_append(ctx->reserved_labels, s);
 
 	return s;
 }
@@ -514,7 +511,7 @@ void GraphUpdateCtx_Free
 	}
 
 	if(ctx->reserved_labels) {
-		raxFreeWithCallback(ctx->reserved_labels, (void (*)(void*))Schema_Free);
+		array_free_cb(ctx->reserved_labels, Schema_Free);
 		ctx->reserved_labels = NULL;
 	}
 }
