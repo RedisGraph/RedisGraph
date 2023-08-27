@@ -512,4 +512,9 @@ void GraphUpdateCtx_Free
 	if(ctx->remove_labels) {
 		GrB_Matrix_free(&ctx->remove_labels);
 	}
+
+	if(ctx->reserved_labels) {
+		raxFree(ctx->reserved_labels);
+		ctx->reserved_labels = NULL;
+	}
 }
