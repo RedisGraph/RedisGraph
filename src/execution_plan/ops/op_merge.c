@@ -367,8 +367,7 @@ static Record MergeConsume
 	// update
 	//--------------------------------------------------------------------------
 
-	if(HashTableElemCount(op->update_ctx.node_updates) > 0 ||
-	   HashTableElemCount(op->update_ctx.edge_updates) > 0) {
+	if(GraphUpdateCtx_HasUpdates(&op->update_ctx)) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		// lock everything
 		QueryCtx_LockForCommit(); {

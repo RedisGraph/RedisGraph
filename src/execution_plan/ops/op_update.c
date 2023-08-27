@@ -75,11 +75,8 @@ static Record UpdateConsume
 
 		array_append(op->records, r);
 	}
-	
-	uint node_updates_count = HashTableElemCount(op->update_ctx.node_updates);
-	uint edge_updates_count = HashTableElemCount(op->update_ctx.edge_updates);
 
-	if(node_updates_count > 0 || edge_updates_count > 0) {
+	if(GraphUpdateCtx_HasUpdates(&op->update_ctx)) {
 		// done reading; we're not going to call Consume any longer
 		// there might be operations like "Index Scan" that need to free the
 		// index R/W lock - as such, free all ExecutionPlan operations up the chain.

@@ -488,6 +488,17 @@ Schema *GraphUpdateCtx_ReserveLabel
 	return s;
 }
 
+bool GraphUpdateCtx_HasUpdates
+(
+	GraphUpdateCtx *ctx
+) {
+	ASSERT(ctx != NULL);
+	return HashTableElemCount(ctx->node_updates) > 0 ||
+		   HashTableElemCount(ctx->edge_updates) > 0 ||
+		   ctx->add_labels != NULL ||
+		   ctx->remove_labels != NULL;
+}
+
 void GraphUpdateCtx_Free
 (
 	GraphUpdateCtx *ctx

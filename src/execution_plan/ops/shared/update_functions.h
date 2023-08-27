@@ -59,6 +59,11 @@ Schema *GraphUpdateCtx_ReserveLabel
 	const char *label
 );
 
+bool GraphUpdateCtx_HasUpdates
+(
+	GraphUpdateCtx *ctx
+);
+
 void GraphUpdateCtx_Free
 (
 	GraphUpdateCtx *ctx
