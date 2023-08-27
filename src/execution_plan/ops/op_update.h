@@ -19,10 +19,7 @@ typedef struct {
 	GraphContext *gc;
 	rax *update_ctxs;               // Entities to update and their expressions
 	bool updates_committed;         // True if we've already committed updates and are now in handoff mode
-	dict *node_updates;             // Enqueued node updates
-	dict *edge_updates;             // Enqueued edge updates
-	GrB_Matrix add_labels;          // Labels to add to nodes
-	GrB_Matrix remove_labels;       // Labels to remove from nodes
+	GraphUpdateCtx update_ctx;      // Update context
 } OpUpdate;
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps);

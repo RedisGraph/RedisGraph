@@ -28,10 +28,7 @@ typedef struct {
 	rax *on_create;                 // Updates to be performed on creation
 	raxIterator on_match_it;        // Iterator for traversing ON MATCH update contexts
 	raxIterator on_create_it;       // Iterator for traversing ON CREATE update contexts
-	dict *node_pending_updates;     // Pending updates to apply, generated
-	dict *edge_pending_updates;     // Pending updates to apply, generated
-	GrB_Matrix add_labels;          // Labels to add to nodes
-	GrB_Matrix remove_labels;       // Labels to remove from nodes
+	GraphUpdateCtx update_ctx;      // Update context
 } OpMerge;
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, rax *on_match, rax *on_create);

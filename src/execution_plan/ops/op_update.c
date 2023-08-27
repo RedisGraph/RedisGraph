@@ -27,36 +27,14 @@ static Record _handoff(OpUpdate *op) {
 	return NULL;
 }
 
-// fake hash function
-// hash of key is simply key
-static uint64_t _id_hash
-(
-	const void *key
-) {
-	return ((uint64_t)key);
-}
-
-// hashtable entry free callback
-static void freeCallback
-(
-	dict *d,
-	void *val
-) {
-	PendingUpdateCtx_Free((PendingUpdateCtx*)val);
-}
-
-// hashtable callbacks
-static dictType _dt = { _id_hash, NULL, NULL, NULL, NULL, freeCallback, NULL,
-	NULL, NULL, NULL};
-
 OpBase *NewUpdateOp(const ExecutionPlan *plan, rax *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->gc                = QueryCtx_GetGraphCtx();
 	op->records           = array_new(Record, 64);
 	op->update_ctxs       = update_exps;
-	op->node_updates      = HashTableCreate(&_dt);
-	op->edge_updates      = HashTableCreate(&_dt);
 	op->updates_committed = false;
+
+	GraphUpdateCtx_Init(&op->update_ctx);
 
 	// set our op operations
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", NULL, UpdateConsume,
@@ -92,15 +70,14 @@ static Record UpdateConsume
 		raxSeek(&op->it, "^", NULL, 0);
 		while(raxNext(&op->it)) {
 			EntityUpdateEvalCtx *ctx = op->it.data;
-			EvalEntityUpdates(op->gc, op->node_updates, op->edge_updates,
-				&op->add_labels, &op->remove_labels, r, ctx, true);
+			EvalEntityUpdates(op->gc, &op->update_ctx, r, ctx, true);
 		}
 
 		array_append(op->records, r);
 	}
 	
-	uint node_updates_count = HashTableElemCount(op->node_updates);
-	uint edge_updates_count = HashTableElemCount(op->edge_updates);
+	uint node_updates_count = HashTableElemCount(op->update_ctx.node_updates);
+	uint edge_updates_count = HashTableElemCount(op->update_ctx.edge_updates);
 
 	if(node_updates_count > 0 || edge_updates_count > 0) {
 		// done reading; we're not going to call Consume any longer
@@ -111,19 +88,18 @@ static Record UpdateConsume
 		// lock everything
 		QueryCtx_LockForCommit();
 
-		CommitUpdates(op->gc, op->node_updates, op->add_labels, op->remove_labels, ENTITY_NODE);
-		CommitUpdates(op->gc, op->edge_updates, NULL, NULL, ENTITY_EDGE);
+		CommitUpdates(op->gc, &op->update_ctx);
 	}
 
-	HashTableEmpty(op->node_updates, NULL);
-	HashTableEmpty(op->edge_updates, NULL);
+	HashTableEmpty(op->update_ctx.node_updates, NULL);
+	HashTableEmpty(op->update_ctx.edge_updates, NULL);
 
-	if(op->add_labels) {
-		GrB_Matrix_free(&op->add_labels);
+	if(op->update_ctx.add_labels) {
+		GrB_Matrix_free(&op->update_ctx.add_labels);
 	}
 
-	if(op->remove_labels) {
-		GrB_Matrix_free(&op->remove_labels);
+	if(op->update_ctx.remove_labels) {
+		GrB_Matrix_free(&op->update_ctx.remove_labels);
 	}
 
 	op->updates_committed = true;
@@ -142,15 +118,15 @@ static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
-	HashTableEmpty(op->node_updates, NULL);
-	HashTableEmpty(op->edge_updates, NULL);
+	HashTableEmpty(op->update_ctx.node_updates, NULL);
+	HashTableEmpty(op->update_ctx.edge_updates, NULL);
 
-	if(op->add_labels) {
-		GrB_Matrix_free(&op->add_labels);
+	if(op->update_ctx.add_labels) {
+		GrB_Matrix_free(&op->update_ctx.add_labels);
 	}
 
-	if(op->remove_labels) {
-		GrB_Matrix_free(&op->remove_labels);
+	if(op->update_ctx.remove_labels) {
+		GrB_Matrix_free(&op->update_ctx.remove_labels);
 	}
 
 	op->updates_committed = false;
@@ -160,15 +136,7 @@ static OpResult UpdateReset(OpBase *ctx) {
 static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
-	if(op->node_updates) {
-		HashTableRelease(op->node_updates);
-		op->node_updates = NULL;
-	}
-
-	if(op->edge_updates) {
-		HashTableRelease(op->edge_updates);
-		op->edge_updates = NULL;
-	}
+	GraphUpdateCtx_Free(&op->update_ctx);
 
 	// free each update context
 	if(op->update_ctxs) {
@@ -184,12 +152,4 @@ static void UpdateFree(OpBase *ctx) {
 	}
 
 	raxStop(&op->it);
-
-	if(op->add_labels) {
-		GrB_Matrix_free(&op->add_labels);
-	}
-
-	if(op->remove_labels) {
-		GrB_Matrix_free(&op->remove_labels);
-	}
 }

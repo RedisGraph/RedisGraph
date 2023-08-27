@@ -15,14 +15,19 @@ typedef struct {
 	AttributeSet attributes;    // attributes to update
 } PendingUpdateCtx;
 
+typedef struct {
+	dict *node_updates;        // Enqueued node updates
+	dict *edge_updates;        // Enqueued edge updates
+	GrB_Matrix add_labels;     // matrix of labels to add
+	GrB_Matrix remove_labels;  // matrix of labels to remove
+	rax *reserved_labels;       // labels to be reserved
+} GraphUpdateCtx;
+
 // commit all updates described in the array of pending updates
 void CommitUpdates
 (
-	GraphContext *gc,          // graph context
-	dict *updates,             // array of pending updates
-	GrB_Matrix add_labels,     // matrix of labels to add
-	GrB_Matrix remove_labels,  // matrix of labels to remove
-	EntityType type            // type of entity to update
+	GraphContext *gc,           // graph context
+	GraphUpdateCtx *update_ctx  // update context
 );
 
 // build pending updates in the 'updates' array to match all
@@ -31,10 +36,7 @@ void CommitUpdates
 void EvalEntityUpdates
 (
 	GraphContext *gc,                 // graph context
-	dict *node_updates,               // array of pending updates for nodes
-	dict *edge_updates,               // array of pending updates for edges
-	GrB_Matrix *add_labels,           // matrix of labels to add
-	GrB_Matrix *remove_labels,        // matrix of labels to remove
+	GraphUpdateCtx *update_ctx,       // update context
 	const Record r,                   // current record
 	const EntityUpdateEvalCtx *ctx,   // update context
 	bool allow_null                   // allow NULL values in SET clauses
@@ -45,3 +47,19 @@ void PendingUpdateCtx_Free
 	PendingUpdateCtx *ctx
 );
 
+void GraphUpdateCtx_Init
+(
+	GraphUpdateCtx *ctx
+);
+
+Schema *GraphUpdateCtx_ReserveLabel
+(
+	GraphUpdateCtx *ctx,
+	GraphContext *gc,
+	const char *label
+);
+
+void GraphUpdateCtx_Free
+(
+	GraphUpdateCtx *ctx
+);

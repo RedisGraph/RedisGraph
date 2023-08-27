@@ -38,19 +38,12 @@ static bool _ValidateAttrType
 	return true;
 }
 
-// commits delayed updates
-void CommitUpdates
+void CommitProperties
 (
-	GraphContext *gc,
 	dict *updates,
-	GrB_Matrix add_labels,
-	GrB_Matrix remove_labels,
-	EntityType type
+	GraphContext *gc,
+	GraphEntityType type
 ) {
-	ASSERT(gc      != NULL);
-	ASSERT(updates != NULL);
-	ASSERT(type    != ENTITY_UNKNOWN);
-
 	uint update_count         = HashTableElemCount(updates);
 	bool constraint_violation = false;
 
@@ -60,19 +53,13 @@ void CommitUpdates
 	dictEntry *entry;
 	dictIterator *it = HashTableGetIterator(updates);
 
-	if(type == ENTITY_NODE) {
-		// updating nodes labels
-		UpdateLabels(gc, add_labels, remove_labels, true);
-	}
-
 	while((entry = HashTableNext(it)) != NULL) {
 		PendingUpdateCtx *update = HashTableGetVal(entry);
 
 		AttributeSet_PersistValues(update->attributes);
 		
 		// update the attributes on the graph entity
-		UpdateEntityProperties(gc, update->ge, update->attributes,
-				type == ENTITY_NODE ? GETYPE_NODE : GETYPE_EDGE, true);
+		UpdateEntityProperties(gc, update->ge, update->attributes, type, true);
 		update->attributes = NULL;
 
 		//----------------------------------------------------------------------
@@ -112,16 +99,39 @@ void CommitUpdates
 	HashTableReleaseIterator(it);
 }
 
+// commits delayed updates
+void CommitUpdates
+(
+	GraphContext *gc,
+	GraphUpdateCtx *update_ctx
+) {
+	ASSERT(gc         != NULL);
+	ASSERT(update_ctx != NULL);
+
+	if(update_ctx->reserved_labels != NULL) {
+		raxIterator it;
+		raxStart(&it, update_ctx->reserved_labels);
+		raxSeek(&it, "^", NULL, 0);
+		while(raxNext(&it)) {
+			Schema *s = raxFind(update_ctx->reserved_labels, (unsigned char *)it.key, it.key_len);
+			AddSchema(gc, s->name, SCHEMA_NODE, true);
+		}
+	}
+
+	// updating nodes labels
+	UpdateLabels(gc, update_ctx->add_labels, update_ctx->remove_labels, true);
+
+	CommitProperties(update_ctx->node_updates, gc, GETYPE_NODE);
+	CommitProperties(update_ctx->edge_updates, gc, GETYPE_EDGE);
+}
+
 // build pending updates in the 'updates' array to match all
 // AST-level updates described in the context
 // NULL values are allowed in SET clauses but not in MERGE clauses
 void EvalEntityUpdates
 (
 	GraphContext *gc,
-	dict *node_updates,
-	dict *edge_updates,
-	GrB_Matrix *add_labels,
-	GrB_Matrix *remove_labels,
+	GraphUpdateCtx *update_ctx,
 	const Record r,
 	const EntityUpdateEvalCtx *ctx,
 	bool allow_null
@@ -163,10 +173,10 @@ void EvalEntityUpdates
 	dict *updates;
 	GraphEntityType entity_type;
 	if(t == REC_TYPE_NODE) {
-		updates = node_updates;
+		updates = update_ctx->node_updates;
 		entity_type = GETYPE_NODE;
 	} else {
-		updates = edge_updates;
+		updates = update_ctx->edge_updates;
 		entity_type = GETYPE_EDGE;
 	}
 
@@ -184,19 +194,19 @@ void EvalEntityUpdates
 		update = (PendingUpdateCtx *)HashTableGetVal(entry);
 	}
 
-	if(array_len(ctx->add_labels) > 0 && *add_labels == NULL) {
-		GrB_Matrix_new(add_labels, GrB_BOOL, Graph_RequiredMatrixDim(gc->g),
-			Graph_RequiredMatrixDim(gc->g));
+	if(array_len(ctx->add_labels) > 0 && update_ctx->add_labels == NULL) {
+		GrB_Matrix_new(&update_ctx->add_labels, GrB_BOOL,
+			Graph_RequiredMatrixDim(gc->g), Graph_RequiredMatrixDim(gc->g));
 		GrB_Info info;
-		info = GxB_set(*add_labels, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
+		info = GxB_set(update_ctx->add_labels, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
 		ASSERT(info == GrB_SUCCESS);
 	}
 
-	if(array_len(ctx->remove_labels) > 0 && *remove_labels == NULL) {
-		GrB_Matrix_new(remove_labels, GrB_BOOL, Graph_RequiredMatrixDim(gc->g),
-			Graph_RequiredMatrixDim(gc->g));
+	if(array_len(ctx->remove_labels) > 0 && update_ctx->remove_labels == NULL) {
+		GrB_Matrix_new(&update_ctx->remove_labels, GrB_BOOL,
+			Graph_RequiredMatrixDim(gc->g), Graph_RequiredMatrixDim(gc->g));
 		GrB_Info info;
-		info = GxB_set(*remove_labels, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
+		info = GxB_set(update_ctx->remove_labels, GxB_SPARSITY_CONTROL, GxB_HYPERSPARSE);
 		ASSERT(info == GrB_SUCCESS);
 	}
 	
@@ -204,11 +214,12 @@ void EvalEntityUpdates
 		const char *label = ctx->add_labels[i];
 		const Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 		if(s == NULL) {
-			s = AddSchema(gc, label, SCHEMA_NODE, true);
+			GraphContext_SchemaCount(gc, SCHEMA_NODE);
+			s = GraphUpdateCtx_ReserveLabel(update_ctx, gc, label);
 		}
 
 		int schema_id = Schema_GetID(s);
-		GrB_Matrix_setElement_BOOL(*add_labels, true, ENTITY_GET_ID(entity), schema_id);
+		GrB_Matrix_setElement_BOOL(update_ctx->add_labels, true, ENTITY_GET_ID(entity), schema_id);
 	}
 
 	for (uint i = 0; i < array_len(ctx->remove_labels); i++) {
@@ -219,7 +230,7 @@ void EvalEntityUpdates
 		}
 
 		int schema_id = Schema_GetID(s);
-		GrB_Matrix_setElement_BOOL(*remove_labels, true, ENTITY_GET_ID(entity), schema_id);
+		GrB_Matrix_setElement_BOOL(update_ctx->remove_labels, true, ENTITY_GET_ID(entity), schema_id);
 	}
 
 	AttributeSet *old_attrs = entity->attributes;
@@ -425,4 +436,80 @@ void PendingUpdateCtx_Free
 ) {
 	AttributeSet_Free(&ctx->attributes);
 	rm_free(ctx);
+}
+
+// fake hash function
+// hash of key is simply key
+static uint64_t _id_hash
+(
+	const void *key
+) {
+	return ((uint64_t)key);
+}
+
+// hashtable entry free callback
+static void freeCallback
+(
+	dict *d,
+	void *val
+) {
+	PendingUpdateCtx_Free((PendingUpdateCtx*)val);
+}
+
+// hashtable callbacks
+static dictType _dt = { _id_hash, NULL, NULL, NULL, NULL, freeCallback, NULL,
+	NULL, NULL, NULL};
+
+void GraphUpdateCtx_Init
+(
+	GraphUpdateCtx *ctx
+) {
+	ctx->node_updates = HashTableCreate(&_dt);
+	ctx->edge_updates = HashTableCreate(&_dt);
+}
+
+Schema *GraphUpdateCtx_ReserveLabel
+(
+	GraphUpdateCtx *ctx,
+	GraphContext *gc,
+	const char *label
+) {
+	ASSERT(ctx != NULL);
+	ASSERT(label != NULL);
+
+	if(ctx->reserved_labels == NULL) {
+		ctx->reserved_labels = raxNew();
+	}
+
+	Schema *s = raxFind(ctx->reserved_labels, (unsigned char *)label, strlen(label));
+	if(s == raxNotFound) {
+		int schema_id = GraphContext_SchemaCount(gc, SCHEMA_NODE) + raxSize(ctx->reserved_labels);
+		s = Schema_New(SCHEMA_NODE, schema_id, label);
+		raxInsert(ctx->reserved_labels, (unsigned char *)label, strlen(label), s, NULL);
+	}
+
+	return s;
+}
+
+void GraphUpdateCtx_Free
+(
+	GraphUpdateCtx *ctx
+) {
+	if(ctx->node_updates) {
+		HashTableRelease(ctx->node_updates);
+		ctx->node_updates = NULL;
+	}
+
+	if(ctx->edge_updates) {
+		HashTableRelease(ctx->edge_updates);
+		ctx->edge_updates = NULL;
+	}
+
+	if(ctx->add_labels) {
+		GrB_Matrix_free(&ctx->add_labels);
+	}
+
+	if(ctx->remove_labels) {
+		GrB_Matrix_free(&ctx->remove_labels);
+	}
 }

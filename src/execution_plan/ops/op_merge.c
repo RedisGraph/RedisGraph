@@ -20,28 +20,6 @@ static Record MergeConsume(OpBase *opBase);
 static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
-// fake hash function
-// hash of key is simply key
-static uint64_t _id_hash
-(
-	const void *key
-) {
-	return ((uint64_t)key);
-}
-
-// hashtable entry free callback
-static void freeCallback
-(
-	dict *d,
-	void *val
-) {
-	PendingUpdateCtx_Free((PendingUpdateCtx*)val);
-}
-
-// hashtable callbacks
-static dictType _dt = { _id_hash, NULL, NULL, NULL, NULL, freeCallback, NULL,
-	NULL, NULL, NULL};
-
 //------------------------------------------------------------------------------
 // ON MATCH / ON CREATE logic
 //------------------------------------------------------------------------------
@@ -49,10 +27,7 @@ static dictType _dt = { _id_hash, NULL, NULL, NULL, NULL, freeCallback, NULL,
 // apply a set of updates to the given records
 static void _UpdateProperties
 (
-	dict *node_pending_updates,
-	dict *edge_pending_updates,
-	GrB_Matrix *add_labels,
-	GrB_Matrix *remove_labels,
+	GraphUpdateCtx *update_ctx,
 	raxIterator updates,
 	Record *records,
 	uint record_count
@@ -66,8 +41,7 @@ static void _UpdateProperties
 		raxSeek(&updates, "^", NULL, 0);
 		while(raxNext(&updates)) {
 			EntityUpdateEvalCtx *ctx = updates.data;
-			EvalEntityUpdates(gc, node_pending_updates, edge_pending_updates,
-					add_labels, remove_labels, r, ctx, true);
+			EvalEntityUpdates(gc, update_ctx, r, ctx, true);
 		}
 	}
 }
@@ -99,22 +73,6 @@ static void _InitializeUpdates
 		ctx->record_idx = OpBase_Modifies((OpBase *)op, ctx->alias);
 	}
 
-}
-
-// free node and edge pending updates
-static inline void _free_pending_updates
-(
-	OpMerge *op
-) {
-	if(op->node_pending_updates) {
-		HashTableRelease(op->node_pending_updates);
-		op->node_pending_updates = NULL;
-	}
-
-	if(op->edge_pending_updates) {
-		HashTableRelease(op->edge_pending_updates);
-		op->edge_pending_updates = NULL;
-	}
 }
 
 OpBase *NewMergeOp
@@ -371,13 +329,11 @@ static Record MergeConsume
 	}
 	OpBase_PropagateReset(op->match_stream);
 
-	op->node_pending_updates = HashTableCreate(&_dt);
-	op->edge_pending_updates = HashTableCreate(&_dt);
+	GraphUpdateCtx_Init(&op->update_ctx);
 
 	// if we are setting properties with ON MATCH, compute all pending updates
 	if(op->on_match && match_count > 0) {
-		_UpdateProperties(op->node_pending_updates, op->edge_pending_updates,
-			&op->add_labels, &op->remove_labels, op->on_match_it,
+		_UpdateProperties(&op->update_ctx, op->on_match_it,
 			op->output_records, match_count);
 	}
 
@@ -402,10 +358,8 @@ static Record MergeConsume
 		// TODO: note we're under lock at this point! is there a way
 		// to compute these changes before locking ?
 		if(op->on_create) {
-			_UpdateProperties(op->node_pending_updates,
-				op->edge_pending_updates, &op->add_labels, &op->remove_labels,
-				op->on_create_it, op->output_records + match_count,
-				create_count);
+			_UpdateProperties(&op->update_ctx, op->on_create_it,
+				op->output_records + match_count, create_count);
 		}
 	}
 
@@ -413,17 +367,12 @@ static Record MergeConsume
 	// update
 	//--------------------------------------------------------------------------
 
-	if(HashTableElemCount(op->node_pending_updates) > 0 ||
-	   HashTableElemCount(op->edge_pending_updates) > 0) {
+	if(HashTableElemCount(op->update_ctx.node_updates) > 0 ||
+	   HashTableElemCount(op->update_ctx.edge_updates) > 0) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		// lock everything
 		QueryCtx_LockForCommit(); {
-			CommitUpdates(gc, op->node_pending_updates, op->add_labels,
-				op->remove_labels, ENTITY_NODE);
-			if(likely(!ErrorCtx_EncounteredError())) {
-				CommitUpdates(gc, op->edge_pending_updates, NULL, NULL,
-					ENTITY_EDGE);
-			}
+			CommitUpdates(gc, &op->update_ctx);
 		}
 	}
 
@@ -431,15 +380,15 @@ static Record MergeConsume
 	// free updates
 	//--------------------------------------------------------------------------
 
-	HashTableEmpty(op->node_pending_updates, NULL);
-	HashTableEmpty(op->edge_pending_updates, NULL);
+	HashTableEmpty(op->update_ctx.node_updates, NULL);
+	HashTableEmpty(op->update_ctx.edge_updates, NULL);
 
-	if(op->add_labels) {
-		GrB_Matrix_free(&op->add_labels);
+	if(op->update_ctx.add_labels) {
+		GrB_Matrix_free(&op->update_ctx.add_labels);
 	}
 
-	if(op->remove_labels) {
-		GrB_Matrix_free(&op->remove_labels);
+	if(op->update_ctx.remove_labels) {
+		GrB_Matrix_free(&op->update_ctx.remove_labels);
 	}
 
 	return _handoff(op);
@@ -489,8 +438,6 @@ static void MergeFree
 		op->output_records = NULL;
 	}
 
-	_free_pending_updates(op);
-
 	if(op->on_match) {
 		raxFreeWithCallback(op->on_match, (void(*)(void *))UpdateCtx_Free);
 		op->on_match = NULL;
@@ -503,12 +450,6 @@ static void MergeFree
 		raxStop(&op->on_create_it);
 	}
 
-	if(op->add_labels) {
-		GrB_Matrix_free(&op->add_labels);
-	}
-
-	if(op->remove_labels) {
-		GrB_Matrix_free(&op->remove_labels);
-	}
+	GraphUpdateCtx_Free(&op->update_ctx);
 }
 
