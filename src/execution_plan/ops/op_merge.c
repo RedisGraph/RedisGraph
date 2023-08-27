@@ -379,16 +379,7 @@ static Record MergeConsume
 	// free updates
 	//--------------------------------------------------------------------------
 
-	HashTableEmpty(op->update_ctx.node_updates, NULL);
-	HashTableEmpty(op->update_ctx.edge_updates, NULL);
-
-	if(op->update_ctx.add_labels) {
-		GrB_Matrix_free(&op->update_ctx.add_labels);
-	}
-
-	if(op->update_ctx.remove_labels) {
-		GrB_Matrix_free(&op->update_ctx.remove_labels);
-	}
+	GraphUpdateCtx_Reset(&op->update_ctx);
 
 	return _handoff(op);
 }

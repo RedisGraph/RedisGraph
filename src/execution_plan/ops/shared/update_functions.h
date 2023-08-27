@@ -64,6 +64,11 @@ bool GraphUpdateCtx_HasUpdates
 	GraphUpdateCtx *ctx
 );
 
+void GraphUpdateCtx_Reset
+(
+	GraphUpdateCtx *ctx
+);
+
 void GraphUpdateCtx_Free
 (
 	GraphUpdateCtx *ctx

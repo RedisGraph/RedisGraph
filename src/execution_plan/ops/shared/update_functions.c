@@ -499,6 +499,29 @@ bool GraphUpdateCtx_HasUpdates
 		   ctx->remove_labels != NULL;
 }
 
+void GraphUpdateCtx_Reset
+(
+	GraphUpdateCtx *ctx
+) {
+	ASSERT(ctx != NULL);
+
+	if(ctx->node_updates) {
+		HashTableEmpty(ctx->node_updates, NULL);
+	}
+
+	if(ctx->edge_updates) {
+		HashTableEmpty(ctx->edge_updates, NULL);
+	}
+
+	if(ctx->add_labels) {
+		GrB_Matrix_free(&ctx->add_labels);
+	}
+
+	if(ctx->remove_labels) {
+		GrB_Matrix_free(&ctx->remove_labels);
+	}
+}
+
 void GraphUpdateCtx_Free
 (
 	GraphUpdateCtx *ctx
