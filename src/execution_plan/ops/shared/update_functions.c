@@ -514,7 +514,7 @@ void GraphUpdateCtx_Free
 	}
 
 	if(ctx->reserved_labels) {
-		raxFree(ctx->reserved_labels);
+		raxFreeWithCallback(ctx->reserved_labels, (void (*)(void*))Schema_Free);
 		ctx->reserved_labels = NULL;
 	}
 }
