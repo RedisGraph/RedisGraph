@@ -106,16 +106,7 @@ static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 
-	HashTableEmpty(op->update_ctx.node_updates, NULL);
-	HashTableEmpty(op->update_ctx.edge_updates, NULL);
-
-	if(op->update_ctx.add_labels) {
-		GrB_Matrix_free(&op->update_ctx.add_labels);
-	}
-
-	if(op->update_ctx.remove_labels) {
-		GrB_Matrix_free(&op->update_ctx.remove_labels);
-	}
+	GraphUpdateCtx_Reset(&op->update_ctx);
 
 	op->updates_committed = false;
 	return OP_OK;
