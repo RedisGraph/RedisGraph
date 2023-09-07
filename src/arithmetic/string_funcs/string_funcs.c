@@ -222,10 +222,11 @@ SIValue AR_JOIN(SIValue *argv, int argc, void *private_data) {
 		delimiter = argv[1].stringval;
 	}
 
-	uint32_t count = SIArray_Length(list);
+	const uint32_t count = SIArray_Length(list);
+	const size_t delimeter_len = strlen(delimiter);
 
-	size_t delimeter_len = strlen(delimiter);
-	uint str_len = delimeter_len * (count - 1);
+	// Calculate the length of the resulting string.
+	uint64_t str_len = delimeter_len * (count - 1);
 	for(uint i = 0; i < count; i++) {
 		SIValue str = SIArray_Get(list, i);
 		if(SI_TYPE(str) != T_STRING) {
@@ -234,23 +235,33 @@ SIValue AR_JOIN(SIValue *argv, int argc, void *private_data) {
 			return SI_NullVal();
 		}
 
-		str_len += strlen(str.stringval);
+		// Check for overflow
+		if( !__builtin_uadd_overflow(str_len, strlen(str.stringval), &str_len)){
+			ErrorCtx_SetError(EMSG_QUERY_MEM_CONSUMPTION);
+			return SI_NullVal();
+		}
 	}
 
-	int cur_len = 0;
-	char *res = rm_malloc(str_len + 1);
+	char *base = rm_malloc(str_len + 1);
+	char *res = base;
 	for(uint i = 0; i < count - 1; i++) {
+		// Copy the string.
 		SIValue str = SIArray_Get(list, i);
-		memcpy(res + cur_len, str.stringval, strlen(str.stringval));
-		cur_len += strlen(str.stringval);
-		memcpy(res + cur_len, delimiter, delimeter_len);
-		cur_len += delimeter_len;
+		int str_len = strlen(str.stringval);
+		memcpy(res, str.stringval, str_len);
+		res += str_len;
+		
+		// Copy the delimiter.
+		memcpy(res, delimiter, delimeter_len);
+		res += delimeter_len;
 	}
+
+	// Copy the last string.
 	SIValue str = SIArray_Get(list, count - 1);
-	memcpy(res + cur_len, str.stringval, strlen(str.stringval));
+	memcpy(res, str.stringval, strlen(str.stringval));
 	res[str_len] = '\0';
 
-	return SI_TransferStringVal(res);
+	return SI_TransferStringVal(base);
 }
 
 typedef struct {
