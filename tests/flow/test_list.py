@@ -701,7 +701,7 @@ class testList(FlowTestsBase):
 
         # Test list with mixed type values
         query = """RETURN toStringList(['abc', 7, '5.32', null, ['a','b']]) """
-        expected_result = [['abc', '7', '5.32', None, None]]
+        expected_result = [['abc', '7', '5.32', None, '[a, b]']]
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
