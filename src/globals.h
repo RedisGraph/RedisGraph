@@ -21,6 +21,9 @@ void Globals_Set_ProcessIsChild
 	bool process_is_child
 );
 
+// return number of graphs in keyspace
+int Globals_GetGraphCount(void);
+
 // get direct access to 'graphs_in_keyspace'
 GraphContext **Globals_Get_GraphsInKeyspace(void);
 
