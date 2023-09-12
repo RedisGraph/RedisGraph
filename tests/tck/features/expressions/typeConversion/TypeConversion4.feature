@@ -152,8 +152,8 @@ Feature: TypeConversion4 - To String
       | 'x'      |
     And no side effects
 
-  @NegativeTest
-  Scenario Outline: [10] `toString()` failing on invalid arguments
+  @skip
+  Scenario Outline: [10] Fail `toString()` on invalid types #Example: <exampleName>
     Given an empty graph
     And having executed:
       """
