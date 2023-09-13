@@ -16,6 +16,8 @@
 void ModuleEventHandler_AUXBeforeKeyspaceEvent(void);
 void ModuleEventHandler_AUXAfterKeyspaceEvent(void);
 
+extern GraphContext **graphs_in_keyspace;  // global array of GraphContexts
+
 // declaration of the type for redis registration
 RedisModuleType *GraphContextRedisModuleType;
 
@@ -50,8 +52,24 @@ static void _GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
 }
 
 // save an unsigned placeholder before and after the keyspace encoding
-static void _GraphContextType_AuxSave(RedisModuleIO *rdb, int when) {
+static void _GraphContextType_AuxSave
+(
+	RedisModuleIO *rdb,
+	int when
+) {
 	RedisModule_SaveUnsigned(rdb, 0);
+}
+
+// save an unsigned placeholder before and after the keyspace encoding
+static void _GraphContextType_AuxSave2
+(
+	RedisModuleIO *rdb,
+	int when
+) {
+	// only write AUX field if there are graphs in the keyspace
+	if(array_len(graphs_in_keyspace) > 0) {
+		RedisModule_SaveUnsigned(rdb, 0);
+	}
 }
 
 // decode the unsigned placeholders saved before and after the keyspace values
@@ -77,6 +95,14 @@ int GraphContextType_Register(RedisModuleCtx *ctx) {
 	tm.aux_save           =  _GraphContextType_AuxSave;
 	tm.aux_load           =  _GraphContextType_AuxLoad;
 	tm.aux_save_triggers  =  REDISMODULE_AUX_BEFORE_RDB | REDISMODULE_AUX_AFTER_RDB;
+
+	// use aux_save2 if available
+	Redis_Version redis_version = RG_GetRedisVersion();
+	if(redis_version.major > 7 ||
+	  (redis_version.major == 7 && redis_version.minor >= 2)) {
+		tm.aux_save  = NULL;
+		tm.aux_save2 = _GraphContextType_AuxSave2;
+	}
 
 	GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata",
 			GRAPH_ENCODING_VERSION_LATEST, &tm);

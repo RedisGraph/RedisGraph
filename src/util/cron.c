@@ -3,6 +3,7 @@
 #include "rmalloc.h"
 #include "../RG.h"
 #include <time.h>
+#include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
 
@@ -72,6 +73,10 @@ static struct timespec due_in_ms
 
 	due.tv_sec += ms / 1000;
 	due.tv_nsec += (ms % 1000) * 1000000;
+	// add the overflow seconds otherwise the time will be invalid
+	// and the thread will wake up immediately which lead to busy loop
+	due.tv_sec += due.tv_nsec / 1000000000;
+	due.tv_nsec %= 1000000000;
 
 	return due;
 }
@@ -187,7 +192,8 @@ static void *Cron_Run
 		// sleep
 		struct timespec timeout = (task) ? task->due : due_in_ms(1000);
 		pthread_mutex_lock(&cron->condv_mutex);
-		pthread_cond_timedwait(&cron->condv, &cron->condv_mutex, &timeout);
+		int res = pthread_cond_timedwait(&cron->condv, &cron->condv_mutex, &timeout);
+		ASSERT(res == 0 || res == ETIMEDOUT);
 		pthread_mutex_unlock(&cron->condv_mutex);
 	}
 
