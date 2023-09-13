@@ -104,7 +104,7 @@ int GraphContextType_Register(RedisModuleCtx *ctx) {
 	// use aux_save2 if available
 	Redis_Version redis_version = RG_GetRedisVersion();
 	if(redis_version.major > 7 ||
-	  (redis_version.major = 7 && redis_version.minor >= 2)) {
+	  (redis_version.major == 7 && redis_version.minor >= 2)) {
 		tm.aux_save  = NULL;
 		tm.aux_save2 = _GraphContextType_AuxSave2;
 	}
