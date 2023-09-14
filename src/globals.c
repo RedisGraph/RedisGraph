@@ -56,6 +56,20 @@ void Globals_Set_ProcessIsChild
 	pthread_rwlock_unlock(&_globals.lock);
 }
 
+// return number of graphs in keyspace
+int Globals_GetGraphCount(void) {
+	// acuire read lock
+	pthread_rwlock_rdlock(&_globals.lock);
+
+	// get number of graphs
+	int n = array_len(_globals.graphs_in_keyspace);
+
+	// unlock
+	pthread_rwlock_unlock(&_globals.lock);
+
+	return n;
+}
+
 // get direct access to 'graphs_in_keyspace'
 GraphContext **Globals_Get_GraphsInKeyspace(void) {
 	return _globals.graphs_in_keyspace;

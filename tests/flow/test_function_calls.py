@@ -1049,7 +1049,7 @@ class testFunctionCallsFlow(FlowTestsBase):
          # list
         query = """RETURN toStringOrNull([1])"""
         actual_result = graph.query(query)
-        self.env.assertEquals(actual_result.result_set[0][0], None)
+        self.env.assertEquals(actual_result.result_set[0][0], "[1]")
 
         # node
         query = """CREATE (n) RETURN toStringOrNull(n)"""
@@ -1105,8 +1105,12 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], None)
 
+        # null
+        query = """RETURN toString([1])"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], "[1]")
+
         queries = [
-            """RETURN toString([1])""",                   # list
             """CREATE (n) RETURN toString(n)""",          # node
             """CREATE ()-[r:R]->() RETURN toString(r)"""  # edge
             ]
@@ -2218,7 +2222,7 @@ class testFunctionCallsFlow(FlowTestsBase):
             "CREATE ()-[r:R]->() RETURN hasLabels(r, ['abc', 'def'])": "Type mismatch: expected Node or Null but was Edge",
             "RETURN toBoolean(1.2)": "Type mismatch: expected String, Boolean, Integer, or Null but was Float",
             "RETURN isEmpty(1)": "Type mismatch: expected Map, List, String, or Null but was Integer",
-            "CREATE ()-[r:R]->() RETURN toString(r)": "Type mismatch: expected Datetime, Duration, String, Boolean, Integer, Float, Null, or Point but was Edge",
+            "CREATE ()-[r:R]->() RETURN toString(r)": "Type mismatch: expected List, Datetime, Duration, String, Boolean, Integer, Float, Null, or Point but was Edge",
         }
         for query, error in queries_with_errors.items():
             self.expect_error(query, error)
@@ -2484,6 +2488,17 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = """RETURN string.join(['HELL','OW', 'NOW'], ' ')"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
+
+         # join overflow
+         q = """UNWIND RANGE(0, 10000000) as x
+                WITH collect('looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong string') as list
+                RETURN string.join(list, 'loooooooooooooooooooooooooooooooooooooooooonggggggggggggggggggggggggggggggggggggggggggggggggggggg delimiterrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr')
+                """
+        try:
+            result = graph.query(q)
+            self.env.assertFalse(True)
+        except ResponseError as e:
+            self.env.assertContains("String overflow", str(e))
   
     def test90_size(self):
         query_to_expected_result = {
