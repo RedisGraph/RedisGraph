@@ -71,7 +71,7 @@ static void _GraphContextType_AuxSave2
 	int when
 ) {
 	// only write AUX field if there are graphs in the keyspace
-	if(Globals_GetGraphsCount() > 0) {
+	if(Globals_GetGraphCount() > 0) {
 		RedisModule_SaveUnsigned(rdb, 0);
 	}
 }
