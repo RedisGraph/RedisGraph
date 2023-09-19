@@ -167,3 +167,15 @@ class testUnion(FlowTestsBase):
         result = redis_graph.query(query)
         expected_result = [['10'],['12'],['15']]
         self.env.assertEquals(result.result_set, expected_result)
+
+    def test09_union_validation(self):
+        try:
+            query = """OPTIONAL MATCH (a:N)
+            RETURN a
+            UNION
+            MATCH (a:N)
+            RETURN a"""
+            redis_graph.query(query)
+            self.env.assertTrue(True)
+        except redis.exceptions.ResponseError:
+            self.env.assertTrue(False)

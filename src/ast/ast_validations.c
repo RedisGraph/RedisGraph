@@ -1939,6 +1939,11 @@ static AST_Validation _ValidateClauseOrder
 			ErrorCtx_SetError(EMSG_MISSING_WITH, cypher_astnode_typestr(type));
 			return AST_INVALID;
 		}
+		if(type == CYPHER_AST_UNION) {
+			encountered_optional_match = false;
+			encountered_updating_clause = false;
+			continue;
+		}
 		encountered_updating_clause = (encountered_updating_clause ||
 									   _is_updating_clause(clause));
 
