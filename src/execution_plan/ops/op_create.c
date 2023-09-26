@@ -133,7 +133,7 @@ static Record _handoff
 (
 	OpCreate *op
 ) {
-	return array_pop(op->records);
+	return (array_len(op->records)) ? array_pop(op->records) : NULL;
 }
 
 static Record CreateConsume
