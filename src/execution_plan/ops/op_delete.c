@@ -191,7 +191,7 @@ static inline void _CollectDeletedEntities(Record r, OpBase *opBase) {
 }
 
 static inline Record _handoff(OpDelete *op) {
-	return array_pop(op->records);
+	return (array_len(op->records)) ? array_pop(op->records) : NULL;
 }
 
 static Record DeleteConsume(OpBase *opBase) {
