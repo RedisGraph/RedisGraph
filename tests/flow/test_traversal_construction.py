@@ -413,3 +413,30 @@ class testTraversalConstruction():
         result = graph.query(q).result_set
         self.env.assertTrue(result == expected)
 
+    def test_consume_depleted_ops(self):
+        # as op conditional traverse can call consume on its children
+        # validate that the children not crash
+
+        graph.query("CREATE (:A)-[:R]->(:B)")
+
+        # test op_create
+        graph.query("""CREATE (x:X)
+                    WITH *
+                    MATCH (:A)-[r:R]->(b:B)
+                    RETURN x""")
+
+        # test op_delete
+        graph.query("""MATCH (x:X)
+                    DELETE x
+                    WITH *
+                    MATCH (a)-[r:R]->(b:B)
+                    RETURN x""")
+        
+        graph.query("CREATE (x:X)")
+
+        # test op_foreach
+        graph.query("""MATCH (x:X)
+                    FOREACH(i in range(0, 4) | CREATE (x1:X))
+                    WITH *
+                    MATCH (a)-[r:R]->(b:B)
+                    RETURN x""")
