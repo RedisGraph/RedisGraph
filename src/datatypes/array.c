@@ -64,7 +64,7 @@ bool SIArray_ContainsType(SIValue siarray, SIType t) {
   * @param  comparedNull: indicate if there was a null comparison during the array scan
   * @retval a boolean indicating whether value was found in siarray
   */
-bool SIArray_ContainsValue(SIValue siarray, SIValue value, bool *comparedNull) {
+bool SIArray_ContainsValue(SIValue siarray, SIValue value, bool *comparedNull, bool nullEqualsNull) {
 	// indicate if there was a null comparison during the array scan
 	if(comparedNull) *comparedNull = false;
 	uint array_len = SIArray_Length(siarray);
@@ -74,6 +74,9 @@ bool SIArray_ContainsValue(SIValue siarray, SIValue value, bool *comparedNull) {
 		int compareValue = SIValue_Compare(elem, value, &disjointOrNull);
 		if(disjointOrNull == COMPARED_NULL) {
 			if(comparedNull) *comparedNull = true;
+			if(nullEqualsNull && compareValue == 0) {
+				return true;
+			}
 			continue;
 		}
 		if(compareValue == 0) return true;

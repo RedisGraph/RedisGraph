@@ -56,7 +56,7 @@ bool SIArray_ContainsType(SIValue siarray, SIType t);
   * @param  comparedNull: indicate if there was a null comparison during the array scan
   * @retval a boolean indicating whether value was found in siarray
   */
-bool SIArray_ContainsValue(SIValue siarray, SIValue value, bool *comparedNull);
+bool SIArray_ContainsValue(SIValue siarray, SIValue value, bool *comparedNull, bool nullEqualsNull);
 
 /**
   * @brief  Returns true if all of the elements in the array are of type 't'

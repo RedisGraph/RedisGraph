@@ -162,7 +162,7 @@ static SIValue _AR_NodeDegree
 			// validate signature function(NODE, STR_0, STR_1, ... STR_N)
 			for(int i = 1; i < argc; i++) {
 				if(SI_TYPE(argv[i]) == T_STRING) {
-					if(SIArray_ContainsValue(labels, argv[i], NULL) == false) {
+					if(SIArray_ContainsValue(labels, argv[i], NULL, false) == false) {
 						SIArray_Append(&labels, argv[i]);
 					}
 				} else {
@@ -182,7 +182,7 @@ static SIValue _AR_NodeDegree
 					Error_SITypeMismatch(elem, T_STRING);
 					return SI_NullVal();
 				}
-				if(SIArray_ContainsValue(labels, elem, NULL) == false) {
+				if(SIArray_ContainsValue(labels, elem, NULL, false) == false) {
 					SIArray_Append(&labels, elem);
 				}
 			}

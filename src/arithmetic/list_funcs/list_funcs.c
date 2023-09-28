@@ -363,7 +363,7 @@ SIValue AR_IN(SIValue *argv, int argc, void *private_data) {
 	SIValue lookupList = argv[1];
 	// indicate if there was a null comparison during the array scan
 	bool comparedNull = false;
-	if(SIArray_ContainsValue(lookupList, lookupValue, &comparedNull)) {
+	if(SIArray_ContainsValue(lookupList, lookupValue, &comparedNull, false)) {
 		return SI_BoolVal(true);
 	}
 	// if there was a null comparison return null, other wise return false as the lookup item did not found
@@ -531,7 +531,7 @@ SIValue AR_INSERT(SIValue *argv, int argc, void *private_data) {
 		allow_dups = SIValue_IsTrue(argv[3]);
 	}
 
-	if(!allow_dups && SIArray_ContainsValue(list, val, NULL)) {
+	if(!allow_dups && SIArray_ContainsValue(list, val, NULL, true)) {
 		// caller requested no duplicates
 		// if value already exists in list return the original list
 		return SIArray_Clone(list);

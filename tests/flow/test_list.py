@@ -1150,6 +1150,12 @@ class testList(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0], expected_result)
 
+        # test val of type [NULL]
+        expected_result = [[1, [None], 2, 3]]
+        query = """RETURN list.insert([1,[null],2,3], -1, [null], false)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0], expected_result)
+
         # test dup=true
         expected_result = [[1,2,3]]
         query = """RETURN list.insert([1,2,3], 0, 2, false)"""
