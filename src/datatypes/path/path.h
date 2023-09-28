@@ -56,8 +56,19 @@ size_t Path_EdgeCount(const Path *p);
 // returns the path length - amount of edges
 size_t Path_Len(const Path *p);
 
-// returns if a path contains a node
-bool Path_ContainsNode(const Path *p, Node *n);
+// returns true node is on the path
+bool Path_ContainsNode
+(
+	const Path *p,  // path to search
+	const Node *n   // node to locate
+);
+
+// returns true if edge is on the path
+bool Path_ContainsEdge
+(
+	const Path *p,  // path to search
+	const Edge *e   // edge to locate
+);
 
 // clones a path
 Path *Path_Clone(const Path *p);

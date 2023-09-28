@@ -10,9 +10,16 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
-// Make sure context level array have 'cap' available entries.
-static void _AllPathsCtx_EnsureLevelArrayCap(AllPathsCtx *ctx, uint level, uint cap) {
-	if(cap == 0) return;
+// make sure context level array have 'cap' available entries
+static void _AllPathsCtx_EnsureLevelArrayCap
+(
+	AllPathsCtx *ctx,
+	uint level,
+	uint cap
+) {
+	if(cap == 0) {
+		return;
+	}
 
 	uint len = array_len(ctx->levels);
 	if(level < len) {
@@ -25,120 +32,77 @@ static void _AllPathsCtx_EnsureLevelArrayCap(AllPathsCtx *ctx, uint level, uint 
 	array_append(ctx->levels, array_new(LevelConnection, cap));
 }
 
-// Append given 'node' to given 'level' array.
-static void _AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Node *node,
-											  Edge *edge) {
+// append given 'node' to given 'level' array
+static void _AllPathsCtx_AddConnectionToLevel
+(
+	AllPathsCtx *ctx,  // traversal context
+	uint level,        // level
+	Node *node,        // node to add
+	Edge *edge         // edge to add
+) {
 	ASSERT(level < array_len(ctx->levels));
-	LevelConnection connection;
-	connection.node = *node;
-	if(edge) connection.edge = *edge;
-	array_append(ctx->levels[level], connection);
+
+	LevelConnection conn;
+	conn.node = *node;
+	if(edge != NULL) {
+		conn.edge = *edge;
+	}
+
+	array_append(ctx->levels[level], conn);
 }
 
 // Check to see if context levels array has entries at position 'level'.
-static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
+static bool _AllPathsCtx_LevelNotEmpty
+(
+	const AllPathsCtx *ctx,
+	uint level
+) {
 	return (level < array_len(ctx->levels) && array_len(ctx->levels[level]) > 0);
 }
 
-void addOutgoingNeighbors
+static void _CollectNeighbors
 (
+	Edge **edges,
+	GRAPH_EDGE_DIR dir,
 	AllPathsCtx *ctx,
-	LevelConnection *frontier,
+	Node *frontier,
 	uint32_t depth
 ) {
-	EntityID frontierId = INVALID_ENTITY_ID;
-	if(depth > 1) frontierId = ENTITY_GET_ID(&frontier->edge);
-
-	// Get frontier neighbors.
+	// get frontier neighbors
 	for(int i = 0; i < ctx->relationCount; i++) {
-		Graph_GetNodeEdges(ctx->g, &frontier->node, GRAPH_EDGE_DIR_OUTGOING, ctx->relationIDs[i], &ctx->neighbors);
+		Graph_GetNodeEdges(ctx->g, frontier, dir, ctx->relationIDs[i],
+				edges);
 	}
 
-	// Add unvisited neighbors to next level.
-	uint32_t neighborsCount = array_len(ctx->neighbors);
+	Edge *_edges = *edges;
+	// add unvisited neighbors to next level
+	uint32_t n = array_len(_edges);
 
 	//--------------------------------------------------------------------------
 	// apply filter to edge
 	//--------------------------------------------------------------------------
+
 	if(ctx->ft) {
-		for(uint32_t i = 0; i < neighborsCount; i++) {
-			Edge e = ctx->neighbors[i];
+		for(uint32_t i = 0; i < n; i++) {
+			Edge e = _edges[i];
 
 			// update the record with the current edge
 			Record_AddEdge(ctx->r, ctx->edge_idx, e);
 
 			// drop edge if it doesn't passes filter
 			if(FilterTree_applyFilters(ctx->ft, ctx->r) != FILTER_PASS) {
-				array_del_fast(ctx->neighbors, i);
+				array_del_fast(_edges, i);
 				i--;
-				neighborsCount--;
+				n--;
 			}
 		}
 	}
 
-	_AllPathsCtx_EnsureLevelArrayCap(ctx, depth, neighborsCount);
-	for(uint32_t i = 0; i < neighborsCount; i++) {
-		// Don't follow the frontier edge again.
-		if(frontierId == ENTITY_GET_ID(ctx->neighbors + i)) continue;
-		// Set the neighbor by following the edge in the correct directoin.
-		Node neighbor = GE_NEW_NODE();
-		Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors + i), &neighbor);
-		// Add the node and edge to the frontier.
-		_AllPathsCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));
-	}
-	array_clear(ctx->neighbors);
+	_AllPathsCtx_EnsureLevelArrayCap(ctx, depth, n);
 }
 
-void addIncomingNeighbors
-(
-	AllPathsCtx *ctx,
-	LevelConnection *frontier,
-	uint32_t depth
-) {
-	EntityID frontierId = INVALID_ENTITY_ID;
-	if(depth > 1) frontierId = ENTITY_GET_ID(&frontier->edge);
-
-	// Get frontier neighbors.
-	for(int i = 0; i < ctx->relationCount; i++) {
-		Graph_GetNodeEdges(ctx->g, &frontier->node, GRAPH_EDGE_DIR_INCOMING, ctx->relationIDs[i], &ctx->neighbors);
-	}
-
-	// Add unvisited neighbors to next level.
-	uint32_t neighborsCount = array_len(ctx->neighbors);
-
-	//--------------------------------------------------------------------------
-	// apply filter to edge
-	//--------------------------------------------------------------------------
-	if(ctx->ft) {
-		for(uint32_t i = 0; i < neighborsCount; i++) {
-			Edge e = ctx->neighbors[i];
-
-			// update the record with the current edge
-			Record_AddEdge(ctx->r, ctx->edge_idx, e);
-
-			// drop edge if it doesn't passes filter
-			if(FilterTree_applyFilters(ctx->ft, ctx->r) != FILTER_PASS) {
-				array_del_fast(ctx->neighbors, i);
-				i--;
-				neighborsCount--;
-			}
-		}
-	}
-
-	_AllPathsCtx_EnsureLevelArrayCap(ctx, depth, neighborsCount);
-	for(uint32_t i = 0; i < neighborsCount; i++) {
-		// Don't follow the frontier edge again.
-		if(frontierId == ENTITY_GET_ID(ctx->neighbors + i)) continue;
-		// Set the neighbor by following the edge in the correct directoin.
-		Node neighbor = GE_NEW_NODE();
-		Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
-		// Add the node and edge to the frontier.
-		_AllPathsCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));
-	}
-	array_clear(ctx->neighbors);
-}
-
-// Traverse from the frontier node in the specified direction and add all encountered nodes and edges.
+// traverse from the frontier node in the specified direction and add all
+// encountered nodes and edges
 void addNeighbors
 (
 	AllPathsCtx *ctx,
@@ -146,16 +110,110 @@ void addNeighbors
 	uint32_t depth,
 	GRAPH_EDGE_DIR dir
 ) {
+	Node n;
+	Edge *e = NULL;
+	uint32_t i = 0;
+	uint32_t count = 0;
+
 	switch(dir) {
 		case GRAPH_EDGE_DIR_OUTGOING:
-			addOutgoingNeighbors(ctx, frontier, depth);
+			_CollectNeighbors(&ctx->outgoing, GRAPH_EDGE_DIR_OUTGOING, ctx,
+					&frontier->node, depth);
+
+			//------------------------------------------------------------------
+			// introduce outgoing entities
+			//------------------------------------------------------------------
+
+			count = array_len(ctx->outgoing);
+			for(i = 0; i < count; i++) {
+				e = ctx->outgoing + i;
+
+				// set the neighbor node
+				Graph_GetNode(ctx->g, Edge_GetDestNodeID(e), &n);
+
+				// add node and edge to the frontier
+				_AllPathsCtx_AddConnectionToLevel(ctx, depth, &n, e);
+			}
+
+			array_clear(ctx->outgoing);
+
 			break;
 		case GRAPH_EDGE_DIR_INCOMING:
-			addIncomingNeighbors(ctx, frontier, depth);
+			_CollectNeighbors(&ctx->incoming, GRAPH_EDGE_DIR_INCOMING, ctx,
+					&frontier->node, depth);
+
+			//------------------------------------------------------------------
+			// introduce incoming entities
+			//------------------------------------------------------------------
+
+			count = array_len(ctx->incoming);
+			for(i = 0; i < count; i++) {
+				e = ctx->incoming + i;
+
+				// set the neighbor node
+				Graph_GetNode(ctx->g, Edge_GetSrcNodeID(e), &n);
+
+				// add node and edge to the frontier
+				_AllPathsCtx_AddConnectionToLevel(ctx, depth, &n, e);
+			}
+
+			array_clear(ctx->incoming);
+
 			break;
 		case GRAPH_EDGE_DIR_BOTH:
-			addIncomingNeighbors(ctx, frontier, depth);
-			addOutgoingNeighbors(ctx, frontier, depth);
+			_CollectNeighbors(&ctx->incoming, GRAPH_EDGE_DIR_INCOMING, ctx,
+					&frontier->node, depth);
+			_CollectNeighbors(&ctx->outgoing, GRAPH_EDGE_DIR_OUTGOING, ctx,
+					&frontier->node, depth);
+
+			//------------------------------------------------------------------
+			// remove duplicates
+			//------------------------------------------------------------------
+
+			for(int i = 0; i < array_len(ctx->outgoing); i++) {
+				EntityID out_id = ENTITY_GET_ID(ctx->outgoing + i);
+				for(int j = 0; j < array_len(ctx->incoming); j++) {
+					EntityID in_id = ENTITY_GET_ID(ctx->incoming + j);
+					if(out_id == in_id) {
+						array_del_fast(ctx->outgoing, i);
+						i--;
+						break;
+					}
+				}
+			}
+
+			//------------------------------------------------------------------
+			// introduce outgoing entities
+			//------------------------------------------------------------------
+
+			count = array_len(ctx->outgoing);
+			for(i = 0; i < count; i++) {
+				e = ctx->outgoing + i;
+
+				// set the neighbor node
+				Graph_GetNode(ctx->g, Edge_GetDestNodeID(e), &n);
+
+				// add node and edge to the frontier
+				_AllPathsCtx_AddConnectionToLevel(ctx, depth, &n, e);
+			}
+
+			//------------------------------------------------------------------
+			// introduce incoming entities
+			//------------------------------------------------------------------
+
+			count = array_len(ctx->incoming);
+			for(i = 0; i < count; i++) {
+				e = ctx->incoming + i;
+
+				// set the neighbor node
+				Graph_GetNode(ctx->g, Edge_GetSrcNodeID(e), &n);
+
+				// add node and edge to the frontier
+				_AllPathsCtx_AddConnectionToLevel(ctx, depth, &n, e);
+			}
+
+			array_clear(ctx->incoming);
+			array_clear(ctx->outgoing);
 			break;
 		default:
 			ASSERT(false && "encountered unexpected traversal direction in AllPaths");
@@ -181,25 +239,26 @@ AllPathsCtx *AllPathsCtx_New
 	ASSERT(src != NULL);
 
 	AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
-	ctx->g         =  g;
-	ctx->r         =  r;
-	ctx->ft        =  ft;
-	ctx->dir       =  dir;
-	ctx->edge_idx  =  edge_idx;
+	ctx->g        = g;
+	ctx->r        = r;
+	ctx->ft       = ft;
+	ctx->dir      = dir;
+	ctx->edge_idx = edge_idx;
 
 	// Cypher variable path "[:*min..max]"" specifies edge count
 	// While the path constructed here contains only nodes.
 	// As such a path which require min..max edges
 	// should contain min+1..max+1 nodes.
-	ctx->minLen         =  minLen + 1;
-	ctx->maxLen         =  maxLen + 1;
-	ctx->relationIDs    =  relationIDs;
-	ctx->relationCount  =  relationCount;
-	ctx->levels         =  array_new(LevelConnection *, 1);
-	ctx->path           =  Path_New(1);
-	ctx->neighbors      =  array_new(Edge, 32);
-	ctx->dst            =  dst;
-	ctx->shortest_paths =  shortest_paths;
+	ctx->minLen         = minLen + 1;
+	ctx->maxLen         = maxLen + 1;
+	ctx->relationIDs    = relationIDs;
+	ctx->relationCount  = relationCount;
+	ctx->levels         = array_new(LevelConnection *, 1);
+	ctx->path           = Path_New(1);
+	ctx->incoming       = array_new(Edge, 32);
+	ctx->outgoing       = array_new(Edge, 32);
+	ctx->dst            = dst;
+	ctx->shortest_paths = shortest_paths;
 	ctx->visited        =  NULL;
 
 	_AllPathsCtx_EnsureLevelArrayCap(ctx, 0, 1);
@@ -231,80 +290,115 @@ AllPathsCtx *AllPathsCtx_New
 	return ctx;
 }
 
-static Path *_AllPathsCtx_NextPath(AllPathsCtx *ctx) {
-	// As long as path is not empty OR there are neighbors to traverse.
-	while(Path_NodeCount(ctx->path) || _AllPathsCtx_LevelNotEmpty(ctx, 0)) {
+static Path *_AllPathsCtx_NextPath
+(
+	AllPathsCtx *ctx
+) {
+	// as long as path is not empty OR there are neighbors to traverse
+	while(Path_NodeCount(ctx->path) ||         // path not empty
+		  _AllPathsCtx_LevelNotEmpty(ctx, 0))  // additional nodes to consider
+	{
 		uint32_t depth = Path_NodeCount(ctx->path);
 
-		// Can we advance?
+		// can we advance?
 		if(_AllPathsCtx_LevelNotEmpty(ctx, depth)) {
-			// Get a new frontier.
+			// get a new frontier
 			LevelConnection frontierConnection = array_pop(ctx->levels[depth]);
+			Edge frontierEdge = frontierConnection.edge;
 			Node frontierNode = frontierConnection.node;
 
-			/* See if frontier is already on path,
-			 * it is OK for a path to contain an entity twice,
-			 * such as in the case of a cycle, but in such case we
-			 * won't expand frontier.
-			 * i.e. closing a cycle and continuing traversal. */
-			bool frontierAlreadyOnPath = Path_ContainsNode(ctx->path, &frontierNode);
+			// if depth is 0 this is the source node
+			// there is no leading edge to it
+			// for depth > 0 for each frontier node, there is a leading edge
+			// do not allow the same edge to appear on the path more than once
+			if(depth > 0) {
+				if(Path_ContainsEdge(ctx->path, &frontierEdge)) {
+					continue;
+				} else {
+					Path_AppendEdge(ctx->path, frontierEdge);
+				}
+			}
 
-			// Add frontier to path.
+			// add frontier to path
 			Path_AppendNode(ctx->path, frontierNode);
 
-			/* If depth is 0 this is the source node, there is no leading edge to it.
-			 * For depth > 0 for each frontier node, there is a leading edge. */
-			if(depth > 0) Path_AppendEdge(ctx->path, frontierConnection.edge);
-
-			// Update path depth.
+			// update path depth
 			depth++;
 
-			/* Introduce neighbors only if path depth < maximum path length.
-			 * and frontier wasn't already expanded. */
-			if(depth < ctx->maxLen && !frontierAlreadyOnPath) {
+			// introduce neighbors only if path depth < maximum path length
+			if(depth < ctx->maxLen) {
 				addNeighbors(ctx, &frontierConnection, depth, ctx->dir);
 			}
 
-			// See if we can return path.
-			/* TODO Note that further calls to this function will continue to operate on
-			 * this path, so it is essential that the caller does not modify it (or creates
-			 * a copy beforehand). If future features like an algorithm API use this routine,
-			 * they should either be responsible for memory safety or a memory-safe boolean/routine
-			 * should be offered. */
+			// see if we can return path.
+			// note: that further calls to this function will continue
+			// to operate on this path
+			// so it is essential that the caller does not modify it
+			// if future features like an algorithm API use this routine
+			// they should either be responsible for memory safety
+			// or a memory-safe boolean/routine should be offered
 			if(depth >= ctx->minLen && depth <= ctx->maxLen) {
 				if(ctx->dst != NULL) {
+					// destination node is specified
+					// make sure we've found requested destination
 					Node dst = Path_Head(ctx->path);
-					if(ENTITY_GET_ID(ctx->dst) != ENTITY_GET_ID(&dst)) continue;
+					if(ENTITY_GET_ID(ctx->dst) != ENTITY_GET_ID(&dst)) {
+						continue;
+					}
 				}
 				return ctx->path;
 			}
 		} else {
-			// No way to advance, backtrack.
+			// no way to advance, backtrack
 			Path_PopNode(ctx->path);
-			if(Path_EdgeCount(ctx->path)) Path_PopEdge(ctx->path);
+			if(Path_EdgeCount(ctx->path) > 0) {
+				Path_PopEdge(ctx->path);
+			}
 		}
 	}
-	// Couldn't find a path.
+
+	// couldn't find a path
 	return NULL;
 }
 
-Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
-	if (!ctx || ctx->maxLen == 0) return NULL;
+Path *AllPathsCtx_NextPath
+(
+	AllPathsCtx *ctx
+) {
+	if(!ctx || ctx->maxLen == 0) {
+		return NULL;
+	}
 
-	if (ctx->shortest_paths)
+	if(ctx->shortest_paths) {
 		return AllShortestPaths_NextPath(ctx);
-	else
+	} else {
 		return _AllPathsCtx_NextPath(ctx);
+	}
 }
 
-void AllPathsCtx_Free(AllPathsCtx *ctx) {
-	if(!ctx) return;
+void AllPathsCtx_Free
+(
+	AllPathsCtx *ctx
+) {
+	if(!ctx) {
+		return;
+	}
+
 	uint32_t levelsCount = array_len(ctx->levels);
-	for(int i = 0; i < levelsCount; i++) array_free(ctx->levels[i]);
-	array_free(ctx->levels);
+	for(int i = 0; i < levelsCount; i++) {
+		array_free(ctx->levels[i]);
+	}
+
 	Path_Free(ctx->path);
-	array_free(ctx->neighbors);
-	if(ctx->visited) GrB_Vector_free(&ctx->visited);
+	array_free(ctx->levels);
+	array_free(ctx->incoming);
+	array_free(ctx->outgoing);
+
+	if(ctx->visited != NULL) {
+		GrB_Vector_free(&ctx->visited);
+	}
+
 	rm_free(ctx);
 	ctx = NULL;
 }
+

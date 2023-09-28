@@ -214,3 +214,79 @@ class testVariableLengthTraversals(FlowTestsBase):
         for query, expected_result in query_to_expected_result.items():
             actual_result = redis_graph.query(query)
             self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test12_self_referencing_edge(self):
+        # clear previous data
+        redis_con.flushall()
+        g = Graph(redis_con, "self_referencing_edge")
+
+        # create graph with a self referencing edge
+        # (a:A)->(a), (a)->(b:B)
+        q = "CREATE (a:A), (b:B), (a)-[e0:R]->(a), (a)-[e1:R]->(b) RETURN a, b, e0, e1"
+        result = g.query(q).result_set
+
+        a = result[0][0]
+        b = result[0][1]
+        a_to_a = result[0][2]
+        a_to_b = result[0][3]
+
+        # find all paths of length 1, 2 connecting a to b
+        # expecting to find:
+        # 1. a->b
+        # 2. a->a->b
+
+        q = "MATCH p=(a:A)-[*1..2]-(b:B) WITH p, length(p) as n RETURN p ORDER BY n"
+        paths = g.query(q).result_set
+
+        # validate first path
+        # a->b
+        path = paths[0][0]
+        nodes = path.nodes()
+        edges = path.edges()
+
+        self.env.assertEquals(nodes[0], a)
+        self.env.assertEquals(edges[0], a_to_b)
+        self.env.assertEquals(nodes[1], b)
+
+        # validate second path
+        # a->a->b
+        path = paths[1][0]
+        nodes = path.nodes()
+        edges = path.edges()
+
+        self.env.assertEquals(nodes[0], a)
+        self.env.assertEquals(edges[0], a_to_a)
+        self.env.assertEquals(nodes[1], a)
+        self.env.assertEquals(edges[1], a_to_b)
+        self.env.assertEquals(nodes[2], b)
+
+        # find all paths of length 1, 2 connecting b to a
+        # expecting to find:
+        # 1. b->a
+        # 2. b->a->a
+
+        q = "MATCH p=(b:B)-[*1..2]-(a:A) WITH p, length(p) as n RETURN p ORDER BY n"
+        paths = g.query(q).result_set
+
+        # validate first path
+        # b->a
+        path = paths[0][0]
+        nodes = path.nodes()
+        edges = path.edges()
+
+        self.env.assertEquals(nodes[0], b)
+        self.env.assertEquals(edges[0], a_to_b)
+        self.env.assertEquals(nodes[1], a)
+
+        # validate second path
+        # b->a->a
+        path = paths[1][0]
+        nodes = path.nodes()
+        edges = path.edges()
+
+        self.env.assertEquals(nodes[0], b)
+        self.env.assertEquals(edges[0], a_to_b)
+        self.env.assertEquals(nodes[1], a)
+        self.env.assertEquals(edges[1], a_to_a)
+        self.env.assertEquals(nodes[2], a)
+
