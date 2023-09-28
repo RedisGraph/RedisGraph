@@ -24,7 +24,7 @@ static bool _AlgebraicExpression_IsVarLen
 	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, edge_alias);
 	ASSERT(e != NULL);
 
-	return QGEdge_VariableLength(e);
+	return (QGEdge_VariableLength(e) || QGEdge_GhostEdge(e));
 }
 
 //------------------------------------------------------------------------------
@@ -92,7 +92,7 @@ int TraverseOrder_FilterExistenceScore
 	const  char  *edge          =  AlgebraicExpression_Edge(exp);
 
 	// varible length expression shouldn't be scored on its source or destination
-	// as these are usually (if labeled) represented via seperated expressions
+	// as these are usually (if labeled) represented via separated expressions
 	if(!_AlgebraicExpression_IsVarLen(exp, qg)) {
 		frequency = raxFind(filtered_entities, (unsigned char *)src, strlen(src));
 		if(frequency != raxNotFound) {
