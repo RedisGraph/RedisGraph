@@ -17,7 +17,7 @@
 ### We are grateful to the RedisGraph community for their interest and support.
 
 ### You can read more about the end of life of RedisGraph [here](https://redis.com/blog/redisgraph-eol/).
-
+### There is an actively maintained fork of RedisGraph, in the form of [FalkorDB](https://github.com/FalkorDB/FalkorDB/).
 ---
 
 RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
