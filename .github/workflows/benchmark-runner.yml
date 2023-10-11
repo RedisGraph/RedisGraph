@@ -14,7 +14,7 @@ on:
         default: false
 
 jobs:
-  benchmark-json-oss-standalone:
+  benchmark-graph-oss-standalone:
     strategy:
       matrix:
         member_id: [1, 2, 3, 4, 5, 6]
