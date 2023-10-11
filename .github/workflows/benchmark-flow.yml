@@ -57,10 +57,8 @@ jobs:
         working-directory: redis
         run: make install
 
-      - name: Build RedisJSON
+      - name: Build RedisGraph
         run: |
-          apt install -y linux-source
-          source $HOME/.cargo/env
           make build
 
       - name: Prepare automation
