@@ -1,10 +1,13 @@
-name: Check if needs trigger benchmark
+name: Check if needs trigger benchmark as part of PR workflow
 
 on:
   pull_request:
    types: [opened, labeled, unlabeled, synchronize]
 
 jobs:
+  # Check if we need to trigger the benchmark as part of PR workflow
+  # We use the HasLabel action to check if there is a 'run-benchmark' label present.
+  # If the label is present we trigger the benchmarks.
   haslabel:
     name: analyse labels
     runs-on: ubuntu-latest
@@ -19,7 +22,7 @@ jobs:
           contains: 'run-benchmark'
 
   perf-ci:
-    name: Trigger
+    name: Trigger the benchmark as part of PR workflow
     needs: haslabel
     if: needs.haslabel.outputs.benchmark
     uses: ./.github/workflows/benchmark-runner.yml

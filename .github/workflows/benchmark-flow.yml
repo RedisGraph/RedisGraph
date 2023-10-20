@@ -1,3 +1,5 @@
+# This file contains the actual benchmark logic
+# that can be triggered from different manners (merges to master, weekly, on PRs)
 name: Run a Benchmark Flow
 
 on:
@@ -9,10 +11,7 @@ on:
       module_path:
         type: string
         default: bin/linux-x64-release/src/redisgraph.so
-      profile_env:
-        type: number # for default of 0
-      cluster_env:
-        type: string # for default of ""
+      # specify a test glob pattern to use on the tests directory. by default uses *.yml
       benchmark_glob:
         type: string
         default: "*.yml"
@@ -22,8 +21,6 @@ on:
       allowed_envs:
         type: string
         default: "oss-standalone"
-      allowed_setups:
-        type: string
       benchmark_runner_group_member_id:
         type: number
         default: 1
@@ -72,16 +69,12 @@ jobs:
         working-directory: tests/benchmarks
         continue-on-error: true
         env:
-          # Hard-coded
-          PERF_CALLGRAPH_MODE: dwarf
-          MAX_PROFILERS: 1
           # Secrets
           AWS_ACCESS_KEY_ID: ${{ secrets.PERFORMANCE_EC2_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.PERFORMANCE_EC2_SECRET_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.PERFORMANCE_EC2_REGION }}
           EC2_PRIVATE_PEM: ${{ secrets.PERFORMANCE_EC2_PRIVATE_PEM }}
           # Inputs
-          PROFILE: ${{ inputs.profile_env }}
           BENCHMARK_GLOB: ${{ inputs.benchmark_glob }}
           BENCHMARK_RUNNER_GROUP_M_ID: ${{ inputs.benchmark_runner_group_member_id }}
           BENCHMARK_RUNNER_GROUP_TOTAL: ${{ inputs.benchmark_runner_group_total }}
@@ -96,7 +89,6 @@ jobs:
               --upload_results_s3
               --triggering_env ${{ inputs.triggering_env }}
               --allowed-envs ${{ inputs.allowed_envs }}
-              --allowed-setups ${{ inputs.allowed_setups }}
               --push_results_redistimeseries
               --redistimeseries_host ${{ secrets.PERFORMANCE_RTS_HOST }}
               --redistimeseries_port ${{ secrets.PERFORMANCE_RTS_PORT }}
