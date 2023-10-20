@@ -1,0 +1,32 @@
+name: Run RedisGraph Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      extended:
+        type: boolean
+        description: 'Run extended benchmarks'
+        default: false
+  workflow_call:
+    inputs:
+      extended:
+        type: boolean
+        default: false
+
+jobs:
+  benchmark-graph-oss-standalone:
+    # We split the benchmarks into distinct groups
+    # and run them concurrently, thus speeding the entire CI feedback cycle.
+    # Speficially on this job we will split the tests into 6 groups.
+    # The benchmark flow will then use benchmark_runner_group_member_id to know which
+    # benchmarks to run for the group it's responsible for.
+    strategy:
+      matrix:
+        member_id: [1, 2, 3, 4, 5, 6]
+    uses: ./.github/workflows/benchmark-flow.yml
+    secrets: inherit
+    with:
+      benchmark_runner_group_member_id: ${{ matrix.member_id }}
+      benchmark_runner_group_total: ${{ strategy.job-total }}
+
+
