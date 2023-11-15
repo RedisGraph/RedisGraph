@@ -20,19 +20,16 @@ class RedisGraphSetup(paella.Setup):
     def common_first(self):
         self.install_downloaders()
 
-        self.run("%s/bin/enable-utf8" % READIES, sudo=self.os != 'macos')
+        self.run(f"{READIES}/bin/enable-utf8", sudo=self.os != 'macos')
         self.install("git automake libtool autoconf")
 
     def debian_compat(self):
         self.install("locales")
-        if self.platform.is_arm():
-            self.run("%s/bin/getgcc --modern" % READIES)
-        else:
-            self.run("%s/bin/getgcc" % READIES)
+        self.run(f"{READIES}/bin/getgcc --modern")
         self.install("peg")
         if self.platform.is_arm():
             self.install("python3-dev")
-        self.run("{READIES}/bin/getjava".format(READIES=READIES)) # for grammarinator/ANTLR
+        self.run(f"{READIES}/bin/getjava") # for grammarinator/ANTLR
         self.pip_install("-r tests/fuzz/requirements.txt --use-pep517")
 
     def redhat_compat(self):
@@ -42,18 +39,18 @@ class RedisGraphSetup(paella.Setup):
             self.install_linux_gnu_tar()
         if self.osnick == 'ol8':
             self.install("which") # for automake
-        self.run("%s/bin/getepel" % READIES, sudo=True)
-        self.run("%s/bin/getgcc --modern" % READIES)
+        self.run(f"{READIES}/bin/getepel", sudo=True)
+        self.run(f"{READIES}/bin/getgcc --modern")
         self.install("m4 libgomp")
         self.install_peg()
 
     def fedora(self):
-        self.run("%s/bin/getgcc" % READIES)
+        self.run(f"{READIES}/bin/getgcc")
         self.install_peg()
 
     def macos(self):
         self.install_gnu_utils()
-        # self.run("%s/bin/getgcc --modern" % READIES)
+        # self.run(f"{READIES}/bin/getgcc --modern")
         self.run("brew install libomp")
         self.install("redis")
         self.install_peg()
@@ -61,24 +58,23 @@ class RedisGraphSetup(paella.Setup):
 
     def alpine(self):
         self.install("automake make autoconf libtool m4")
-        self.run("%s/bin/getgcc" % READIES)
+        self.run(f"{READIES}/bin/getgcc")
         self.install_peg()
 
     def linux_last(self):
         self.install("valgrind")
 
     def common_last(self):
-        self.run("%s/bin/getaws" % READIES)
+        self.run(f"{READIES}/bin/getaws")
         self.install("astyle", _try=True) # fails for centos7
-        self.run("{PYTHON} {READIES}/bin/getcmake --usr".format(PYTHON=self.python, READIES=READIES),
-                 sudo=self.os != 'macos')
+        self.run(f"{self.python} {READIES}/bin/getcmake --usr", sudo=self.os != 'macos')
         if self.dist != "arch":
             self.install("lcov")
         else:
             self.install("lcov-git", aur=True)
 
         if not self.no_rmpytools:
-            self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40".format(PYTHON=self.python, READIES=READIES))
+            self.run(f"{self.python} {READIES}/bin/getrmpytools --reinstall")
             self.pip_install("-r tests/requirements.txt")
 
     def install_peg(self):
