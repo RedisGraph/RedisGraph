@@ -430,7 +430,7 @@ jobs:
 
   build-macos-m1:
     macos:
-      xcode: 13.4.1
+      xcode: 14.2.0
     resource_class: macos.m1.large.gen1
     parameters:
       upload:
