@@ -1,8 +1,9 @@
 [![Release](https://img.shields.io/github/release/RedisGraph/RedisGraph.svg?sort=semver)](https://github.com/RedisGraph/RedisGraph/releases/latest)
-[![CircleCI](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master)
 [![Dockerhub](https://img.shields.io/docker/pulls/redis/redis-stack-server?label=redis-stack-server)](https://img.shields.io/docker/pulls/redis/redis-stack-server)
 [![Codecov](https://codecov.io/gh/RedisGraph/RedisGraph/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisGraph/RedisGraph)
 [![Bounty](https://img.shields.io/bountysource/team/redislabsmodules/activity)](https://app.bountysource.com/teams/redislabsmodules/issues)
+
+'master' branch build CI status: [![CircleCI](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master)
 
 # RedisGraph
 ## A graph database module for Redis
