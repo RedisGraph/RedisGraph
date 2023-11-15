@@ -134,6 +134,13 @@ void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes);
 // please note an expression tree can't contain nested aggregation nodes
 bool AR_EXP_ContainsAggregation(AR_ExpNode *root);
 
+// returns true if the nodes present equal Arithemtic Expression Trees
+bool AR_EXP_Equal
+(
+	const AR_ExpNode *a,
+	const AR_ExpNode *b
+);
+
 // constructs string representation of arithmetic expression tree
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 

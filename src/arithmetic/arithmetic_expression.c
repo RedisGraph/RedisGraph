@@ -48,6 +48,8 @@ static void _AR_EXP_ResolveVariables(AR_ExpNode *root, const Record r);
 // Clear an op node internals, without freeing the node allocation itself.
 static void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node);
 
+bool AR_EXP_EQUALS(const AR_ExpNode *a,	const AR_ExpNode *b);
+
 inline bool AR_EXP_IsConstant(const AR_ExpNode *exp) {
 	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
 }
@@ -834,6 +836,79 @@ bool AR_EXP_ReturnsBoolean
 	// in case `exp` is a variable or parameter
 	// whether it evaluates to boolean cannot be determined at this point
 	return t & T_BOOL || t == T_NULL;
+}
+
+// returns true if the operand nodes are equal
+static bool _AR_EXP_OperandEquals
+(
+	const AR_ExpNode *a,
+	const AR_ExpNode *b
+) {
+	ASSERT(a->type == AR_EXP_OPERAND)
+	ASSERT(b->type == AR_EXP_OPERAND)
+
+	if(a->operand.type != b->operand.type) {
+		return false;
+	}
+
+	AR_OperandNodeType type = a->operand.type;
+	switch(type) {
+		case AR_EXP_CONSTANT:
+			return SIValue_Compare(a->operand.constant,
+								   b->operand.constant, NULL) == 0;
+		case AR_EXP_VARIADIC:
+			return (strcmp(a->operand.variadic.entity_alias,
+						   b->operand.variadic.entity_alias) == 0);
+		case AR_EXP_PARAM:
+			return strcmp(a->operand.param_name, b->operand.param_name) == 0;
+		case AR_EXP_BORROW_RECORD:
+			return true;
+		default:
+			// not supposed to get here
+			ASSERT(false);
+			return false;
+	}
+}
+
+// returns true if the op nodes are equal
+static bool _AR_EXP_OpEquals
+(
+	const AR_ExpNode *a,
+	const AR_ExpNode *b
+) {
+	ASSERT(a->type == AR_EXP_OP);
+	ASSERT(b->type == AR_EXP_OP);
+
+	if((a->op.f != b->op.f) || (a->op.child_count != b->op.child_count)) {
+		return false;
+	}
+
+	// compare children
+	for(uint i = 0; i < a->op.child_count; i++) {
+		if(!AR_EXP_Equal(a->op.children[i], b->op.children[i])) {
+			return false;
+		}
+	}
+
+	// TODO: what about the private data? Will they always point at the same address?
+	return true;
+}
+
+// returns true if the nodes present equal Arithmetic Expression Trees
+bool AR_EXP_Equal
+(
+	const AR_ExpNode *a,
+	const AR_ExpNode *b
+) {
+	if(a->type != b->type) {
+		return false;
+	}
+
+	if(a->type == AR_EXP_OPERAND) {
+		return _AR_EXP_OperandEquals(a, b);
+	} else {
+		return _AR_EXP_OpEquals(a, b);
+	}
 }
 
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
