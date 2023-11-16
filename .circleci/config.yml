@@ -633,23 +633,31 @@ workflows:
           name: build
           <<: *not-on-integ-branch
       - build-platforms:
-          <<: *on-integ-and-version-tags
+          # temporary change to test build
+          # <<: *on-integ-and-version-tags
+          <<: *always
           context: common
           matrix:
             parameters:
               platform: [jammy, focal, bionic, amzn2, xenial, centos7, rocky8, bullseye]
       - build-arm-platforms:
-          <<: *on-integ-and-version-tags
+          # temporary change to test build
+          # <<: *on-integ-and-version-tags
+          <<: *always
           context: common
           matrix:
             parameters:
               platform: [jammy, focal, bionic]
       - build-macos-x64:
           context: common
-          <<: *on-integ-and-version-tags
+          # temporary change to test macos-x64 build
+          # <<: *on-integ-and-version-tags
+          <<: *always
       - build-macos-m1:
           context: common
-          <<: *on-integ-and-version-tags
+          # temporary change to test macos-m1 build
+          # <<: *on-integ-and-version-tags
+          <<: *always
       - coverage:
           <<: *on-any-branch
       - build-memcheck:
