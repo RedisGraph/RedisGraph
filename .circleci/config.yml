@@ -408,9 +408,9 @@ jobs:
           platform: <<parameters.platform>>
           official: "0"
 
-  build-macos:
+  build-macos-x64:
     macos:
-      xcode: 12.5.1
+      xcode: 13.4.1
     resource_class: macos.x86.medium.gen2
     parameters:
       upload:
@@ -418,9 +418,34 @@ jobs:
         default: "yes"
     steps:
       - early-returns
-      - build-steps:
-          cache_name: "mac-clang"
+      - build-steps
       - test-steps
+      - run:
+          name: Upload artifacts to S3
+          command: |
+            if [[ -n $CIRCLE_BRANCH && "<<parameters.upload>>" == "yes" ]]; then
+                make upload-artifacts SHOW=1 VERBOSE=1
+            fi
+      - persist-artifacts
+
+  build-macos-m1:
+    macos:
+      xcode: 14.2.0
+    resource_class: macos.m1.large.gen1
+    parameters:
+      upload:
+        type: string
+        default: "yes"
+    steps:
+      - early-returns
+      - build-steps
+      - test-steps
+      - run:
+          name: Persist artifacts?
+          command: |
+            if [[ "<<parameters.upload>>" != "yes" ]]; then
+              circleci step halt
+            fi
       - run:
           name: Upload artifacts to S3
           command: |
@@ -619,7 +644,10 @@ workflows:
           matrix:
             parameters:
               platform: [jammy, focal, bionic]
-      - build-macos:
+      - build-macos-x64:
+          context: common
+          <<: *on-integ-and-version-tags
+      - build-macos-m1:
           context: common
           <<: *on-integ-and-version-tags
       - coverage:
@@ -634,7 +662,8 @@ workflows:
           requires:
             - build-platforms
             - build-arm-platforms
-            - build-macos
+            - build-macos-x64
+            - build-macos-m1
       - upload-artifacts:
           name: upload-release-artifacts
           context: common
@@ -642,7 +671,8 @@ workflows:
           requires:
             - build-platforms
             - build-arm-platforms
-            - build-macos
+            - build-macos-x64
+            - build-macos-m1
       - release-automation:
           <<: *on-version-tags
           context: common

@@ -8,7 +8,7 @@ port = None
 
 class testGraphPersistency():
     def __init__(self):
-        self.env = Env(decodeResponses=True)
+        self.env = Env(decodeResponses=True, enableDebugCommand=True)
         global redis_con
         redis_con = self.env.getConnection()
         global port
@@ -245,7 +245,7 @@ class testGraphPersistency():
         runner = CliRunner()
 
         csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/resources/bulk_formatted/'
-        res = runner.invoke(bulk_insert, ['--port', port,
+        res = runner.invoke(bulk_insert, ['--redis-url', f"redis://localhost:{port}",
                                           '--nodes', csv_path + 'Person.csv',
                                           '--nodes', csv_path + 'Country.csv',
                                           '--relations', csv_path + 'KNOWS.csv',
