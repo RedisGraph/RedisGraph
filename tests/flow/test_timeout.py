@@ -132,16 +132,17 @@ class testQueryTimeout():
             self.env.assertContains("Query timed out", str(error))
 
     def test05_invalid_loadtime_config(self):
+        self.env.flush()
         self.env.stop()
 
         try:
-            Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
+            env = Env(decodeResponses=True, moduleArgs="TIMEOUT 10 TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
+            env.getConnection().ping()
             self.env.assertTrue(False)
         except:
             self.env.assertTrue(True)
 
     def test06_error_timeout_default_higher_than_timeout_max(self):
-        self.env.stop()
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT_DEFAULT 10 TIMEOUT_MAX 10")
 
         # get current timeout configuration
@@ -220,6 +221,7 @@ class testQueryTimeout():
                 self.env.assertContains("The query TIMEOUT parameter value cannot exceed the TIMEOUT_MAX configuration parameter value", str(error))
 
     def test_09_fallback(self):
+        self.env.flush()
         self.env.stop()
         self.env = Env(decodeResponses=True, moduleArgs="TIMEOUT 1")
 
@@ -260,6 +262,7 @@ class testQueryTimeout():
     # should return to user
     def test10_profile_no_double_response(self):
         # reset timeout params to default
+        self.env.flush()
         self.env.stop()
         self.env = Env(decodeResponses=True)
 
