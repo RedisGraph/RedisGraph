@@ -12,13 +12,24 @@ static Record FilterConsume(OpBase *opBase);
 static OpBase *FilterClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void FilterFree(OpBase *opBase);
 
+static void FilterToString(
+	const OpBase *ctx, 
+	sds *buf
+) {
+	OpFilter *op = (OpFilter *)ctx;
+	char *exp_str = NULL;
+
+	*buf = sdscatprintf(*buf, "%s | ", op->op.name);
+	FilterTree_ToString(op->filterTree, buf);
+}
+
 OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
 	OpFilter *op = rm_malloc(sizeof(OpFilter));
 	op->filterTree = filterTree;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_FILTER, "Filter", NULL, FilterConsume,
-				NULL, NULL, FilterClone, FilterFree, false, plan);
+				NULL, FilterToString, FilterClone, FilterFree, false, plan);
 
 	return (OpBase *)op;
 }
