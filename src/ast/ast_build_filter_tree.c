@@ -322,7 +322,7 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 		array_free(call_clauses);
 	}
 
-	if(!FilterTree_Valid(filter_tree)) {
+	if(!FilterTree_Valid(filter_tree, UINT8_MAX)) {
 		// Invalid filter tree structure, a compile-time error has been set.
 		FilterTree_Free(filter_tree);
 		return NULL;
@@ -361,7 +361,7 @@ FT_FilterNode *AST_BuildFilterTreeFromClauses
 		if(predicate) AST_ConvertFilters(&filter_tree, predicate);
 	}
 
-	if(!FilterTree_Valid(filter_tree)) {
+	if(!FilterTree_Valid(filter_tree, UINT8_MAX)) {
 		// Invalid filter tree structure, a compile-time error has been set.
 		FilterTree_Free(filter_tree);
 		return NULL;

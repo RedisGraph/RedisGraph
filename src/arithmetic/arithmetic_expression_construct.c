@@ -666,6 +666,11 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction
 	// build a FilterTree to represent this predicate
 	if(predicate_node) {
 		AST_ConvertFilters(&ctx->ft, predicate_node);
+		// in case of list comprehension, validate that aggregation function is not used in predicate
+		if(strcmp(func_name, "LIST_COMPREHENSION") == 0 && !FilterTree_Valid(ctx->ft, CYPHER_AST_LIST_COMPREHENSION)) {
+			rm_free(ctx);
+			return AR_EXP_NewConstOperandNode(SI_NullVal());
+		}
 	} else if(type != CYPHER_AST_LIST_COMPREHENSION) {
 		// Functions like any() and all() must have a predicate node.
 		ErrorCtx_SetError(EMSG_FUNCTION_REQUIER_PREDICATE, func_name);
@@ -679,7 +684,14 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction
 	// in the above query, this will be an operation node representing "val * 2"
 	// this will always be NULL for comprehensions like any() and all()
 	const cypher_astnode_t *eval_node = cypher_ast_list_comprehension_get_eval(comp_exp);
-	if(eval_node) ctx->eval_exp = _AR_EXP_FromASTNode(eval_node);
+	if(eval_node) {
+		ctx->eval_exp = _AR_EXP_FromASTNode(eval_node);
+		// validate that aggregation function is not used in evaluation node
+		if(AR_EXP_ContainsAgg(ctx->eval_exp)) {
+			rm_free(ctx);
+			return AR_EXP_NewConstOperandNode(SI_NullVal());
+		}
+	}
 
 	// build an operation node to represent the list comprehension
 	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, true, 2);
@@ -888,3 +900,23 @@ AR_ExpNode *AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 	return root;
 }
 
+bool AR_EXP_ContainsAgg(const AR_ExpNode *root) {
+	// Is this an aggregation node?
+	if(root->type == AR_EXP_OP && root->op.f->aggregate == true) {
+		ErrorCtx_SetError("Invalid use of aggregating function '%s'", root->op.f->name);
+		return true;
+	}
+
+	if(root->type == AR_EXP_OP) {
+		// Scan child nodes.
+		for(int i = 0; i < root->op.child_count; i++) {
+			AR_ExpNode *child = root->op.children[i];
+			if(child->type == AR_EXP_OP && child->op.f->aggregate == true) {
+				ErrorCtx_SetError("Invalid use of aggregating function '%s'", child->op.f->name);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
