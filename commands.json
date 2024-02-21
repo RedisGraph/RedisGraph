@@ -98,6 +98,13 @@
 			{
 				"name": "graph",
 				"type": "key"
+			},
+			{
+				"name": "reset",
+				"type": "pure-token",
+				"token": "RESET",
+				"optional": true,
+				"since": "2.12.0"
 			}
 		],
 		"since": "2.0.12",
