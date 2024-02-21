@@ -227,6 +227,18 @@ inline bool SIValue_IsTrue(SIValue v) {
 	return v.longval;
 }
 
+inline bool SIValue_IsGraphEntity(const SIValue v) {
+	return SI_TYPE(v) == T_EDGE || SI_TYPE(v) == T_NODE;
+}
+
+inline bool SIValue_IsGraphEntityOrPath(const SIValue v) {
+	return SIValue_IsGraphEntity(v) || SI_TYPE(v) == T_PATH;
+}
+
+inline bool SIValue_IsPoint(const SIValue v) {
+	return SI_TYPE(v) == T_POINT;
+}
+
 inline bool SIValue_IsNullPtr(SIValue *v) {
 	return v == NULL || v->type == T_NULL;
 }
