@@ -101,7 +101,10 @@ class testGraphCreationFlow(FlowTestsBase):
         queries = ["CREATE (a), (b) SET a.v = [b]",
                    "CREATE (a {v: ['str', [1, NULL]]})",
                    "CREATE (a {v: [[{k: 'v'}]]})",
-                   "CREATE (a:L)-[e:R]->(:L {v: [e]})"]
+                   "CREATE (a:L)-[e:R]->(:L {v: [e]})",
+                   "CREATE (a:L)-[e:R]->(:L {v: [e]})",
+                   "CREATE (a), (b)-[:R {k:properties(a)}]->(c)",
+                   "CREATE (a), (b)-[:R]->(c {k:properties(a)})"]
         for query in queries:
             try:
                 redis_graph.query(query)
