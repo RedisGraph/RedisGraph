@@ -228,6 +228,12 @@ inline AttributeSet GraphEntity_GetAttributes
 ) {
 	ASSERT(e != NULL);
 
+	// MOD6965 - DEBUG BEGIN
+	if (!e->attributes) {
+        RedisModule_Log(NULL, "warning", "Attributes: %p", e->attributes);
+    }
+	// MOD6965 - DEBUG END
+
 	return *e->attributes;
 }
 

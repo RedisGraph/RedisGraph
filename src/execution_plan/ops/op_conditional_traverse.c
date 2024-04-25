@@ -157,6 +157,18 @@ static Record CondTraverseConsume(OpBase *opBase) {
 			if(childRecord == NULL) {
 				break;
 			}
+			// MOD6965 - DEBUG BEGIN
+			Node* src = Record_GetNode(childRecord, op->srcNodeIdx);
+			if(src->attributes == NULL) {
+				RedisModule_Log(NULL, "warning", "src->attributes is NULL. Id: %ld", src->id);
+			}
+			Node* dest = Record_GetNode(childRecord, op->destNodeIdx);
+			if(dest) {
+				if(dest->attributes == NULL) {
+					RedisModule_Log(NULL, "warning", "dest->attributes is NULL. Id: %ld", src->id);
+				}
+			}
+			// MOD6965 - DEBUG END
 			if(!Record_GetNode(childRecord, op->srcNodeIdx)) {
 				/* The child Record may not contain the source node in scenarios like
 				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
@@ -178,9 +190,20 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 	/* Get node from current column. */
 	op->r = op->records[src_id];
+
+	Node sourceNode = GE_NEW_NODE();
+	Graph_GetNode(op->graph, src_id, &sourceNode);
+	if(sourceNode.attributes == NULL) {
+		RedisModule_Log(NULL, "warning", "sourceNode.attributes is NULL. Id: %ld", sourceNode.id);
+	}
+
 	// Populate the destination node and add it to the Record.
 	Node destNode = GE_NEW_NODE();
 	Graph_GetNode(op->graph, dest_id, &destNode);
+	if(destNode.attributes == NULL) {
+		RedisModule_Log(NULL, "warning", "destNode.attributes is NULL. Id: %ld", destNode.id);
+	}
+
 	Record_AddNode(op->r, op->destNodeIdx, destNode);
 
 	if(op->edge_ctx) {

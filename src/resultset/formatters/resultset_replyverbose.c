@@ -99,6 +99,11 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithStringBuffer(ctx, "id", 2);
 	RedisModule_ReplyWithLongLong(ctx, id);
+	// MOD6965 - DEBUG BEGIN
+	if (!n->attributes) {
+		RedisModule_Log(NULL, "warning", "Entity id: %ld", id);
+	}
+	// MOD6965 - DEBUG END
 
 	// ["labels", [label (string) X N]]
 	RedisModule_ReplyWithArray(ctx, 2);
@@ -107,10 +112,19 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	uint lbls_count;
 	NODE_GET_LABELS(gc->g, n, lbls_count);
 	RedisModule_ReplyWithArray(ctx, lbls_count);
+	// MOD6965 - DEBUG BEGIN
+	if (!n->attributes) {
+		RedisModule_Log(NULL, "warning", "labels_count: %d", lbls_count);
+	}
+	// MOD6965 - DEBUG END
+	
 	for(int i = 0; i < lbls_count; i++) {
 		Schema *s = GraphContext_GetSchemaByID(gc, labels[i], SCHEMA_NODE);
 		const char *lbl_name = Schema_GetName(s);
 		RedisModule_ReplyWithStringBuffer(ctx, lbl_name, strlen(lbl_name));
+		if (!n->attributes) {
+			RedisModule_Log(NULL, "warning", "Entity label %d: %s", i, lbl_name);
+		}
 	}
 
 	// [properties, [properties]]
