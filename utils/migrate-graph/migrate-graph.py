@@ -35,6 +35,8 @@ for i in range(0, max_id + 1):
         # res = dest_graph.query("MATCH (n) RETURN count(n)")
         # total_nodes_dest = res.result_set[0][0]
         # print('DEST: total nodes:', total_nodes_dest)
+        # (Raz) Why not commit here? The nodes aren't really copied to the graph until the commit is called.
+        # dest_graph.commit()
 
 print("{:10,}".format(count), 'nodes copied,', 'current_id', "{:10,}".format(i))
 
@@ -67,11 +69,14 @@ for i in range(0, max_id+1):
     if count % batch_size == 0:
         print()
         print("{:10,}".format(count), 'edges copied,', 'current_id:', "{:10}".format(i))
+        # dest_graph.commit()
 
 print("{:10,}".format(count), 'edges copied,', 'current_id', "{:10}".format(i))
 # commit changes
 dest_graph.commit()
 
+# --------------------------------- Validation ---------------------------------
+print('Validating...')
 # check if the number of nodes and edges are the same in both graphs
 # print source graph stats
 res = src_graph.query("MATCH (n) RETURN max(id(n))")
@@ -82,7 +87,7 @@ print('SOURCE: total nodes:', "{:,}".format(src_total_nodes), 'max_id:', max_id)
 
 res = src_graph.query("MATCH (n)-[r]->(m) RETURN max(id(r))")
 dest_max_id = res.result_set[0][0]
-res = src_graph.query("MATCH (n)-[r]->(m) RETURN count(distict id(r))")
+res = src_graph.query("MATCH (n)-[r]->(m) RETURN count(distinct id(r))")
 src_total_edges = res.result_set[0][0]
 print('SOURCE: total edges:', "{:,}".format(src_total_edges), 'max_id:', dest_max_id)
 
@@ -98,3 +103,5 @@ dest_max_id = res.result_set[0][0]
 res = dest_graph.query("MATCH (n)-[r]->(m) RETURN count(distinct id(r))")
 dest_total_edges = res.result_set[0][0]
 print('DEST: total edges:', "{:,}".format(dest_total_edges), 'max_id:', dest_max_id)
+
+# TODO: Add a validation of the entities themselves (node_i_src == node_i_dest, edge_i_src == edge_i_dest)
