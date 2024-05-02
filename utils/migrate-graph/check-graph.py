@@ -76,8 +76,6 @@ def checkSrcAndDestNodes(src_graph):
 
 HOST = "localhost"
 PORT = 6379
-# HOST = "redis-18763.raz-mon-aws-cluster-kabmc.env0.qa.redislabs.com"
-# PORT = 18763
 
 src = redis.Redis(host=HOST, port=PORT, decode_responses=True)
 graph = src.graph('Merchant')
