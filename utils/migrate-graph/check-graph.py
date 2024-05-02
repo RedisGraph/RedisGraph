@@ -18,10 +18,11 @@ def printTimeStamp():
 
 def printTotalNodes(graph, graph_name):
     res = graph.query("MATCH (n) RETURN count(n)", read_only=True)
-    print(graph_name, ' total nodes:', "{:10,}".format(res.result_set[0][0]))
+    print('Graph:', graph_name, ' total nodes:', "{:10,}".format(res.result_set[0][0]))
 
-def checkDestNodes(src_graph):
+def checkSrcAndDestNodes(src_graph):
     printTimeStamp()
+    printTotalNodes(src_graph, src_graph.NAME)
     batch_size = 50000
     res = src_graph.query("MATCH (n) RETURN max(id(n))", read_only=True)
     max_node_id = res.result_set[0][0]
@@ -67,9 +68,9 @@ def checkDestNodes(src_graph):
             src_node_count += 1
             total_validations += 1
             if total_validations % batch_size == 0:
-                print("{:10,}".format(total_validations), 'validations done,', 'current_id', "{:10,}".format(src_node_id))
+                print("{:10,}".format(total_validations), 'validations done,', 'current_node_id', "{:10,}".format(src_node_id))
 
-    print("{:10,}".format(total_validations), 'validations done,', 'current_id', "{:10,}".format(src_node_id))
+    print("{:10,}".format(total_validations), 'validations done,', 'current_node_id', "{:10,}".format(src_node_id))
     print('Destination and Source nodes validation finished')
     print('Errors:', errors)
     printTimeStamp()
@@ -78,8 +79,12 @@ def checkDestNodes(src_graph):
 # Main
 ################################################################################
 
+HOST = "localhost" 
+PORT = 6379
+
+# src = redis.Redis(host=HOST, port=PORT, password="<>",ssl_cert_reqs="none",ssl=True,decode_responses=True)
 src = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 src_graph = src.graph('Merchant')
 
-checkDestNodes(src_graph)
+checkSrcAndDestNodes(src_graph)
