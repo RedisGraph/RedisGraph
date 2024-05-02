@@ -46,7 +46,7 @@ def checkSrcAndDestNodes(src_graph):
             if len(results) == 0:
                 # no edges for this node.
                 continue
-            
+
             for row in results:
                 id_n = node_id
                 id_m = row[0]
