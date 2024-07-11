@@ -45,8 +45,7 @@ class RedisGraphSetup(paella.Setup):
         self.run("%s/bin/getepel" % READIES, sudo=True)
         self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")
-        print(self.osnick)
-        self.install_peg(sudo=False if self.osnick in ['rhel8', 'rocky8', 'amzn2'] else True)
+        self.install_peg(sudo=False if self.osnick in ['centos8', 'amzn2'] else True)
 
     def fedora(self):
         self.run("%s/bin/getgcc" % READIES)
