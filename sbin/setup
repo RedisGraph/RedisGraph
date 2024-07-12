@@ -8,7 +8,7 @@ READIES=$ROOT/deps/readies
 
 export HOMEBREW_NO_AUTO_UPDATE=1
 
-$READIES/bin/getpy3
+$READIES/bin/getpy3 MODERN=1
 pyenv="$(get_profile_d)/pyenv.sh"
 if [[ -f $pyenv ]]; then
 	. $pyenv

@@ -45,7 +45,7 @@ class RedisGraphSetup(paella.Setup):
         self.run("%s/bin/getepel" % READIES, sudo=True)
         self.run("%s/bin/getgcc --modern" % READIES)
         self.install("m4 libgomp")
-        self.install_peg()
+        self.install_peg(sudo=False if self.osnick in ['centos8', 'amzn2'] else True)
 
     def fedora(self):
         self.run("%s/bin/getgcc" % READIES)
@@ -81,8 +81,8 @@ class RedisGraphSetup(paella.Setup):
             self.run("{PYTHON} {READIES}/bin/getrmpytools --reinstall --modern --redispy-version a246f40".format(PYTHON=self.python, READIES=READIES))
             self.pip_install("-r tests/requirements.txt")
 
-    def install_peg(self):
-        self.run(r"""
+    def install_peg(self, sudo=True):
+        base = r"""
             cd /tmp
             build_dir=$(mktemp -d)
             cd $build_dir
@@ -90,10 +90,13 @@ class RedisGraphSetup(paella.Setup):
             tar xzf peg.tar.gz
             cd peg-0.1.18
             make
-            $(command -v sudo) make install MANDIR=.
+        """
+        middle = r"$(command -v sudo) make install MANDIR=." if sudo else r"make install MANDIR=."
+        post = r"""
             cd /tmp
             rm -rf $build_dir
-            """)
+        """
+        self.run(base + middle + post)
 
 #----------------------------------------------------------------------------------------------
 
