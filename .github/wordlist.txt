@@ -1,7 +1,6 @@
 CodeQL
 Jedis
 js
-Kolevska's
 Lexicographically
 metamodel
 QL
