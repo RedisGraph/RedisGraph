@@ -4,9 +4,6 @@ parameters:
   run_default_flow:
     default: true
     type: boolean
-  run_benchmark_flow_label:
-    default: false
-    type: boolean
 
 commands:
   early-returns:
@@ -84,17 +81,8 @@ commands:
       getredis_params:
         type: string
         default: ""
-      benchmarks:
-        type: string
-        default: "no"
     steps:
       - setup-automation
-      - run:
-          name: Install remote benchmark python dependencies
-          command: |
-            if [[ "<<parameters.benchmarks>>" == "yes" ]]; then
-              python3 -m pip install -r ./tests/benchmarks/requirements.txt
-            fi
       - run:
           name: System setup
           shell: /bin/bash -l -eo pipefail
@@ -107,12 +95,6 @@ commands:
           command: |
             python3 ./deps/readies/bin/getredis -v '<<parameters.redis_version>>' --force <<parameters.getredis_params>>
             redis-server --version
-      - run:
-          name: Install remote benchmark tool dependencies
-          command: |
-            if [[ "<<parameters.benchmarks>>" == "yes" ]]; then
-              VERSION=0.14.8 ./deps/readies/bin/getterraform
-            fi
 
   save-tests-logs:
     steps:
@@ -279,78 +261,6 @@ commands:
             cd build/docker
             make publish OSNICK=<<parameters.platform>> VERSION=$CIRCLE_TAG BRANCH=$CIRCLE_BRANCH OFFICIAL=<<parameters.official>> SHOW=1 VERBOSE=1
       - persist-artifacts
-
-  benchmark-steps:
-    parameters:
-      github_actor:
-        type: string
-        default: $CIRCLE_USERNAME
-      module_path:
-        type: string
-        default: ""
-      profile_env:
-        type: string
-        default: "0"
-      benchmark_glob:
-        type: string
-        default: "*.yml"
-      benchmark_regex:
-        type: string
-        default: ".*"
-      triggering_env:
-        type: string
-        default: "circleci"
-      allowed_envs:
-        type: string
-        default: "oss-standalone"
-      benchmark_runner_group_member_id:
-        type: string
-        default: "1"
-      benchmark_runner_group_total:
-        type: string
-        default: "1"
-    steps:
-      - run:
-          name: Run CI benchmarks on aws
-          no_output_timeout: 30m # given we use very large datasets we need this timeout
-          command: |
-            ROOT="$PWD"
-            cd tests/benchmarks
-            export AWS_ACCESS_KEY_ID=$PERFORMANCE_EC2_ACCESS_KEY
-            export AWS_SECRET_ACCESS_KEY=$PERFORMANCE_EC2_SECRET_KEY
-            export AWS_DEFAULT_REGION=$PERFORMANCE_EC2_REGION
-            export EC2_PRIVATE_PEM=$PERFORMANCE_EC2_PRIVATE_PEM
-            export PROFILE=<< parameters.profile_env >>
-            export BENCHMARK_GLOB=<< parameters.benchmark_glob >>
-            export BENCHMARK_REGEX="<< parameters.benchmark_regex >>"
-            export BENCHMARK_RUNNER_GROUP_M_ID=<< parameters.benchmark_runner_group_member_id >>
-            export BENCHMARK_RUNNER_GROUP_TOTAL=<< parameters.benchmark_runner_group_total >>
-            export PERF_CALLGRAPH_MODE="dwarf"
-            redisbench-admin run-remote \
-              --module_path << parameters.module_path >> \
-              --github_actor << parameters.github_actor >> \
-              --github_repo $CIRCLE_PROJECT_REPONAME \
-              --github_org $CIRCLE_PROJECT_USERNAME \
-              --github_sha $CIRCLE_SHA1 \
-              --github_branch $CIRCLE_BRANCH \
-              --upload_results_s3 \
-              --triggering_env circleci \
-              --required-module graph \
-              --upload_results_s3 \
-              --triggering_env << parameters.triggering_env >> \
-              --fail_fast \
-              --push_results_redistimeseries \
-              --allowed-envs << parameters.allowed_envs >>
-      - run:
-          name: Generate Pull Request Performance info
-          command: |
-            if [[ -n ${CIRCLE_PULL_REQUEST##*/} ]]; then
-                redisbench-admin compare  \
-                  --defaults_filename ./tests/benchmarks/defaults.yml \
-                  --comparison-branch $CIRCLE_BRANCH \
-                  --pull-request ${CIRCLE_PULL_REQUEST##*/} \
-                  --auto-approve
-            fi
 
 
 #----------------------------------------------------------------------------------------------------------------------------------
@@ -593,146 +503,6 @@ jobs:
           shell: /bin/bash -l -eo pipefail
           command: make fuzz-tests TIMEOUT=600
 
-  benchmark-group-1-of-6:
-    docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
-    resource_class: large
-    steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites:
-          benchmarks: "yes"
-      - attach_workspace:
-          at: ~/workspace
-      - run:
-          name: Build artifact
-          shell: /bin/bash -l -eo pipefail
-          command: make NPROC=16
-      - benchmark-steps:
-          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_runner_group_member_id: "1"
-          benchmark_runner_group_total: "6"
-  benchmark-group-2-of-6:
-    docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
-    resource_class: large
-    steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites:
-          benchmarks: "yes"
-      - attach_workspace:
-          at: ~/workspace
-      - run:
-          name: Build artifact
-          shell: /bin/bash -l -eo pipefail
-          command: make NPROC=16
-      - benchmark-steps:
-          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_runner_group_member_id: "2"
-          benchmark_runner_group_total: "6"
-
-  benchmark-group-3-of-6:
-    docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
-    resource_class: large
-    steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites:
-          benchmarks: "yes"
-      - attach_workspace:
-          at: ~/workspace
-      - run:
-          name: Build artifact
-          shell: /bin/bash -l -eo pipefail
-          command: make NPROC=16
-      - benchmark-steps:
-          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_runner_group_member_id: "3"
-          benchmark_runner_group_total: "6"
-
-  benchmark-group-4-of-6:
-    docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
-    resource_class: large
-    steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites:
-          benchmarks: "yes"
-      - attach_workspace:
-          at: ~/workspace
-      - run:
-          name: Build artifact
-          shell: /bin/bash -l -eo pipefail
-          command: make NPROC=16
-      - benchmark-steps:
-          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_runner_group_member_id: "4"
-          benchmark_runner_group_total: "6"
-
-  benchmark-group-5-of-6:
-    docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
-    resource_class: large
-    steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites:
-          benchmarks: "yes"
-      - attach_workspace:
-          at: ~/workspace
-      - run:
-          name: Build artifact
-          shell: /bin/bash -l -eo pipefail
-          command: make NPROC=16
-      - benchmark-steps:
-          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_runner_group_member_id: "5"
-          benchmark_runner_group_total: "6"
-
-  benchmark-group-6-of-6:
-    docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
-    resource_class: large
-    steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites:
-          benchmarks: "yes"
-      - attach_workspace:
-          at: ~/workspace
-      - run:
-          name: Build artifact
-          shell: /bin/bash -l -eo pipefail
-          command: make NPROC=16
-      - benchmark-steps:
-          module_path: "/root/project/bin/linux-x64-release/src/$PACKAGE_NAME.so"
-          benchmark_runner_group_member_id: "6"
-          benchmark_runner_group_total: "6"
-
-  benchmark-profiler:
-    docker:
-      - image: redisfab/rmbuilder:6.2.7-x64-bullseye
-    resource_class: large
-    steps:
-      - early-returns
-      - checkout-all
-      - install-prerequisites:
-          benchmarks: "yes"
-      - attach_workspace:
-          at: ~/workspace
-      - run:
-          name: Build artifact
-          shell: /bin/bash -l -eo pipefail
-          command: make NPROC=16
-      - benchmark-steps:
-          profile_env: "1"
-          module_path: "/root/project/src/$PACKAGE_NAME.so"
-          benchmark_glob: "graph500-scale18-ef16_1hop.yml"
-          triggering_env: "circleci.profilers" # results generated with profilers attached are not mixed with the ones without it
-
 #----------------------------------------------------------------------------------------------------------------------------------
 
 on-any-branch: &on-any-branch
@@ -770,7 +540,6 @@ on-integ-branch: &on-integ-branch
         - master
         - /^\d+\.\d+.*$/
         - /^feature-.*$/
-        - /^perf-.*$/
     tags:
       ignore: /.*/
 
@@ -781,7 +550,6 @@ on-integ-branch-cron: &on-integ-branch-cron
         - master
         - /^\d+\.\d+.*$/
         - /^feature-.*$/
-        - /^perf-.*$/
 
 not-on-integ-branch: &not-on-integ-branch
   filters:
@@ -790,7 +558,6 @@ not-on-integ-branch: &not-on-integ-branch
         - master
         - /^\d+\.\d+.*$/
         - /^feature-.*$/
-        - /^perf-.*$/
     tags:
       ignore: /.*/
 
@@ -872,47 +639,6 @@ workflows:
           context: common
           requires:
             - upload-release-artifacts
-      - benchmark-group-1-of-6:
-          context: common
-          <<: *on-integ-and-version-tags
-      - benchmark-group-2-of-6:
-          context: common
-          <<: *on-integ-and-version-tags
-      - benchmark-group-3-of-6:
-          context: common
-          <<: *on-integ-and-version-tags
-      - benchmark-group-4-of-6:
-          context: common
-          <<: *on-integ-and-version-tags
-      - benchmark-group-5-of-6:
-          context: common
-          <<: *on-integ-and-version-tags
-      - benchmark-group-6-of-6:
-          context: common
-          <<: *on-integ-and-version-tags
-
-  benchmark-flow-label:
-    when:
-      << pipeline.parameters.run_benchmark_flow_label >>
-    jobs:
-      - benchmark-group-1-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-2-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-3-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-4-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-5-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-6-of-6:
-          context: common
-          <<: *always
 
   nightly:
     triggers:
@@ -929,31 +655,3 @@ workflows:
           name: nightly-valgrind
       - fuzzer:
           name: nightly-fuzzer
-
-  nightly-perf-once-a-week:
-    triggers:
-      - schedule:
-          #  “At 07:00 on Mondays.”
-          cron: "00 07 * * 1"
-          filters:
-            branches:
-              only: master
-    jobs:
-      - benchmark-group-1-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-2-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-3-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-4-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-5-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-6-of-6:
-          context: common
-          <<: *always
