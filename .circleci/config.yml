@@ -898,29 +898,4 @@ workflows:
           context: common
           <<: *always
 
-    jobs:
-      - build-linux-debian:
-          name: build-with-redis-<<matrix.redis_version>>
-          matrix:
-            parameters:
-              redis_version: ["6.2", "7.0", "7.2", "unstable"]
 
-    jobs:
-      - benchmark-group-1-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-2-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-3-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-4-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-5-of-6:
-          context: common
-          <<: *always
-      - benchmark-group-6-of-6:
-          context: common
-          <<: *always
