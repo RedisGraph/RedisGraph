@@ -364,8 +364,35 @@ SIValue AR_IN(SIValue *argv, int argc, void *private_data) {
 	// indicate if there was a null comparison during the array scan
 	bool comparedNull = false;
 	if(SIArray_ContainsValue(lookupList, lookupValue, &comparedNull)) {
+		//printf("Nafraf: SIArray_ContainsValue inside AR_IN\n");
 		return SI_BoolVal(true);
 	}
+	// if there was a null comparison return null, other wise return false as the lookup item did not found
+	return comparedNull ? SI_NullVal() : SI_BoolVal(false);
+}
+
+// Receives two arguments and check if arg1 is in arg2 (if it is a list) or is equal to arg2.
+SIValue AR_INOREQUAL(SIValue *argv, int argc, void *private_data) {
+	//printf("Nafraf: AR_INPROPERTIES\n");
+	ASSERT(argc == 2);
+	if(SI_TYPE(argv[1]) == T_NULL) return SI_NullVal();
+	SIValue lookupValue = argv[0];
+	SIValue containingValue = argv[1];
+
+	// indicate if there was a null comparison
+	bool comparedNull = false;
+
+	if(SI_TYPE(containingValue) == T_ARRAY) {
+		if(SIArray_ContainsValue(argv[1], lookupValue, &comparedNull)) {
+			return SI_BoolVal(true);
+		}
+	}
+	int disjointOrNull = 0;
+	int compareValue = SIValue_Compare(containingValue, lookupValue, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) {
+		comparedNull = true;
+	}
+	if(compareValue == 0) return SI_BoolVal(true);
 	// if there was a null comparison return null, other wise return false as the lookup item did not found
 	return comparedNull ? SI_NullVal() : SI_BoolVal(false);
 }
@@ -811,6 +838,13 @@ void Register_ListFuncs() {
 	array_append(types, T_ARRAY | T_NULL);
 	ret_type = T_NULL | T_BOOL;
 	func_desc = AR_FuncDescNew("in", AR_IN, 2, 2, types, ret_type, true, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	array_append(types, SI_ALL);
+	array_append(types, SI_ALL | T_NULL);
+	ret_type = T_NULL | T_BOOL;
+	func_desc = AR_FuncDescNew("inOrEqual", AR_INOREQUAL, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
