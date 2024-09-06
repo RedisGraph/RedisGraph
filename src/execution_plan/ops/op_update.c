@@ -79,6 +79,9 @@ static Record UpdateConsume
 	OpBase *opBase
 ) {
 	OpUpdate *op = (OpUpdate *)opBase;
+	if(!op->op.children) {
+		return NULL;
+	}
 	OpBase *child = op->op.children[0];
 	Record r;
 
