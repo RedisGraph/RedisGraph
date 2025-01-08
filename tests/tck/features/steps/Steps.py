@@ -310,3 +310,9 @@ def step_imp(context):
     global exception
     assert exception != None
     assert "Multiple result columns with the same name are not supported." in str(exception)
+
+@then(u'a SyntaxError should be raised at compile time: AmbiguousAggregationExpression')
+def step_imp(context):
+    global exception
+    assert exception != None
+    assert "Ambiguous Aggregation Expression" in str(exception)
