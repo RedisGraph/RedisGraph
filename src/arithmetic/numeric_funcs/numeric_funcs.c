@@ -18,10 +18,52 @@
 #define M_PI (3.14159265358979323846)
 #endif /* M_PI */
 
+// Returns true when the passed argument (SIValue) has a type which can't be
+// used for adding.
+static bool _SIValue_IsForbiddenForAddition(const SIValue value) {
+	return SIValue_IsGraphEntityOrPath(value) || SIValue_IsPoint(value);
+}
+
+// Returns false if the arguments used for addition are incompatible for the
+// operation.
+static bool _checkAdditionArguments
+(
+	const SIValue lhs,
+	const SIValue rhs,
+	SIValue *problem_argument,
+	SIType *expected_type
+) {
+	// Forbid addition of a node, edge, path and point objects with anything
+	// else except for an array. The only allowed type for addition with those
+	// is an array (pre/append to the list).
+	if ((_SIValue_IsForbiddenForAddition(lhs) && SI_TYPE(rhs) != T_ARRAY)
+		|| (_SIValue_IsForbiddenForAddition(rhs) && SI_TYPE(lhs) != T_ARRAY)) {
+
+		*problem_argument = _SIValue_IsForbiddenForAddition(lhs) ? rhs : lhs;
+		*expected_type = T_ARRAY;
+
+		return false;
+	}
+
+	return true;
+}
+
 /* The '+' operator is overloaded to perform string concatenation
  * as well as arithmetic addition. */
 SIValue AR_ADD(SIValue *argv, int argc, void *private_data) {
-	return SIValue_Add(argv[0], argv[1]);
+	const SIValue lhs = argv[0];
+	const SIValue rhs = argv[1];
+
+	{
+		SIValue problem_argument = SI_NullVal();
+		SIType expected_type = T_NULL;
+		if (!_checkAdditionArguments(lhs, rhs, &problem_argument, &expected_type)) {
+			Error_SITypeMismatch(problem_argument, expected_type);
+			return SI_NullVal();
+		}
+	}
+
+	return SIValue_Add(lhs, rhs);
 }
 
 /* returns the subtracting given values. */
@@ -379,7 +421,7 @@ void Register_NumericFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
-	array_append(types, (SI_NUMERIC | T_STRING | T_ARRAY | T_BOOL | T_NULL));
+	array_append(types, SI_ALL);
 	ret_type = SI_NUMERIC | T_STRING | T_ARRAY | T_BOOL | T_NULL;
 	func_desc = AR_FuncDescNew("add", AR_ADD, 2, 2, types, ret_type, true, true);
 	AR_RegFunc(func_desc);
