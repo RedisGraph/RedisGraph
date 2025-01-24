@@ -2077,6 +2077,19 @@ class testFunctionCallsFlow(FlowTestsBase):
         for query, expected_result in query_to_expected_result.items():
             self.get_res_and_assertEquals(query, expected_result)
 
+        query = "CREATE (a:testIN {z:1}), (b:testIN {z:'a'}), (c:testIN {z:[1, 2]}), (d:testIN), (e:testIN {z:[3, [1, 2]]})"
+        graph.query(query)
+        query_to_expected_result = {
+            "MATCH (a:testIN) RETURN 1 IN a.z": [[True], [False], [True], [None], [False]],
+            "MATCH (a:testIN) RETURN 'a' IN a.z": [[False], [True], [False], [None], [False]],
+            "MATCH (a:testIN) RETURN 1 IN [a.z]": [[True], [False], [False], [None], [False]],
+            "MATCH (a:testIN) RETURN [1, 2] IN a.z": [[False], [False], [True], [None], [True]],
+            "MATCH (a:testIN) RETURN [1, 2] IN [a.z]": [[False], [False], [True], [None], [False]],
+            "MATCH (a:testIN) RETURN NULL IN a.z": [[None], [None], [None], [None], [None]],
+        }
+        for query, expected_result in query_to_expected_result.items():
+            self.get_res_and_assertEquals(query, expected_result)
+
     def test81_ISNULL(self):
         arr = ["NULL", "1", "1.2", "TRUE", "FALSE", "'string'", "[1,2,3]"]
         for ind, s in enumerate(arr):

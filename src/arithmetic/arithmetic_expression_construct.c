@@ -275,10 +275,22 @@ static AR_ExpNode *_AR_EXP_FromBinaryOpExpression(const cypher_astnode_t *expr) 
 	const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(expr);
 	AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
 	// Arguments are of type CYPHER_AST_EXPRESSION
-	AR_ExpNode *op = AR_EXP_NewOpNodeFromAST(operator_enum, 2);
 	const cypher_astnode_t *lhs_node = cypher_ast_binary_operator_get_argument1(expr);
-	op->op.children[0] = _AR_EXP_FromASTNode(lhs_node);
 	const cypher_astnode_t *rhs_node = cypher_ast_binary_operator_get_argument2(expr);
+	const cypher_astnode_type_t t = cypher_astnode_type(rhs_node);
+
+	AR_ExpNode *op = NULL;
+	if (operator_enum == OP_IN && t == CYPHER_AST_PROPERTY_OPERATOR) {
+		// in case of function "in" with propery operator arguments, use the function "inorEqual"
+		// to support case like:
+		// CREATE (a{z:1}), (b{z:'a'}), (c{z:[1,2]}), (d)
+		// MATCH (a) WHERE (1 in a.z) RETURN a
+		// MATCH (a) RETURN a, 1 IN a.z
+		op = AR_EXP_NewOpNode("inOrEqual", true, 2);
+	} else {
+		op = AR_EXP_NewOpNodeFromAST(operator_enum, 2);
+	}
+	op->op.children[0] = _AR_EXP_FromASTNode(lhs_node);
 	op->op.children[1] = _AR_EXP_FromASTNode(rhs_node);
 	return op;
 }
