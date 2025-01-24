@@ -13,6 +13,7 @@
 #include "../errors/errors.h"
 #include "../ast/ast_shared.h"
 #include "../datatypes/array.h"
+#include "../arithmetic/arithmetic_expression_construct.h"
 
 // forward declarations
 void _FilterTree_DeMorgan
@@ -666,7 +667,8 @@ static inline bool _FilterTree_ValidExpressionNode
 
 bool FilterTree_Valid
 (
-	const FT_FilterNode *root
+	const FT_FilterNode *root,
+	cypher_astnode_type_t type
 ) {
 	// An empty tree is has a valid structure.
 	if(!root) return true;
@@ -681,6 +683,12 @@ bool FilterTree_Valid
 				ErrorCtx_SetError(EMSG_FILTER_INVALID_COMPARISON);
 				return false;
 			}
+			// Aggregate functions can't be used as part of filters predicate in
+			// either pattern comprehension node or list comprehension node
+			if ((type == CYPHER_AST_PATTERN_COMPREHENSION || type == CYPHER_AST_LIST_COMPREHENSION) &&
+				(AR_EXP_ContainsAgg(root->pred.lhs) || AR_EXP_ContainsAgg(root->pred.rhs))) {
+					return false;
+			}
 			break;
 		case FT_N_COND:
 			// Empty condition, invalid structure.
@@ -694,8 +702,8 @@ bool FilterTree_Valid
 				ErrorCtx_SetError(EMSG_INVALID_NOT_USAGE);
 				return false;
 			}
-			if(!FilterTree_Valid(root->cond.left)) return false;
-			if(!FilterTree_Valid(root->cond.right)) return false;
+			if(!FilterTree_Valid(root->cond.left, type)) return false;
+			if(!FilterTree_Valid(root->cond.right, type)) return false;
 			break;
 		default:
 			ASSERT("Unknown filter tree node" && false);
