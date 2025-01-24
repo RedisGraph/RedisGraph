@@ -24,12 +24,14 @@
 
 // returns a string containing the specified number of leftmost characters of the original string.
 SIValue AR_LEFT(SIValue *argv, int argc, void *private_data) {
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	
-	int64_t newlen = -1;
-	if(SI_TYPE(argv[1]) == T_INT64) {
-		newlen = argv[1].longval;
-	} 
+	if(SIValue_IsNull(argv[0])) {
+		return SI_NullVal();
+	}
+	if(SI_TYPE(argv[1]) != T_INT64) {
+		return SI_NullVal();
+	}
+
+	int64_t newlen = argv[1].longval;
 	if(newlen < 0) {
 		ErrorCtx_SetError(EMSG_MUST_BE_NON_NEGATIVE, "length");
 		return SI_NullVal();
@@ -70,12 +72,14 @@ SIValue AR_LTRIM(SIValue *argv, int argc, void *private_data) {
 
 // returns a string containing the specified number of rightmost characters of the original string.
 SIValue AR_RIGHT(SIValue *argv, int argc, void *private_data) {
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	
-	int64_t newlen = -1;
-	if(SI_TYPE(argv[1]) == T_INT64) {
-		newlen = argv[1].longval;
+	if(SIValue_IsNull(argv[0])) {
+		return SI_NullVal();
 	}
+	if(SI_TYPE(argv[1]) != T_INT64) {
+		return SI_NullVal();
+	}
+
+	int64_t newlen = argv[1].longval;
 	if(newlen < 0) {
 		ErrorCtx_SetError(EMSG_MUST_BE_NON_NEGATIVE, "length");
 		return SI_NullVal();
@@ -738,7 +742,7 @@ void Register_StringFuncs() {
 
 	types = array_new(SIType, 2);
 	array_append(types, (T_STRING | T_NULL));
-	array_append(types, T_INT64 | T_NULL);
+	array_append(types, T_INT64);
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("left", AR_LEFT, 2, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
@@ -751,7 +755,7 @@ void Register_StringFuncs() {
 
 	types = array_new(SIType, 2);
 	array_append(types, (T_STRING | T_NULL));
-	array_append(types, T_INT64 | T_NULL);
+	array_append(types, T_INT64);
 	ret_type = T_STRING | T_NULL;
 	func_desc = AR_FuncDescNew("right", AR_RIGHT, 2, 2, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
