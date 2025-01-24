@@ -647,6 +647,20 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 	return a.type - b.type;
 }
 
+// Returns returns true if the given numeric value is NaN (Not a Number)
+// If input is NULL, returns NULL
+SIValue SIValue_IsNaN(const SIValue a) {		
+	if (SI_TYPE(a) == T_NULL) {
+		return SI_NullVal();
+	} else if(SI_TYPE(a) & SI_NUMERIC ) {
+		int result = isnan(SI_GET_NUMERIC(a)) ? true : false;
+		return SI_BoolVal(result);
+	} else  {
+		// Invalid input type
+		ASSERT(false);
+	}
+}
+
 /* Hashes the id and properties of the node*/
 XXH64_hash_t SINode_HashCode(const SIValue v) {
 	XXH_errorcode res;
