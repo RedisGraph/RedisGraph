@@ -167,6 +167,13 @@ static inline void _buildCreateOp
 static inline void _buildUnwindOp(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	AST_UnwindContext unwind_ast_ctx = AST_PrepareUnwindOp(clause);
 	OpBase *op = NewUnwindOp(plan, unwind_ast_ctx.exp);
+
+	// build pattern\list comprehension related ops, and connect them to
+	// the Unwind op
+	const cypher_astnode_t *exp = cypher_ast_unwind_get_expression(clause);
+	buildPatternComprehensionOps(plan, op, exp);
+	buildPatternPathOps(plan, op, exp);
+
 	ExecutionPlan_UpdateRoot(plan, op);
 }
 
