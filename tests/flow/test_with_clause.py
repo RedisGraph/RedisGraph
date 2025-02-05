@@ -267,3 +267,18 @@ class testWithClause(FlowTestsBase):
         query = """WITH 1 AS x MATCH (a:label_a), (b:label_b) RETURN a.v, b.v"""
         actual_result = redis_graph.query(query)
         self.env.assertEqual(len(actual_result.result_set), 36)
+
+    def test13_aggregated_projection_vars(self):
+        """When ordering aggregated results, only projected variables should be
+        accessible in the ORDER BY clause"""
+
+        query = "WITH 1 as one UNWIND range(0,4) as x RETURN max(x) ORDER BY one"
+        try:
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except redis.exceptions.ResponseError as e:
+            # error expected
+            self.env.assertIn(
+                "Ambiguous Aggregation Expression: in a WITH/RETURN with an aggregation, \
+it is not possible to access variables not projected by the WITH/RETURN.",
+                str(e))
