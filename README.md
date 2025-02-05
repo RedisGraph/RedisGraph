@@ -2,7 +2,7 @@
 ## A graph database module for Redis
 
 ---
-### RedisGraph is no longer actively maintained.
+### RedisGraph is no longer maintained.
 
 ### We are grateful to the RedisGraph community for their interest and support.
 
