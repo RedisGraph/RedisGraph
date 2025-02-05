@@ -2,9 +2,7 @@
 ## A graph database module for Redis
 
 ---
-### RedisGraph is now in maintenance mode.
-
-### As of July 5th, 2023 RedisGraph is no longer under active development. We do not plan to release new features (2.12 is the last feature-bearing release), but we will continue to release patches until January 31, 2025.
+### RedisGraph is no longer actively maintained.
 
 ### We are grateful to the RedisGraph community for their interest and support.
 
