@@ -2,6 +2,7 @@ import re
 from common import *
 from index_utils import *
 from collections import Counter
+from execution_plan_util import locate_operation
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 from demo import QueryInfo
@@ -290,7 +291,20 @@ class testPathFilter(FlowTestsBase):
         query = "MATCH (a:L) WHERE (a)-[]->() AND a.x = 'a' return a.x"
         plan_1 = redis_graph.execution_plan(query)
         # The predicate filter should be evaluated between the Apply and Scan ops.
-        self.env.assertTrue(re.search('Semi Apply\s+Filter\s+Node By Label Scan', plan_1))
+        # Results
+        #     Project
+        #         Semi Apply
+        #             Filter | a.x = 'a'
+        #                 Node By Label Scan | (a:L)
+        #             Conditional Traverse | (a)-[@anon_1]->(@anon_0)
+        #                 Argument | record is null
+        plan = redis_graph.explain(query)
+        semiapply = locate_operation(plan.structured_plan, "Semi Apply")
+        self.env.assertTrue(semiapply and len(semiapply.children) == 2)
+        predfilter = locate_operation(semiapply, "Filter")
+        self.env.assertTrue(predfilter and len(predfilter.children) == 1)
+        scan = locate_operation(predfilter, "Node By Label Scan")
+        self.env.assertTrue(scan)
         result_set = redis_graph.query(query)
         expected_result = [['a']]
         self.env.assertEquals(result_set.result_set, expected_result)
