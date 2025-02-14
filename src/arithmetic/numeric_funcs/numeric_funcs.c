@@ -373,6 +373,11 @@ SIValue AR_HAVERSIN(SIValue *argv, int argc, void *private_data) {
 	return SI_DoubleVal((1-cos(value))/2);
 }
 
+// returns IsNaN(x)
+SIValue AR_ISNAN(SIValue *argv, int argc, void *private_data) {
+	return SIValue_IsNaN(argv[0]);
+}
+
 void Register_NumericFuncs() {
 	SIType *types;
 	SIType ret_type;
@@ -572,5 +577,11 @@ void Register_NumericFuncs() {
 	array_append(types, (SI_NUMERIC | T_NULL));
 	ret_type = T_DOUBLE | T_NULL;
 	func_desc = AR_FuncDescNew("haversin", AR_HAVERSIN, 1, 1, types, ret_type, false, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	array_append(types, (SI_NUMERIC | T_NULL));
+	ret_type = T_BOOL | T_NULL;
+	func_desc = AR_FuncDescNew("isNaN", AR_ISNAN, 1, 1, types, ret_type, false, true);
 	AR_RegFunc(func_desc);
 }

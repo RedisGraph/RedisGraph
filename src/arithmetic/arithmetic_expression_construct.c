@@ -230,6 +230,16 @@ static AR_ExpNode *_AR_EXP_FromNullExpression() {
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
+static AR_ExpNode *_AR_EXP_FromNanExpression() {
+	SIValue converted = SI_DoubleVal(nan(""));
+	return AR_EXP_NewConstOperandNode(converted);
+}
+
+static AR_ExpNode *_AR_EXP_FromInfExpression() {
+	SIValue converted = SI_DoubleVal(INFINITY);
+	return AR_EXP_NewConstOperandNode(converted);
+}
+
 static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(const cypher_astnode_t *expr) {
 	AR_ExpNode *op = NULL;
 	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(expr); // CYPHER_AST_EXPRESSION
@@ -821,6 +831,10 @@ static AR_ExpNode *_AR_EXP_FromASTNode(const cypher_astnode_t *expr) {
 		return _AR_EXP_FromFalseExpression();
 	} else if(t == CYPHER_AST_NULL) {
 		return _AR_EXP_FromNullExpression();
+	} else if(t == CYPHER_AST_NAN) {
+		return _AR_EXP_FromNanExpression();
+	} else if(t == CYPHER_AST_INF) {
+		return _AR_EXP_FromInfExpression();
 		// handling for unary operators (-5, +a.val)
 	} else if(t == CYPHER_AST_UNARY_OPERATOR) {
 		return _AR_EXP_FromUnaryOpExpression(expr);

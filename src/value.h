@@ -201,6 +201,10 @@ SIValue SIValue_Modulo(const SIValue a, const SIValue b);
  * If the the values are not of the same type, the macro DISJOINT is returned in disjointOrNull value. */
 int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull);
 
+// Returns returns true if the given numeric value is NaN (Not a Number)
+// If input is NULL, returns NULL
+SIValue SIValue_IsNaN(const SIValue a);
+
 /* Update the provided hash state with the given SIValue. */
 void SIValue_HashUpdate(SIValue v, XXH64_state_t *state);
 
