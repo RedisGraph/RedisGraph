@@ -6,6 +6,7 @@
 
 #include "RG.h"
 #include "../ops/ops.h"
+#include "../../errors.h"
 #include "../../query_ctx.h"
 #include "execution_plan_util.h"
 #include "execution_plan_construct.h"
@@ -88,6 +89,11 @@ void buildPatternComprehensionOps
 		eval_node = cypher_ast_pattern_comprehension_get_eval(pc);
 		AR_ExpNode *eval_exp = AR_EXP_FromASTNode(eval_node);
 
+		// check that evaluation node does not contains aggregating function
+		if (AR_EXP_ContainsAgg(eval_exp)) {
+			break;
+		}
+
 		// collect evaluation results into an array using `collect`
 		AR_ExpNode *collect_exp = AR_EXP_NewOpNode("collect", false, 1);
 		collect_exp->op.children[0] = eval_exp;
@@ -107,7 +113,7 @@ void buildPatternComprehensionOps
 			FT_FilterNode *filter_tree = NULL;
 			AST_ConvertFilters(&filter_tree, predicate);
 
-			if(!FilterTree_Valid(filter_tree)) {
+			if(!FilterTree_Valid(filter_tree, CYPHER_AST_PATTERN_COMPREHENSION)) {
 				// Invalid filter tree structure, a compile-time error has been set.
 				FilterTree_Free(filter_tree);
 			} else {

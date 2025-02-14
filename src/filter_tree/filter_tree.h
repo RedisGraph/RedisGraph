@@ -181,7 +181,8 @@ FT_FilterNode *FilterTree_Combine
 // a condition or predicate node can't be childless
 bool FilterTree_Valid
 (
-	const FT_FilterNode *root
+	const FT_FilterNode *root,
+	cypher_astnode_type_t type
 );
 
 // remove NOT nodes by applying DeMorgan laws

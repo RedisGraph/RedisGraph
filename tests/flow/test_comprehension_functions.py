@@ -41,6 +41,13 @@ class testComprehensionFunctions(FlowTestsBase):
 
         redis_graph.commit()
 
+    def expect_error(self, query, expected_err_msg):
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            self.env.assertIn(expected_err_msg, str(e))
+
     # Test list comprehension queries with scalar inputs and a single result row
     def test01_list_comprehension_single_return(self):
         expected_result = [[[2, 6]]]
@@ -462,3 +469,27 @@ class testComprehensionFunctions(FlowTestsBase):
         expected_result = [[[1, 1]], [[2]], [[3]], [[]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+    def test21_pattern_comprehension_with_invalid_filters(self):
+        # A list of queries and errors which are expected to occur with the specified query.
+        queries_with_errors = {
+            "MATCH (x) RETURN [(x)--(z) WHERE collect(z.a) > 10 | z.b]" : "Invalid use of aggregating function 'collect'",
+            "MATCH (x) RETURN [(x)--(z) WHERE z.a > collect(10) | z.b]" : "Invalid use of aggregating function 'collect'",
+            "MATCH (x) RETURN [(x)--(z) WHERE z.a > 10 | collect(z.b)]" : "Invalid use of aggregating function 'collect'",
+            "MATCH (x) RETURN [(x)--(z) WHERE (min(z.a) - sum(z.b)) > z.d | z.b]" : "Invalid use of aggregating function 'min'"
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)
+
+    def test22_list_comprehension(self):
+        # A list of queries and errors which are expected to occur with the specified query.
+        queries_with_errors = {
+            "RETURN [x IN range(1,10) | sum(1)]" : "Invalid use of aggregating function 'sum'",
+            "RETURN [x IN range(1,10) | sum(x)]" : "Invalid use of aggregating function 'sum'",
+            "RETURN [x IN range(1,10) | 1 + min(x)]" : "Invalid use of aggregating function 'min'",
+            "RETURN [x IN range(1,10) | max(x) + min(x)]" : "Invalid use of aggregating function 'max'",
+            "RETURN [x IN range(1,10) | collect(x)]" : "Invalid use of aggregating function 'collect'",
+            "RETURN [x IN range(1,10) WHERE x % 2 > avg(x) ] AS r" : "Invalid use of aggregating function 'avg'",
+            "RETURN [x IN range(1,10) WHERE avg(x) > x - 1 ] AS r" : "Invalid use of aggregating function 'avg'",
+        }
+        for query, error in queries_with_errors.items():
+            self.expect_error(query, error)
