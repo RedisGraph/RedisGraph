@@ -185,7 +185,7 @@ GrB_Info Pagerank               // GrB_SUCCESS or error condition
 		//----------------------------------------------------------------------
 		// GxB_print (r, 2) ;
 
-		rc = GrB_reduce(&rsum, NULL, GxB_PLUS_FP32_MONOID, r, NULL) ;
+		rc = GrB_reduce(&rsum, NULL, GrB_PLUS_MONOID_FP32, r, NULL) ;
 		assert(rc == GrB_SUCCESS) ;
 
 		// t = C*r
@@ -203,7 +203,7 @@ GrB_Info Pagerank               // GrB_SUCCESS or error condition
 
 		rc = GrB_eWiseAdd(r, NULL, NULL, op_diff, r, t, NULL) ;
 		assert(rc == GrB_SUCCESS) ;
-		rc = GrB_reduce(&rdiff, NULL, GxB_PLUS_FP32_MONOID, r, NULL) ;
+		rc = GrB_reduce(&rdiff, NULL, GrB_PLUS_MONOID_FP32, r, NULL) ;
 		assert(rc == GrB_SUCCESS) ;
 
 		//----------------------------------------------------------------------
@@ -225,7 +225,7 @@ GrB_Info Pagerank               // GrB_SUCCESS or error condition
 	//--------------------------------------------------------------------------
 
 	// rsum = sum (r)
-	rc = GrB_reduce(&rsum, NULL, GxB_PLUS_FP32_MONOID, r, NULL) ;
+	rc = GrB_reduce(&rsum, NULL, GrB_PLUS_MONOID_FP32, r, NULL) ;
 	assert(rc == GrB_SUCCESS) ;
 
 	// r = r / rsum
