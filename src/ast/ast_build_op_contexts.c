@@ -130,15 +130,22 @@ static void _ConvertUpdateItem
 	} else if(type == CYPHER_AST_REMOVE_PROPERTY) {
 		// MATCH (a) REMOVE a.v
 
-		// alias
 		ast_prop = cypher_ast_remove_property_get_property(update_item);
 		prop_expr = cypher_ast_property_operator_get_expression(ast_prop);
-		ASSERT(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
-		alias = cypher_ast_identifier_get_name(prop_expr);
-
-		// attribute
-		ast_key = cypher_ast_property_operator_get_prop_name(ast_prop);
-		attribute = cypher_ast_prop_name_get_value(ast_key);
+		int prop_expr_type = cypher_astnode_type(prop_expr);
+		ASSERT(prop_expr_type == CYPHER_AST_IDENTIFIER 
+			|| prop_expr_type == CYPHER_AST_NULL);
+		
+		if(prop_expr_type == CYPHER_AST_IDENTIFIER) {
+			// alias
+			alias = cypher_ast_identifier_get_name(prop_expr);
+			// attribute
+			ast_key = cypher_ast_property_operator_get_prop_name(ast_prop);
+			attribute = cypher_ast_prop_name_get_value(ast_key);
+		} else {
+			// REMOVE null.v
+			return;
+		}
 	} else {
 		ASSERT(false);
 	}
@@ -149,7 +156,7 @@ static void _ConvertUpdateItem
 	if(ctx == raxNotFound) {
 		ctx = UpdateCtx_New(alias);
 		raxInsert(updates, (unsigned char *)alias, len, ctx, NULL);
-	} 
+	}
 
 	//--------------------------------------------------------------------------
 	// collect update information
