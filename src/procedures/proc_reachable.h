@@ -6,11 +6,7 @@
 
 #pragma once
 
-#include "bfs.h"
-#include "dfs.h"
-#include "all_paths.h"
-#include "detect_cycle.h"
-#include "longest_path.h"
-#include "reachability.h"
-#include "all_neighbors.h"
+#include "proc_ctx.h"
+
+ProcedureCtx *Proc_Reachable_Ctx(void);
 
