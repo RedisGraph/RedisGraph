@@ -237,7 +237,7 @@ who_was_on_business_trip_query = QueryInfo(
 number_of_vacations_per_person_query = QueryInfo(
     query="""MATCH (p:person)-[v:visited {purpose:"pleasure"}]->(c:country)
              RETURN p.name, count(v.purpose) AS vacations
-             ORDER BY COUNT(v.purpose) DESC, p.name DESC
+             ORDER BY vacations DESC, p.name DESC
              LIMIT 6""",
     description='Count number of vacations per person?',
     max_run_time_ms=0.5,
