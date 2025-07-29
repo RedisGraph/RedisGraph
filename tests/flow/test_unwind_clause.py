@@ -98,3 +98,56 @@ class testUnwindClause():
         query = """UNWIND ({x:null}) AS q MATCH (n:N) SET n.x= q.x RETURN n"""
         actual_result = redis_graph.query(query)
         self.env.assertEqual(actual_result.properties_removed, 1)
+
+    def test03_pattern_comprehension(self):
+        """Tests that pattern comprehensions inside an `UNWIND` clause are
+        handled correctly."""
+
+        # clean the db
+        self.env.flush()
+        redis_graph = Graph(self.env.getConnection(), GRAPH_ID)
+
+        # create 2 nodes connected by an edge
+        res = redis_graph.query("CREATE (:A)-[:E]->(:B)")
+        self.env.assertEquals(res.nodes_created, 2)
+        self.env.assertEquals(res.relationships_created, 1)
+
+        # query with pattern comprehension in `UNWIND`
+        res = redis_graph.query(
+            """
+            UNWIND [p = (a)-[e]->(b) | p] AS paths
+            RETURN paths
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        n1 = Node(label="A")
+        n2 = Node(label="B")
+        e = Edge(0, "E", 1, edge_id=0)
+        path = Path.new_empty_path().add_node(n1).add_edge(e).add_node(n2)
+        self.env.assertEquals(res.result_set[0][0], path)
+
+        # simple reduce in eval expression
+        res = redis_graph.query(
+            """
+            UNWIND [p=()-[]->() | reduce(a=1,b in [1] | a + b)] AS n
+            RETURN n
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], 2)
+
+        # reference `p` in eval expression
+        res = redis_graph.query(
+            """
+            UNWIND [p=()-[]->() | reduce(a=1,b in [1] | a + b + length(p))] AS n
+            RETURN n
+            """
+        )
+
+        # assert results
+        self.env.assertEquals(len(res.result_set), 1)
+        self.env.assertEquals(res.result_set[0][0], 3)
