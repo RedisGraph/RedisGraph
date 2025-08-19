@@ -1,5 +1,6 @@
-from common import *
 import re
+from common import *
+from execution_plan_util import locate_operation
 
 redis_graph = None
 values = ["str1", "str2", False, True, 5, 10.5]
@@ -224,22 +225,32 @@ class testWithClause(FlowTestsBase):
         expected = [] # No results should be returned
         self.env.assertEqual(actual_result.result_set, expected)
         # Verify that the Filter op appears directly above the Apply operation in the ExecutionPlan.
-        plan = redis_graph.execution_plan(query)
-        self.env.assertTrue(re.search('Filter\s+Apply', plan))
+        plan = redis_graph.explain(query)
+        filterOp = locate_operation(plan.structured_plan, "Filter")
+        self.env.assertTrue(filterOp and len(filterOp.children) == 1)
+        applyOp = locate_operation(filterOp, "Apply")
+        self.env.assertTrue(applyOp)
 
         # Verify that filters on projected aliases do not get placed before the projection op.
         query = """UNWIND [1] AS a WITH a AS b, 'projected' AS a WHERE a = 1 RETURN a"""
-        plan = redis_graph.execution_plan(query)
+        plan = redis_graph.explain(query)
         actual_result = redis_graph.query(query)
         expected = [] # No results should be returned
         self.env.assertEqual(actual_result.result_set, expected)
-        self.env.assertTrue(re.search('Filter\s+Project', plan))
+        filterOp = locate_operation(plan.structured_plan, "Filter")
+        self.env.assertTrue(filterOp and len(filterOp.children) == 1)
+        projectOp = locate_operation(filterOp, "Project")
+        self.env.assertTrue(projectOp)
 
         query = """UNWIND [1] AS a WITH a AS b, 'projected' AS a WHERE a = 'projected' RETURN a"""
-        plan = redis_graph.execution_plan(query)
+        plan = redis_graph.explain(query)
         actual_result = redis_graph.query(query)
         expected = [['projected']] # The projected string should be returned
-        self.env.assertTrue(re.search('Filter\s+Project', plan))
+        # self.env.assertTrue(re.search('Filter | a = \'projected\'\s+Project', plan))
+        filterOp = locate_operation(plan.structured_plan, "Filter")
+        self.env.assertTrue(filterOp and len(filterOp.children) == 1)
+        projectOp = locate_operation(filterOp, "Project")
+        self.env.assertTrue(projectOp)
 
     def test11_valid_order_by_aliases(self):
         # Verify that ORDER BY aliases match previously defined references
