@@ -14,5 +14,6 @@
 #include "all_paths.h"
 #include "detect_cycle.h"
 #include "longest_path.h"
+#include "reachability.h"
 #include "all_neighbors.h"
 
