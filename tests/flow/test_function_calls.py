@@ -727,7 +727,6 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN LEFT('muchacho', 100)" : [['muchacho']],
             "RETURN LEFT(NULL, -1)" : [[None]],
             "RETURN LEFT(NULL, 100)" : [[None]],
-            "RETURN LEFT(NULL, NULL)" : [[None]],
             # test unicode charecters
             "RETURN LEFT('丁丂七丄丅丆万丈三上', 4)" : [['丁丂七丄']],
             "RETURN LEFT('丁丂七丄丅丆万丈三上', 100)" : [['丁丂七丄丅丆万丈三上']],
@@ -738,7 +737,6 @@ class testFunctionCallsFlow(FlowTestsBase):
         # invalid length argument
         queries = [
             """RETURN LEFT('', -100)""",
-            """RETURN LEFT('a', NULL)""",
             ]
         for query in queries:
             try:
@@ -751,6 +749,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         queries = [
             """RETURN LEFT(NULL, 'a')""",
             """RETURN LEFT(NULL, 1.3)""",
+            """RETURN LEFT('a', NULL)""",
         ]
         for query in queries:
             self.expect_type_error(query)
@@ -761,7 +760,6 @@ class testFunctionCallsFlow(FlowTestsBase):
             "RETURN RIGHT('muchacho', 100)" : [['muchacho']],
             "RETURN RIGHT(NULL, -1)" : [[None]],
             "RETURN RIGHT(NULL, 100)" : [[None]],
-            "RETURN RIGHT(NULL, NULL)" : [[None]],
             # test unicode charecters
             "RETURN RIGHT('丁丂七丄丅丆万丈三上', 4)" : [['万丈三上']],
             "RETURN RIGHT('丁丂七丄丅丆万丈三上', 100)" : [['丁丂七丄丅丆万丈三上']],
@@ -772,7 +770,6 @@ class testFunctionCallsFlow(FlowTestsBase):
         # invalid length argument
         queries = [
             """RETURN RIGHT('', -100)""",
-            """RETURN RIGHT('a', NULL)""",
             ]
         for query in queries:
             try:
@@ -785,6 +782,7 @@ class testFunctionCallsFlow(FlowTestsBase):
         queries = [
             """RETURN RIGHT(NULL, 'a')""",
             """RETURN RIGHT(NULL, 1.3)""",
+            """RETURN RIGHT('a', NULL)""",
         ]
         for query in queries:
             self.expect_type_error(query)
